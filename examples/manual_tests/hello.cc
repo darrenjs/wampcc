@@ -30,7 +30,7 @@ void test_ints()
   PUSH_INT( unsigned long long );
   std::cout <<  "\n";
 
-  char * enc = jalson::JSONEncode( msg );
+  char * enc = jalson::encode( msg );
 
   std::cout << "jalson encoded: " << enc << "\n";
   std::cout << "\n";
@@ -73,7 +73,7 @@ void test_make()
     std::cout << "  double\n";
     msg.push_back( jalson::JSONValue::make_double() );
   }
-  char * enc = jalson::JSONEncode( msg );
+  char * enc = jalson::encode( msg );
   std::cout << "jalson encoded: " << enc << "\n";
   std::cout << "\n";
 }

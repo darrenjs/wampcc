@@ -28,7 +28,7 @@ jalson::JSONValue build_json()
 int test()
 {
   jalson::JSONValue v = build_json();
-  char * enc = jalson::JSONEncode(v.as<jalson::JSONArray>()  );
+  char * enc = jalson::encode(v.as<jalson::JSONArray>()  );
 
   int count = 0;
   while (true)
@@ -36,13 +36,13 @@ int test()
 
     {
       jalson::JSONValue v = build_json();
-      char * tmp = jalson::JSONEncode(v.as<jalson::JSONArray>()  );
+      char * tmp = jalson::encode(v.as<jalson::JSONArray>()  );
       free(tmp);
     }
 
     {
       jalson::JSONValue dest;
-      jalson::JSONDecode(dest, enc);
+      jalson::decode(dest, enc);
     }
     {
 
@@ -106,7 +106,7 @@ void parse_invalid()
 
 
   jalson::JSONValue dest;
-  jalson::JSONDecode(dest, str);
+  jalson::decode(dest, str);
 
 
 }

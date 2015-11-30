@@ -272,7 +272,7 @@ DEFTEST( encoding_call_message )
   msg.push_back( 50.25 );
 
   jalson::JSONValue any = msg;
-  std::string encoding = jalson::JSONEncode( any );
+  std::string encoding = jalson::encode( any );
   //std::cout << "encoding: " << encoding << "\n";
 
   return encoding=="[\"call\", {}, \"a1:myrpc\", 100, {}, 50.25]";
@@ -312,7 +312,7 @@ DEFTEST( support_for_various_int_types )
 
 
   jalson::JSONValue any = takecopy(msg); // test a copy too
-  std::string encoding = jalson::JSONEncode( any );
+  std::string encoding = jalson::encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
   return encoding=="[0, 1, 2, 3, 5, 6, 7, 0, \"x\"]";
@@ -351,7 +351,7 @@ DEFTEST( test_operator_eq )
   ASSERT_TRUE( msg[4].is_string() );
 
   jalson::JSONValue any = msg;
-  std::string encoding = jalson::JSONEncode( any );
+  std::string encoding = jalson::encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
 //  check( );
@@ -376,7 +376,7 @@ DEFTEST( map_examples )
   obj["e"]= jalson::JSONValue::make_object();
   jalson::JSONObject& obj2 = jalson::insert_object(obj, "X");
   /*jalson::JSONArray& arr2  =*/ jalson::insert_array(obj2, "X");
-  std::string encoding = jalson::JSONEncode( a );
+  std::string encoding = jalson::encode( a );
   std::cout << "encoding: " << encoding << "\n";
 
   return 1;
@@ -386,7 +386,7 @@ DEFTEST ( encoding_example_1 )
 {
   const char* src="[\"SUBSCRIBE\", 0, {}, \"T1\"]";
   jalson::JSONValue a;
-  jalson::JSONDecode(a, src);
+  jalson::decode(a, src);
 
   jalson::JSONArray msg=a.as<jalson::JSONArray>();
   jalson::JSONValue        reqid = msg.at(1);
@@ -401,7 +401,7 @@ DEFTEST( int_and_uint_and_real )
 {
   const char* src="[0, -1, 1, 1.25, \"x\" ]";
   jalson::JSONValue a;
-  jalson::JSONDecode(a, src);
+  jalson::decode(a, src);
 
   jalson::JSONArray& msg=a.as<jalson::JSONArray>();
 
@@ -528,7 +528,7 @@ DEFTEST( compiler_check )
 //   jalson::JSONArray msg;
 //   msg.append("hello");
 //   jalson::JSONValue any = msg;
-//   std::string encoding = jalson::JSONEncode( any );
+//   std::string encoding = jalson::encode( any );
 //   std::cout << "encoding: " << encoding << "\n";
 
 //   return 1;

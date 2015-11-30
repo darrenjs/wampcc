@@ -1,5 +1,13 @@
+/*
+ * Copyright (c) 2015 Darren Smith <jalson@darrenjs.net>
+ *
+ * Jalson is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
+
 #ifndef __JALSON_H__
 #define __JALSON_H__
+
 
 #include <map>
 #include <stdexcept>
@@ -8,20 +16,11 @@
 
 #include <stdint.h>
 
-
-/*
- * TODO:
-     - no instru on integrating a vendor
-
-*/
-
-
 namespace jalson
 {
 
-
 /* Get details about the underlying JSON implementation */
-struct impl_details
+struct vendor_details
 {
   const char* vendor;
   int major_version;
@@ -35,7 +34,7 @@ struct impl_details
   bool has_encode_any;
 };
 
-void get_impl_details(impl_details*);
+void get_vendor_details(vendor_details*);
 
 
 /*
@@ -55,9 +54,7 @@ typedef enum
   eSTRING,
   eBOOL,
   eREAL,
-  eINTEGER,
-
-  eTYPEMAX
+  eINTEGER
 } JSONType;
 
 /* Convert a JSONType to string representation */
@@ -124,7 +121,7 @@ public:
 //
 // ======================================================================
 
-  class JSONValue;
+class JSONValue;
 typedef std::vector<JSONValue>            JSONArray;
 typedef std::map<std::string, JSONValue>  JSONObject;
 typedef std::string                       JSONString;
@@ -137,6 +134,16 @@ typedef std::string                       JSONString;
 //
 // ======================================================================
 
+
+//  JSONValue, JSONArray,
+
+// jalson::json_value
+
+// value, string,
+
+// jalson::jvalue, jalson:jarray, jstring, jalson::jobject
+// jalson::json_array, json_value; json_object, json_string
+// jalson::Value, Array, String , Object
 
 /* Container for any JSON value */
 class JSONValue
@@ -192,10 +199,10 @@ public:
 
   void check_type(JSONType t) const; // throw type_mismatch if match fails
 
-  bool is_object()    const { return this->type() == eOBJECT; }
-  bool is_array()     const { return this->type() == eARRAY; }
+  bool is_object()  const { return this->type() == eOBJECT; }
+  bool is_array()   const { return this->type() == eARRAY; }
 
-  bool is_string()    const { return this->type() == eSTRING; }
+  bool is_string()  const { return this->type() == eSTRING; }
   bool is_bool()    const { return this->type() == eBOOL; }
   bool is_true()    const { return this->is_bool() && m_impl.as_bool_unchecked()==true; }
   bool is_false()   const { return this->is_bool() && m_impl.as_bool_unchecked()==false; }
@@ -298,13 +305,13 @@ JSONValue& append(jalson::JSONArray& arr, const T& src)
 
 /* Append a new object or array to an array, and return the newly created
  * item */
-JSONObject& append_object (jalson::JSONArray& c);
-JSONArray&  append_array  (jalson::JSONArray& c);
+JSONObject& append_object (JSONArray& c);
+JSONArray&  append_array  (JSONArray& c);
 
 /* Insert a new object or array to an object, and return the newly created
  * item */
-JSONObject& insert_object(jalson::JSONObject&, const std::string& key);
-JSONArray&  insert_array (jalson::JSONObject&, const std::string& key);
+JSONObject& insert_object(JSONObject&, const std::string& key);
+JSONArray&  insert_array (JSONObject&, const std::string& key);
 
 /* Utility methods for extracting a value from a container.  If not found,
  * throws json_error exceptions. */
@@ -325,12 +332,12 @@ JSONValue get(const JSONArray&, size_t index,
 /* Encode a JSON value into a JSON-text serialised representation. The JSON
  * value passed into this function should be either an Object or an Array.  This
  * is for conformance to RFC 4627. If you wish to encode other JSON types, then
- * try JSONEncodeAny. */
-char* JSONEncode(const JSONValue& src);
+ * try encode_any. */
+char* encode(const JSONValue& src);
 
-char* JSONEncodeAny(const JSONValue& src);
+char* encode_any(const JSONValue& src);
 
-void  JSONDecode(JSONValue& dest, const char*);
+void  decode(JSONValue& dest, const char*);
 
 /* Wrapper to the encode function, which just presents the encoding as a
  * std::string (and so the memory does not need to be managed) */

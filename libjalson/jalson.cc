@@ -2,12 +2,44 @@
 
 #include <iostream>
 #include <sstream>
+#include <limits>
 
 #include <string.h>
 
 
 
 namespace jalson {
+
+
+
+namespace internals {
+
+
+  bool valueimpl::is_sint()  const
+  {
+    if  (details.type == e_signed) return true;
+
+    if ((details.type == e_unsigned)   // 0----------SMAX--------UMAX
+        and
+        (details.data.uint <= (json_uint_t)std::numeric_limits<json_sint_t>::max() )) return true;
+
+    return false;
+  }
+
+  bool valueimpl::is_uint() const
+  {
+    if  (details.type == e_unsigned) return true;
+
+    if ((details.type == e_signed)
+        and
+        (details.data.sint >= 0)) return true;
+
+    return false;
+  }
+
+
+}
+
 
 const char* type_to_str(JSONType t)
 {
@@ -612,13 +644,13 @@ std::ostream& operator<<(std::ostream& os, const JSONValue& v)
 {
   if (v.is_object() || v.is_array())
   {
-    char* enc = JSONEncode(v);
+    char* enc = encode(v);
     os << enc;
     delete [] enc;
   }
   else
   {
-    char* enc = JSONEncodeAny(v);
+    char* enc = encode_any(v);
     os << enc;
     delete [] enc;
   }

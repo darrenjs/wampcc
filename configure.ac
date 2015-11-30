@@ -32,6 +32,7 @@ AC_PROG_INSTALL
 
 #========== Check for third party libraries ==========
 
+have_vendor=0
 
 # Specify a location for Jansson
 AC_ARG_WITH(jansson, [ --with-jansson=PATH specify directory for the installed JANSSON library])
@@ -41,6 +42,7 @@ if test "x$with_jansson" != x; then
    janssonlib="$with_jansson/lib/libjansson.la"
    janssoninc="-I$with_jansson/include"
    have_jansson=1
+   have_vendor=1
 fi
 
 # put the inc and lib into the makefiles
@@ -49,6 +51,12 @@ AC_SUBST(janssoninc)
 
 # put variable into config.h
 AC_DEFINE_UNQUOTED([HAVE_JANSSON], [$have_jansson], [Define to 1 if Jannson library is present])
+
+
+if test "x$have_vendor" = "x0" ; then
+    AC_MSG_ERROR([You have not configured a JSON implemention vendor. Try --help. Supported vendors: jansson])
+fi
+
 
 #========== Checks for header files ==========
 

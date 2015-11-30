@@ -10,7 +10,7 @@
 #include <string.h>
 
 /* outside of jalson namespace, so not to confuse jalson names with JANSSON names */
-static jalson::JSONValue decode_jannson_ptr3(json_t * j)
+static jalson::JSONValue decode_jansson_ptr3(json_t * j)
 {
   switch( json_typeof(j) )
   {
@@ -25,8 +25,8 @@ static jalson::JSONValue decode_jannson_ptr3(json_t * j)
       {
         // TODO: why cant I use insert here?
 
-//        obj.insert(key, decode_jannson_ptr3(value));
-        obj[key]=decode_jannson_ptr3(value);
+//        obj.insert(key, decode_jansson_ptr3(value));
+        obj[key]=decode_jansson_ptr3(value);
       }
       return rv;
     }
@@ -39,7 +39,7 @@ static jalson::JSONValue decode_jannson_ptr3(json_t * j)
       json_t *value;
       json_array_foreach(j, index, value)
       {
-        arr.push_back( decode_jannson_ptr3(value) );
+        arr.push_back( decode_jansson_ptr3(value) );
       }
 
       return rv;
@@ -139,11 +139,11 @@ static json_t * encode_value3(const jalson::JSONValue& src)
 
 
 namespace jalson {
- const char impl_name[] = "jannson";
+ const char impl_name[] = "jansson";
 
-void get_impl_details(impl_details* p)
+void get_vendor_details(vendor_details* p)
 {
-  memset(p,0,sizeof(impl_details));
+  memset(p,0,sizeof(vendor_details));
   p->vendor = impl_name;
   p->major_version = JANSSON_MAJOR_VERSION;
   p->minor_version = JANSSON_MINOR_VERSION;
@@ -153,13 +153,13 @@ void get_impl_details(impl_details* p)
 
 }
 
-static bool jannson_malloc_set = false;
+static bool jansson_malloc_set = false;
 
 struct malloc_guard
 {
   ~malloc_guard()
   {
-    jannson_malloc_set = true;
+    jansson_malloc_set = true;
   }
 };
 
@@ -175,10 +175,10 @@ static void json_free(void * p)
 }
 
 
-char* JSONEncode(const JSONValue& src)
+char* encode(const JSONValue& src)
 {
   malloc_guard setflag_at_exit;
-  if (!jannson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
+  if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
 
   json_t* json = encode_value3( src );
 
@@ -193,10 +193,10 @@ char* JSONEncode(const JSONValue& src)
 }
 
 
-char* JSONEncodeAny(const JSONValue& src)
+char* encode_any(const JSONValue& src)
 {
   malloc_guard setflag_at_exit;
-  if (!jannson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
+  if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
 
   json_t* json = encode_value3( src );
 
@@ -212,10 +212,10 @@ char* JSONEncodeAny(const JSONValue& src)
 
 
 // TODO: need to handle the error cases in here
-void JSONDecode(JSONValue& dest, const char* text)
+void decode(JSONValue& dest, const char* text)
 {
   malloc_guard setflag_at_exit;
-  if (!jannson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
+  if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
 
   json_error_t error;
 
@@ -242,7 +242,7 @@ void JSONDecode(JSONValue& dest, const char* text)
   {
     // TODO: this is not efficient; would be better to pass 'dest' into the
     // decode function.
-    dest = decode_jannson_ptr3(root);
+    dest = decode_jansson_ptr3(root);
   }
 
   // clean up the json device
@@ -251,7 +251,7 @@ void JSONDecode(JSONValue& dest, const char* text)
 
 std::string to_string(const JSONValue& src)
 {
-  char* buf = jalson::JSONEncode(src);
+  char* buf = jalson::encode(src);
   std::string retval(buf);
   delete [] buf;
   return retval;

@@ -10,8 +10,12 @@
 //
 // ======================================================================
 
+
 namespace internals
 {
+
+typedef long long          json_sint_t;
+typedef unsigned long long json_uint_t;
 
 template <typename T>
 struct traits
@@ -54,17 +58,17 @@ private:
 
 public:
 
+
   struct Details /* POD */
   {
     JSONDetailedType type;
     union
     {
-      // TODO: replace thse 64t?
       JSONArray*         array;
       JSONObject*        object;
       JSONString*        string;
-      unsigned long long uint;
-      long long          sint;
+      json_uint_t        uint;
+      json_sint_t        sint;
       double             real;
       bool               boolean;
     } data;
@@ -75,8 +79,6 @@ public:
 
 public:
 
-  // TODO: need to recall what was problem with int/void* explicit
-  // constructor
 
   valueimpl();
   valueimpl(const valueimpl&);
@@ -97,7 +99,6 @@ public:
   explicit valueimpl(JSONObject*);
   explicit valueimpl(JSONString*);
 
-  // TODO: move to the impl code
   JSONType json_type() const
   {
     switch (details.type)
@@ -153,29 +154,12 @@ public:
       throw type_mismatch(this->json_type(), templtype);
   }
 
-  /* can the value be represented as a integer */
-  bool is_sint()  const
-  {
-    if  (details.type == e_signed) return true;
+  /* can the value be represented as a signed integer */
+  bool is_sint() const;
 
-    // TODO: review
-    if ((details.type == e_unsigned)
-        and
-        (details.data.uint <= 9223372036854775807LL)) return true;
 
-    return false;
-  }
-
-  bool is_uint() const
-  {
-    if  (details.type == e_unsigned) return true;
-
-    if ((details.type == e_signed)
-        and
-        (details.data.sint >= 0)) return true;
-
-    return false;
-  }
+  /* can the value be represented as an unsigned  integer */
+  bool is_uint() const;
 
   /* return value as an integer, or throw if not possible */
   long long  as_sint_repr()  const;
