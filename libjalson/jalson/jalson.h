@@ -121,10 +121,10 @@ public:
 //
 // ======================================================================
 
-class JSONValue;
-typedef std::vector<JSONValue>            JSONArray;
-typedef std::map<std::string, JSONValue>  JSONObject;
-typedef std::string                       JSONString;
+class json_value;
+typedef std::vector<json_value>            json_array;
+typedef std::map<std::string, json_value>  json_object;
+typedef std::string                       json_string;
 
 // ======================================================================
 //
@@ -135,63 +135,63 @@ typedef std::string                       JSONString;
 // ======================================================================
 
 
-//  JSONValue, JSONArray,
+//  json_value, json_array,
 
 // jalson::json_value
 
 // value, string,
 
 // jalson::jvalue, jalson:jarray, jstring, jalson::jobject
-// jalson::json_array, json_value; json_object, json_string
+// jalson::json_array, json_value; json_object, json_string json_any
 // jalson::Value, Array, String , Object
 
 /* Container for any JSON value */
-class JSONValue
+class json_value
 {
 public:
 
   /* Constructors & assignment */
 
-  JSONValue();  // creates null value
+  json_value();  // creates null value
 
-  JSONValue(int);
-  JSONValue(long);
-  JSONValue(long long);
+  json_value(int);
+  json_value(long);
+  json_value(long long);
 
-  JSONValue(bool);
-  JSONValue(double);
-  JSONValue(const char*);
-  JSONValue(const char*, size_t);
-  JSONValue(const std::string&);
-  JSONValue(const JSONArray&);
-  JSONValue(const JSONObject&);
+  json_value(bool);
+  json_value(double);
+  json_value(const char*);
+  json_value(const char*, size_t);
+  json_value(const std::string&);
+  json_value(const json_array&);
+  json_value(const json_object&);
 
   /* WARNING: ensure the underlying implementation have uint capability before
    * using any of these. */
-  JSONValue(unsigned int);
-  JSONValue(unsigned long);
-  JSONValue(unsigned long long);
+  json_value(unsigned int);
+  json_value(unsigned long);
+  json_value(unsigned long long);
 
   /* copy & assignment */
 
-  JSONValue(const JSONValue&);
-  JSONValue& operator=(const JSONValue&);
+  json_value(const json_value&);
+  json_value& operator=(const json_value&);
 
   /* equality */
 
-  bool operator==(const JSONValue& rhs) const;
-  bool operator!=(const JSONValue& rhs) const { return not this->operator==(rhs); }
+  bool operator==(const json_value& rhs) const;
+  bool operator!=(const json_value& rhs) const { return not this->operator==(rhs); }
 
   /* create various JSON types that have default value */
 
-  static JSONValue make_null();
-  static JSONValue make_array();
-  static JSONValue make_object();
-  static JSONValue make_string(const char* v = 0);
-  static JSONValue make_bool(bool v = false);
-  static JSONValue make_int(long long v = 0);
-  static JSONValue make_uint(unsigned long long v = 0);
-  static JSONValue make_double(double v = 0.0);
+  static json_value make_null();
+  static json_value make_array();
+  static json_value make_object();
+  static json_value make_string(const char* v = 0);
+  static json_value make_bool(bool v = false);
+  static json_value make_int(long long v = 0);
+  static json_value make_uint(unsigned long long v = 0);
+  static json_value make_double(double v = 0.0);
 
   /* type query */
 
@@ -227,7 +227,9 @@ public:
   unsigned long long  as_uint() const { return m_impl.as_uint_repr(); }
 
 
-  // // and would these throw?
+  // Future expansion. Added sizeed-int support, including methods to check int
+  // width. Do we need is_int / as_int etc.
+
   // as_int16
   // as_int32
   // as_int64
@@ -240,63 +242,60 @@ public:
   // as_long / is_long
   // as_longlong / is_longlong
 
-  // int orders = orders.as_int();
 
-  // TODO: add methods to check the int range
+  json_string&       as_string()       { return this->as<json_string>(); }
+  const json_string& as_string() const { return this->as<json_string>(); }
 
-  JSONString&       as_string()       { return this->as<JSONString>(); }
-  const JSONString& as_string() const { return this->as<JSONString>(); }
+  json_array&        as_array()       { return this->as<json_array>(); }
+  const json_array&  as_array() const { return this->as<json_array>(); }
 
-  JSONArray&        as_array()       { return this->as<JSONArray>(); }
-  const JSONArray&  as_array() const { return this->as<JSONArray>(); }
+  json_object&       as_object()        { return this->as<json_object>(); }
+  const json_object& as_object() const  { return this->as<json_object>(); }
 
-  JSONObject&       as_object()        { return this->as<JSONObject>(); }
-  const JSONObject& as_object() const  { return this->as<JSONObject>(); }
-
-  // Checked conversion to JSONArray / JSONString / JSONObject
+  // Checked conversion to json_array / json_string / json_object
   template<typename T> const T& as() const
   {
     ensure_type_is_json_container((T*)0);
     return m_impl.as<T>();
   }
 
-  // Checked conversion to JSONArray / JSONString / JSONObject
+  // Checked conversion to json_array / json_string / json_object
   template<typename T> T& as()
   {
     ensure_type_is_json_container((T*)0);
     return m_impl.as<T>();
   }
 
-  void swap(JSONValue&);
+  void swap(json_value&);
 
 private:
 
   /* These functions exist simply to check a type specifed during a
    * template-based call is one of the JSON classes. If a type is not one of
    * these classes, it will cause a compiler error. */
-  static void ensure_type_is_json_container(JSONArray*)  {}
-  static void ensure_type_is_json_container(JSONString*) {}
-  static void ensure_type_is_json_container(JSONObject*) {}
+  static void ensure_type_is_json_container(json_array*)  {}
+  static void ensure_type_is_json_container(json_string*) {}
+  static void ensure_type_is_json_container(json_object*) {}
 
   internals::valueimpl  m_impl;
 
-  friend JSONArray&  append_array  (jalson::JSONArray&);
-  friend JSONObject& append_object (jalson::JSONArray&);
-  friend JSONObject& insert_object (jalson::JSONObject&, const std::string&);
-  friend JSONArray&  insert_array  (jalson::JSONObject&, const std::string&);
+  friend json_array&  append_array  (jalson::json_array&);
+  friend json_object& append_object (jalson::json_array&);
+  friend json_object& insert_object (jalson::json_object&, const std::string&);
+  friend json_array&  insert_array  (jalson::json_object&, const std::string&);
 };
 
-std::ostream& operator<<(std::ostream&, const JSONValue&);
+std::ostream& operator<<(std::ostream&, const json_value&);
 
 
 /** Make a copy of 'src' and add to the aray */
 template <typename T>
-JSONValue& append(jalson::JSONArray& arr, const T& src)
+json_value& append(jalson::json_array& arr, const T& src)
 {
-  arr.push_back( JSONValue() );
+  arr.push_back( json_value() );
 
-  JSONValue& last = arr.back();
-  JSONValue temp(src);
+  json_value& last = arr.back();
+  json_value temp(src);
   last.swap(temp);
 
   return arr.back();
@@ -305,27 +304,27 @@ JSONValue& append(jalson::JSONArray& arr, const T& src)
 
 /* Append a new object or array to an array, and return the newly created
  * item */
-JSONObject& append_object (JSONArray& c);
-JSONArray&  append_array  (JSONArray& c);
+json_object& append_object (json_array& c);
+json_array&  append_array  (json_array& c);
 
 /* Insert a new object or array to an object, and return the newly created
  * item */
-JSONObject& insert_object(JSONObject&, const std::string& key);
-JSONArray&  insert_array (JSONObject&, const std::string& key);
+json_object& insert_object(json_object&, const std::string& key);
+json_array&  insert_array (json_object&, const std::string& key);
 
 /* Utility methods for extracting a value from a container.  If not found,
  * throws json_error exceptions. */
-      JSONValue& get_or_throw(      JSONObject& ob, const std::string& key);
-const JSONValue& get_or_throw(const JSONObject& ob, const std::string& key);
+      json_value& get_or_throw(      json_object& ob, const std::string& key);
+const json_value& get_or_throw(const json_object& ob, const std::string& key);
 
-      JSONValue& get_or_throw(      JSONArray& ob, size_t index);
-const JSONValue& get_or_throw(const JSONArray& ob, size_t index);
+      json_value& get_or_throw(      json_array& ob, size_t index);
+const json_value& get_or_throw(const json_array& ob, size_t index);
 
-JSONValue get(const JSONObject&, const std::string& key,
-              const JSONValue & defValue = JSONValue());
+json_value get(const json_object&, const std::string& key,
+              const json_value & defValue = json_value());
 
-JSONValue get(const JSONArray&, size_t index,
-              const JSONValue & defValue = JSONValue());
+json_value get(const json_array&, size_t index,
+              const json_value & defValue = json_value());
 
 /* Encode & decode functions */
 
@@ -333,15 +332,15 @@ JSONValue get(const JSONArray&, size_t index,
  * value passed into this function should be either an Object or an Array.  This
  * is for conformance to RFC 4627. If you wish to encode other JSON types, then
  * try encode_any. */
-char* encode(const JSONValue& src);
+char* encode(const json_value& src);
 
-char* encode_any(const JSONValue& src);
+char* encode_any(const json_value& src);
 
-void  decode(JSONValue& dest, const char*);
+void  decode(json_value& dest, const char*);
 
 /* Wrapper to the encode function, which just presents the encoding as a
  * std::string (and so the memory does not need to be managed) */
-std::string to_string(const JSONValue& src);
+std::string to_string(const json_value& src);
 
 }
 

@@ -11,7 +11,7 @@
 #define PUSH_INT( T )                              \
   {                                                \
     T i = std::numeric_limits<T>::max();           \
-    jalson::JSONValue v(i);                        \
+    jalson::json_value v(i);                        \
     msg.push_back( v );                            \
     std::cout << "  " << #T << ":" << i <<"\n";    \
   }
@@ -19,7 +19,7 @@
 
 void test_ints()
 {
-  jalson::JSONArray msg;
+  jalson::json_array msg;
 
   std::cout << "adding:\n";
   PUSH_INT( int );
@@ -39,39 +39,39 @@ void test_ints()
 
 void test_make()
 {
-  jalson::JSONArray msg;
+  jalson::json_array msg;
   std::cout << "adding:\n";
   {
     std::cout << "  null\n";
-    msg.push_back( jalson::JSONValue::make_null() );
+    msg.push_back( jalson::json_value::make_null() );
   }
   {
     std::cout << "  array\n";
-    msg.push_back( jalson::JSONValue::make_array() );
+    msg.push_back( jalson::json_value::make_array() );
   }
   {
     std::cout << "  object\n";
-    msg.push_back( jalson::JSONValue::make_object() );
+    msg.push_back( jalson::json_value::make_object() );
   }
   {
     std::cout << "  string\n";
-    msg.push_back( jalson::JSONValue::make_string() );
+    msg.push_back( jalson::json_value::make_string() );
   }
   {
     std::cout << "  bool\n";
-    msg.push_back( jalson::JSONValue::make_bool() );
+    msg.push_back( jalson::json_value::make_bool() );
   }
   {
     std::cout << "  int\n";
-    msg.push_back( jalson::JSONValue::make_int() );
+    msg.push_back( jalson::json_value::make_int() );
   }
   {
     std::cout << "  uint\n";
-    msg.push_back( jalson::JSONValue::make_uint() );
+    msg.push_back( jalson::json_value::make_uint() );
   }
   {
     std::cout << "  double\n";
-    msg.push_back( jalson::JSONValue::make_double() );
+    msg.push_back( jalson::json_value::make_double() );
   }
   char * enc = jalson::encode( msg );
   std::cout << "jalson encoded: " << enc << "\n";
@@ -84,11 +84,11 @@ int main(int, char**)
   test_ints();
   test_make();
 
-  jalson::JSONValue v = jalson::JSONValue::make_array();
+  jalson::json_value v = jalson::json_value::make_array();
   jalson::append_array(v.as_array()).push_back(1);
   v.as_array().push_back(true);
   v.as_array().push_back(false);
-  v.as_array().push_back(jalson::JSONValue());
+  v.as_array().push_back(jalson::json_value());
   jalson::append_array(v.as_array()).push_back("hello");
   std::cout << ">>" << v << "\n";
 

@@ -23,19 +23,19 @@ struct traits
 };
 
 template <>
-struct traits<JSONString>
+struct traits<json_string>
 {
   static const JSONType  TYPEID=eSTRING;
 };
 
 template <>
-struct traits<JSONObject>
+struct traits<json_object>
 {
   static const JSONType  TYPEID=eOBJECT;
 };
 
 template <>
-struct traits<JSONArray>
+struct traits<json_array>
 {
   static const JSONType  TYPEID=eARRAY;
 };
@@ -64,9 +64,9 @@ public:
     JSONDetailedType type;
     union
     {
-      JSONArray*         array;
-      JSONObject*        object;
-      JSONString*        string;
+      json_array*         array;
+      json_object*        object;
+      json_string*        string;
       json_uint_t        uint;
       json_sint_t        sint;
       double             real;
@@ -95,9 +95,9 @@ public:
   explicit valueimpl(long long);
   explicit valueimpl(double);
 
-  explicit valueimpl(JSONArray*);
-  explicit valueimpl(JSONObject*);
-  explicit valueimpl(JSONString*);
+  explicit valueimpl(json_array*);
+  explicit valueimpl(json_object*);
+  explicit valueimpl(json_string*);
 
   JSONType json_type() const
   {
@@ -127,12 +127,12 @@ public:
 
 private:
 
-  const JSONArray&  as_type(JSONArray*) const   { return *details.data.array;  }
-        JSONArray&  as_type(JSONArray*)         { return *details.data.array;  }
-  const JSONObject& as_type(JSONObject*) const  { return *details.data.object;  }
-        JSONObject& as_type(JSONObject*)        { return *details.data.object;  }
-  const JSONString& as_type(JSONString*) const  { return *details.data.string;  }
-        JSONString& as_type(JSONString*)        { return *details.data.string;  }
+  const json_array&  as_type(json_array*) const   { return *details.data.array;  }
+        json_array&  as_type(json_array*)         { return *details.data.array;  }
+  const json_object& as_type(json_object*) const  { return *details.data.object;  }
+        json_object& as_type(json_object*)        { return *details.data.object;  }
+  const json_string& as_type(json_string*) const  { return *details.data.string;  }
+        json_string& as_type(json_string*)        { return *details.data.string;  }
 
 public:
 

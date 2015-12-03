@@ -10,14 +10,14 @@
 #include <string.h>
 
 /* outside of jalson namespace, so not to confuse jalson names with JANSSON names */
-static jalson::JSONValue decode_jansson_ptr3(json_t * j)
+static jalson::json_value decode_jansson_ptr3(json_t * j)
 {
   switch( json_typeof(j) )
   {
     case JSON_OBJECT :
     {
-      jalson::JSONValue rv = jalson::JSONValue::make_object();
-      jalson::JSONObject& obj = rv.as<jalson::JSONObject>();
+      jalson::json_value rv = jalson::json_value::make_object();
+      jalson::json_object& obj = rv.as<jalson::json_object>();
 
       const char *key;
       json_t *value;
@@ -32,8 +32,8 @@ static jalson::JSONValue decode_jansson_ptr3(json_t * j)
     }
     case JSON_ARRAY :
     {
-      jalson::JSONValue rv = jalson::JSONValue::make_array();
-      jalson::JSONArray& arr = rv.as<jalson::JSONArray>();
+      jalson::json_value rv = jalson::json_value::make_array();
+      jalson::json_array& arr = rv.as<jalson::json_array>();
 
       size_t index;
       json_t *value;
@@ -46,38 +46,38 @@ static jalson::JSONValue decode_jansson_ptr3(json_t * j)
     }
     case JSON_STRING :
     {
-      return jalson::JSONValue(json_string_value(j), json_string_length(j));
+      return jalson::json_value(json_string_value(j), json_string_length(j));
     }
     case JSON_INTEGER :
     {
       int64_t i = json_integer_value(j);
-      return jalson::JSONValue((int64_t)i);
+      return jalson::json_value((int64_t)i);
     }
     case JSON_REAL :
     {
-      return jalson::JSONValue( json_real_value(j) );
+      return jalson::json_value( json_real_value(j) );
     }
-    case JSON_TRUE : return jalson::JSONValue(true);
-    case JSON_FALSE : return jalson::JSONValue(false);
-    case JSON_NULL : return jalson::JSONValue();
-    default : return jalson::JSONValue();
+    case JSON_TRUE : return jalson::json_value(true);
+    case JSON_FALSE : return jalson::json_value(false);
+    case JSON_NULL : return jalson::json_value();
+    default : return jalson::json_value();
   }
 
 }
 
 
 
-static json_t * encode_value3(const jalson::JSONValue& src)
+static json_t * encode_value3(const jalson::json_value& src)
 {
   switch( src.type() )
   {
     case jalson::eOBJECT:
     {
-      const jalson::JSONObject& obj = src.as_object();
+      const jalson::json_object& obj = src.as_object();
 
       json_t* jobj = json_object();
 
-      for (jalson::JSONObject::const_iterator iter = obj.begin();
+      for (jalson::json_object::const_iterator iter = obj.begin();
            iter != obj.end(); ++iter )
       {
         json_object_set_new(jobj,
@@ -87,11 +87,11 @@ static json_t * encode_value3(const jalson::JSONValue& src)
       return jobj;
     }
     case jalson::eARRAY :  {
-      const jalson::JSONArray& _array = src.as_array();
+      const jalson::json_array& _array = src.as_array();
 
       json_t* jarray = json_array();
 
-      for (jalson::JSONArray::const_iterator iter = _array.begin();
+      for (jalson::json_array::const_iterator iter = _array.begin();
            iter != _array.end(); ++iter)
       {
         // TODO: is this the correct function? there is another one, and the
@@ -103,7 +103,7 @@ static json_t * encode_value3(const jalson::JSONValue& src)
     }
     case jalson::eSTRING:
     {
-      const jalson::JSONString& actual = src.as_string();
+      const jalson::json_string& actual = src.as_string();
       return json_stringn(actual.c_str(), actual.size());
     }
     case jalson::eREAL:
@@ -175,7 +175,7 @@ static void json_free(void * p)
 }
 
 
-char* encode(const JSONValue& src)
+char* encode(const json_value& src)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
@@ -193,7 +193,7 @@ char* encode(const JSONValue& src)
 }
 
 
-char* encode_any(const JSONValue& src)
+char* encode_any(const json_value& src)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
@@ -212,7 +212,7 @@ char* encode_any(const JSONValue& src)
 
 
 // TODO: need to handle the error cases in here
-void decode(JSONValue& dest, const char* text)
+void decode(json_value& dest, const char* text)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
@@ -249,7 +249,7 @@ void decode(JSONValue& dest, const char* text)
   if (root) json_decref( root );
 }
 
-std::string to_string(const JSONValue& src)
+std::string to_string(const json_value& src)
 {
   char* buf = jalson::encode(src);
   std::string retval(buf);

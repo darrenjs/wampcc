@@ -181,7 +181,7 @@ class MyType
 //----------------------------------------------------------------------
 DEFTEST(  basic_json_object )
 {
-  jalson::JSONValue temp(1);
+  jalson::json_value temp(1);
   return 1;
 }
 
@@ -190,7 +190,7 @@ DEFTEST(  basic_json_object )
 DEFTEST( jsonarray_basic_append )
 {
   // test array addition, and functions which append
-  jalson::JSONArray msg;
+  jalson::json_array msg;
 
   msg.push_back( 0 );
   msg.push_back( 1 );
@@ -208,14 +208,14 @@ DEFTEST( jsonarray_basic_append )
 //----------------------------------------------------------------------
 DEFTEST( convert_type_to_string )
 {
-  jalson::JSONValue any1("should be string");
-  jalson::JSONString str1 = any1.as_string();
-  jalson::JSONValue any2 = any1;
-  jalson::JSONString str2 = any1.as_string();
+  jalson::json_value any1("should be string");
+  jalson::json_string str1 = any1.as_string();
+  jalson::json_value any2 = any1;
+  jalson::json_string str2 = any1.as_string();
 
-  jalson::JSONValue any3;
+  jalson::json_value any3;
   any3.swap(any1);
-  jalson::JSONString str3 = any3.as_string();
+  jalson::json_string str3 = any3.as_string();
 
   return (str1 == str1) and (str1 == str3);
 }
@@ -224,7 +224,7 @@ DEFTEST( convert_type_to_string )
 DEFTEST( size_of )
 {
   //std::cout << "sizeof(JSONNumber) : " << sizeof(jalson::JSONNumber) << "\n";
-  std::cout << "sizeof(JSONArray) : " << sizeof(jalson::JSONArray) << "\n";
+  std::cout << "sizeof(json_array) : " << sizeof(jalson::json_array) << "\n";
   std::cout << "sizeof(value) : " << sizeof(jalson::internals::valueimpl) << "\n";
   return 1;
 }
@@ -233,19 +233,19 @@ DEFTEST( size_of )
 //----------------------------------------------------------------------
 DEFTEST( misc_operations )
 {
-  jalson::JSONArray ar1;
+  jalson::json_array ar1;
 
   jalson::append(ar1, 100);
   jalson::append(ar1, "mystring");
 
-  jalson::JSONValue acopy = jalson::JSONValue( ar1 );
-  jalson::JSONArray ar2 = acopy.as<jalson::JSONArray>();
+  jalson::json_value acopy = jalson::json_value( ar1 );
+  jalson::json_array ar2 = acopy.as<jalson::json_array>();
 
 
   //MyType ar3 = acopy.as< MyType >();
 
-  jalson::JSONValue i1 = ar2[1];
-  jalson::JSONString s1 = i1.as<jalson::JSONString>();
+  jalson::json_value i1 = ar2[1];
+  jalson::json_string s1 = i1.as<jalson::json_string>();
 
   return (s1 == "mystring");
 }
@@ -258,7 +258,7 @@ DEFTEST( encoding_call_message )
   const std::string foreign_rpc = "myrpc";
   int reqid = 100;
 
-  jalson::JSONArray msg;
+  jalson::json_array msg;
   jalson::append(msg, "call");
   jalson::append_object(msg);
   jalson::append(msg, foreign_sid + ":" +foreign_rpc);
@@ -271,16 +271,16 @@ DEFTEST( encoding_call_message )
   //msg.append< MyType >();   // TODO: how can this work?
   msg.push_back( 50.25 );
 
-  jalson::JSONValue any = msg;
+  jalson::json_value any = msg;
   std::string encoding = jalson::encode( any );
   //std::cout << "encoding: " << encoding << "\n";
 
   return encoding=="[\"call\", {}, \"a1:myrpc\", 100, {}, 50.25]";
 }
 
-jalson::JSONValue takecopy(const jalson::JSONValue& src)
+jalson::json_value takecopy(const jalson::json_value& src)
 {
-  jalson::JSONValue temp(0);
+  jalson::json_value temp(0);
   temp = src;
   return temp;
 }
@@ -288,7 +288,7 @@ jalson::JSONValue takecopy(const jalson::JSONValue& src)
 //----------------------------------------------------------------------
 DEFTEST( support_for_various_int_types )
 {
-  jalson::JSONArray msg;
+  jalson::json_array msg;
 
   int   _int = 1;
   short _short = 2;
@@ -311,7 +311,7 @@ DEFTEST( support_for_various_int_types )
   msg.push_back("x");
 
 
-  jalson::JSONValue any = takecopy(msg); // test a copy too
+  jalson::json_value any = takecopy(msg); // test a copy too
   std::string encoding = jalson::encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
@@ -321,7 +321,7 @@ DEFTEST( support_for_various_int_types )
 //----------------------------------------------------------------------
 DEFTEST( test_operator_eq )
 {
-  jalson::JSONArray msg(10);
+  jalson::json_array msg(10);
 
   // int   _int            = 1;
   // short _short          = 2;
@@ -350,7 +350,7 @@ DEFTEST( test_operator_eq )
   ASSERT_TRUE( msg[3].is_false() );
   ASSERT_TRUE( msg[4].is_string() );
 
-  jalson::JSONValue any = msg;
+  jalson::json_value any = msg;
   std::string encoding = jalson::encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
@@ -363,19 +363,19 @@ DEFTEST( test_operator_eq )
 
 DEFTEST( map_examples )
 {
-  jalson::JSONValue a = jalson::JSONValue::make_array();
+  jalson::json_value a = jalson::json_value::make_array();
 
-  a.as<jalson::JSONArray>().push_back(jalson::JSONValue::make_object());
-  jalson::append_array( a.as<jalson::JSONArray>() );
-  jalson::JSONObject& obj = jalson::append_object( a.as<jalson::JSONArray>() );
+  a.as<jalson::json_array>().push_back(jalson::json_value::make_object());
+  jalson::append_array( a.as<jalson::json_array>() );
+  jalson::json_object& obj = jalson::append_object( a.as<jalson::json_array>() );
 
   obj["a"]=0;
   obj["b"]=1;
   obj["c"]=-1;
   obj["d"]="hello";
-  obj["e"]= jalson::JSONValue::make_object();
-  jalson::JSONObject& obj2 = jalson::insert_object(obj, "X");
-  /*jalson::JSONArray& arr2  =*/ jalson::insert_array(obj2, "X");
+  obj["e"]= jalson::json_value::make_object();
+  jalson::json_object& obj2 = jalson::insert_object(obj, "X");
+  /*jalson::json_array& arr2  =*/ jalson::insert_array(obj2, "X");
   std::string encoding = jalson::encode( a );
   std::cout << "encoding: " << encoding << "\n";
 
@@ -385,13 +385,13 @@ DEFTEST( map_examples )
 DEFTEST ( encoding_example_1 )
 {
   const char* src="[\"SUBSCRIBE\", 0, {}, \"T1\"]";
-  jalson::JSONValue a;
+  jalson::json_value a;
   jalson::decode(a, src);
 
-  jalson::JSONArray msg=a.as<jalson::JSONArray>();
-  jalson::JSONValue        reqid = msg.at(1);
-  jalson::JSONObject       opt = msg.at(2).as<jalson::JSONObject>();
-  jalson::JSONString topicname = msg.at(3).as<jalson::JSONString>();
+  jalson::json_array msg=a.as<jalson::json_array>();
+  jalson::json_value        reqid = msg.at(1);
+  jalson::json_object       opt = msg.at(2).as<jalson::json_object>();
+  jalson::json_string topicname = msg.at(3).as<jalson::json_string>();
 
   return true;
 }
@@ -400,10 +400,10 @@ DEFTEST ( encoding_example_1 )
 DEFTEST( int_and_uint_and_real )
 {
   const char* src="[0, -1, 1, 1.25, \"x\" ]";
-  jalson::JSONValue a;
+  jalson::json_value a;
   jalson::decode(a, src);
 
-  jalson::JSONArray& msg=a.as<jalson::JSONArray>();
+  jalson::json_array& msg=a.as<jalson::json_array>();
 
   ASSERT_TRUE( msg[0].is_uint() );
   ASSERT_TRUE( msg[0].is_sint() );
@@ -428,94 +428,94 @@ DEFTEST( compiler_check )
   /* here we are just checking that various expressions involving construction
    * and assignment which use primitive integer types, actually compile */
   {
-    jalson::JSONValue value;
+    jalson::json_value value;
     value = 0;
     value = 1;
     value = "0";
-    value = jalson::JSONValue::make_null();
-    value = jalson::JSONString();
-    value = jalson::JSONArray();
-    value = jalson::JSONObject();
+    value = jalson::json_value::make_null();
+    value = jalson::json_string();
+    value = jalson::json_array();
+    value = jalson::json_object();
   }
   {
     char v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     short v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     signed char v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     signed short v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     unsigned char v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     unsigned short v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     int v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     int v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
-    value = jalson::JSONValue::make_int(v);
+    value = jalson::json_value::make_int(v);
   }
   {
     long v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     long long v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     bool v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     const char* v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     float * v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     double * v = 0;
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     std::string  v("test");
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
   {
     const char*  v = "test";
-    jalson::JSONValue value( v );
+    jalson::json_value value( v );
     value = v;
   }
 
@@ -525,9 +525,9 @@ DEFTEST( compiler_check )
 //----------------------------------------------------------------------
 // DEFTEST( demo_test )
 // {
-//   jalson::JSONArray msg;
+//   jalson::json_array msg;
 //   msg.append("hello");
-//   jalson::JSONValue any = msg;
+//   jalson::json_value any = msg;
 //   std::string encoding = jalson::encode( any );
 //   std::cout << "encoding: " << encoding << "\n";
 

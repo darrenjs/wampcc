@@ -137,20 +137,20 @@ valueimpl::valueimpl(double n)
   details.data.real = n;
 }
 
-valueimpl::valueimpl(JSONArray* a)
+valueimpl::valueimpl(json_array* a)
   : details( init_details(valueimpl::e_array) )
 {
   details.data.array = a;
 }
 
-valueimpl::valueimpl(JSONObject* a)
+valueimpl::valueimpl(json_object* a)
   : details( init_details(valueimpl::e_object) )
 {
   details.data.object = a;
 }
 
 
-valueimpl::valueimpl(JSONString* a)
+valueimpl::valueimpl(json_string* a)
   : details( init_details(valueimpl::e_string) )
 {
   details.data.string = a;
@@ -191,17 +191,17 @@ valueimpl::Details valueimpl::clone_details() const
   {
     case valueimpl::e_object :
     {
-      retval.data.object = new JSONObject(*details.data.object);
+      retval.data.object = new json_object(*details.data.object);
       break;
     }
     case valueimpl::e_array:
     {
-      retval.data.array = new JSONArray(*details.data.array);
+      retval.data.array = new json_array(*details.data.array);
       break;
     }
     case valueimpl::e_string:
     {
-      retval.data.string = new JSONString(*details.data.string);
+      retval.data.string = new json_string(*details.data.string);
       break;
     }
     default: break;
@@ -298,18 +298,18 @@ bool valueimpl::as_bool_unchecked() const
 #define ARRAY_APPEND( C, T )                         \
   T * newitem = new T ();                            \
   internals::valueimpl temp( newitem );              \
-  C.push_back( JSONValue() );                        \
+  C.push_back( json_value() );                        \
   C.back().m_impl.swap( temp );                      \
   return *newitem;
 
-JSONArray  &  append_array(jalson::JSONArray& c)
+json_array  &  append_array(jalson::json_array& c)
 {
-  ARRAY_APPEND(c, JSONArray);
+  ARRAY_APPEND(c, json_array);
 }
 
-JSONObject  &  append_object(jalson::JSONArray& c)
+json_object  &  append_object(jalson::json_array& c)
 {
-  ARRAY_APPEND(c, JSONObject);
+  ARRAY_APPEND(c, json_object);
 }
 
 
@@ -317,22 +317,22 @@ JSONObject  &  append_object(jalson::JSONArray& c)
 #define ARRAY_APPEND( C, T )                         \
   T * newitem = new T ();                            \
   internals::valueimpl temp( newitem );              \
-  C.push_back( JSONValue() );                        \
+  C.push_back( json_value() );                        \
   C.back().m_impl.swap( temp );                      \
   return *newitem;
 
 
 
-JSONObject& insert_object(jalson::JSONObject& c, const std::string& key)
+json_object& insert_object(jalson::json_object& c, const std::string& key)
 {
-//  c[ key ] = JSONValue::make_object();
+//  c[ key ] = json_value::make_object();
 //  return c[key].as_object();
 
-  JSONObject * newitem = new JSONObject();
+  json_object * newitem = new json_object();
   internals::valueimpl temp( newitem );
 
-  std::pair< jalson::JSONObject::iterator, bool> ins =
-    c.insert(std::make_pair(key, JSONValue()));
+  std::pair< jalson::json_object::iterator, bool> ins =
+    c.insert(std::make_pair(key, json_value()));
 
   ins.first->second.m_impl.swap( temp );
   return *newitem;
@@ -340,13 +340,13 @@ JSONObject& insert_object(jalson::JSONObject& c, const std::string& key)
 
 
 
-JSONArray& insert_array(jalson::JSONObject& c, const std::string& key)
+json_array& insert_array(jalson::json_object& c, const std::string& key)
 {
-  JSONArray * newitem = new JSONArray();
+  json_array * newitem = new json_array();
   internals::valueimpl temp( newitem );
 
-  std::pair< jalson::JSONObject::iterator, bool> ins =
-    c.insert(std::make_pair(key, JSONValue()));
+  std::pair< jalson::json_object::iterator, bool> ins =
+    c.insert(std::make_pair(key, json_value()));
 
   ins.first->second.m_impl.swap( temp );
   return *newitem;
@@ -355,9 +355,9 @@ JSONArray& insert_array(jalson::JSONObject& c, const std::string& key)
 
 
 
-JSONValue& get_or_throw(JSONObject & ob, const std::string& key)
+json_value& get_or_throw(json_object & ob, const std::string& key)
 {
-  JSONObject::iterator it = ob.find( key );
+  json_object::iterator it = ob.find( key );
   if (it != ob.end())
   {
     return it->second;
@@ -365,9 +365,9 @@ JSONValue& get_or_throw(JSONObject & ob, const std::string& key)
   else throw field_not_found(key);
 }
 
-const JSONValue& get_or_throw(const JSONObject& ob, const std::string& key)
+const json_value& get_or_throw(const json_object& ob, const std::string& key)
 {
-  JSONObject::const_iterator it = ob.find( key );
+  json_object::const_iterator it = ob.find( key );
   if (it != ob.end())
   {
     return it->second;
@@ -375,23 +375,23 @@ const JSONValue& get_or_throw(const JSONObject& ob, const std::string& key)
   else throw field_not_found(key);
 }
 
-JSONValue& get_or_throw(JSONArray& ob, size_t i)
+json_value& get_or_throw(json_array& ob, size_t i)
 {
   if (i >= ob.size()) throw out_of_range(i);
   return ob[i];
 }
 
-const JSONValue& get_or_throw(const JSONArray& ob, size_t i)
+const json_value& get_or_throw(const json_array& ob, size_t i)
 {
   if (i >= ob.size()) throw out_of_range(i);
   return ob[i];
 }
 
 
-JSONValue get(const JSONObject& c, const std::string& key,
-              const JSONValue & defaultValue)
+json_value get(const json_object& c, const std::string& key,
+              const json_value & defaultValue)
 {
-  JSONObject::const_iterator it = c.find( key );
+  json_object::const_iterator it = c.find( key );
   if (it != c.end())
   {
     return it->second;
@@ -401,8 +401,8 @@ JSONValue get(const JSONObject& c, const std::string& key,
 }
 
 
-JSONValue get(const JSONArray& c, size_t index,
-              const JSONValue & defaultValue)
+json_value get(const json_array& c, size_t index,
+              const json_value & defaultValue)
 {
   if (index < c.size())
     return c[index];
@@ -412,150 +412,150 @@ JSONValue get(const JSONArray& c, size_t index,
 
 //----------------------------------------------------------------------
 
-JSONValue::JSONValue()
+json_value::json_value()
   : m_impl()
 {
 }
 
-JSONValue::JSONValue(const std::string& s)
-  : m_impl(new JSONString(s))
+json_value::json_value(const std::string& s)
+  : m_impl(new json_string(s))
 {
 }
 
-JSONValue::JSONValue(const char* s)
-  : m_impl(s? new JSONString(s) : new JSONString())
+json_value::json_value(const char* s)
+  : m_impl(s? new json_string(s) : new json_string())
 {
 }
 
-JSONValue::JSONValue(const char* s, size_t  n)
-  : m_impl(s? new JSONString(s, n) : new JSONString())
+json_value::json_value(const char* s, size_t  n)
+  : m_impl(s? new json_string(s, n) : new json_string())
 {
 }
 
-JSONValue::JSONValue(const JSONValue& rhs)
+json_value::json_value(const json_value& rhs)
   : m_impl( rhs.m_impl )
 {
 }
 
-JSONValue::JSONValue(const JSONArray& rhs)
-  : m_impl(new JSONArray(rhs))
+json_value::json_value(const json_array& rhs)
+  : m_impl(new json_array(rhs))
 {
 }
 
-JSONValue::JSONValue(const JSONObject& rhs)
-  : m_impl( new JSONObject(rhs) )
+json_value::json_value(const json_object& rhs)
+  : m_impl( new json_object(rhs) )
 {
 }
 
 
-JSONValue::JSONValue(bool b)
+json_value::json_value(bool b)
   : m_impl( b, internals::valueimpl::BoolConstructor())
 {
 }
 
-JSONValue::JSONValue(int i)
+json_value::json_value(int i)
   : m_impl((long long)i)
 {
 }
 
-JSONValue::JSONValue(long i)
+json_value::json_value(long i)
   : m_impl((long long)i)
 {
 }
 
-JSONValue::JSONValue(long long i)
+json_value::json_value(long long i)
   : m_impl((long long)i)
 {
 }
 
-JSONValue::JSONValue(double i)
+json_value::json_value(double i)
   : m_impl( i )
 {
 }
 
-JSONValue::JSONValue(unsigned int i)
+json_value::json_value(unsigned int i)
   : m_impl((unsigned long long)i)
 {
 }
 
-JSONValue::JSONValue(unsigned long i)
+json_value::json_value(unsigned long i)
   : m_impl((unsigned long long)i)
 {
 }
 
-JSONValue::JSONValue(unsigned long long i)
+json_value::json_value(unsigned long long i)
   : m_impl(i)
 {
 }
 
-void JSONValue::swap(JSONValue& other)
+void json_value::swap(json_value& other)
 {
   this->m_impl.swap(other.m_impl);
 }
 
-JSONValue JSONValue::make_null()
+json_value json_value::make_null()
 {
-  return JSONValue();
+  return json_value();
 }
 
-JSONValue JSONValue::make_array()
+json_value json_value::make_array()
 {
-  internals::valueimpl vimpl( new JSONArray() );
+  internals::valueimpl vimpl( new json_array() );
 
-  JSONValue v;
+  json_value v;
   v.m_impl.swap( vimpl );
 
   return v;
 }
 
-JSONValue JSONValue::make_object()
+json_value json_value::make_object()
 {
-  internals::valueimpl vimpl( new JSONObject() );
+  internals::valueimpl vimpl( new json_object() );
 
-  JSONValue v;
+  json_value v;
   v.m_impl.swap( vimpl );
 
   return v;
 }
 
-JSONValue JSONValue::make_string(const char* s)
+json_value json_value::make_string(const char* s)
 {
-  JSONValue retval = std::string(s) ;
+  json_value retval = std::string(s) ;
   return retval;
 }
 
-JSONValue JSONValue::make_bool(bool v)
+json_value json_value::make_bool(bool v)
 {
-  return JSONValue(v);
+  return json_value(v);
 }
 
-JSONValue JSONValue::make_int(long long v)
+json_value json_value::make_int(long long v)
 {
-  JSONValue retval(v);
+  json_value retval(v);
   return retval;
 }
 
-JSONValue JSONValue::make_uint(unsigned long long v)
+json_value json_value::make_uint(unsigned long long v)
 {
-  JSONValue retval(v);
+  json_value retval(v);
   return retval;
 }
 
-JSONValue JSONValue::make_double(double v)
+json_value json_value::make_double(double v)
 {
-  JSONValue retval(v);
+  json_value retval(v);
   return retval;
 }
 
 
-JSONValue& JSONValue::operator=(const JSONValue& src)
+json_value& json_value::operator=(const json_value& src)
 {
   m_impl = src.m_impl;
   return *this;
 }
 
 
-bool JSONValue::operator==(const JSONValue& rhs) const
+bool json_value::operator==(const json_value& rhs) const
 {
   if (this->type() != rhs.type())
     return false;
@@ -631,7 +631,7 @@ type_mismatch::type_mismatch(JSONType __actual,
 //----------------------------------------------------------------------
 
 
-void JSONValue::check_type(JSONType t) const
+void json_value::check_type(JSONType t) const
 {
   if (this->type() != t)
     throw type_mismatch(this->type(), t);
@@ -640,7 +640,7 @@ void JSONValue::check_type(JSONType t) const
 
 
 
-std::ostream& operator<<(std::ostream& os, const JSONValue& v)
+std::ostream& operator<<(std::ostream& os, const json_value& v)
 {
   if (v.is_object() || v.is_array())
   {
