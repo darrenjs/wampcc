@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2015 Darren Smith <jalson@darrenjs.net>
+ *
+ * Jalson is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
 
 #include <jansson.h>
 
@@ -110,7 +116,7 @@ static json_t * encode_value3(const jalson::json_value& src)
     {
       return json_real( src.as_real() );
     }
-    case jalson::eINTEGER:   // TODO: change to eINTEGER
+    case jalson::eINTEGER:
     {
       if (src.is_sint())
       {
@@ -210,7 +216,6 @@ char* encode_any(const json_value& src)
   return retval;
 }
 
-
 // TODO: need to handle the error cases in here
 void decode(json_value& dest, const char* text)
 {
@@ -219,7 +224,6 @@ void decode(json_value& dest, const char* text)
 
   json_error_t error;
 
-  //TODO: root needs to be freed
   json_t* root = json_loads(text, 0, &error);
 
   if (root == NULL)
@@ -248,6 +252,15 @@ void decode(json_value& dest, const char* text)
   // clean up the json device
   if (root) json_decref( root );
 }
+
+
+json_value decode(const char* text)
+{
+  json_value dest;
+  decode(dest, text);
+  return dest;
+}
+
 
 std::string to_string(const json_value& src)
 {

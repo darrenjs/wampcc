@@ -9,6 +9,8 @@
 #define __JALSON_H__
 
 
+// TODO: move the test code in hello.cc to the test case, then can dlete that file.
+
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -124,7 +126,7 @@ public:
 class json_value;
 typedef std::vector<json_value>            json_array;
 typedef std::map<std::string, json_value>  json_object;
-typedef std::string                       json_string;
+typedef std::string                        json_string;
 
 // ======================================================================
 //
@@ -133,17 +135,6 @@ typedef std::string                       json_string;
 #include <jalson/jalson_internals.h>
 //
 // ======================================================================
-
-
-//  json_value, json_array,
-
-// jalson::json_value
-
-// value, string,
-
-// jalson::jvalue, jalson:jarray, jstring, jalson::jobject
-// jalson::json_array, json_value; json_object, json_string json_any
-// jalson::Value, Array, String , Object
 
 /* Container for any JSON value */
 class json_value
@@ -199,8 +190,9 @@ public:
 
   void check_type(JSONType t) const; // throw type_mismatch if match fails
 
-  bool is_object()  const { return this->type() == eOBJECT; }
-  bool is_array()   const { return this->type() == eARRAY; }
+  bool is_object()    const { return this->type() == eOBJECT; }
+  bool is_array()     const { return this->type() == eARRAY; }
+  bool is_container() const { return this->type() == eARRAY || this->type() == eOBJECT; }
 
   bool is_string()  const { return this->type() == eSTRING; }
   bool is_bool()    const { return this->type() == eBOOL; }
@@ -251,6 +243,39 @@ public:
 
   json_object&       as_object()        { return this->as<json_object>(); }
   const json_object& as_object() const  { return this->as<json_object>(); }
+
+  // utility methods if self holds an array
+  json_value&        operator[](size_t i)       {  return this->as<json_array>()[i]; }
+  const json_value&  operator[](size_t i) const {  return this->as<json_array>()[i]; }
+  json_value&        at(size_t i)       {  return this->as<json_array>().at(i); }
+  const json_value&  at(size_t i) const {  return this->as<json_array>().at(i); }
+
+  // utility methods if self holds an object
+  json_value&        operator[](const std::string& k) { return this->as<json_object>()[k];}
+
+  // size_t sub_size() const
+  // {
+  //   if (this->is_array())
+  //     return this->as<json_array>().size();
+  //   else if (this->is_object())
+  //     return this->as<json_object>().size();
+  //   else
+  //     return 0;
+  // }
+
+  // bool sub_empty()
+  // {
+  //   if (this->is_array())
+  //     return this->as<json_array>().empty();
+  //   else if (this->is_object())
+  //     return this->as<json_object>().empty();
+  //   return true;
+  // }
+
+  // void   add(v);  add(k,v);    TODO
+
+  // get  / get_default TODO
+
 
   // Checked conversion to json_array / json_string / json_object
   template<typename T> const T& as() const
@@ -336,7 +361,12 @@ char* encode(const json_value& src);
 
 char* encode_any(const json_value& src);
 
-void  decode(json_value& dest, const char*);
+/* Decode into 'dest' out parameters, which on legacy C++ reduces the amount of
+ * memory being copied.
+ */
+void decode(json_value& dest, const char*);
+
+json_value decode(const char*);
 
 /* Wrapper to the encode function, which just presents the encoding as a
  * std::string (and so the memory does not need to be managed) */
