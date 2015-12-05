@@ -17,18 +17,20 @@ int main(int, char**)
             << details.minor_version << "."
             << details.micro_version << "\n";
 
-  // Build a hello JSON object
+  // --- Build a JSON object ---
 
-  jalson::json_value v;
-  jalson::decode(v, "[\"hello\", {}, 2015]");
+  jalson::json_value v = jalson::decode("[\"hello\", {}, 2015]");
 
-  // Add some items programmatically
+  // --- Add some items programmatically ---
 
+  // using methods of the stl container
   v.as_array().push_back("world");
   v.as_array().push_back(1);
   v.as_array().push_back(true);
   v.as_array().push_back( jalson::json_object() );
   v.as_array().push_back( jalson::json_array() );
+
+  // using helper methods of json_value type
   v[1]["vendor"]  = details.vendor;
   v[1]["version"] = details.major_version;
 
