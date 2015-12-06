@@ -1,79 +1,134 @@
-# jalson
-C++ abstraction library for JSON implementations
+C++ abstraction library for JSON
+================================
 
-There aready exists a large number of JSON implementation for C/C++, so why the
-need for another?
+There already exists a large number of JSON implementations for C/C++, so why
+the need for another?
 
-ABSTRACTION / DNAGERS
+A downside of having so many JSON libraries available is that the one chosen for
+your next project might become obsolete, perhaps abandoned by its community of
+support or superseded by others.
 
-One downside of having so many JSON libraries avaiable is that the one you
-chosse for your next project might become one day become obselete.  If that
-happens, an dexsting JSON library will hae to be replaced for another. This will
-typically not be an easy or triveila  taks, speciiclal because the object model
-o fthe orignak JSOB library might have found is wasy through-out many parts of
-the end applicatin code.
+If that happens, application code will need to be modified to introduce a
+replacement JSON library. This sort of re-factoring is typically not an easy or
+quick task, specifically because the JSON object model of the original library
+will typically have found is way through-out many parts of application code,
+making it difficult to remove.
 
 This is where jalson comes in.  The idea is that it can be used to wrap the
-public interface of other json implementation.  The user application is
-isoloated from the pulbic api, and data model, of the actual json librares. Thus
-sht so that while they can be used for their parsing / encoding features
-parse;but their API, interms of lcasses etc, does not get exposed to the
-application.  Then if a json impl needs to be changed, it can be done so entirel
-ywith inthe jalson layer, and so ugely reducing the distruptio nfor the end
-application
+public interface of another JSON library, allowing application code to be
+decoupled and isolated from the data model of the library.  This then allows the
+parsing and generation features of the library to be use while preventing the
+API, in terms of classes and function, from getting exposed to the end
+application.
 
-DETAILS
+Then if JSON implementation needs to be swapped out for another, it can be done
+so entirely with in the jalson layer, and so hugely reducing the disruption for
+the end application
 
-So jalson is not a json parser / building.  It offers an object model for
-buiding and using JSON data; and abstracts away the underling details fo the
-parsing code (which is deferring to the implementaion).
+Goals
+-----
 
-So specifically, jalson provides an object model of a JSON document, and wraps
-an underlying JSON imolementation to provide encoding and decodier.
+So jalson is not a JOSN parser / generator like other JSON libraries.  Instead
+it offers an object model and API for building and working with JSON data; and
+aims to abstract away the underling details of the parsing and text generation
+(which is deferring to the implementation).
 
-In addtion, jalson is designed using the following guidelines:
+In addition, jalson is designed using the following guidelines:
 
-* STL based  say: objecs & arrary are just stl contains. map  /vector / string
+* STL based --  JSON containers types (Object and Array) map to their obvious C++
+  counterparts, std::map & std::vector. Strings use std::string.
 
-* intuituve inteface  ii no attempt to replicate python syntax, or JQiery
-  syunatcm
+* intuitive unsurprising interface -- no attempt is made to replicate python or
+  JQuery syntax in C++ code, which can lead to code constructs unfamiliar to C++
+  developers; i.e. adherence to the principle of least astonishment.
 
-* minimally complete -- doesnt offer unnesary details; the motivated agian is to
-  have it easilyl to integrate into code, and bty being minimal, there is less
-  for your code to rely upon.
+* minimally complete -- aim to avoid unnecessary bells & whistles, while
+providing just about the most basic interface required for working with JSON
+data.  The motivation is to simplify integration of jalson into end user code,
+so by aiming to be minimum, there is less for application code to rely upon.
 
-IMPLEMETATONS SUPPORTED (VENDORS)
+Supported Implementations
+-------------------------
 
-SAY: currently jalson comes with support for the jansson JSON library; and that
-can serve as an example of wrapping other JSON libraries
+Currently jalson comes with support for the `jansson` C JSON library
+[http://www.digip.org/jansson/].
 
-EXAMPLE USAGE
+Example
+-------
 
-TODO: get an eample iml here:
+This example shows basic usage of jalson for encoding, decoding and accessing
+JSON values for reading and writing. The code, together with a basic makefile,
+can be found under `examples/hello`. Note that when this example is built, it
+must be linked to both the jalson library (`libjalson`) *and* the vendor library
+that provides te JSON parsing & generation:
 
-* print vendor details
-* build a simple object
-* print
+```C++
+/* Basic example of use jalson */
 
-show how to link
+#include <jalson/jalson.h>
 
-TODO: need to show some example os building and decoding.
+#include <iostream>
 
-SOURCE CONFIGURATION
+int main(int, char**)
+{
+  // obtain details about the JSON implementation wrapped inside jalson
 
-say autotools are used as the build system, ie, the configure script must be
-called to generate the makefiles (note that f starting a git checkout, the
-configure script needs to be first generated, using the autotools_setup.sh
-script).
+  jalson::vendor_details details;
+  jalson::get_vendor_details(&details);
 
-During invokcation of the configure script, jaslon must be told which vendor
-implementation it will used.  Eg., in this example, the jalson source is being
-configured to use a version of jansson which has previously been built and
-installed to a particular location; jalson is also being confgured so that it
-gets installed into a custom directory /opt/jalson/1.0 :
+  std::cout << "JSON implementation: "
+            << details.vendor << " "
+            << details.major_version << "."
+            << details.minor_version << "."
+            << details.micro_version << "\n";
 
-    configure  --prefix=/opt/jalson/1.0 --with-janson=/opt/jansson-2.7
+  // --- Build a JSON object ---
 
-Failure to specify a vendor implmeentation will lead to configure error:
+  jalson::json_value v = jalson::decode("[\"hello\", {}, 2015]");
 
-    configure: error: You have not configured a JSON implemention vendor.
+  // --- Add some items ---
+
+  // using methods of the stl container
+  v.as_array().push_back("world");
+  v.as_array().push_back(1);
+  v.as_array().push_back(true);
+  v.as_array().push_back( jalson::json_object() );
+  v.as_array().push_back( jalson::json_array() );
+
+  // using helper methods of json_value type
+  v[1]["vendor"]  = details.vendor;
+  v[1]["version"] = details.major_version;
+
+  // Print
+  std::cout << v << "\n";
+  return 0;
+}
+```
+
+
+Source Configuration & Build
+----------------------------
+
+GNU Autotools are used as the build system, i.e., the makefiles are generated by
+running the `configure` script.  The configure script is not present in the
+repository sources, but it can be generated by running aa helper script found in
+the root directory of the source, `autotools_setup.sh`.  An additional script
+`autotools_clean.sh` can be run to clean up the autotools files which get
+created.
+
+When running the `configure` script, jalson must be told which JSON
+implementation it will work with.  In this example, the jalson source is
+configured to use a version of the `jansson` library which has previously been
+built and installed at a particular location:
+
+    configure --prefix=/opt/jalson/1.0 --with-jansson=/opt/jansson-2.7
+
+Failure to specify a vendor implementation will lead to configure error:
+
+    configure: error: You have not configured a JSON implement ion vendor.
+
+If all goes well, the project makefiles will be generated, and jalson can be
+built and installed by running :
+
+    make
+    make install
