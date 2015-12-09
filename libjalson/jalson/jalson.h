@@ -178,7 +178,7 @@ public:
   static json_value make_null();
   static json_value make_array();
   static json_value make_object();
-  static json_value make_string(const char* v = 0);
+  static json_value make_string(const char* v = "");
   static json_value make_bool(bool v = false);
   static json_value make_int(long long v = 0);
   static json_value make_uint(unsigned long long v = 0);
