@@ -18,19 +18,19 @@ This is where jalson comes in.  The idea is that it can be used to wrap the
 public interface of another JSON library (here called the *implementation*),
 allowing application code to be decoupled and isolated from the data model of
 the library.  This permits the parsing and text-generation features of the
-implementation to be used while at the same time preventing its API (e.g. its
-public classes, data types and function) from being seen by, used by and
-compiled with the end user application.
+implementation to be used while at the same time preventing its API (its public
+classes, data types, functions and so on) from being seen by, used by and
+compiled into the end user application.
 
-That task of replacing a JSON implementation is now much more straight-forward;
-it will be done entirely within the jalson layer, virtually eliminating the
+Replacing a JSON implementation is now a much more straight-forward task; it
+will be done entirely within the jalson layer, virtually eliminating the
 disruption to application code.
 
 Goals
 -----
 
 So jalson is not a JSON parser & generator like other JSON libraries.  Instead
-it offers an object model and API for building and working with JSON data; and
+it offers an object model and API for building and working with JSON data, and
 aims to abstract away the underling details of the parsing and text generation ,
 which is delegated to the implementation library.
 
