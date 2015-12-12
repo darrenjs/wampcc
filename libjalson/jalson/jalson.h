@@ -253,24 +253,6 @@ public:
   // utility methods if self holds an object
   json_value&        operator[](const std::string& k) { return this->as<json_object>()[k];}
 
-  // size_t sub_size() const
-  // {
-  //   if (this->is_array())
-  //     return this->as<json_array>().size();
-  //   else if (this->is_object())
-  //     return this->as<json_object>().size();
-  //   else
-  //     return 0;
-  // }
-
-  // bool sub_empty()
-  // {
-  //   if (this->is_array())
-  //     return this->as<json_array>().empty();
-  //   else if (this->is_object())
-  //     return this->as<json_object>().empty();
-  //   return true;
-  // }
 
   // void   add(v);  add(k,v);    TODO
 
