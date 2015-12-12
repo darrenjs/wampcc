@@ -11,3 +11,5 @@ do
     [ -d "$f" ] && rm -rf "$f"
     rm -f "$f"
 done
+
+rm -rf jalson*tar*

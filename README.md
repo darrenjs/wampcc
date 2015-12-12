@@ -9,10 +9,10 @@ your next project might become obsolete, perhaps abandoned by its community of
 support or superseded by others.
 
 If that happens, application code will need to be modified to introduce a
-replacement JSON library. This sort of re-factoring is typically neither an easy
-or quick task, specifically because the JSON object model of the deprecated
-library may have found is way through-out many parts of application code, making
-it difficult to extract and replace.
+replacement JSON library. This sort of re-factoring is typically not an easy or
+quick task, specifically because the JSON object model of the deprecated library
+may have found is way through-out many parts of application code, making it
+difficult to extract and replace.
 
 This is where jalson comes in.  The idea is that it can be used to wrap the
 public interface of another JSON library (here called the *implementation*),
