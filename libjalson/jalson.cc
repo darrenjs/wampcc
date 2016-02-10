@@ -644,15 +644,11 @@ std::ostream& operator<<(std::ostream& os, const json_value& v)
 {
   if (v.is_object() || v.is_array())
   {
-    char* enc = encode(v);
-    os << enc;
-    delete [] enc;
+    os << encode(v);
   }
   else
   {
-    char* enc = encode_any(v);
-    os << enc;
-    delete [] enc;
+    os << encode_any(v);
   }
 
   return os;

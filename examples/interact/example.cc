@@ -200,7 +200,7 @@ DEFTEST( jsonarray_basic_append )
   jalson::append_array(msg).push_back("a");
   jalson::append_object(msg)["b"] = "c";
 
-  std::string enc  = jalson::to_string(msg) ;
+  std::string enc  = jalson::encode(msg) ;
   std::cout << enc << "\n";
   return  ( enc == "[0, 1, \"string\", true, [\"a\"], {\"b\": \"c\"}]");
 }
@@ -520,6 +520,24 @@ DEFTEST( compiler_check )
   }
 
   return true;
+}
+
+//----------------------------------------------------------------------
+DEFTEST( copy_memleak )
+{
+
+  jalson::json_value jv;
+
+  jalson::json_array ja;
+  ja.push_back( "hello" );
+  ja.push_back( "world" );   //TODO: why do I not see thi value arrise at the other side? Jalson error?
+
+  jv = ja ;
+  jalson::json_value jv2 = jv;
+
+  std::cout << "encoding: " << jalson::encode_any( jv2 ) << "\n";
+
+  return 1;
 }
 
 //----------------------------------------------------------------------

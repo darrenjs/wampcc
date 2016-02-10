@@ -339,9 +339,8 @@ json_value get(const json_array&, size_t index,
  * value passed into this function should be either an Object or an Array.  This
  * is for conformance to RFC 4627. If you wish to encode other JSON types, then
  * try encode_any. */
-char* encode(const json_value& src);
-
-char* encode_any(const json_value& src);
+std::string encode(const json_value& src);
+std::string encode_any(const json_value& src);
 
 /* Decode into 'dest' out parameters, which on legacy C++ reduces the amount of
  * memory being copied.
@@ -349,10 +348,6 @@ char* encode_any(const json_value& src);
 void decode(json_value& dest, const char*);
 
 json_value decode(const char*);
-
-/* Wrapper to the encode function, which just presents the encoding as a
- * std::string (and so the memory does not need to be managed) */
-std::string to_string(const json_value& src);
 
 }
 

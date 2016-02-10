@@ -172,47 +172,51 @@ struct malloc_guard
 static void * json_malloc(size_t s)
 {
   //printf("malloc: %i\n", s);
-  return ::operator new(s);
+  return ::operator new(s);   // C++ style memory alloc
 }
 
 static void json_free(void * p)
 {
-  ::operator delete(p);
+  ::operator delete(p); // C++ style memory release
 }
 
 
-char* encode(const json_value& src)
+std::string encode(const json_value& src)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
 
   json_t* json = encode_value3( src );
 
-  char * retval = json_dumps(json, 0);
+  char * str = json_dumps(json, 0);
 
-  // clean up the json device
+  // clean up the json device (will call free)
   json_decref( json );
   json = 0;
 
-  // free ( json );
+  std::string retval( str );
+  json_free( str );
+
   return retval;
 }
 
 
-char* encode_any(const json_value& src)
+std::string encode_any(const json_value& src)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
 
   json_t* json = encode_value3( src );
 
-  char * retval = json_dumps(json, JSON_ENCODE_ANY);
+  char * str = json_dumps(json, JSON_ENCODE_ANY);
 
-  // clean up the json device
+  // clean up the json device (will call free)
   json_decref( json );
   json = 0;
 
-  // free( json );
+  std::string retval( str );
+  json_free( str );
+
   return retval;
 }
 
@@ -259,15 +263,6 @@ json_value decode(const char* text)
   json_value dest;
   decode(dest, text);
   return dest;
-}
-
-
-std::string to_string(const json_value& src)
-{
-  char* buf = jalson::encode(src);
-  std::string retval(buf);
-  delete [] buf;
-  return retval;
 }
 
 
