@@ -10,7 +10,7 @@ AC_CANONICAL_SYSTEM
 
 # Not: the -Wall here is for automake errors; is unrelated to gcc errors
 AM_INIT_AUTOMAKE([1.10 no-define -Wall])
-AM_PROG_AR
+#AM_PROG_AR
 
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_CXX
@@ -19,7 +19,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 # initialise libtool support
 
-LT_PREREQ([2.4.2]) # not 'technically' required, but good practice.
+#LT_PREREQ([2.4.2]) # not 'technically' required, but good practice.
 
 
 #========== Checks for programs ==========
