@@ -16,6 +16,10 @@
 #include <string>
 #include <vector>
 
+#if __cplusplus > 199711L
+#include <type_traits>
+#endif
+
 #include <stdint.h>
 
 namespace jalson
@@ -130,7 +134,7 @@ typedef std::string                        json_string;
 
 // ======================================================================
 //
-// Internal implementation, internals away for readability of this header.
+// Internal implementation, hidden away for readability of this header.
 //
 #include <jalson/jalson_internals.h>
 //
@@ -274,6 +278,18 @@ public:
   }
 
   void swap(json_value&);
+
+  // Prevent accidental initialisation of json_value from a pointer
+#if __cplusplus > 199711L
+  template<typename T> json_value(const T*)
+  {
+    static_assert(sizeof(T)==0,
+                  "json_value cannot be initialised from pointer");
+  }
+#else
+private:
+  template<typename T> json_value(const T*){}; /* no init from pointer */
+#endif
 
 private:
 

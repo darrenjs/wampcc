@@ -498,16 +498,16 @@ DEFTEST( compiler_check )
     jalson::json_value value( v );
     value = v;
   }
-  {
-    float * v = 0;
-    jalson::json_value value( v );
-    value = v;
-  }
-  {
-    double * v = 0;
-    jalson::json_value value( v );
-    value = v;
-  }
+  // {
+  //   float * v = 0;
+  //   jalson::json_value value( v ); // error!
+  //   value = v;
+  // }
+  // {
+  //   double * v = 0;
+  //   jalson::json_value value( v ); // error!
+  //   value = v;
+  // }
   {
     std::string  v("test");
     jalson::json_value value( v );
