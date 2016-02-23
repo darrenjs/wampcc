@@ -79,8 +79,6 @@ static void io_on_close2(uv_handle_t* handle)
 
 static void io_on_close_cb(uv_handle_t* handle)
 {
-  std::cout << "io_on_close_cb \n";
-
   IOHandle * iohandle = (IOHandle *) handle->data;
   iohandle->on_close();
 }
@@ -193,6 +191,7 @@ IOHandle::IOHandle(uv_stream_t * h, IOLoop * loop)
 /* Destructor */
 IOHandle::~IOHandle()
 {
+  std::cout << "IOHandle::~IOHandle" << "\n";
   // Note, the assumption in here is that the socket will already have been
   // closed before this object is deleted.
 
@@ -202,13 +201,12 @@ IOHandle::~IOHandle()
 
   delete m_uv_handle;
 
-  std::cout << "IOHandle::~IOHandle" << "\n";
 
   // TODO: not sure I need these ... added when looking for a memory leak.  I
   // think I do need this, becuase without, I do get a lot of core dumps.
-  uv_close((uv_handle_t*)&m_write_async, nullptr);
-  uv_close((uv_handle_t*)&m_writeclose_async, nullptr);
-  uv_close((uv_handle_t*)&m_close_async, nullptr);
+  // uv_close((uv_handle_t*)&m_write_async, nullptr);
+  // uv_close((uv_handle_t*)&m_writeclose_async, nullptr);
+  // uv_close((uv_handle_t*)&m_close_async, nullptr);
 
 
   {
@@ -229,15 +227,7 @@ void IOHandle::on_close()
 {
   /* IO thread */
 
-  /* called when the uv_close has been called to close a handle, thus marking
-   * the end of this stream.  */
-
-  // m_open = false;
-  // try {
-  //   if (m_listener) m_listener->on_close(0);
-  // } catch (...){}
-  // m_listener = nullptr;
-
+  if (++m_close_count == 4) m_ready_for_delete = true;
 }
 
 void IOHandle::on_read(char* buf, size_t len)
@@ -286,9 +276,28 @@ void IOHandle::close_uv_handle()
   // }
 }
 
+
+
 void IOHandle::write_async_cb()
 {
   /* IO thread */
+
+  if (m_do_async_close)
+  {
+    // request closure of our UV handles
+
+    // TODO: not sure I need these ... added when looking for a memory leak.  I
+    // think I do need this, becuase without, I do get a lot of core dumps.
+    std::cout << "closing handles\n";
+    uv_close((uv_handle_t*)&m_write_async, io_on_close_cb);
+    uv_close((uv_handle_t*)&m_writeclose_async, io_on_close_cb);
+    uv_close((uv_handle_t*)&m_close_async, io_on_close_cb);
+    uv_close((uv_handle_t*)m_uv_handle, io_on_close_cb);
+
+    return;
+  }
+
+
 
 //  std::cout << "write_async_cb\n";
   bool do_termination = false;
@@ -297,7 +306,6 @@ void IOHandle::write_async_cb()
   {
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
     m_pending_write.swap( copy );
-    m_async_pending = false;
     do_termination = !m_async_allowed;
   }
 
@@ -388,9 +396,8 @@ void IOHandle::send_bytes(const char* src, size_t len)
       std::lock_guard<std::mutex> guard(m_pending_write_lock);
       m_pending_write.push_back( buf );
 
-      if (!m_async_pending && m_async_allowed)
+      if (m_async_allowed)
       {
-        m_async_pending = true;
         uv_async_send( &m_write_async );
       }
     }
@@ -409,9 +416,8 @@ void IOHandle::send_bytes_close(const char* src, size_t len)
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
     m_pending_write.push_back( buf );
 
-    if (!m_async_pending && m_async_allowed)
+    if (m_async_allowed)
     {
-      m_async_pending = true;
       uv_async_send( &m_write_async );
     }
   }
@@ -423,38 +429,44 @@ void IOHandle::on_passive_close()
 {
   /* IO thread */
 
+  std::cout << "on_passive_close\n";
 
   // indicate we are closed at earliest oppurtunity
   m_open = false;
 
-  std::cout << "on_passive_close\n";
-
-  // close the UV handle
-  if (! uv_is_closing((uv_handle_t *) m_uv_handle) )
-  {
-    std::cout << "going into uv_close\n";
-    uv_close((uv_handle_t*)m_uv_handle, io_on_close_cb); // TODO: not sure about io_on_close here
-  }
-
-  // tell the listener never to call us again
+  // instruct listener never to call us again
   if (m_listener) m_listener->on_close(0);
 
-  // raise the last async operation
-  {
-    std::lock_guard<std::mutex> guard(m_pending_write_lock);
+  // raise an async request to close the socket
+  m_do_async_close = true;
+  uv_async_send( &m_write_async );
 
-    if (!m_async_pending && m_async_allowed)
-    {
-      // std::cout << "raised async\n";
-      m_async_pending = true;
-      uv_async_send( &m_write_async );
-    }
-    else
-    {
-      // std::cout << "not raised\n";
-    }
-    m_async_allowed = false;
-  }
+
+
+  // // close the UV handle
+  // if (! uv_is_closing((uv_handle_t *) m_uv_handle) )
+  // {
+  //   std::cout << "going into uv_close\n";
+  //   uv_close((uv_handle_t*)m_uv_handle, io_on_close_cb); // TODO: not sure about io_on_close here
+  // }
+
+
+  // // raise the last async operation
+  // {
+  //   std::lock_guard<std::mutex> guard(m_pending_write_lock);
+
+  //   if (!m_async_pending && m_async_allowed)
+  //   {
+  //     // std::cout << "raised async\n";
+  //     m_async_pending = true;
+  //     uv_async_send( &m_write_async );
+  //   }
+  //   else
+  //   {
+  //     // std::cout << "not raised\n";
+  //   }
+  //   m_async_allowed = false;
+  // }
 
 }
 

@@ -194,6 +194,9 @@ void Session::on_read_impl(char* src, size_t len)
 {
   // TODO: improve efficiency!
 
+  _DEBUG_("recv n:" << len);
+//  _DEBUG_("recv n:" << len << " data: " << temp);
+
   memcpy(m_buf + m_bytes_avail, src, len); // TODO: check length!
   m_bytes_avail += len;
   m_buf[m_bytes_avail] = '\0';  // TODO: need this while jalson cannot take data len
@@ -217,6 +220,7 @@ void Session::on_read_impl(char* src, size_t len)
 
     if (m_bytes_avail < HEADERLEN) break;
     uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
+    _DEBUG_("msglen:" << msglen << ", m_bytes_avail:" << m_bytes_avail);
 
     try
     {
@@ -234,6 +238,8 @@ void Session::on_read_impl(char* src, size_t len)
       /* we have enough bytes to decode */
       ptr += HEADERLEN;
 
+      std::string temp(ptr,msglen);
+      _DEBUG_("recv n:" << msglen << " data: " << temp);
       jalson::json_value jv = jalson::decode(ptr);
 
 
@@ -399,6 +405,7 @@ void Session::change_state(DealerState expected, DealerState next)
 
 void Session::process_message(jalson::json_value&jv)
 {
+  _DEBUG_( "recv msg: " <<  jv  << ", is_dealer: " << m_is_dealer);
 
   // got a wamp-lite message here
 
@@ -425,7 +432,6 @@ void Session::process_message(jalson::json_value&jv)
 
   int const message_type = jv.as_array()[0].as_sint();
 
-  _DEBUG_( "recv msg: " <<  jv  << ", is_dealer: " << m_is_dealer);
 
   /* session state validation */
 

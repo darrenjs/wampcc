@@ -1,7 +1,6 @@
 #ifndef XXX_EVENT_H
 #define XXX_EVENT_H
 
-#include "SID.h"
 #include "Callbacks.h"
 
 

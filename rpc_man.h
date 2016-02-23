@@ -3,7 +3,6 @@
 
 #include "WampTypes.h"
 
-#include "SID.h"
 #include <jalson/jalson.h>
 #include <event.h>  /* TODO: try to delete me */
 

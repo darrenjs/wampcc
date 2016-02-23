@@ -48,18 +48,18 @@ TARGETS=$(BIN1) $(BIN2) $(BIN3)
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN1 =  session_state_listener.cc utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc SID.cc client_service.cc dealer_service.cc event.cc Logger.cc main.cc
+SOURCES_BIN1 =  session_state_listener.cc utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc event.cc Logger.cc Callbacks.cc main.cc
 
 
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN2 =session_state_listener.cc   utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc SID.cc client_service.cc dealer_service.cc event.cc Logger.cc admin.cc
+SOURCES_BIN2 =session_state_listener.cc   utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc event.cc Logger.cc Callbacks.cc  admin.cc
 
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN3 = session_state_listener.cc  utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc SID.cc client_service.cc dealer_service.cc event.cc Logger.cc client.cc
+SOURCES_BIN3 = session_state_listener.cc  utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc client_service.cc dealer_service.cc event.cc Logger.cc  Callbacks.cc  client.cc
 
 
 

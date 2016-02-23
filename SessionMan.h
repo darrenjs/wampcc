@@ -2,7 +2,8 @@
 #define __SESSIONMAN_H_
 
 #include "Common.h"
-#include "SID.h"
+#include "Callbacks.h"
+
 #include "SessionListener.h"
 #include "Session.h"
 

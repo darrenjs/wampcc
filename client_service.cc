@@ -40,7 +40,7 @@ client_service::client_service(Logger * logptr,
     m_config( config ),
     m_io_loop( new IOLoop( logptr,
                            [this](){this->on_io_timer(); },
-                           [this](){this->on_io_async(); } ) ),
+                           [this](){} ) ),
     m_evl( new event_loop(logptr) ),
     m_sesman(new SessionMan(__logptr, *m_evl.get()))
 {
@@ -66,6 +66,8 @@ client_service::client_service(Logger * logptr,
 /* Destructor */
 client_service::~client_service()
 {
+  // TODO: dont think this is the best way to shutdown.  Should start by trying
+  // to close all the sessions.
   m_io_loop->stop();
 }
 
@@ -152,6 +154,7 @@ void client_service::new_client(IOHandle * iohandle)
 
 void client_service::start()
 {
+  // #libuv
   // NOTE:  not using idler anymore, because it causes 100% CPU.  But add to uv notes.
   // uv_idle_t idler;
   // uv_idle_init(loop, &idler);
@@ -167,66 +170,22 @@ void client_service::start()
 
 //----------------------------------------------------------------------
 
-/* Called on the IO thread, and is the only place we can interact with IO
- * related data structures. */
-void client_service::on_io_async()
-{
-  std::cout << __FUNCTION__ << "\n";
-  // decltype( m_requests ) tmp;
-  // {
-  //   std::lock_guard<std::mutex> guard( m_requests_lock );
-  //   tmp.swap(m_requests);
-  // }
-
-  // for (auto & req : tmp)
-  // {
-  //   std::unique_ptr<Connection> handle ( new Connection() );
-  //   uv_tcp_init(&m_loop->m_uv_loop, &handle->uv_tcp_handle);
-  //   handle->request = req;
-  //   handle->owner = this;
-
-  //   uv_tcp_t tcp_handle;
-  //   uv_tcp_init(&m_loop->m_uv_loop, &tcp_handle);
-
-  //   uv_connect_t * connect_req = (uv_connect_t *)malloc(sizeof(uv_connect_t));
-  //   connect_req->data = handle.get();
-
-  //   struct sockaddr_in dest;
-  //   uv_ip4_addr(req.addr.c_str(), req.port, &dest);
-
-  //   int r = uv_tcp_connect(connect_req,
-  //                          &handle->uv_tcp_handle,
-  //                          (const struct sockaddr*)&dest,
-  //                          __on_connect);
-
-  //   if (!r)
-  //   {
-  //     // TODO : return this error on the IO thread, eg we get an immediate error
-  //     // if we try to connect to 227.43.0.1 although, I think it is better to
-  //     // return it immediately.
-  //     std::cout << "r=" << r << "\n";
-  //   }
-
-  //   {
-  //     std::lock_guard<std::mutex> guard( m_handles_lock );
-  //     m_handles.push_back(handle.get());
-  //     handle.release();
-  //   }
-  // }
-}
-
-void client_service::add_procedure(const std::string& uri,
+bool client_service::add_procedure(const std::string& uri,
                                    rpc_cb cb,
-                                   void * data)
+                                   void * user)
 {
-  // TODO: refuse to allow duplicate, ie, throw or something?
+  auto mypair = std::make_pair(cb, user);
 
   std::lock_guard< std::mutex > guard ( m_procedures_lock );
   auto it = m_procedures.find( uri );
+
   if (it == m_procedures.end())
   {
-    m_procedures[ uri ] = std::make_pair(cb, data);
+    m_procedures.insert( std::make_pair(uri, mypair) );
+    return true;
   }
+  else
+    return false;
 }
 
 //----------------------------------------------------------------------

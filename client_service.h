@@ -1,7 +1,6 @@
 #ifndef XXX_CLIENT_SERVICE_H
 #define XXX_CLIENT_SERVICE_H
 
-#include "SID.h"
 #include "Callbacks.h"
 
 #include <jalson/jalson.h>
@@ -58,8 +57,9 @@ public:
 
   void start();
 
-  /* Register a procedure */
-  void add_procedure(const std::string& uri,
+  /* Register a procedure.  Returns true if was added, or false if name already
+   * existed. */
+  bool add_procedure(const std::string& uri,
                      rpc_cb cb,
                      void * data);
 
@@ -96,7 +96,7 @@ private:
   void register_procedures();
 
   void on_io_timer();
-  void on_io_async();
+
 
   Logger *__logptr; /* name chosen for log macros */
 
@@ -104,7 +104,6 @@ private:
 
   std::map< std::string, std::pair< rpc_cb,void*> > m_procedures;
   std::mutex                                        m_procedures_lock;
-
 
   struct RegistrationKey
   {

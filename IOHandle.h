@@ -67,11 +67,13 @@ private:
   uv_async_t   m_writeclose_async;
   uv_async_t   m_close_async;
 
-  bool m_async_pending = false;
   bool m_async_allowed = true;
   bool m_ready_for_delete = false;
+
   std::vector< uv_buf_t > m_pending_write;
   std::mutex              m_pending_write_lock;
+  bool m_do_async_close = false;
+  int m_close_count = 0;
 
   io_listener * m_listener;
 };
