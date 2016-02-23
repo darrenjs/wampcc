@@ -1,0 +1,116 @@
+==847== Memcheck, a memory error detector
+==847== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+==847== Using Valgrind-3.10.1 and LibVEX; rerun with -h for copyright info
+==847== Command: ./admin
+==847== Parent PID: 13105
+==847== 
+--847-- 
+--847-- Valgrind options:
+--847--    --leak-check=full
+--847--    --log-file=logfile.out
+--847--    -v
+--847-- Contents of /proc/version:
+--847--   Linux version 3.13.0-76-generic (buildd@lgw01-21) (gcc version 4.8.2 (Ubuntu 4.8.2-19ubuntu1) ) #120-Ubuntu SMP Mon Jan 18 15:59:10 UTC 2016
+--847-- Arch and hwcaps: AMD64, LittleEndian, amd64-cx16-rdtscp-sse3-avx
+--847-- Page sizes: currently 4096, max supported 4096
+--847-- Valgrind library directory: /usr/lib/valgrind
+--847-- Reading syms from /home/darrens/work/dev/src/c++/projx/admin
+--847-- Reading syms from /lib/x86_64-linux-gnu/ld-2.19.so
+--847--   Considering /lib/x86_64-linux-gnu/ld-2.19.so ..
+--847--   .. CRC mismatch (computed 4cbae35e wanted 8d683c31)
+--847--   Considering /usr/lib/debug/lib/x86_64-linux-gnu/ld-2.19.so ..
+--847--   .. CRC is valid
+--847-- Reading syms from /usr/lib/valgrind/memcheck-amd64-linux
+--847--   Considering /usr/lib/valgrind/memcheck-amd64-linux ..
+--847--   .. CRC mismatch (computed 4f1eed43 wanted a323a3ab)
+--847--    object doesn't have a symbol table
+--847--    object doesn't have a dynamic symbol table
+--847-- Scheduler: using generic scheduler lock implementation.
+--847-- Reading suppressions file: /usr/lib/valgrind/default.supp
+==847== embedded gdbserver: reading from /tmp/vgdb-pipe-from-vgdb-to-847-by-darrens-on-???
+==847== embedded gdbserver: writing to   /tmp/vgdb-pipe-to-vgdb-from-847-by-darrens-on-???
+==847== embedded gdbserver: shared mem   /tmp/vgdb-pipe-shared-mem-vgdb-847-by-darrens-on-???
+==847== 
+==847== TO CONTROL THIS PROCESS USING vgdb (which you probably
+==847== don't want to do, unless you know exactly what you're doing,
+==847== or are doing some strange experiment):
+==847==   /usr/lib/valgrind/../../bin/vgdb --pid=847 ...command...
+==847== 
+==847== TO DEBUG THIS PROCESS USING GDB: start GDB like this
+==847==   /path/to/gdb ./admin
+==847== and then give GDB the following command
+==847==   target remote | /usr/lib/valgrind/../../bin/vgdb --pid=847
+==847== --pid is optional if only one valgrind process is running
+==847== 
+--847-- REDIR: 0x4019ca0 (ld-linux-x86-64.so.2:strlen) redirected to 0x380764b1 (???)
+--847-- Reading syms from /usr/lib/valgrind/vgpreload_core-amd64-linux.so
+--847--   Considering /usr/lib/valgrind/vgpreload_core-amd64-linux.so ..
+--847--   .. CRC mismatch (computed fc68135e wanted 45f5e986)
+--847--    object doesn't have a symbol table
+--847-- Reading syms from /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so
+--847--   Considering /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so ..
+--847--   .. CRC mismatch (computed ae683f7e wanted 08c06df2)
+--847--    object doesn't have a symbol table
+==847== WARNING: new redirection conflicts with existing -- ignoring it
+--847--     old: 0x04019ca0 (strlen              ) R-> (0000.0) 0x380764b1 ???
+--847--     new: 0x04019ca0 (strlen              ) R-> (2007.0) 0x04c2e1a0 strlen
+--847-- REDIR: 0x4019a50 (ld-linux-x86-64.so.2:index) redirected to 0x4c2dd50 (index)
+--847-- REDIR: 0x4019c70 (ld-linux-x86-64.so.2:strcmp) redirected to 0x4c2f2f0 (strcmp)
+--847-- REDIR: 0x401a9c0 (ld-linux-x86-64.so.2:mempcpy) redirected to 0x4c31da0 (mempcpy)
+--847-- Reading syms from /lib/x86_64-linux-gnu/libpthread-2.19.so
+--847--   Considering /lib/x86_64-linux-gnu/libpthread-2.19.so ..
+--847--   .. CRC mismatch (computed d568bf33 wanted fb00d679)
+--847--   Considering /usr/lib/debug/lib/x86_64-linux-gnu/libpthread-2.19.so ..
+--847--   .. CRC is valid
+--847-- Reading syms from /usr/lib/x86_64-linux-gnu/libuv.so.0.10
+--847--    object doesn't have a symbol table
+--847-- Reading syms from /lib/x86_64-linux-gnu/libcrypto.so.1.0.0
+--847--    object doesn't have a symbol table
+--847-- Reading syms from /lib/x86_64-linux-gnu/librt-2.19.so
+--847--   Considering /lib/x86_64-linux-gnu/librt-2.19.so ..
+--847--   .. CRC mismatch (computed aa86d720 wanted d04e3800)
+--847--   Considering /usr/lib/debug/lib/x86_64-linux-gnu/librt-2.19.so ..
+--847--   .. CRC is valid
+--847-- Reading syms from /lib/x86_64-linux-gnu/libm-2.19.so
+--847--   Considering /lib/x86_64-linux-gnu/libm-2.19.so ..
+--847--   .. CRC mismatch (computed a46ef660 wanted 767bfa33)
+--847--   Considering /usr/lib/debug/lib/x86_64-linux-gnu/libm-2.19.so ..
+--847--   .. CRC is valid
+--847-- Reading syms from /lib/x86_64-linux-gnu/libdl-2.19.so
+--847--   Considering /lib/x86_64-linux-gnu/libdl-2.19.so ..
+--847--   .. CRC mismatch (computed c1315e8c wanted 37097b60)
+--847--   Considering /usr/lib/debug/lib/x86_64-linux-gnu/libdl-2.19.so ..
+--847--   .. CRC is valid
+--847-- Reading syms from /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.19
+--847--   Considering /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.19 ..
+--847--   .. CRC mismatch (computed 0df13638 wanted 88e81a42)
+--847--    object doesn't have a symbol table
+--847-- Reading syms from /lib/x86_64-linux-gnu/libgcc_s.so.1
+--847--   Considering /lib/x86_64-linux-gnu/libgcc_s.so.1 ..
+--847--   .. CRC mismatch (computed 6116126e wanted 54e3f1f2)
+--847--    object doesn't have a symbol table
+--847-- Reading syms from /lib/x86_64-linux-gnu/libc-2.19.so
+--847--   Considering /lib/x86_64-linux-gnu/libc-2.19.so ..
+--847--   .. CRC mismatch (computed dc620abc wanted 148cbd6e)
+--847--   Considering /usr/lib/debug/lib/x86_64-linux-gnu/libc-2.19.so ..
+--847--   .. CRC is valid
+--847-- REDIR: 0x6308d60 (libc.so.6:strcasecmp) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x630b050 (libc.so.6:strncasecmp) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6308530 (libc.so.6:memcpy@GLIBC_2.2.5) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6303070 (libc.so.6:strcmp) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6304ee0 (libc.so.6:strncmp) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6307f60 (libc.so.6:bcmp) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6302c20 (libc.so.6:strcat) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6302e20 (libc.so.6:index) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6304500 (libc.so.6:strcpy) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6304ea0 (libc.so.6:strncat) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+--847-- REDIR: 0x6306780 (libc.so.6:strncpy) redirected to 0x4a25720 (_vgnU_ifunc_wrapper)
+==847== 
+==847== HEAP SUMMARY:
+==847==     in use at exit: 0 bytes in 0 blocks
+==847==   total heap usage: 0 allocs, 0 frees, 0 bytes allocated
+==847== 
+==847== All heap blocks were freed -- no leaks are possible
+==847== 
+==847== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+==847== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

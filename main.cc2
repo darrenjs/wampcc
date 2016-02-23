@@ -1,0 +1,126 @@
+
+
+#include <NexioServer.h>
+#include "Topic.h"
+#include "Table.h"
+#include "Client.h"
+
+#include <Logger.h>
+
+#include <iostream>
+#include <sstream>
+
+
+#include <unistd.h>
+#include <string.h>
+
+XXX::NexioServer * server = nullptr;
+
+
+int tep()
+{
+  std::cout << "tep started\n";
+
+  sleep(3);
+
+
+
+  XXX::Topic * topic = new XXX::Topic("T1");
+  server -> addTopic( topic );
+
+  XXX::Table * topictable = new XXX::Table("T2");
+  server -> addTopic( topictable );
+
+  std::vector<std::string> cols = {"health","status","post"};
+  topictable->add_columns( cols );
+
+
+  int rowid = 2;
+  while (1)
+  {
+    sleep(1);
+
+    rowid++;
+    std::ostringstream os;
+    os << "R_"  << rowid;
+
+    topictable->update_row("r1", "f1", "v1");
+    topictable->update_row(os.str(), "f1", "v1");
+  }
+  return 0;
+}
+
+
+Session* active_session = nullptr;
+void on_connect(Session* session)
+{
+  active_session = session;
+}
+
+
+int main(int argc, char** argv)
+{
+  if (argc < 2 )
+  {
+    std::cout << "not enough args\n";
+    exit(1);
+  }
+
+  if (strcmp(argv[1],"-s")==0)
+  {
+    std::cout << "starting server\n";
+
+
+    XXX::NexioServer::Config c;
+    c.port = 33333;
+
+    std::thread thr( tep );
+    server = new XXX::NexioServer(c);
+    server->start();
+    while(true){sleep(1);}
+  }
+
+
+
+  if (strcmp(argv[1],"-c")==0)
+  {
+
+    XXX::ConnectReq req;
+    req.addr="127.0.0.1";
+    req.port=55555;
+
+
+    _P_( "starting client" );
+    XXX::Client c;
+
+    // start the internal thread of the client
+    c.start();
+
+    sleep(1);
+    std::cout << "trying the connection\n";
+    c.connect(req, on_connect);
+
+    // TODO: wait for session connect, or, could I use a future/promise for this?
+    sleep(50);
+
+    std::cout << "active: " << active_session << "\n";
+
+
+
+
+    // connect async ot 127.0.0.1 33333
+
+    // create acceptor
+
+
+  }
+
+  // XXX::NexioClient clent;
+  // client.connect
+  // client.start();
+  // client.session();
+
+
+
+  return 0;
+}

@@ -1,0 +1,17 @@
+Notes
+=====
+
+jalson encode needs overload on array & obect
+
+TODO
+====
+
+* in topicman, how are the topics owned?
+
+
+LATER
+=====
+
+* try to abstract-out a base session/session_man set of classes, that does not
+  have the protocol details.  That can server as the basis for other networked
+  applications.
