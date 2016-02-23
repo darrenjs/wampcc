@@ -40,7 +40,7 @@ nobase_include_HEADERS = jalson/jalson.h jalson/jalson_internals.h
 
 # List the sources for an individual library
 libjalson_la_SOURCES=jalson.cc vendors.cc
-libjalson_la_LIBADD=/home/darrens/opt/jansson-2.7/lib/libjansson.la
+libjalson_la_LIBADD=$(janssonlib)
 #libjalson_la_DEPENDENCIES=/home/darrens/opt/jansson-2.7/lib/libjansson.la
 
 

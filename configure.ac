@@ -10,7 +10,9 @@ AC_CANONICAL_SYSTEM
 
 # Not: the -Wall here is for automake errors; is unrelated to gcc errors
 AM_INIT_AUTOMAKE([1.10 no-define -Wall])
-#AM_PROG_AR
+
+# AM_PROG_AR is not available in automake v0.11 but it's essential in v0.12.
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
 AC_CONFIG_HEADERS([config.h])
 AC_PROG_CXX
