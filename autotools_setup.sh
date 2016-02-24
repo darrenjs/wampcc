@@ -8,6 +8,6 @@ echo "===== Autoconf setup script ====="
 ln -snf README.md README
 ln -snf LICENSE COPYING
 
-test -d || mkdir -p m4
+test -d m4 || mkdir -p m4
 
 autoreconf -fiv

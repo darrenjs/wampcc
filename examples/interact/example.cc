@@ -73,6 +73,7 @@ public:
   {
     global_test_reg.push_back( this );
   }
+  virtual ~testcasebase(){}
   virtual int impl() = 0;
   virtual const char* testname() const = 0;
 
