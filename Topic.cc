@@ -38,10 +38,11 @@ void Topic::updateValue(const char* newstr)
   {
 
     std::lock_guard<std::mutex> guard( m_subscribers.lock );
-    for (auto & i : m_subscribers.items)
-    {
-      i->send_bytes( m_string.c_str(),  m_string.length() );
-    }
+    // TODO: has been commented out, need to change to use the new array based API
+    // for (auto & i : m_subscribers.items)
+    // {
+    //   i->send_bytes( m_string.c_str(),  m_string.length() );
+    // }
   }
 
 }

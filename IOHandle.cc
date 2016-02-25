@@ -381,31 +381,6 @@ uv_buf_t uv_buf_init(char* base, unsigned int len) {
  */
 
 
-
-void IOHandle::send_bytes(const char* src, size_t len)
-{
-  static int i = 0;
-//  std::cout << "msg count " << i++ << "\n";
-  if (m_open)
-  {
-    // TODO: this is not an efficient way to manage buffer memory
-    uv_buf_t buf = uv_buf_init( new char[ len ], len);
-    memcpy(buf.base, src, len);
-
-    {
-      std::lock_guard<std::mutex> guard(m_pending_write_lock);
-      m_pending_write.push_back( buf );
-
-      if (m_async_allowed)
-      {
-        uv_async_send( &m_write_async );
-      }
-    }
-
-  }
-}
-
-
 void IOHandle::send_bytes_close(const char* src, size_t len)
 {
   // TODO: this is not an efficient way to manage buffer memory
@@ -470,6 +445,31 @@ void IOHandle::on_passive_close()
 
 }
 
+void IOHandle::send_bytes(std::pair<const char*, size_t> * srcbuf, size_t count)
+{
+  std::vector< uv_buf_t > bufs;
+  bufs.reserve(count);
 
+  // TODO: this is not an efficient way to manage buffer memory
+  for (size_t i = 0; i < count ; i++)
+  {
+    uv_buf_t buf = uv_buf_init( new char[ srcbuf->second ], srcbuf->second);
+    memcpy(buf.base, srcbuf->first, srcbuf->second);
+    srcbuf++;
+    bufs.push_back(buf);
+  }
+
+
+  {
+    std::lock_guard<std::mutex> guard(m_pending_write_lock);
+    m_pending_write.insert(m_pending_write.end(), bufs.begin(), bufs.end());
+
+    if (m_async_allowed)
+    {
+      uv_async_send( &m_write_async );
+    }
+  }
+
+}
 
 } // namespace XXX

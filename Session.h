@@ -88,8 +88,7 @@ namespace XXX {
 
     void subscribe()  {}
 
-
-    bool send_bytes(const char*, size_t); // be careful!
+    bool send_bytes(std::pair<const char*, size_t>* bufs, size_t count);
 
     void send_msg(jalson::json_array&, bool final=false);
     void send_msg(build_message_cb_v4 builder);

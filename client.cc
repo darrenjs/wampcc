@@ -42,14 +42,14 @@ void procedure_cb(XXX::t_sid sid,
           << ", user:" << cbdata->request
           << ", req_id:" << req_id << ", sid: " << sid);
 
-  throw std::runtime_error("bad alloc");
-  // auto my_args = the_args;
+//  throw std::runtime_error("bad alloc");
+  auto my_args = the_args;
 
-  // my_args.args = jalson::json_array();
-  // jalson::json_array & arr = my_args.args.as_array();
-  // arr.push_back("hello");
-  // arr.push_back("back");
-  // cbdata->svc->post_reply(sid, req_id, my_args);
+  my_args.args = jalson::json_array();
+  jalson::json_array & arr = my_args.args.as_array();
+  arr.push_back("hello");
+  arr.push_back("back");
+  cbdata->svc->post_reply(sid, req_id, my_args);
 
 
 

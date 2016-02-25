@@ -15,6 +15,7 @@
 #include <iomanip>
 
 #include <string.h>
+#include <unistd.h>
 
 
 #define HEADERLEN 4 /* size of uint32 */
@@ -696,24 +697,31 @@ void Session::send_msg(jalson::json_array& jv, bool final)
 {
   if (!m_is_closing)
   {
+    std::pair<const char*, size_t> bufs[2];
+
     std::string msg ( jalson::encode( jv ) );
 
     // write message length prefix
     uint32_t msglen = htonl(  msg.size() );
-    this->send_bytes((char*)&msglen, sizeof(msglen));
+    bufs[0].first  = (char*)&msglen;
+    bufs[0].second = sizeof(msglen);
 
     // TODO: not sure if this is the correct way to close a libuv socket.
     // write message
     update_state_for_outbound(jv);
     if (final)
     {
-      std::lock_guard<std::mutex> guard(m_handle_lock);
-      if (m_handle) m_handle->send_bytes_close(msg.c_str(), msg.size() );
-      m_is_closing = true;
+      // TODO EASY : remove this, and only have 1  send function in IOHandle
+      // std::lock_guard<std::mutex> guard(m_handle_lock);
+      // if (m_handle) m_handle->send_bytes_close(msg.c_str(), msg.size() );
+      // m_is_closing = true;
     }
     else
     {
-      this->send_bytes( msg.c_str(), msg.size() );
+      // write message
+      bufs[1].first  = (const char*)msg.c_str();
+      bufs[1].second = msg.size();
+      this->send_bytes( &bufs[0], 2 );
     }
   }
 }
@@ -724,6 +732,7 @@ void Session::send_msg(build_message_cb_v4 builder)
 {
   if (!m_is_closing)
   {
+
     jalson::json_array msg = builder();
 
     std::string str = jalson::encode(msg);
@@ -731,29 +740,36 @@ void Session::send_msg(build_message_cb_v4 builder)
     update_state_for_outbound(msg);
 
     // write message length prefix
+    std::pair<const char*, size_t> bufs[2];
+
     uint32_t msglen = htonl( str.size() );
-    this->send_bytes((char*)&msglen, sizeof(msglen));
+    bufs[0].first  = (char*)&msglen;
+    bufs[0].second = sizeof(msglen);
+
+    usleep(500); // TODO: delete me
 
     // write message
-    this->send_bytes( str.c_str(), str.size() );
+    bufs[1].first  = (char*)str.c_str();
+    bufs[1].second = str.size();
+    this->send_bytes( &bufs[0], 2 );
   }
 }
 
-//----------------------------------------------------------------------2
+//----------------------------------------------------------------------
 
-bool Session::send_bytes(const char* s, size_t len)
+//----------------------------------------------------------------------
+
+bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count)
 {
   /* EVL thread */
 
   if (!m_is_closing)
   {
-    _DEBUG_( "send: bytes " << len );
     std::lock_guard<std::mutex> guard(m_handle_lock);
-    if (m_handle) m_handle->send_bytes(s, len);
+    if (m_handle) m_handle->send_bytes(bufs, count);
   }
   return true;
 }
-
 
 //----------------------------------------------------------------------
 
