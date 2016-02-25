@@ -22,20 +22,29 @@
 
 #----------------------------------------------------------------------
 
-LIBUVHOME=/home/darrens/opt/libuv-1.8.0
+ifeq ($(USER_CXX),)
+$(error Please define USER_CXX)
+endif
+ifeq ($(LIBUVHOME),)
+$(error Please define LIBUVHOME)
+endif
+ifeq ($(JANSSONHOME),)
+$(error Please define JANSSONHOME)
+endif
+ifeq ($(JALSONHOME),)
+$(error Please define JALSONHOME)
+endif
+
+
 LIBUVINC=-I$(LIBUVHOME)/include
 LIBUVLIB=-L$(LIBUVHOME)/lib
 LIBUVLIBSTATIC=$(LIBUVHOME)/lib/libuv.a
 
-
-JANSSONHOME=/home/darrens/opt/jansson-2.7
 JANSSONLIBSTATIC=$(JANSSONHOME)/lib/libjansson.a
 
-JALSONHOME=/home/darrens/opt/jalson-1.0
 JALSONINC=-I$(JALSONHOME)/include
 JALSONLIB=-L$(JALSONHOME)/lib -ljalson
 JALSONLIBSTATIC=$(JALSONHOME)/lib/libjalson.a $(JANSSONLIBSTATIC)
-
 
 ##
 ## Targets to build
@@ -107,7 +116,7 @@ LIBS     = \
 ## Set the programs to use
 ##
 
-CXX = clang++-3.5
+CXX = $(USER_CXX)
 AR  = ar
 
 ##
