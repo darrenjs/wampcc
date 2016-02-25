@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 
+#define SYSTEM_HEARTBEAT_MS 5000
 
 namespace XXX {
 
@@ -121,7 +122,7 @@ IOLoop::IOLoop(Logger * logptr,
 
   uv_timer_init(m_uv_loop, m_timer.get());
   m_timer->data = this;
-  uv_timer_start(m_timer.get(), __io_on_timer, 10, 10);
+  uv_timer_start(m_timer.get(), __io_on_timer, SYSTEM_HEARTBEAT_MS, SYSTEM_HEARTBEAT_MS);
 
   // TODO: I prefer to not have to do this.  Need to review what is the correct
   // policy for handling sigpipe using libuv.
