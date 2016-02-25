@@ -17,27 +17,40 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eAll,
                                               true);
 
+struct callback_t
+{
+  callback_t(XXX::client_service& s, const char* d)
+    : svc(&s),
+      request(d)
+  {
+  }
+  XXX::client_service* svc;
+  const char* request;
+};
 
-void procedure_cb(XXX::client_service& clsvc,
-                  XXX::t_sid sid,
+void procedure_cb(XXX::t_sid sid,
                   const std::string& procedure,
                   XXX::t_request_id req_id,
                   XXX::rpc_args& the_args,
                   void*  user  )
 {
+  const callback_t* cbdata = (callback_t*) user;
+
   /* called when a procedure within a CALLEE is triggered */
   auto __logptr = logger;
   _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args
-          << ", user:" << (const char*) user
-          << ", req_id:" << req_id);
+          << ", user:" << cbdata->request
+          << ", req_id:" << req_id << ", sid: " << sid);
 
-  auto my_args = the_args;
+  throw std::runtime_error("bad alloc");
+  // auto my_args = the_args;
 
-  my_args.args = jalson::json_array();
-  jalson::json_array & arr = my_args.args.as_array();
-  arr.push_back("hello");
-  arr.push_back("back");
-  clsvc.post_reply(sid, req_id, my_args);
+  // my_args.args = jalson::json_array();
+  // jalson::json_array & arr = my_args.args.as_array();
+  // arr.push_back("hello");
+  // arr.push_back("back");
+  // cbdata->svc->post_reply(sid, req_id, my_args);
+
 
 
 /*
@@ -85,9 +98,15 @@ int main(int /* argc */, char** /* argv */)
   cfg.port = 55555;
   XXX::client_service mycs( logger, cfg);
 
-  mycs.add_procedure("hello", procedure_cb, (void*)"my_hello");
-  mycs.add_procedure("start", procedure_cb, (void*)"my_start");
-  mycs.add_procedure("stop",  procedure_cb, (void*)"my_stop");
+  std::unique_ptr<callback_t> cb1( new callback_t(mycs,"my_hello") );
+  std::unique_ptr<callback_t> cb2( new callback_t(mycs,"my_start") );
+  std::unique_ptr<callback_t> cb3( new callback_t(mycs,"my_stop") );
+
+
+
+  mycs.add_procedure("hello", procedure_cb, (void*) cb1.get());
+  mycs.add_procedure("start", procedure_cb, (void*) cb2.get());
+  mycs.add_procedure("stop",  procedure_cb, (void*) cb3.get());
 
   mycs.start();
 

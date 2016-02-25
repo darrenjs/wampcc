@@ -28,6 +28,14 @@ TASKS
 
 NEXT
 
+* handle an exception thrown from a client procedure, when it has been invoked.
+  Design: do I want exceptions to cause message to go back to the caller?  Could
+  be a differnt procecure type? I.e, allow add to two different procedures?  To
+  keep it simple, perhaps I wont do the automatic message sending initially. Can
+  add that for version 2.  <--- add to roadmap.
+
+* admin needs to timeout if it does not get completion within a set interval (10 sec?)
+
 * need to plan for the session closure.  Need a design, and best thing is to go
   for something predictable, which means choosing either the IO thread, or, the
   event thread.  And, because the IO thread can definitely be a source of
@@ -38,10 +46,10 @@ NEXT
   various data structures that need to be updated, such at, in the client, the
   procedure registration table.
 
-* remove tcp conn stuff, and uv stuff, from client_service, and it is a source
+* DONE remove tcp conn stuff, and uv stuff, from client_service, and it is a source
   fo leak
 
-* remove tcp conn stuff, and uv stuff, from dealer_service, and it is a source
+* DONE remove tcp conn stuff, and uv stuff, from dealer_service, and it is a source
   fo leak
 
 * there is a memory leak in the client side.  Could be the session objects?

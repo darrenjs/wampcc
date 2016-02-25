@@ -235,7 +235,7 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
   rkey.s  = ev->src;
   rkey.id = ev->ja[2].as_sint();
 
-  std::string procedurename;
+  std::string procname;
   {
     std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
     auto it = m_registrationid_map.find(rkey);
@@ -251,13 +251,13 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
                                        INVOCATION,
                                        ev->ja[1].as_sint());
     }
-    procedurename = it->second;
+    procname = it->second;
   }
 
   std::pair< rpc_cb,void*> rpc_actual;
   {
     std::unique_lock<std::mutex> guard(m_procedures_lock);
-    auto it = m_procedures.find( procedurename );
+    auto it = m_procedures.find( procname );
 
     if (it == m_procedures.end())
     {
@@ -268,20 +268,29 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
     rpc_actual = it->second;
   }
 
-  _INFO_( "invoke lookup success, key " << rkey.s <<":"<<rkey.id  << " -> " << procedurename );
+  _INFO_( "invoke lookup success, key " << rkey.s <<":"<<rkey.id  << " -> " << procname );
 
   rpc_args my_rpc_args;
   if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
 
   t_request_id reqid = ev->ja[1].as_sint(); // TODO: make a helper for this, ie, json to t_requetst_id
 
-  // TODO: need to think about whole business of catching exceptions here.
-  // Well, the pattern is, any exception/error that occurs just up until the
-  // user cb should be handled and result in an ERROR being send back as a
-  // response to the inbound request.
   if (rpc_actual.first)
   {
-    rpc_actual.first(*this, rkey.s.unique_id(), procedurename, reqid, my_rpc_args, rpc_actual.second);
+    // TODO: during exception, could log more details.
+    try
+    {
+      rpc_actual.first(rkey.s.unique_id(), procname, reqid, my_rpc_args, rpc_actual.second);
+    }
+    catch (const std::exception& e)
+    {
+      const char* what = e.what();
+      _WARN_("exception thrown by procedure '"<< procname << "': " << (what?e.what():""));
+    }
+    catch (...)
+    {
+      _WARN_("unknown exception thrown by user procedure '"<<procname << "'");
+    }
   }
 
   return;

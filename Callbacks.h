@@ -74,8 +74,7 @@ struct call_info
 };
 
 
-typedef std::function<void(client_service&,
-                           t_sid,
+typedef std::function<void(t_sid,
                            const std::string&,
                            int request_id,
                            rpc_args&,
