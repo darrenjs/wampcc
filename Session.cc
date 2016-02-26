@@ -766,7 +766,7 @@ bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count)
   if (!m_is_closing)
   {
     std::lock_guard<std::mutex> guard(m_handle_lock);
-    if (m_handle) m_handle->send_bytes(bufs, count);
+    if (m_handle) m_handle->send_bytes(bufs, count, false);
   }
   return true;
 }

@@ -49,10 +49,11 @@ void event_loop::set_handler(unsigned int eventid, event_cb handler)
 // EVL dont make a call into here once self has started into the destructor????
 void event_loop::push(event* ev)
 {
-  std::unique_lock<std::mutex> guard(m_mutex);
-
   if (ev == 0) m_continue = false;
-  m_queue.push_back( std::shared_ptr<event>(ev) );
+  auto sp = std::shared_ptr<event>(ev);
+
+  std::unique_lock<std::mutex> guard(m_mutex);
+  m_queue.push_back( std::move(sp) );
   m_condvar.notify_one();
 }
 
@@ -70,7 +71,8 @@ void event_loop::eventmain()
     std::vector< std::shared_ptr<event> > to_process;
     {
       std::unique_lock<std::mutex> guard(m_mutex);
-      while ((m_queue.size()==0) or m_queue.empty()) m_condvar.wait( guard );
+      m_condvar.wait(guard,
+                     [this](){ return !m_queue.empty() && m_queue.size()>0; } );
       to_process.swap( m_queue );
     }
 

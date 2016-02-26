@@ -381,25 +381,6 @@ uv_buf_t uv_buf_init(char* base, unsigned int len) {
  */
 
 
-void IOHandle::send_bytes_close(const char* src, size_t len)
-{
-  // TODO: this is not an efficient way to manage buffer memory
-  uv_buf_t buf = uv_buf_init( new char[ len ], len);
-  memcpy(buf.base, src, len);
-
-  {
-    std::lock_guard<std::mutex> guard(m_pending_write_lock);
-    m_pending_write.push_back( buf );
-
-    if (m_async_allowed)
-    {
-      uv_async_send( &m_write_async );
-    }
-  }
-
-}
-
-
 void IOHandle::on_passive_close()
 {
   /* IO thread */
@@ -445,7 +426,8 @@ void IOHandle::on_passive_close()
 
 }
 
-void IOHandle::send_bytes(std::pair<const char*, size_t> * srcbuf, size_t count)
+// TODO: need to use the close variable
+void IOHandle::send_bytes(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
 {
   std::vector< uv_buf_t > bufs;
   bufs.reserve(count);

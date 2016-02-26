@@ -161,9 +161,9 @@ int main(int /*argc*/, char** /*argv*/)
   // wait for a connection attempt to complete
   _INFO_("starting wait for a connection...");
   {
-    std::unique_lock<std::mutex> locker(g_active_session_mutex);
+    std::unique_lock<std::mutex> guard(g_active_session_mutex);
     // TODO: put in a time limit?
-    g_active_session_condition.wait(locker,
+    g_active_session_condition.wait(guard,
                                     [](){ return g_active_session_notifed; } );
   }
 

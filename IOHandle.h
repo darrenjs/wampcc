@@ -27,10 +27,7 @@ public:
   void set_listener(io_listener* l ) { m_listener = l; }
 
   /* Enqueue bytes to be sent */
-  void send_bytes(std::pair<const char*, size_t> * srcbuf, size_t count);
-
-  /* Enqueue bytes to be sent, and close after write  */
-  void send_bytes_close(const char*, size_t len);
+  void send_bytes(std::pair<const char*, size_t> * srcbuf, size_t count, bool close);
 
   /* Request a socket close */
   void close(int);
