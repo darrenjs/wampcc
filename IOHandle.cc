@@ -70,12 +70,12 @@ static void io_on_writeclose(uv_write_t *req, int status)
   delete req;
 }
 
-static void io_on_close2(uv_handle_t* handle)
-{
-  std::cout << "on_close2 handle=" << handle << "\n";
-  IOHandle * iohandle = (IOHandle *) handle->data;
-  iohandle->on_close();
-}
+// static void io_on_close2(uv_handle_t* handle)
+// {
+//   std::cout << "on_close2 handle=" << handle << "\n";
+//   IOHandle * iohandle = (IOHandle *) handle->data;
+//   iohandle->on_close();
+// }
 
 static void io_on_close_cb(uv_handle_t* handle)
 {
