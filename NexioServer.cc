@@ -107,7 +107,7 @@ void io_on_close(uv_handle_t* handle)
 }
 
 
-static void after_write(uv_write_t* req, int status)
+static void after_write(uv_write_t*, int)
 {
   // write_req_t* wr = (write_req_t*)req;
 
