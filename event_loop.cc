@@ -45,6 +45,20 @@ void event_loop::set_handler(unsigned int eventid, event_cb handler)
 
 }
 
+/*
+  shared_ptr<> sp
+  push_
+*/
+
+// void push(std::shared_ptr<event>& ev)
+// {
+//   if (ev == 0) m_continue = false;
+
+//   std::unique_lock<std::mutex> guard(m_mutex);
+//   m_queue.push_back( e );
+//   m_condvar.notify_one();
+// }
+
 // TODO: general threading concner here.  How do I enqure that any users of this
 // EVL dont make a call into here once self has started into the destructor????
 void event_loop::push(event* ev)
