@@ -28,7 +28,8 @@ struct callback_t
   const char* request;
 };
 
-void procedure_cb(XXX::t_sid sid,
+void procedure_cb(XXX::t_call_id callid,
+                  XXX::t_sid sid,
                   const std::string& procedure,
                   XXX::t_request_id req_id,
                   XXX::rpc_args& the_args,
@@ -49,7 +50,7 @@ void procedure_cb(XXX::t_sid sid,
   jalson::json_array & arr = my_args.args.as_array();
   arr.push_back("hello");
   arr.push_back("back");
-  cbdata->svc->post_reply(sid, req_id, my_args);
+  cbdata->svc->post_reply(callid, sid, req_id, my_args);
 
 
 

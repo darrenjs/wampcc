@@ -277,10 +277,20 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
 
   if (rpc_actual.first)
   {
+    size_t mycallid = 0;
+    bool had_exception = true;
+    {
+      // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
+      std::unique_lock<std::mutex> guard(m_calls_lock);
+      mycallid = ++m_callid;
+      m_calls[ mycallid ] . s = rkey.s;
+      m_calls[ mycallid ] . requestid = reqid;
+    }
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(rkey.s.unique_id(), procname, reqid, my_rpc_args, rpc_actual.second);
+      rpc_actual.first(mycallid, rkey.s.unique_id(), procname, reqid, my_rpc_args, rpc_actual.second);
+      had_exception = false;
     }
     catch (const std::exception& e)
     {
@@ -291,6 +301,12 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
     {
       _WARN_("unknown exception thrown by user procedure '"<<procname << "'");
     }
+
+    if (had_exception)
+    {
+      std::unique_lock<std::mutex> guard(m_calls_lock);
+      m_calls.erase( mycallid );
+    }
   }
 
   return;
@@ -298,11 +314,24 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
 
 //----------------------------------------------------------------------
 
-void client_service::post_reply(t_sid sid,
+void client_service::post_reply(t_call_id callid,
+                                t_sid sid,
                                 t_request_id reqid,
                                 rpc_args& the_args)
 {
   /* user thread or EVL thread */
+
+  call_context context;
+  {
+    std::unique_lock<std::mutex> guard(m_calls_lock);
+    auto it = m_calls.find( callid );
+    if (it != m_calls.end())
+    {
+      context = it->second;
+      m_calls.erase( it );
+    }
+  }
+  if (context.s != SID::null_sid) return;
 
   outbound_response_event* ev = new outbound_response_event();
 
@@ -317,11 +346,24 @@ void client_service::post_reply(t_sid sid,
 
 //----------------------------------------------------------------------
 
-void client_service::post_error(t_sid sid,
+void client_service::post_error(t_call_id callid,
+                                t_sid sid,
                                 t_request_id reqid,
                                 std::string& error_uri)
 {
   /* user thread or EVL thread */
+
+  call_context context;
+  {
+    std::unique_lock<std::mutex> guard(m_calls_lock);
+    auto it = m_calls.find( callid );
+    if (it != m_calls.end())
+    {
+      context = it->second;
+      m_calls.erase( it );
+    }
+  }
+  if (context.s != SID::null_sid) return;
 
   outbound_response_event* ev = new outbound_response_event();
 

@@ -64,12 +64,14 @@ public:
                      void * data);
 
   /* Used by the CALLEE to respond to a procedure call */
-  void post_reply(t_sid session,
+  void post_reply(t_call_id,
+                  t_sid session,
                   t_request_id request_id,
                   rpc_args& the_args);
 
   /* Used by the CALLEE to respond to a procedure call */
-  void post_error(t_sid session,
+  void post_error(t_call_id,
+                  t_sid session,
                   t_request_id request_id,
                   std::string& error);
 
@@ -118,6 +120,17 @@ private:
   std::unique_ptr<IOLoop> m_io_loop;
   std::unique_ptr<event_loop> m_evl;
   std::unique_ptr<SessionMan> m_sesman;
+
+
+  struct call_context
+  {
+    SID s;
+    int requestid;
+  };
+  size_t m_callid = 0;
+  std::map <size_t, call_context>  m_calls;
+  std::mutex                       m_calls_lock;
+
 };
 
 } // namespace XXX

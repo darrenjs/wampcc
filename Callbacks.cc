@@ -5,7 +5,7 @@
 namespace XXX {
 
 
-
+SID SID::null_sid;
 
 std::ostream& operator<<(std::ostream& os, const SID & s)
 {

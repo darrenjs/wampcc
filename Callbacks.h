@@ -6,7 +6,9 @@
 
 #include <functional>
 #include <string>
+#include <memory>
 #include <stdint.h>
+
 
 #include <iostream>  // TODO: remove, if SID is removed.
 
@@ -18,9 +20,10 @@ namespace XXX {
 
 
 typedef int t_request_id;
+typedef uint64_t t_call_id;
 typedef uint64_t t_sid;
 
-
+typedef std::shared_ptr<int> session_handle;
 
 /* Information about a session that once set, will never change, and is used to
  * uniquely identify it. */
@@ -37,6 +40,10 @@ public:
   bool operator==(SID rhs) const
   {
     return (this->m_unqiue_id == rhs.m_unqiue_id);
+  }
+  bool operator!=(SID rhs) const
+  {
+    return (this->m_unqiue_id != rhs.m_unqiue_id);
   }
 
   bool operator<(SID rhs) const
@@ -74,7 +81,8 @@ struct call_info
 };
 
 
-typedef std::function<void(t_sid,
+typedef std::function<void(t_call_id,
+                           t_sid,
                            const std::string&,
                            int request_id,
                            rpc_args&,
