@@ -48,15 +48,17 @@ public:
 
 
   /* Can be called on the EV thread */
-  void send_to_session(SID, jalson::json_array& msg);
+  //void send_to_session(SID, jalson::json_array& msg);
+  void send_to_session(session_handle,
+                       jalson::json_array& msg);
 
-  void send_request(SID destination,
+  void send_to_session(session_handle,
+                       build_message_cb_v4);
+
+  void send_request(session_handle ,
                     int request_type,
                     unsigned int internal_req_id,
                     build_message_cb_v2);
-
-  void send_to_session(SID destination,
-                       build_message_cb_v4);
 
   void handle_event( session_state_event* );
   void handle_housekeeping_event( void );
@@ -68,6 +70,7 @@ private:
   Logger *__logptr; /* name chosen for log macros */
 
   event_loop& m_evl;
+
   struct
   {
     std::mutex lock;

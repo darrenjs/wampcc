@@ -97,6 +97,8 @@ namespace XXX {
 
     void remove_listener();
 
+    session_handle handle() { return m_session_handle; }
+
   private:
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
@@ -173,6 +175,8 @@ namespace XXX {
     std::map<int, PendingReq* > m_pend_req;
     std::map<int, PendingReq2 > m_pend_req_2;
     std::mutex m_pend_req_lock;
+
+    std::shared_ptr<int> m_session_handle;
   };
 
 } // namespace XXX

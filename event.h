@@ -13,11 +13,6 @@ namespace XXX {
   struct Request_CB_Data;
 
 
-struct rpc_error
-{
-  jalson::json_string uri;
-  jalson::json_object opt;
-};
 /*
   TODO: perhaps shoudl have a better taxonomy of event classes? current thoughts:
 
@@ -34,9 +29,6 @@ struct rpc_error
     -> outbound means the event is destined for a session, then onto its IO
 
   * somehow represent outbound events?
-
-
-
 
 
  */
@@ -65,7 +57,7 @@ public:
 
   int msg_type; // WAMP message type
 
-  SID src;
+  session_handle src;
   jalson::json_array ja;
 
   jalson::json_array orig_req; // populated for reply/error to a previous request
@@ -87,6 +79,18 @@ public:
 };
 
 
+/* new style event */
+class inbound_message_event : public event
+{
+public:
+  jalson::json_array msg;
+
+  inbound_message_event(int __msgtype)
+  {
+    this->mode =  event::eInbound;
+    this->msg_type = __msgtype;
+  }
+};
 
 struct tcp_connect_event : public event
 {
@@ -116,10 +120,11 @@ struct session_state_event : public event
   }
 };
 
+
 /* Another attempt at a generic outbound event */
 struct outbound_message : public event
 {
-  SID destination;
+  session_handle destination;
   int message_type;
 
   outbound_message()
@@ -132,7 +137,7 @@ struct outbound_message : public event
  * than further overloading the base event class. */
 struct outbound_response_event : public event
 {
-  SID destination;
+  session_handle destination;
   int response_type;
   int request_type;
   t_request_id reqid;

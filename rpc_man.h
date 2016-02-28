@@ -16,7 +16,7 @@ namespace XXX {
 
 class event_loop;
 class client_service;
-  class Logger;
+class Logger;
 
 /* TODO: this is a duplcate definition. In fact, is this even needed now? I.e.,
  this structure is that a CALLEE-program will register with CALLEE-api
@@ -63,7 +63,7 @@ struct rpc_details
   int         registration_id; // 0 implies invalid
   std::string uri;
   SID sid;
-
+  session_handle sesionh;
   rpc_details() : registration_id( 0 ) {}
 };
 
@@ -75,16 +75,14 @@ public:
   rpc_man(Logger *, event_loop&, rpc_added_cb);
   ~rpc_man();
 
-
   // return the registion id
-  int  handle_register_event(SID src,
+  int  handle_register_event(session_handle& sh,
                              jalson::json_array&);
 
   // TODO: what is this for?
   void invoke_rpc(jalson::json_array& jv);
   // TODO: what is this for?
   void handle_invocation(jalson::json_array& jv);
-
 
   // Register and RPC that is handled by the internal session
   void register_internal_rpc(const std::string& rpc_uri);

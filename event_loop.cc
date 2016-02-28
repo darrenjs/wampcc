@@ -45,6 +45,17 @@ void event_loop::set_handler(unsigned int eventid, event_cb handler)
 
 }
 
+void event_loop::set_handler2(unsigned int eventid, event_cb2 handler)
+{
+  if (eventid > m_handlers2.size() )
+  {
+    _ERROR_("resizing handler vector for eventid " << eventid);
+    m_handlers2.resize( eventid+1 );
+  }
+  m_handlers2[ eventid ] = handler;
+
+}
+
 /*
   shared_ptr<> sp
   push_
@@ -123,7 +134,6 @@ void event_loop::eventmain()
 
       if (error_caught)
       {
-
         try
         {
           // TODO: do I want all errors to result in a reply message being sent?
@@ -209,7 +219,7 @@ void event_loop::process_event(event * ev)
     {
       tcp_connect_event * tcpev = (tcp_connect_event*) ev;
       if (tcpev->user_cb)
-        tcpev->user_cb(tcpev->src.unique_id(), tcpev->status, tcpev->user_data);
+        tcpev->user_cb(tcpev->src, tcpev->status, tcpev->user_data);
       return;
     }
     default:
@@ -223,6 +233,14 @@ void event_loop::process_event(event * ev)
 
   if (ev->mode == event::eInbound)
   {
+    inbound_message_event * ev2 =
+      dynamic_cast<inbound_message_event*>(ev);
+
+    if (ev2==nullptr)
+    {
+      _ERROR_("ev2 is null");
+    }
+
     switch ( ev->msg_type )
     {
       case YIELD :
@@ -254,13 +272,13 @@ void event_loop::process_event(event * ev)
         // expect that requests can be sent immediately, so its important that
         // we immediately sent the registration ID to the peer, before requests
         // arrive.
-        int registration_id = m_rpcman->handle_register_event(ev->src, ev->ja);
+        int registration_id = m_rpcman->handle_register_event(ev2->src, ev->ja);
 
         jalson::json_array msg;
         msg.push_back( REGISTERED );
-        msg.push_back( ev->ja[1] );
+        msg.push_back( ev2->ja[1] );
         msg.push_back( registration_id );
-        m_sesman->send_to_session( ev->src, msg );
+        m_sesman->send_to_session( ev2->src, msg );
 
         break;
       }
@@ -273,16 +291,18 @@ void event_loop::process_event(event * ev)
       case CHALLENGE :
       case AUTHENTICATE :
       {
-        event_cb& cb = m_handlers[ ev->msg_type ];
+
+        event_cb2& cb = m_handlers2[ ev->msg_type ];
         if (cb)
         {
-          cb( ev );
+          cb( ev2 );
         }
         else
         {
           _ERROR_( "no handler for message type " << ev->msg_type);
         }
         break;
+
       }
       default:
       {
@@ -445,7 +465,7 @@ void event_loop::process_outbound_call(outbound_call_event* ev)
 
     };
 
-  m_sesman->send_request( rpcinfo.sid, INVOCATION, ev->internal_req_id, msg_builder2);
+  m_sesman->send_request( rpcinfo.sesionh, INVOCATION, ev->internal_req_id, msg_builder2);
 }
 
 //----------------------------------------------------------------------

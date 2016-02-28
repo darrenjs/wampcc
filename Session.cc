@@ -120,8 +120,8 @@ Session::Session(SID s,
     m_bytes_avail(0),
     m_is_closing(false),
     m_evl(evl),
-    m_is_dealer(is_dealer)
-
+    m_is_dealer(is_dealer),
+    m_session_handle(std::make_shared<int>(s.unique_id()))
 {
   m_handle->set_listener(this);
 }
@@ -196,7 +196,6 @@ void Session::on_read_impl(char* src, size_t len)
   // TODO: improve efficiency!
 
   _DEBUG_("recv n:" << len);
-//  _DEBUG_("recv n:" << len << " data: " << temp);
 
   memcpy(m_buf + m_bytes_avail, src, len); // TODO: check length!
   m_bytes_avail += len;
@@ -221,7 +220,7 @@ void Session::on_read_impl(char* src, size_t len)
 
     if (m_bytes_avail < HEADERLEN) break;
     uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
-    _DEBUG_("msglen:" << msglen << ", m_bytes_avail:" << m_bytes_avail);
+    //_DEBUG_("msglen:" << msglen << ", m_bytes_avail:" << m_bytes_avail);
 
     try
     {
@@ -242,7 +241,6 @@ void Session::on_read_impl(char* src, size_t len)
       std::string temp(ptr,msglen);
       _DEBUG_("recv n:" << msglen << " data: " << temp);
       jalson::json_value jv = jalson::decode(ptr);
-
 
       this->process_message( jv );
       had_error = false;
@@ -567,16 +565,26 @@ void Session::process_message(jalson::json_value&jv)
   // TODO: this is the generic message handling. Ie defer everything to the
   // event loop.  Although, there will be some stuff we need to handle at the
   // session layer.
-  event * e = new event();
-  e->src  = m_sid;
-  e->mode = event::eInbound;
-  e->msg_type = message_type;
-  e->ja = ja;
-  if (pendreq) e->cb_data = pendreq->cb_data;
-  e->internal_req_id = pend2.internal_req_id;
-  e->user = pend2.user;
-  m_evl.push( e );
 
+  // event * e = new event();
+  // e->src  = m_sid;
+  // e->mode = event::eInbound;
+  // e->msg_type = message_type;
+  // e->ja = ja;
+  // if (pendreq) e->cb_data = pendreq->cb_data;
+  // e->internal_req_id = pend2.internal_req_id;
+  // e->user = pend2.user;
+  // m_evl.push( e );
+
+  // new style, using a dedicated event class for inbound messages
+  inbound_message_event * ev = new inbound_message_event(message_type);
+  ev->src = handle();
+  ev->ja = ja;
+  ev->msg = ja;
+  if (pendreq) ev->cb_data  = pendreq->cb_data;
+  ev->internal_req_id  = pend2.internal_req_id;
+  ev->user = pend2.user;
+  m_evl.push( ev );
 
   // TODO: arrrgh. Cannot use this delete here, because it currently seems to
   // also delete the internal pointer the CB object, which there causes a core
@@ -660,9 +668,6 @@ void Session::send_request( int request_type,
                             build_message_cb_v2 msg_builder )
 {
   uint64_t request_id = ++m_request_id; // TODO: needs to be atomic
-
-
-
 
   // TODO: here I am using the PendingRegister struct ... but question is, do I
   // need a request-specific structure, or, can I have something generic?
@@ -766,7 +771,7 @@ bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count)
   if (!m_is_closing)
   {
     std::lock_guard<std::mutex> guard(m_handle_lock);
-    if (m_handle) m_handle->send_bytes(bufs, count, false);
+    if (m_handle) m_handle->write_bufs(bufs, count, false);
   }
   return true;
 }
@@ -990,7 +995,7 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
 void Session::notify_session_state_change(bool is_open)
 {
   session_state_event * e = new session_state_event(is_open);
-  e->src  = m_sid;
+  e->src  = handle();
   e->mode = event::eInbound;
   m_evl.push( e );
 }

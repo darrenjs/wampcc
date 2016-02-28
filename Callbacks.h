@@ -23,7 +23,7 @@ typedef int t_request_id;
 typedef uint64_t t_call_id;
 typedef uint64_t t_sid;
 
-typedef std::shared_ptr<int> session_handle;
+typedef std::weak_ptr<int> session_handle;
 
 /* Information about a session that once set, will never change, and is used to
  * uniquely identify it. */
@@ -80,19 +80,15 @@ struct call_info
   std::string  procedure; /* rpc target */
 };
 
-
 typedef std::function<void(t_call_id,
-                           t_sid,
                            const std::string&,
                            int request_id,
                            rpc_args&,
                            void* user) > rpc_cb;
 
-
 typedef std::function<  void (call_info&, rpc_args&, void*) > call_user_cb; // TODO: rename me
 
-
-typedef std::function<void(uint64_t sid, int, void*)> tcp_connect_attempt_cb;
+typedef std::function<void(session_handle, int, void*)> tcp_connect_attempt_cb;
 
 } // namespace XXX
 

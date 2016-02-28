@@ -76,7 +76,8 @@ public:
 
 
 
-  typedef std::function<void(class event*) > event_cb;
+  typedef std::function<void(event*) > event_cb;
+  typedef std::function<void(inbound_message_event*) > event_cb2;
 
 
   class event_loop
@@ -95,6 +96,7 @@ public:
     void set_session_man(SessionMan*);
 
     void set_handler(unsigned int eventid, event_cb handler);
+    void set_handler2(unsigned int eventid, event_cb2 handler);
 
 
   private:
@@ -127,6 +129,7 @@ public:
     SessionMan* m_sesman;
 
     std::vector<event_cb> m_handlers;
+    std::vector<event_cb2> m_handlers2;
 };
 
 } // namespace XXX

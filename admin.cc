@@ -63,7 +63,7 @@ int tep()
 
 std::mutex              g_active_session_mutex;
 std::condition_variable g_active_session_condition;
-XXX::t_sid g_sid { 0 };
+XXX::session_handle g_sid;
 bool g_active_session_notifed = false;
 
 enum AdminEvent
@@ -94,16 +94,11 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
   event_queue_condition.notify_one();
 }
 
-void connect_cb_2(uint64_t sid, int status, void* /* user */)
+void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)
 {
-  auto __logptr = logger;
-
-  g_sid = sid;
-
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
-
+  g_sid = sh;
   g_active_session_notifed = true;
-  _INFO_( "got session, status=" << status << ", sid=" << sid );
   g_active_session_condition.notify_one();
 }
 
@@ -170,12 +165,15 @@ int main(int /*argc*/, char** /*argv*/)
 
   _INFO_("... wait complete");
 
-  if (g_sid == 0)
+  auto sp = g_sid.lock();
+  if (!sp)
   {
     /* we failed to connect */
     _WARN_("failed to connect");
     return 1;
   }
+  _INFO_( "got session, sid=" << *sp );
+
 
   auto wait_interval = std::chrono::seconds(5);
 

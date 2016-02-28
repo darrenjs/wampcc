@@ -125,7 +125,7 @@ void rpc_man::invoke_rpc(jalson::json_array& /*jv*/)
   // cb(requestid, arg_list, arg_dict, it->second.second);
 }
 
-int rpc_man::handle_register_event(SID src,
+int rpc_man::handle_register_event(session_handle& sh,
                                    jalson::json_array& ja)
 {
   //int size = ja.size();
@@ -134,7 +134,7 @@ int rpc_man::handle_register_event(SID src,
   rpc_details* r = new rpc_details();
   r->registration_id = 0;
   r->uri = procedure_uri;
-  r->sid = src;
+  r->sesionh = sh;
 
   {
     r->registration_id = m_next_regid++;

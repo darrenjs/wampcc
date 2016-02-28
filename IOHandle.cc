@@ -227,6 +227,7 @@ void IOHandle::on_close()
 {
   /* IO thread */
 
+  // we are ready for deletion once all our internal libuv handles are closed.
   if (++m_close_count == 4) m_ready_for_delete = true;
 }
 
@@ -297,9 +298,6 @@ void IOHandle::write_async_cb()
     return;
   }
 
-
-
-//  std::cout << "write_async_cb\n";
   bool do_termination = false;
   std::vector< uv_buf_t >  copy;
 
@@ -392,42 +390,17 @@ void IOHandle::on_passive_close()
 
   // instruct listener never to call us again
   if (m_listener) m_listener->on_close(0);
+  m_listener = nullptr;
 
-  // raise an async request to close the socket
+  /* Raise an async request to close the socket.  This will be the last async
+   * operation requested.  I.e., there will no more requests coming from the
+   * Session object which owns this handle. */
   m_do_async_close = true;
   uv_async_send( &m_write_async );
-
-
-
-  // // close the UV handle
-  // if (! uv_is_closing((uv_handle_t *) m_uv_handle) )
-  // {
-  //   std::cout << "going into uv_close\n";
-  //   uv_close((uv_handle_t*)m_uv_handle, io_on_close_cb); // TODO: not sure about io_on_close here
-  // }
-
-
-  // // raise the last async operation
-  // {
-  //   std::lock_guard<std::mutex> guard(m_pending_write_lock);
-
-  //   if (!m_async_pending && m_async_allowed)
-  //   {
-  //     // std::cout << "raised async\n";
-  //     m_async_pending = true;
-  //     uv_async_send( &m_write_async );
-  //   }
-  //   else
-  //   {
-  //     // std::cout << "not raised\n";
-  //   }
-  //   m_async_allowed = false;
-  // }
-
 }
 
 // TODO: need to use the close variable
-void IOHandle::send_bytes(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
+void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
 {
   std::vector< uv_buf_t > bufs;
   bufs.reserve(count);

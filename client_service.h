@@ -23,7 +23,7 @@ class Session;
 class SessionMan;
 class client_service;
 class event_loop;
-
+class inbound_message_event;
 
 /*
   Combine the Callee and Caller interfaces
@@ -65,17 +65,15 @@ public:
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_reply(t_call_id,
-                  t_sid session,
                   t_request_id request_id,
                   rpc_args& the_args);
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_error(t_call_id,
-                  t_sid session,
                   t_request_id request_id,
                   std::string& error);
 
-  void add_topic()     {}
+  void add_topic()  {}
 
 
   // which session would this go out?  i.e. can this client_service support multiple sessions?
@@ -91,8 +89,8 @@ private:
   client_service(const client_service&) = delete;
   client_service& operator=(const client_service&) = delete;
 
-  void handle_REGISTERED(class event*);
-  void handle_INVOCATION(class event*);
+  void handle_REGISTERED(inbound_message_event*);
+  void handle_INVOCATION(inbound_message_event*);
   void handle_session_state_change(Session*, bool is_open);
 
   void register_procedures();
@@ -109,7 +107,7 @@ private:
 
   struct RegistrationKey
   {
-    SID s;
+    unsigned int s;
     int id;
     bool operator<(const RegistrationKey& k) const;
   };
@@ -124,7 +122,7 @@ private:
 
   struct call_context
   {
-    SID s;
+    session_handle seshandle;
     int requestid;
   };
   size_t m_callid = 0;

@@ -98,6 +98,8 @@ namespace XXX
     /* IO thread */
 
     std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+    // TODO tryong to do an immediate delete
     m_sessions.closed.push_back( & s );
 
     auto it = m_sessions.active.begin();
@@ -136,10 +138,27 @@ namespace XXX
 
 //----------------------------------------------------------------------
 
-void SessionMan::send_to_session(SID dest,
+
+void SessionMan::send_to_session(session_handle handle,
                                  build_message_cb_v4 msg_builder)
 {
   std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+  auto sp = handle.lock();
+  if (!sp)
+  {
+    _WARN_("failed to lock the session handle");
+    return;
+  }
+  SID dest( *sp );
+
+
+  if (dest == SID())
+  {
+    _WARN_("ignoring attempt to send to session with id 0");
+    return;
+  }
+
   auto it = m_sessions.active.find( dest );
 
   if (it != m_sessions.active.end())
@@ -147,36 +166,95 @@ void SessionMan::send_to_session(SID dest,
     it->second->send_msg( msg_builder );
   }
   else
-   {
-     throw std::runtime_error("cannot send to session; session not found");
-   }
+  {
+    std::ostringstream os;
+    os << "session send failed; cannot find session with id " << dest.unique_id();
+    throw std::runtime_error( os.str() );
+  }
 }
 
 //----------------------------------------------------------------------
 
-void SessionMan::send_to_session(SID s, jalson::json_array& msg)
+void SessionMan::send_to_session(session_handle handle, jalson::json_array& msg)
 {
-  bool is_final = false;
   std::lock_guard<std::mutex> guard(m_sessions.lock);
-  auto it = m_sessions.active.find( s );
+
+  auto sp = handle.lock();
+  if (!sp)
+  {
+    _WARN_("failed to lock the session handle");
+    return;
+  }
+
+  SID dest( *sp );
+  if (dest == SID())
+  {
+    _WARN_("ignoring attempt to send to session with id 0");
+    return;
+  }
+
+  bool is_final = false;
+
+  auto it = m_sessions.active.find( dest );
   if (it != m_sessions.active.end())
   {
     it->second->send_msg(msg, is_final);
   }
   else
   {
-    throw std::runtime_error("cannot send to session; session not found");
+    std::ostringstream os;
+    os << "session send failed; cannot find session with id " << dest;
+    throw std::runtime_error( os.str() );
   }
 }
 
+// void SessionMan::send_to_session(SID dest, jalson::json_array& msg)
+// {
+//   if (dest == SID())
+//   {
+//     _WARN_("ignoring attempt to send to session with id 0 : " << msg);
+//     return;
+//   }
+
+//   bool is_final = false;
+//   std::lock_guard<std::mutex> guard(m_sessions.lock);
+//   auto it = m_sessions.active.find( dest );
+//   if (it != m_sessions.active.end())
+//   {
+//     it->second->send_msg(msg, is_final);
+//   }
+//   else
+//   {
+//     std::ostringstream os;
+//     os << "session send failed; cannot find session with id " << dest;
+//     throw std::runtime_error( os.str() );
+//   }
+// }
+
 //----------------------------------------------------------------------
 
-void SessionMan::send_request(SID dest,
+void SessionMan::send_request(session_handle handle_weak,
                               int request_type,
                               unsigned int internal_req_id,
                               build_message_cb_v2 msg_builder)
 {
   std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+  auto sp = handle_weak.lock();
+  if (!sp)
+  {
+    _WARN_("failed to lock the session handle");
+    return;
+  }
+
+  SID dest( *sp );
+  if (dest == SID())
+  {
+    _WARN_("ignoring attempt to send to session with id 0");
+    return;
+  }
+
+
   auto it = m_sessions.active.find( dest );
   if (it != m_sessions.active.end())
   {
@@ -196,11 +274,17 @@ void SessionMan::handle_event(session_state_event* ev)
 
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
-    auto it = m_sessions.active.find( ev->src );
+
+    auto sp = ev->src.lock();
+    if (!sp) return;
+    SID sid ( *sp );
+
+
+    auto it = m_sessions.active.find( sid );
 
     if (it == m_sessions.active.end())
     {
-      _ERROR_("ignoring session state event for non active session sid:" << ev->src);
+      _ERROR_("ignoring session state event for non active session sid:" << sid);
       return;
     }
 

@@ -52,11 +52,11 @@ client_service::client_service(Logger * logptr,
   // m_evl.set_handler(CHALLENGE,
   //                   [this](class event* ev){ this->handle_CHALLENGE(ev); } );
 
-  m_evl->set_handler(REGISTERED,
-                    [this](class event* ev){ this->handle_REGISTERED(ev); } );
+  m_evl->set_handler2(REGISTERED,
+                      [this](inbound_message_event* ev){ this->handle_REGISTERED(ev); } );
 
-  m_evl->set_handler(INVOCATION,
-                    [this](class event* ev){ this->handle_INVOCATION(ev); } );
+  m_evl->set_handler2(INVOCATION,
+                      [this](inbound_message_event* ev){ this->handle_INVOCATION(ev); } );
 
   m_io_loop->m_new_client_cb = [this](IOHandle* h, int /* status*/ ,tcp_connect_attempt_cb, void*){this->new_client(h);};
 }
@@ -76,7 +76,6 @@ void client_service::handle_session_state_change(Session* sptr, bool is_open)
   if (is_open == false) return;
 
   _INFO_("session is now ready ... registering procedures");
-
 
   // TODO: this must come only after we have been authenticated
   // register our procedures
@@ -100,12 +99,11 @@ void client_service::handle_session_state_change(Session* sptr, bool is_open)
              ]
           */
 
-
           jalson::json_array msg;
           msg.push_back( REGISTER );
           msg.push_back( request_id );
           msg.push_back( jalson::json_object() );
-          msg.push_back( procedure  );
+          msg.push_back( procedure );
 
           Request_Register_CD_Data * cb_data = new Request_Register_CD_Data(); // TODO: memleak?
           cb_data->procedure = procedure;
@@ -117,10 +115,9 @@ void client_service::handle_session_state_change(Session* sptr, bool is_open)
         };
 
       // TODO: instead of 0, need to have a valie intenral request id
-      m_sesman->send_request( sptr->sid(), REGISTER, 0, msg_builder2);
+      m_sesman->send_request( sptr->handle(), REGISTER, 0, msg_builder2);
     }
   }
-
 
 }
 
@@ -190,7 +187,7 @@ bool client_service::add_procedure(const std::string& uri,
 
 //----------------------------------------------------------------------
 
-void client_service::handle_REGISTERED(event* ev)
+void client_service::handle_REGISTERED(inbound_message_event* ev)
 {
   Request_Register_CD_Data* cb_data = nullptr;
 
@@ -201,38 +198,47 @@ void client_service::handle_REGISTERED(event* ev)
 
   if (cb_data)
   {
-
     // TODO: check, what type does WAMP allow here?
     int registration_id = ev->ja[2].as_sint();
 
-    RegistrationKey key;
-    key.s  = ev->src;
-    key.id = registration_id;
-
-
-    // OKAY: when I sent a REGISTER request, I did not store the REQUEST ID
-    // anywhere, did I ? So I need to find that request, and store it.  Wheere is
-    // the best place to store it?
+    if (auto sp = ev->src.lock())
     {
-      std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
-      m_registrationid_map[ key ] = cb_data->procedure;
+      RegistrationKey key;
+      key.s  = *sp;
+      key.id = registration_id;
+
+
+      // OKAY: when I sent a REGISTER request, I did not store the REQUEST ID
+      // anywhere, did I ? So I need to find that request, and store it.  Wheere is
+      // the best place to store it?
+      {
+        std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
+        m_registrationid_map[ key ] = cb_data->procedure;
+      }
+      _INFO_("procedure '" << cb_data->procedure << "' registered with key "
+             << key.s << ":" << key.id);
     }
-    _INFO_("procedure '" << cb_data->procedure << "' registered with key "
-           << key.s << ":" << key.id);
   }
   else
   {
-    _ERROR_( "ERROR: failed to process end-point registered message");
+    _ERROR_( "ERROR: failed to process end-point registered message; no cb_data");
   }
 }
 
 //----------------------------------------------------------------------
 
-void client_service::handle_INVOCATION(event* ev) // change to lowercase
+void client_service::handle_INVOCATION(inbound_message_event* ev) // change to lowercase
 {
+  auto sp = ev->src.lock();
+  if (!sp)
+  {
+    // TODO: add handler for this situation
+    return;
+  }
+
   // TODO: need to parse the INVOCATION message here, eg, check it is valid
   RegistrationKey rkey;
-  rkey.s  = ev->src;
+  rkey.s  = *sp;
   rkey.id = ev->ja[2].as_sint();
 
   std::string procname;
@@ -283,13 +289,14 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
       // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
       std::unique_lock<std::mutex> guard(m_calls_lock);
       mycallid = ++m_callid;
-      m_calls[ mycallid ] . s = rkey.s;
+//      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
+      m_calls[ mycallid ] . seshandle = ev->src;
       m_calls[ mycallid ] . requestid = reqid;
     }
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, rkey.s.unique_id(), procname, reqid, my_rpc_args, rpc_actual.second);
+      rpc_actual.first(mycallid, procname, reqid, my_rpc_args, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -315,7 +322,6 @@ void client_service::handle_INVOCATION(event* ev) // change to lowercase
 //----------------------------------------------------------------------
 
 void client_service::post_reply(t_call_id callid,
-                                t_sid sid,
                                 t_request_id reqid,
                                 rpc_args& the_args)
 {
@@ -331,11 +337,11 @@ void client_service::post_reply(t_call_id callid,
       m_calls.erase( it );
     }
   }
-  if (context.s != SID::null_sid) return;
+
 
   outbound_response_event* ev = new outbound_response_event();
 
-  ev->destination   = SID( sid );
+  ev->destination   = context.seshandle;;
   ev->response_type = YIELD;
   ev->request_type  = INVOCATION;
   ev->reqid         = reqid;
@@ -347,7 +353,6 @@ void client_service::post_reply(t_call_id callid,
 //----------------------------------------------------------------------
 
 void client_service::post_error(t_call_id callid,
-                                t_sid sid,
                                 t_request_id reqid,
                                 std::string& error_uri)
 {
@@ -363,17 +368,17 @@ void client_service::post_error(t_call_id callid,
       m_calls.erase( it );
     }
   }
-  if (context.s != SID::null_sid) return;
 
   outbound_response_event* ev = new outbound_response_event();
 
-  ev->destination   = SID( sid );
+  ev->destination   = context.seshandle;
   ev->response_type = ERROR;
   ev->request_type  = INVOCATION;
   ev->reqid         = reqid;
   ev->error_uri     = error_uri;
 
   m_evl->push( ev );
+
 }
 
 

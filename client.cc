@@ -29,7 +29,6 @@ struct callback_t
 };
 
 void procedure_cb(XXX::t_call_id callid,
-                  XXX::t_sid sid,
                   const std::string& procedure,
                   XXX::t_request_id req_id,
                   XXX::rpc_args& the_args,
@@ -41,7 +40,7 @@ void procedure_cb(XXX::t_call_id callid,
   auto __logptr = logger;
   _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args
           << ", user:" << cbdata->request
-          << ", req_id:" << req_id << ", sid: " << sid);
+          << ", req_id:" << req_id);
 
 //  throw std::runtime_error("bad alloc");
   auto my_args = the_args;
@@ -50,7 +49,7 @@ void procedure_cb(XXX::t_call_id callid,
   jalson::json_array & arr = my_args.args.as_array();
   arr.push_back("hello");
   arr.push_back("back");
-  cbdata->svc->post_reply(callid, sid, req_id, my_args);
+  cbdata->svc->post_reply(callid, req_id, my_args);
 
 
 

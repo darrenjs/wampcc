@@ -97,7 +97,7 @@ dealer_service::dealer_service(Logger *logptr,
       if (h)
       {
         Session* sptr = m_sesman -> create_session(h, true);
-        ev->src = sptr->sid();
+        ev->src = sptr->handle();
       }
       m_evl->push( ev );
     };
@@ -217,7 +217,6 @@ unsigned int dealer_service::call_rpc(std::string rpc,
                                       void* cb_user_data)
 {
   /* USER-THREAD */
-
 
   unsigned int int_req_id = m_next_internal_request_id++;
 
