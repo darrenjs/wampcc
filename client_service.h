@@ -95,9 +95,6 @@ private:
 
   void register_procedures();
 
-  void on_io_timer();
-
-
   Logger *__logptr; /* name chosen for log macros */
 
   config m_config;

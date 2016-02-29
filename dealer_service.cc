@@ -71,7 +71,7 @@ dealer_service::dealer_service(Logger *logptr,
                                dealer_listener* l)
   : __logptr( logptr ),
     m_io_loop( new IOLoop( logptr,
-                           [this](){this->on_io_timer();},
+                           [this](){},
                            [this](){this->on_io_async();} )),
     m_evl( new event_loop( logptr ) ),
   m_sesman( new SessionMan(logptr, *m_evl.get()) ),
@@ -350,17 +350,6 @@ unsigned int dealer_service::call_rpc(std::string rpc,
 void dealer_service::rpc_registered_cb(const rpc_details* ev)
 {
   if (m_listener) m_listener->rpc_registered( ev->uri );
-}
-
-//----------------------------------------------------------------------
-
-
-// TODO: this can be generated from teh EVL thread, via a timeout on the wait.
-void dealer_service::on_io_timer()
-{
-  /* IO-THREAD */
-  event  * ev = new event(event::house_keeping);
-  m_evl->push( ev );
 }
 
 //----------------------------------------------------------------------

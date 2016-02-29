@@ -44,7 +44,6 @@ public:
     outbound_call_event,
     outbound_response_event,
     outbound_message,
-    house_keeping,
     tcp_connect_event
   } type;
 

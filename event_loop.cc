@@ -4,7 +4,12 @@
 #include "WampTypes.h"
 #include "Logger.h"
 
+#include <chrono>
+
 namespace XXX {
+
+// TODO: set to 1000; for testing, set to 1 ms
+#define SYSTEM_HEARTBEAT_MS 1
 
 /* Constructor */
 event_loop::event_loop(Logger *logptr)
@@ -85,6 +90,8 @@ void event_loop::push(event* ev)
 
 void event_loop::eventmain()
 {
+  auto lasthb = std::chrono::steady_clock::now();
+  const auto timeout = std::chrono::milliseconds( SYSTEM_HEARTBEAT_MS );
 
   /* A note on memory management of the event objects.  Once they are pushed,
    * they are stored as shared pointers.  This allows other parts of the code to
@@ -95,10 +102,21 @@ void event_loop::eventmain()
   {
     std::vector< std::shared_ptr<event> > to_process;
     {
+
       std::unique_lock<std::mutex> guard(m_mutex);
-      m_condvar.wait(guard,
-                     [this](){ return !m_queue.empty() && m_queue.size()>0; } );
+      m_condvar.wait_for(guard,
+                         timeout,
+                         [this](){ return !m_queue.empty() && m_queue.size()>0; } );
       to_process.swap( m_queue );
+    }
+
+    auto tnow = std::chrono::steady_clock::now();
+    auto milli_since_hb = std::chrono::duration_cast<std::chrono::milliseconds>(tnow - lasthb);
+
+    if (milli_since_hb.count() >= SYSTEM_HEARTBEAT_MS)
+    {
+      lasthb = tnow;
+      if (m_sesman) m_sesman->handle_housekeeping_event( );
     }
 
     for (auto & ev : to_process)
@@ -209,12 +227,7 @@ void event_loop::process_event(event * ev)
         throw std::runtime_error("no handler for session state event");  // TODO: should be a event exception?
       break;
     }
-    case event::house_keeping :
-    {
-      if (m_sesman)
-        m_sesman->handle_housekeeping_event( );
-      break;
-    }
+
     case event::tcp_connect_event :
     {
       tcp_connect_event * tcpev = (tcp_connect_event*) ev;

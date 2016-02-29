@@ -39,7 +39,7 @@ client_service::client_service(Logger * logptr,
   : __logptr( logptr),
     m_config( config ),
     m_io_loop( new IOLoop( logptr,
-                           [this](){this->on_io_timer(); },
+                           [this](){ },
                            [this](){} ) ),
     m_evl( new event_loop(logptr) ),
     m_sesman(new SessionMan(__logptr, *m_evl.get()))
@@ -379,15 +379,6 @@ void client_service::post_error(t_call_id callid,
 
   m_evl->push( ev );
 
-}
-
-
-// TODO: this can be generated from teh EVL thread, via a timeout on the wait.
-void client_service::on_io_timer()
-{
-  /* IO-THREAD */
-  event  * ev = new event(event::house_keeping);
-  m_evl->push( ev );
 }
 
 } // namespace XXX
