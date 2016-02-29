@@ -108,7 +108,7 @@ LIBS     = \
 	$(JALSONLIBSTATIC) \
 	-L/home/${USER}/work/dev/build/linux/lib \
 	-lpthread \
-    -luv \
+    -lrt \
 	-lcrypto
 
 #----------------------------------------------------------------------
