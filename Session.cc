@@ -157,6 +157,7 @@ void Session::close(int)
 void Session::on_close(int)
 {
   /* IO thread */
+  _INFO_( "Session::on_close" );
 
   m_closed = time(NULL);
 
@@ -166,7 +167,6 @@ void Session::on_close(int)
     m_handle = nullptr;
   }
 
-  _INFO_( "Session::on_close" );
   if (m_listener)
   {
     m_listener->session_closed(*this);

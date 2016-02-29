@@ -91,7 +91,7 @@ private:
 
   void handle_REGISTERED(inbound_message_event*);
   void handle_INVOCATION(inbound_message_event*);
-  void handle_session_state_change(Session*, bool is_open);
+  void handle_session_state_change(session_handle, bool is_open);
 
   void register_procedures();
 

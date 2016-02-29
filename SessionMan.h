@@ -27,7 +27,7 @@ namespace XXX {
   typedef std::function<jalson::json_array (int) > build_message_cb;
 
 
-  typedef std::function<void(Session*, bool) > session_state_cb;
+  typedef std::function<void(session_handle, bool) > session_state_cb;
 
 
 class SessionMan : public SessionListener

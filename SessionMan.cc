@@ -297,7 +297,7 @@ void SessionMan::handle_event(session_state_event* ev)
     }
   }
 
-  if (m_session_event_cb) m_session_event_cb(sptr, ev->is_open);
+  if (m_session_event_cb) m_session_event_cb(sptr->handle(), ev->is_open);
 }
 
 //----------------------------------------------------------------------
@@ -313,13 +313,15 @@ void SessionMan::handle_housekeeping_event()
 {
   this->heartbeat_all();
 
-
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
 
     // TODO: I can move the deletion to outside of the critical section.
 //    _INFO_("deleting expired sessions: " << m_sessions.closed.size());
-    for (auto & i : m_sessions.closed) delete i;
+    for (auto & i : m_sessions.closed)
+    {
+      delete i;
+    }
     m_sessions.closed.clear();
   }
 }

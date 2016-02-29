@@ -77,11 +77,11 @@ static void io_on_writeclose(uv_write_t *req, int status)
 //   iohandle->on_close();
 // }
 
-static void io_on_close_cb(uv_handle_t* handle)
-{
-  IOHandle * iohandle = (IOHandle *) handle->data;
-  iohandle->on_close();
-}
+// static void io_on_close_cb(uv_handle_t* handle)
+// {
+//   IOHandle * iohandle = (IOHandle *) handle->data;
+//   iohandle->on_close();
+// }
 
 
 // TODO: who allocated buf? I think it is on a stack somewhere.
@@ -127,6 +127,9 @@ static void io_on_read_cb(uv_stream_t*  uvh,
   }
   catch (...)
   {
+    // TODO: catch excetion here? and close socket?  Should do this, just in
+    // case an exception is thrown due to bad data ... dont want to keep reading
+    // from the same bad data stream.
     std::cout << "caught exception during io callback\n";
   }
 
@@ -136,11 +139,11 @@ static void io_on_read_cb(uv_stream_t*  uvh,
 
 // TODO: crash error here, if this cb is invoked after handle has been deleted!
 // need some kind of reference counter.
-static void iohandle_write_async_cb(uv_async_t* handle)
-{
-  IOHandle* h = static_cast<IOHandle*>( handle->data );
-  h->write_async_cb();
-}
+// static void iohandle_write_async_cb(uv_async_t* handle)
+// {
+//   IOHandle* h = static_cast<IOHandle*>( handle->data );
+//   h->write_async_cb();
+// }
 
 static void iohandle_writeclose_async_cb(uv_async_t* handle)
 {
@@ -172,7 +175,10 @@ IOHandle::IOHandle(uv_stream_t * h, IOLoop * loop)
   h->data = this;
 
   // set up the async handler
-  uv_async_init(loop->uv_loop(), &m_write_async, iohandle_write_async_cb);
+  uv_async_init(loop->uv_loop(), &m_write_async, [](uv_async_t* uvh){
+      IOHandle* h = static_cast<IOHandle*>( uvh->data );
+      h->write_async_cb();
+    });
   m_write_async.data = this;
 
   // set up the async handler
@@ -233,14 +239,10 @@ void IOHandle::on_close()
 
 void IOHandle::on_read(char* buf, size_t len)
 {
-  // TODO: catch excetion here? and close socket?
+  /* IO thread */
+
   if (m_listener) m_listener->on_read(buf, len);
 }
-/*
-
-
-
-*/
 
 
 void IOHandle::close_async_cb()
@@ -290,10 +292,22 @@ void IOHandle::write_async_cb()
     // TODO: not sure I need these ... added when looking for a memory leak.  I
     // think I do need this, becuase without, I do get a lot of core dumps.
     std::cout << "closing handles\n";
-    uv_close((uv_handle_t*)&m_write_async, io_on_close_cb);
-    uv_close((uv_handle_t*)&m_writeclose_async, io_on_close_cb);
-    uv_close((uv_handle_t*)&m_close_async, io_on_close_cb);
-    uv_close((uv_handle_t*)m_uv_handle, io_on_close_cb);
+    uv_close((uv_handle_t*)&m_write_async, [](uv_handle_t* uvh){
+        IOHandle * h = (IOHandle *) uvh->data;
+        h->on_close();
+      });
+    uv_close((uv_handle_t*)&m_writeclose_async,  [](uv_handle_t* uvh){
+        IOHandle * h = (IOHandle *) uvh->data;
+        h->on_close();
+      });
+    uv_close((uv_handle_t*)&m_close_async,  [](uv_handle_t* uvh){
+        IOHandle * h = (IOHandle *) uvh->data;
+        h->on_close();
+      });
+    uv_close((uv_handle_t*)m_uv_handle,  [](uv_handle_t* uvh){
+        IOHandle * h = (IOHandle *) uvh->data;
+        h->on_close();
+      });
 
     return;
   }

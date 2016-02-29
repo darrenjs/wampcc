@@ -47,7 +47,7 @@ client_service::client_service(Logger * logptr,
   m_evl->set_session_man( m_sesman.get() );
 
   m_sesman->set_session_event_listener(
-    [this](Session* s, bool b){this->handle_session_state_change(s,b);});
+    [this](session_handle sh, bool b){this->handle_session_state_change(sh,b);});
 
   // m_evl.set_handler(CHALLENGE,
   //                   [this](class event* ev){ this->handle_CHALLENGE(ev); } );
@@ -71,7 +71,7 @@ client_service::~client_service()
   m_io_loop->stop();
 }
 
-void client_service::handle_session_state_change(Session* sptr, bool is_open)
+void client_service::handle_session_state_change(session_handle sh, bool is_open)
 {
   if (is_open == false) return;
 
@@ -115,7 +115,7 @@ void client_service::handle_session_state_change(Session* sptr, bool is_open)
         };
 
       // TODO: instead of 0, need to have a valie intenral request id
-      m_sesman->send_request( sptr->handle(), REGISTER, 0, msg_builder2);
+      m_sesman->send_request(sh, REGISTER, 0, msg_builder2);
     }
   }
 
