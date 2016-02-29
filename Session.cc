@@ -157,9 +157,7 @@ void Session::close(int)
 void Session::on_close(int)
 {
   /* IO thread */
-  _INFO_( "Session::on_close" );
-
-  m_closed = time(NULL);
+  _INFO_( "Session::on_close #" << *m_session_handle);
 
   // important ... after the on_close, we must not call the IO handle again
   {
@@ -167,11 +165,13 @@ void Session::on_close(int)
     m_handle = nullptr;
   }
 
-  if (m_listener)
-  {
-    m_listener->session_closed(*this);
-    m_listener = nullptr;
-  }
+  m_closed = time(NULL);
+
+  // if (m_listener)
+  // {
+  //   m_listener->session_closed(*this);
+  //   m_listener = nullptr;
+  // }
 
   // deliver an event on the event-loop
   notify_session_state_change( false );

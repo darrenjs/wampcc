@@ -73,7 +73,24 @@ client_service::~client_service()
 
 void client_service::handle_session_state_change(session_handle sh, bool is_open)
 {
-  if (is_open == false) return;
+  if (is_open == false)
+  {
+    auto sp = sh.lock();
+    if (sp)
+    {
+      std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
+      for (auto it = m_registrationid_map.begin(); it!=m_registrationid_map.end();)
+      {
+        if (it->first.s == *sp)
+        {
+          _INFO_("erasing registion " << *sp);
+          m_registrationid_map.erase( it++ );
+        }
+        else ++it;
+      }
+    }
+
+  }
 
   _INFO_("session is now ready ... registering procedures");
 
