@@ -207,6 +207,5 @@ int main(int /*argc*/, char** /*argv*/)
     }
   }
 
-  _INFO_("terminating");
   return 0;
 }
