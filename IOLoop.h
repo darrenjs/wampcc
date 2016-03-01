@@ -64,6 +64,10 @@ public:
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
+
+  Logger * logptr() const { return __logptr; }
+
+private:
   Logger * __logptr;
   uv_loop_t*   m_uv_loop;
   std::unique_ptr<uv_timer_t> m_timer;
@@ -71,6 +75,7 @@ public:
   std::thread  m_thread;
   std::atomic_bool m_continue_loop;
 
+public:
   NewConnectionCallback m_new_client_cb;
 
 private:

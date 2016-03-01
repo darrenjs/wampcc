@@ -716,9 +716,7 @@ void Session::send_msg(jalson::json_array& jv, bool final)
     update_state_for_outbound(jv);
     if (final)
     {
-      // TODO EASY : remove this, and only have 1  send function in IOHandle
-      // std::lock_guard<std::mutex> guard(m_handle_lock);
-      // if (m_handle) m_handle->send_bytes_close(msg.c_str(), msg.size() );
+      // TODO: think about how to manage session shutdown
       // m_is_closing = true;
     }
     else
@@ -726,7 +724,7 @@ void Session::send_msg(jalson::json_array& jv, bool final)
       // write message
       bufs[1].first  = (const char*)msg.c_str();
       bufs[1].second = msg.size();
-      this->send_bytes( &bufs[0], 2 );
+      this->send_bytes( &bufs[0], 2, final );
     }
   }
 }
@@ -756,7 +754,7 @@ void Session::send_msg(build_message_cb_v4 builder)
     // write message
     bufs[1].first  = (char*)str.c_str();
     bufs[1].second = str.size();
-    this->send_bytes( &bufs[0], 2 );
+    this->send_bytes( &bufs[0], 2, false );
   }
 }
 
@@ -764,14 +762,14 @@ void Session::send_msg(build_message_cb_v4 builder)
 
 //----------------------------------------------------------------------
 
-bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count)
+  bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count, bool final)
 {
   /* EVL thread */
 
   if (!m_is_closing)
   {
     std::lock_guard<std::mutex> guard(m_handle_lock);
-    if (m_handle) m_handle->write_bufs(bufs, count, false);
+    if (m_handle) m_handle->write_bufs(bufs, count, final);
   }
   return true;
 }

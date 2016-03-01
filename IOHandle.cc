@@ -4,6 +4,7 @@
 #include "IOLoop.h"
 #include "Session.h"
 #include "io_listener.h"
+#include "Logger.h"
 
 #include <iostream>
 #include <memory>
@@ -166,8 +167,9 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 }
 
 /* Constructor */
-IOHandle::IOHandle(uv_stream_t * h, IOLoop * loop)
-  : m_uv_handle(h),
+IOHandle::IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop)
+  : __logptr(logger),
+    m_uv_handle(h),
     m_loop(loop),
     m_open(true),
     m_listener( nullptr )
@@ -197,7 +199,7 @@ IOHandle::IOHandle(uv_stream_t * h, IOLoop * loop)
 /* Destructor */
 IOHandle::~IOHandle()
 {
-  std::cout << "IOHandle::~IOHandle" << "\n";
+  _INFO_( "IOHandle::~IOHandle");
   // Note, the assumption in here is that the socket will already have been
   // closed before this object is deleted.
 
