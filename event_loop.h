@@ -6,10 +6,11 @@
 #include "WampTypes.h"
 #include "event.h"
 
-#include <thread>
+#include <chrono>
 #include <condition_variable>
-#include <mutex>
 #include <memory>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 namespace XXX {
@@ -116,6 +117,8 @@ public:
     void process_inbound_error(event* e);
     void process_inbound_yield(event* e);
 
+    void hb_check();
+
     Logger *__logptr; /* name chosen for log macros */
 
     bool m_continue;  // TODO: make atomic?
@@ -130,6 +133,8 @@ public:
 
     std::vector<event_cb> m_handlers;
     std::vector<event_cb2> m_handlers2;
+
+    std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
 };
 
 } // namespace XXX

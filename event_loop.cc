@@ -4,7 +4,6 @@
 #include "WampTypes.h"
 #include "Logger.h"
 
-#include <chrono>
 
 namespace XXX {
 
@@ -18,7 +17,8 @@ event_loop::event_loop(Logger *logptr)
     m_thread(&event_loop::eventmain, this),
     m_rpcman(nullptr),
     m_sesman(nullptr),
-    m_handlers( WAMP_MSGID_MAX ) /* initial handles are empty */
+    m_handlers( WAMP_MSGID_MAX ), /* initial handles are empty */
+    m_last_hb( std::chrono::steady_clock::now() )
 {
 }
 
@@ -88,9 +88,19 @@ void event_loop::push(event* ev)
 }
 
 
+void event_loop::hb_check()
+{
+  auto tnow = std::chrono::steady_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tnow - m_last_hb);
+  if (elapsed.count() >= SYSTEM_HEARTBEAT_MS)
+  {
+    m_last_hb = tnow;
+    if (m_sesman) m_sesman->handle_housekeeping_event();
+  }
+}
+
 void event_loop::eventmain()
 {
-  auto lasthb = std::chrono::steady_clock::now();
   const auto timeout = std::chrono::milliseconds( SYSTEM_HEARTBEAT_MS );
 
   /* A note on memory management of the event objects.  Once they are pushed,
@@ -110,18 +120,11 @@ void event_loop::eventmain()
       to_process.swap( m_queue );
     }
 
-    auto tnow = std::chrono::steady_clock::now();
-    auto milli_since_hb = std::chrono::duration_cast<std::chrono::milliseconds>(tnow - lasthb);
-
-    if (milli_since_hb.count() >= SYSTEM_HEARTBEAT_MS)
-    {
-      lasthb = tnow;
-      if (m_sesman) m_sesman->handle_housekeeping_event( );
-    }
-
     for (auto & ev : to_process)
     {
       if (ev == 0) return; // TODO: use a proper sentinel event
+
+      hb_check(); // check for when there are many items work through
 
       bool error_caught = true;
       event_error wamperror("unknown");
@@ -168,9 +171,8 @@ void event_loop::eventmain()
         }
       }
 
-
-
     } // loop end
+
 
     // exception safe cleanup of events
     try
@@ -181,6 +183,9 @@ void event_loop::eventmain()
     {
       _ERROR_("caught error during cleanup of expired event objects");
     }
+
+    // for when we simply timed out and never went into the loop
+    hb_check();
   }
 }
 
