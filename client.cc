@@ -19,8 +19,8 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
 
 struct callback_t
 {
-  callback_t(XXX::client_service& s, const char* d)
-    : svc(&s),
+  callback_t(XXX::client_service* s, const char* d)
+    : svc(s),
       request(d)
   {
   }
@@ -82,36 +82,26 @@ void procedure_cb(XXX::t_call_id callid,
 int main(int /* argc */, char** /* argv */)
 {
 
-  /* TODO: review the jalson bug.  If I do this type:
-
-     jalson::json_value * ptr;
-     jalson::json_value copy ( ptr);
-
-     ... it create a 'true' value. Not what the user would expect.  I
-     encountered it specifically on the function call.
-  */
-
-
-  /* new client service */
-
   XXX::client_service::config cfg;
   cfg.port = 55555;
-  XXX::client_service mycs( logger, cfg);
-
-  std::unique_ptr<callback_t> cb1( new callback_t(mycs,"my_hello") );
-  std::unique_ptr<callback_t> cb2( new callback_t(mycs,"my_start") );
-  std::unique_ptr<callback_t> cb3( new callback_t(mycs,"my_stop") );
 
 
+  std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger, cfg) );
 
-  mycs.add_procedure("hello", procedure_cb, (void*) cb1.get());
-  mycs.add_procedure("start", procedure_cb, (void*) cb2.get());
-  mycs.add_procedure("stop",  procedure_cb, (void*) cb3.get());
+  std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_hello") );
+  std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_start") );
+  std::unique_ptr<callback_t> cb3( new callback_t(mycs.get(),"my_stop") );
 
-  mycs.start();
+  mycs->add_procedure("hello", procedure_cb, (void*) cb1.get());
+  mycs->add_procedure("start", procedure_cb, (void*) cb2.get());
+  mycs->add_procedure("stop",  procedure_cb, (void*) cb3.get());
+
+  mycs->start();
 
   while (1)  sleep(15);
 
-  std::cout << "exiting\n";
+  // explicit deletion for better control
+  mycs.reset();
+  delete logger;
   return 0;
 }
