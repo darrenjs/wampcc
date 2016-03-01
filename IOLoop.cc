@@ -37,7 +37,8 @@ static void __on_connect(uv_connect_t* __req, int status )
   else
   {
 
-    IOHandle* ioh = new IOHandle( (uv_stream_t *) ioreq->tcp_connect,
+    IOHandle* ioh = new IOHandle( __logptr,
+                                  (uv_stream_t *) ioreq->tcp_connect,
                                   ioloop );
     ioloop->add_active_handle(ioh, 0, ioreq.get());
   }
@@ -61,7 +62,8 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
   if (uv_accept(server, (uv_stream_t *) client) == 0)
   {
-    IOHandle* ioh = new IOHandle( (uv_stream_t *) client, myIOLoop);
+    IOHandle* ioh = new IOHandle( myIOLoop->logptr(),
+                                  (uv_stream_t *) client, myIOLoop);
 
     int fd = client->io_watcher.fd;
     std::cout << "accept: type=" << client->type

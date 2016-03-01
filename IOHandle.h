@@ -12,12 +12,13 @@ class Session;
 class IOLoop;
 class IOHandle;
 class io_listener;
+class Logger;
 
 
 class IOHandle
 {
 public:
-  IOHandle(uv_stream_t * h, IOLoop * loop);
+  IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop);
   ~IOHandle();
 
   IOHandle(const IOHandle&) = delete;
@@ -53,6 +54,9 @@ private:
       Send,
       Close
   };
+
+
+  Logger * __logptr;
 
   // TODO: in destructor, need to close each of these handles.
   uv_stream_t* m_uv_handle;
