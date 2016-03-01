@@ -25,8 +25,12 @@ event_loop::event_loop(Logger *logptr)
 /* Destructor */
 event_loop::~event_loop()
 {
-  this->push( 0 );
+  m_continue = false;
+  _INFO_("doing the push");
+  push( 0 );
+  _INFO_("doing the join");
   m_thread.join();
+  _INFO_("Have joined with EV thread");
 }
 
 void event_loop::set_rpc_man(rpc_man* r)
@@ -79,7 +83,6 @@ void event_loop::set_handler2(unsigned int eventid, event_cb2 handler)
 // EVL dont make a call into here once self has started into the destructor????
 void event_loop::push(event* ev)
 {
-  if (ev == 0) m_continue = false;
   auto sp = std::shared_ptr<event>(ev);
 
   std::unique_lock<std::mutex> guard(m_mutex);
@@ -107,7 +110,6 @@ void event_loop::eventmain()
    * they are stored as shared pointers.  This allows other parts of the code to
    * take ownership of the resource, if they so wish.
    */
-  _INFO_( "event loop started" );
   while (m_continue)
   {
     std::vector< std::shared_ptr<event> > to_process;
@@ -120,9 +122,12 @@ void event_loop::eventmain()
       to_process.swap( m_queue );
     }
 
+    if (!m_continue) return;
+
     for (auto & ev : to_process)
     {
-      if (ev == 0) return; // TODO: use a proper sentinel event
+      if (!m_continue) return;
+      if (ev == 0) continue; // TODO: use a proper sentinel event
 
       hb_check(); // check for when there are many items work through
 

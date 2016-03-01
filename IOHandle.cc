@@ -443,4 +443,23 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
 
 }
 
+void IOHandle::active_close()
+{
+  /* IO thread */
+
+  std::cout << "active_close\n";
+
+  // indicate we are closed at earliest oppurtunity
+  m_open = false;
+
+  // instruct listener never to call us again
+  if (m_listener) m_listener->on_close(0);
+  m_listener = nullptr;
+
+  /* Raise an async request to close the socket.  This will be the last async
+   * operation requested.  I.e., there will no more requests coming from the
+   * Session object which owns this handle. */
+  m_do_async_close = true;
+  uv_async_send( &m_write_async );
+}
 } // namespace XXX

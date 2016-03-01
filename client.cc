@@ -14,7 +14,7 @@
 #include <string.h>
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eAll,
+                                              XXX::Logger::eInfo,
                                               true);
 
 struct callback_t
@@ -81,7 +81,7 @@ void procedure_cb(XXX::t_call_id callid,
 
 int main(int /* argc */, char** /* argv */)
 {
-
+  XXX::Logger * __logptr = logger;
   XXX::client_service::config cfg;
   cfg.port = 55555;
 
@@ -98,9 +98,10 @@ int main(int /* argc */, char** /* argv */)
 
   mycs->start();
 
-  while (1)  sleep(15);
+  sleep(10);
 
   // explicit deletion for better control
+  _INFO_("main initialing shutdown");
   mycs.reset();
   delete logger;
   return 0;

@@ -45,6 +45,7 @@ public:
   void close_uv_handle();
 
   void on_passive_close();
+  void active_close();
 
   bool can_be_deleted() const { return m_ready_for_delete; }
 private:

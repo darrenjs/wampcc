@@ -96,7 +96,7 @@ namespace XXX
   void SessionMan::session_closed(Session& s)
   {
     /* IO thread */
-
+    _INFO_("SessionMan::session_closed");
     std::lock_guard<std::mutex> guard(m_sessions.lock);
 
     // TODO tryong to do an immediate delete
@@ -270,6 +270,7 @@ void SessionMan::send_request(session_handle handle_weak,
 
 void SessionMan::handle_event(session_state_event* ev)
 {
+  _INFO_("void SessionMan::handle_event");
   Session* sptr = NULL;
 
   {
@@ -293,11 +294,12 @@ void SessionMan::handle_event(session_state_event* ev)
     if (ev->is_open == false)
     {
       m_sessions.active.erase( it );
-      m_sessions.closed.push_back(it->second);
+      m_sessions.closed.push_back(sptr);
     }
   }
 
   if (m_session_event_cb) m_session_event_cb(sptr->handle(), ev->is_open);
+  _INFO_("void SessionMan::handle_event -- done");
 }
 
 //----------------------------------------------------------------------

@@ -66,9 +66,13 @@ client_service::client_service(Logger * logptr,
 /* Destructor */
 client_service::~client_service()
 {
+  _INFO_("client_service::~client_service");
+
   // TODO: dont think this is the best way to shutdown.  Should start by trying
   // to close all the sessions.
   m_io_loop->stop();
+  //m_io_loop.reset();
+  m_evl.reset();
 }
 
 void client_service::handle_session_state_change(session_handle sh, bool is_open)
@@ -89,7 +93,7 @@ void client_service::handle_session_state_change(session_handle sh, bool is_open
         else ++it;
       }
     }
-
+    return;
   }
 
   _INFO_("session is now ready ... registering procedures");

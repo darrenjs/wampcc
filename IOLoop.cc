@@ -97,19 +97,20 @@ IOLoop::IOLoop(Logger * logptr,
   : __logptr( logptr),
     m_uv_loop( new uv_loop_t() ),
     m_timer( new uv_timer_t() ),
-    m_continue_loop(true),
+    m_async( new uv_async_t() ),
     m_timer_cb ( timer_cb ),
-    m_async_cb ( async_cb )
+    m_async_cb ( async_cb ),
+    m_pending_flags( eNone )
 {
   uv_loop_init(m_uv_loop);
   m_uv_loop->data = this;
 
   // set up the async handler
-  uv_async_init(m_uv_loop, &m_async, [](uv_async_t* h) {
+  uv_async_init(m_uv_loop, m_async.get(), [](uv_async_t* h) {
       IOLoop* p = static_cast<IOLoop*>( h->data );
       p->on_async();
     });
-  m_async.data = this;
+  m_async->data = this;
 
   // set up timer
 
@@ -127,19 +128,19 @@ IOLoop::IOLoop(Logger * logptr,
 
 void IOLoop::stop()
 {
-  m_continue_loop = false;
+  {
+    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
+    m_pending_flags |= eFinal;
+  }
+
   async_send();
   m_thread.join();
+  _INFO_("Have joined with IO thread");
 }
 
 IOLoop::~IOLoop()
 {
-  // TODO: in here, should I at least try to give the sockets once last attempt to gracefull close?
-
-  if (m_continue_loop) stop();
-
   for (auto & item : m_handles) delete item;
-
   m_handles.clear();
 
   // uv_loop kept as raw pointer, because need to pass to several uv functions
@@ -173,20 +174,36 @@ void IOLoop::on_async()
 {
   /* UV Loop */
 
-  if (m_continue_loop==false)
+  _INFO_("IOLoop::on_async");
+  std::vector< io_request > work;
+  int pending_flags = eNone;
+
   {
-    uv_stop(m_uv_loop);
+    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
+    work.swap( m_pending_requests );
+    std::swap(pending_flags, m_pending_flags);
+  }
+
+  if (m_async_closed) return;
+
+  if (pending_flags & eFinal)
+  {
+    _INFO_("IOLoop::on_async -- starting handle cleanup");
+
+    for (auto & i : m_handles)
+      i->active_close();
+
+    for (auto & i : m_server_handles)
+      uv_close((uv_handle_t*)i.get(), 0);
+
+    uv_close((uv_handle_t*) m_timer.get(), 0);
+    uv_close((uv_handle_t*) m_async.get(), 0);
+
+    m_async_closed = true;
     return;
   }
 
   if (m_async_cb) m_async_cb();
-
-
-  std::vector< io_request > work;
-  {
-    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
-    work.swap( m_pending_requests );
-  }
 
   for (auto & item : work)
   {
@@ -242,21 +259,23 @@ void IOLoop::on_async()
 void IOLoop::async_send()
 {
   // cause the IO thread to wake up
-  uv_async_send( &this->m_async );
+  uv_async_send( m_async.get() );
 }
 
 void IOLoop::run_loop()
 {
-  _INFO_("IO loop running");
-  while ( m_continue_loop )
+  while ( true )
   {
     try
     {
-      uv_run(m_uv_loop, UV_RUN_DEFAULT);
+      int r = uv_run(m_uv_loop, UV_RUN_DEFAULT);
+
+      // if r == 0, there are no more handles; implies we are shutting down.
+      if (r == 0) return;
     }
     catch(...)
     {
-      // TODO: log me properly
+      // TODO: log me properly, and test these can come here
       std::cout << "exception in IOLoop thread\n";
     }
   }

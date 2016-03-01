@@ -71,9 +71,9 @@ private:
   Logger * __logptr;
   uv_loop_t*   m_uv_loop;
   std::unique_ptr<uv_timer_t> m_timer;
-  uv_async_t   m_async;
+  std::unique_ptr<uv_async_t> m_async;
   std::thread  m_thread;
-  std::atomic_bool m_continue_loop;
+  bool m_async_closed = false;
 
 public:
   NewConnectionCallback m_new_client_cb;
@@ -87,6 +87,13 @@ private:
 
   std::vector< io_request > m_pending_requests;
   std::mutex                m_pending_requests_lock;
+
+  enum PendingFlags
+  {
+    eNone  = 0x00,
+    eFinal = 0x01
+  };
+  int m_pending_flags;
 
 
   std::list< IOHandle* >m_handles; // TODO: need lock? No.

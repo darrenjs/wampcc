@@ -22,7 +22,7 @@
 XXX::NexioServer * server = nullptr;
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eAll,
+                                              XXX::Logger::eInfo,
                                               true);
 
 XXX::dealer_service * g_dealer = NULL;
@@ -207,5 +207,7 @@ int main(int /*argc*/, char** /*argv*/)
     }
   }
 
+  while (1)   sleep(1);
+  delete logger;
   return 0;
 }
