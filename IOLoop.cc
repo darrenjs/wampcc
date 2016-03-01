@@ -91,18 +91,6 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 }
 
 
-static void __io_async_cb(uv_async_t* handle)
-{
-  IOLoop* p = static_cast<IOLoop*>( handle->data );
-  p->on_async();
-}
-
-static void __io_on_timer(uv_timer_t* handle)
-{
-  IOLoop* p = static_cast<IOLoop*>( handle->data );
-  p->on_timer();
-}
-
 IOLoop::IOLoop(Logger * logptr,
                AsyncCallback timer_cb,
                AsyncCallback async_cb)
@@ -117,14 +105,20 @@ IOLoop::IOLoop(Logger * logptr,
   m_uv_loop->data = this;
 
   // set up the async handler
-  uv_async_init(m_uv_loop, &m_async, __io_async_cb);
+  uv_async_init(m_uv_loop, &m_async, [](uv_async_t* h) {
+      IOLoop* p = static_cast<IOLoop*>( h->data );
+      p->on_async();
+    });
   m_async.data = this;
 
   // set up timer
 
   uv_timer_init(m_uv_loop, m_timer.get());
   m_timer->data = this;
-  uv_timer_start(m_timer.get(), __io_on_timer, SYSTEM_HEARTBEAT_MS, SYSTEM_HEARTBEAT_MS);
+  uv_timer_start(m_timer.get(), [](uv_timer_t* h){
+      IOLoop* p = static_cast<IOLoop*>( h->data );
+      p->on_timer();
+    }, SYSTEM_HEARTBEAT_MS, SYSTEM_HEARTBEAT_MS);
 
   // TODO: I prefer to not have to do this.  Need to review what is the correct
   // policy for handling sigpipe using libuv.
