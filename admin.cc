@@ -25,7 +25,7 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eInfo,
                                               true);
 
-XXX::dealer_service * g_dealer = NULL;
+std::unique_ptr<XXX::dealer_service> g_dealer;
 
 
 int tep()
@@ -139,10 +139,10 @@ int main(int /*argc*/, char** /*argv*/)
 
   /* new client service */
   dealer_events de;
-  XXX::dealer_service d( logger, &de );
-  g_dealer = &d;
+  g_dealer.reset( new XXX::dealer_service(logger, &de) );
+
   // start the internal thread of the client
-  d.start();
+  g_dealer->start();
 
   // sleep until main loop is ready
 //  sleep(1);
@@ -151,7 +151,7 @@ int main(int /*argc*/, char** /*argv*/)
   // req.addr = "127.0.0.1";
   // req.port = 55555;
   // req.cb   = connect_cb;
-  d.connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
+  g_dealer->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
 
   // wait for a connection attempt to complete
   _INFO_("starting wait for a connection...");
@@ -208,6 +208,7 @@ int main(int /*argc*/, char** /*argv*/)
   }
 
   while (1)   sleep(1);
+  g_dealer.reset(); // delete before logger
   delete logger;
   return 0;
 }
