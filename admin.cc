@@ -19,6 +19,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
+
 XXX::NexioServer * server = nullptr;
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
@@ -26,6 +28,21 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               true);
 
 std::unique_ptr<XXX::dealer_service> g_dealer;
+
+struct user_options
+{
+    std::string addr;
+    std::string port;
+    std::string cmd;
+    std::list< std::string > cmdargs;
+
+    int verbose;
+
+    user_options()
+      : verbose(0)
+    {
+    }
+} uopts;
 
 
 int tep()
@@ -132,9 +149,85 @@ public:
 };
 
 
-
-int main(int /*argc*/, char** /*argv*/)
+static void die(const char* e)
 {
+  std::cout << e  << std::endl;
+  exit( 1 );
+}
+
+static void usage()
+{
+  exit(0);
+}
+
+static void version()
+{
+//  std::cout << PACKAGE_VERSION << std::endl;  exit(0)l
+  exit(0);
+}
+
+static void process_options(int argc, char** argv)
+{
+/*
+  struct option
+  {
+    const char *name;
+    int         has_arg;
+    int        *flag;
+    int         val;
+  };
+*/
+
+//  int digit_optind = 0;
+  static struct option long_options[] = {
+    {"help",    no_argument, 0, 'h'},
+    {"version", no_argument, 0, 'v'},
+    {NULL, 0, NULL, 0}
+  };
+  const char* optstr="hvd:";
+
+  ::opterr=1;
+
+  while (true)
+  {
+    /* "optind" is the index of the next element to be processed in argv.  It
+       is defined in the getopts header, and the system initializes this value
+       to 1.  The caller can reset it to 1 to restart scanning of the same
+       argv, or when scanning a new argument vector. */
+
+    // take a copy to remember value for after return from getopt_long()
+    //int this_option_optind = ::optind ? ::optind : 1;
+    int long_index = 0;
+
+    int c = getopt_long(argc, argv,
+                        optstr,
+                        long_options, &long_index);
+    if (c == -1) break;
+
+    switch(c)
+    {
+      case  0  : /* got long option */; break;
+      case 'd' : uopts.verbose++; break;
+      case 'h' : usage();
+      case 'v' : version();
+      case '?' : exit(1); // invalid option
+      default:
+      {
+        std::cout << "getopt_long() returned (dec) " << (unsigned int)(c) << "\n";
+        exit(1);
+      }
+    }
+  } //while
+
+  if (optind < argc) uopts.addr = argv[optind++];
+  if (optind < argc) uopts.port = argv[optind++];
+  if (optind < argc) uopts.cmd  = argv[optind++];
+  while (optind < argc) uopts.cmdargs.push_back(argv[optind++]);
+}
+
+int main(int argc, char** argv)
+{
+  process_options(argc, argv);
   auto __logptr = logger;
 
   /* new client service */
