@@ -57,7 +57,7 @@ AC_DEFINE_UNQUOTED([HAVE_JANSSON], [$have_jansson], [Define to 1 if Jannson libr
 
 
 if test "x$have_vendor" = "x0" ; then
-    AC_MSG_ERROR([You have not configured a JSON implemention vendor. Try --help. Supported vendors: jansson])
+    AC_MSG_ERROR([You have not configured a JSON implementation. Try --help. Supported vendors: jansson])
 fi
 
 

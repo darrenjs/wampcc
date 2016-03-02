@@ -65,7 +65,7 @@ must be linked to both the jalson library (`libjalson`) *and* the vendor library
 that provides the JSON parsing & generation:
 
 ```C++
-/* Basic example of use jalson */
+/* Basic example of using jalson */
 
 #include <jalson/jalson.h>
 
@@ -128,7 +128,7 @@ built and installed at a particular location:
 
 Failure to specify a vendor implementation will lead to this configure error:
 
-    configure: error: You have not configured a JSON implement ion vendor.
+    configure: error: You have not configured a JSON implementation.
 
 If all goes well, the project makefiles will be generated, and jalson can be
 built and installed by running the usual sequence of make commands:
