@@ -83,9 +83,8 @@ public:
   // sessions, then, which session has the topic we want?
   void subscribe_remote_topic() {}
 
-  void new_client(IOHandle *);
-
 private:
+
   client_service(const client_service&) = delete;
   client_service& operator=(const client_service&) = delete;
 
@@ -94,6 +93,8 @@ private:
   void handle_session_state_change(session_handle, bool is_open);
 
   void register_procedures();
+
+  void new_client(IOHandle *);
 
   Logger *__logptr; /* name chosen for log macros */
 

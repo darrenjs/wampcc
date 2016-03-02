@@ -23,7 +23,7 @@ typedef int t_request_id;
 typedef uint64_t t_call_id;
 typedef uint64_t t_sid;
 
-typedef std::weak_ptr<int> session_handle;
+typedef std::weak_ptr<t_sid> session_handle;
 
 /* Information about a session that once set, will never change, and is used to
  * uniquely identify it. */

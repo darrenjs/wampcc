@@ -106,7 +106,6 @@ Session::Session(SID s,
                  event_loop & evl,
                  bool is_dealer)
   : m_state( eInit ),
-    m_sid(s),
     __logptr(logptr),
     m_listener( listener ),
     m_handle( h ),
@@ -121,7 +120,7 @@ Session::Session(SID s,
     m_is_closing(false),
     m_evl(evl),
     m_is_dealer(is_dealer),
-    m_session_handle(std::make_shared<int>(s.unique_id()))
+    m_session_handle(std::make_shared<t_sid>(s.unique_id()))
 {
   m_handle->set_listener(this);
 }
@@ -962,9 +961,11 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
 
   if (digest == peer_digest)
   {
+    t_sid sid = *m_session_handle;
+
     jalson::json_array msg;
     msg.push_back( WELCOME );
-    msg.push_back( m_sid.unique_id() );
+    msg.push_back( sid );
 
     send_msg( msg );
 

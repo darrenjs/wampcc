@@ -69,8 +69,6 @@ namespace XXX {
             SessionListener*, event_loop&, bool is_dealer);
     ~Session();
 
-    SID sid() const { return m_sid; }
-
     /* Build CALL and enque on socket. Currently used by client-code. Might not
      * be the best place for it? */
     void call( const std::string& procedure);
@@ -141,7 +139,7 @@ namespace XXX {
 
     void notify_session_state_change(bool is_open);
 
-    SID m_sid;
+
     Logger *__logptr; /* name chosen for log macros */
     SessionListener * m_listener;
 
@@ -176,7 +174,7 @@ namespace XXX {
     std::map<int, PendingReq2 > m_pend_req_2;
     std::mutex m_pend_req_lock;
 
-    std::shared_ptr<int> m_session_handle;
+    std::shared_ptr< t_sid > m_session_handle;
   };
 
 } // namespace XXX
