@@ -325,25 +325,24 @@ void IOHandle::write_async_cb()
 
   if (m_open)
   {
-    // TODO: needs to be deleted
-    uv_write_t * req = new uv_write_t();
-    memset(req,0,sizeof(uv_write_t));
+    if (!copy.empty())
+    {
+      // TODO: poor memory management!
+      uv_write_t * req = new uv_write_t();
+      memset(req,0,sizeof(uv_write_t));
 
-    // TODO: need to handle these return types ... eg, if r indicates error,
-    // we need to free req here. And probably close the connection,
-    if (copy.size())
-      /*int r =*/ uv_write(req, m_uv_handle, &copy[0], copy.size(), io_on_write);
+      // TODO: need to handle these return types ... eg, if r indicates error,
+      // we need to free req here. And probably close the connection,
+      int r = uv_write(req, m_uv_handle, &copy[0], copy.size(), io_on_write);
+      if (r) delete req;
+
+      // TODO: is this correcT? should we be freeing here?  NOOOO....
+      for (auto &i : copy)  delete [] i.base;
+    }
   }
-
-  // TODO: is this correcT? should we be freeing here?  NOOOO....
-  for (auto &i : copy)  delete [] i.base;
-
-//  std::cout << "write_async_cb : m_async_allowed=" << m_async_allowed<< "\n";
 
   if (do_termination)
   {
-    std::cout << "IOHandle is ready for termination\n";
-
     m_ready_for_delete = true;
     return;
   }
@@ -434,13 +433,11 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
   {
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
     m_pending_write.insert(m_pending_write.end(), bufs.begin(), bufs.end());
-
-    if (m_async_allowed)
-    {
-      uv_async_send( &m_write_async );
-    }
   }
-
+  if (m_async_allowed)
+  {
+    uv_async_send( &m_write_async );
+  }
 }
 
 void IOHandle::active_close()
