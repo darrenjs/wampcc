@@ -29,7 +29,7 @@ struct io_request
 {
   std::string addr;
   int port = 0;
-  uv_tcp_t * tcp_connect = nullptr;
+  uv_tcp_t * tcp_handle = nullptr;
   tcp_connect_attempt_cb user_cb;
   void* user_data = nullptr;
   Logger * logptr;

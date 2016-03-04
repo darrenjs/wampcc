@@ -6,6 +6,8 @@
 #include <iostream>
 
 #include <unistd.h>
+#include <string.h>
+
 
 #define SYSTEM_HEARTBEAT_MS 5000
 
@@ -32,13 +34,12 @@ static void __on_connect(uv_connect_t* __req, int status )
 
     ioloop->add_active_handle(nullptr, status, ioreq.get());
 
-    delete ioreq->tcp_connect;
+    delete ioreq->tcp_handle;
   }
   else
   {
-
     IOHandle* ioh = new IOHandle( __logptr,
-                                  (uv_stream_t *) ioreq->tcp_connect,
+                                  (uv_stream_t *) ioreq->tcp_handle,
                                   ioloop );
     ioloop->add_active_handle(ioh, 0, ioreq.get());
   }
@@ -167,9 +168,8 @@ void IOLoop::create_tcp_server_socket(int port)
 
 void IOLoop::on_async()
 {
-  /* UV Loop */
+  /* IO thread */
 
-  _INFO_("IOLoop::on_async");
   std::vector< io_request > work;
   int pending_flags = eNone;
 
@@ -198,8 +198,6 @@ void IOLoop::on_async()
     return;
   }
 
-
-
   for (auto & item : work)
   {
     if (item.addr.empty())
@@ -210,41 +208,39 @@ void IOLoop::on_async()
     else
     {
       std::unique_ptr<io_request> req( new io_request( item ) );
-      req->tcp_connect = new uv_tcp_t();
-      uv_tcp_init(m_uv_loop, req->tcp_connect);
 
-      // use C++ allocator, so that I can vanilla unique_ptr
+      // use C++ allocator for the uv objects, so we can use vanilla unique_ptr
+
+      req->tcp_handle = new uv_tcp_t();
+      uv_tcp_init(m_uv_loop, req->tcp_handle);
+
       uv_connect_t * connect_req = new uv_connect_t();
       connect_req->data = (void*) req.get();
+
       struct sockaddr_in dest;
+      memset(&dest, 0, sizeof(sockaddr_in));
       uv_ip4_addr(item.addr.c_str(), item.port, &dest);
 
       _INFO_("making TCP connection to " << item.addr.c_str() <<  ":" << item.port);
       int r = uv_tcp_connect(connect_req,
-                             req->tcp_connect,
-                             (const struct sockaddr*)&dest,
+                             req->tcp_handle,
+                             (const struct sockaddr*) &dest,
                              __on_connect);
-
-      // TODO: I am not sure when to delete 'handle'
-      if (r)
+      if (r == 0)
       {
-        // libuv pattern: if a uv library function fails, then the callback will
-        // not be registered and so wont get called.
-
-        // TODO : return this error on the IO thread, eg we get an immediate error
-        // if we try to connect to 227.43.0.1 although, I think it is better to
-        // return it immediately.
-        _INFO_ ("r=" << r );
+        req.release(); // owner transfered to UV callback
       }
       else
       {
-        _INFO_ ("r=" << r );
-        // std::lock_guard<std::mutex> guard( m_handles_lock );
-        // m_handles.push_back(handle.get());
-        // handle.release();
-        req.release();  //
-      }
+        delete connect_req;
+        delete req->tcp_handle;
 
+        if (m_new_client_cb)
+          m_new_client_cb( nullptr,
+                           r<0?-r:r,
+                           req->user_cb,
+                           req->user_data);
+      }
     }
   }
 
@@ -345,6 +341,8 @@ void IOLoop::add_passive_handle(IOHandle* iohandle)
  */
 void IOLoop::add_active_handle(IOHandle * iohandle, int status, io_request * req)
 {
+  /* IO thread */
+
   if (iohandle) m_handles.push_back( iohandle );
 
   if (m_new_client_cb)
@@ -352,9 +350,6 @@ void IOLoop::add_active_handle(IOHandle * iohandle, int status, io_request * req
                      status,
                      req->user_cb,
                      req->user_data );
-
-
-
 }
 
 
