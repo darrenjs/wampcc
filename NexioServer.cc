@@ -62,7 +62,7 @@ NexioServer::NexioServer(Config c)
 //    m_thread(&NexioServer::util_thread_tep, this),
     m_sesman(new SessionMan(nullptr,  m_evl)),
     m_topicman(new TopicMan(nullptr)),
-    m_io_loop( nullptr, nullptr, nullptr ),
+    m_io_loop( nullptr ),
     m_rpcman( new rpc_man(nullptr, m_evl, [](const rpc_details*){}))
 {
   // TODO: I think this is the old style... probably not used?

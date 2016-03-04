@@ -17,9 +17,7 @@ namespace XXX {
 dealer_service::dealer_service(Logger *logptr,
                                dealer_listener* l)
   : __logptr( logptr ),
-    m_io_loop( new IOLoop( logptr,
-                           [this](){},
-                           [this](){} )),
+    m_io_loop( new IOLoop( logptr)),
     m_evl( new event_loop( logptr ) ),
   m_sesman( new SessionMan(logptr, *m_evl.get()) ),
   m_rpcman( new rpc_man(logptr, *m_evl.get(), [this](const rpc_details*r){this->rpc_registered_cb(r); }) ),

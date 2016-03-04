@@ -21,7 +21,7 @@ class Logger;
 class IOLoop;
 class IOHandle;
 
-typedef std::function<void(void)> AsyncCallback;
+
 typedef std::function<void(IOHandle* ,int, tcp_connect_attempt_cb, void*)> NewConnectionCallback;
 
 // TODO: try to move to impl file
@@ -41,9 +41,7 @@ struct io_request
 class IOLoop
 {
 public:
-  IOLoop(Logger * logger,
-         AsyncCallback timer_cb,
-         AsyncCallback async_cb);
+  IOLoop(Logger * logger);
   ~IOLoop();
 
   void start();
@@ -81,9 +79,6 @@ public:
 private:
 
   void create_tcp_server_socket(int port);
-
-  AsyncCallback  m_timer_cb;
-  AsyncCallback  m_async_cb;
 
   std::vector< io_request > m_pending_requests;
   std::mutex                m_pending_requests_lock;

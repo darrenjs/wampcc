@@ -300,7 +300,7 @@ int main(int argc, char** argv)
     }
   }
 
-  while (1)   sleep(1);
+  //while (1)   sleep(1);
   g_dealer.reset(); // delete before logger
   delete logger;
   return 0;

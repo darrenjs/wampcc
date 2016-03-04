@@ -91,15 +91,11 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 }
 
 
-IOLoop::IOLoop(Logger * logptr,
-               AsyncCallback timer_cb,
-               AsyncCallback async_cb)
+IOLoop::IOLoop(Logger * logptr)
   : __logptr( logptr),
     m_uv_loop( new uv_loop_t() ),
     m_timer( new uv_timer_t() ),
     m_async( new uv_async_t() ),
-    m_timer_cb ( timer_cb ),
-    m_async_cb ( async_cb ),
     m_pending_flags( eNone )
 {
   uv_loop_init(m_uv_loop);
@@ -203,7 +199,7 @@ void IOLoop::on_async()
     return;
   }
 
-  if (m_async_cb) m_async_cb();
+
 
   for (auto & item : work)
   {
@@ -290,7 +286,7 @@ void IOLoop::start()
 
 void IOLoop::on_timer()
 {
-  if (m_timer_cb) m_timer_cb();
+
 
   bool need_remove = false;
   for (auto & item  : m_handles)

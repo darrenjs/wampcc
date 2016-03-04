@@ -38,9 +38,7 @@ client_service::client_service(Logger * logptr,
                                config config)
   : __logptr( logptr),
     m_config( config ),
-    m_io_loop( new IOLoop( logptr,
-                           [this](){ },
-                           [this](){} ) ),
+    m_io_loop( new IOLoop(logptr) ),
     m_evl( new event_loop(logptr) ),
     m_sesman(new SessionMan(__logptr, *m_evl.get()))
 {
