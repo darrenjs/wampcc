@@ -317,7 +317,7 @@ void client_service::handle_INVOCATION(inbound_message_event* ev) // change to l
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname, reqid, my_rpc_args, rpc_actual.second);
+      rpc_actual.first(mycallid, procname, reqid, my_rpc_args, ev->src, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)

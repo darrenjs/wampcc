@@ -84,6 +84,7 @@ typedef std::function<void(t_call_id,
                            const std::string&,
                            int request_id,
                            rpc_args&,
+                           session_handle&,
                            void* user) > rpc_cb;
 
 typedef std::function<  void (call_info&, rpc_args&, void*) > call_user_cb; // TODO: rename me

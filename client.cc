@@ -32,6 +32,7 @@ void procedure_cb(XXX::t_call_id callid,
                   const std::string& procedure,
                   XXX::t_request_id req_id,
                   XXX::rpc_args& the_args,
+                  XXX::session_handle&,
                   void*  user  )
 {
   const callback_t* cbdata = (callback_t*) user;
