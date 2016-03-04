@@ -51,8 +51,6 @@ private:
   dealer_service(const dealer_service&) = delete;
   dealer_service& operator=(const dealer_service&) = delete;
 
-  void on_io_async();
-
   void rpc_registered_cb(const rpc_details*);
   void handle_YIELD(event* ev);
 

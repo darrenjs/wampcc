@@ -121,21 +121,6 @@ namespace XXX
   }
 
 
-// void SessionMan::on_timer()
-// {
-
-//   std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-//   for (auto & i : m_sessions.active)
-//     i.second->on_timer();
-
-
-//   // TODO: I can move the deletion to outside of the critical section.
-//   _INFO_("deleting expired sessions: " << m_sessions.closed.size());
-//   for (auto & i : m_sessions.closed) delete i;
-//   m_sessions.closed.clear();
-// }
-
 //----------------------------------------------------------------------
 
 
@@ -208,28 +193,6 @@ void SessionMan::send_to_session(session_handle handle, jalson::json_array& msg)
   }
 }
 
-// void SessionMan::send_to_session(SID dest, jalson::json_array& msg)
-// {
-//   if (dest == SID())
-//   {
-//     _WARN_("ignoring attempt to send to session with id 0 : " << msg);
-//     return;
-//   }
-
-//   bool is_final = false;
-//   std::lock_guard<std::mutex> guard(m_sessions.lock);
-//   auto it = m_sessions.active.find( dest );
-//   if (it != m_sessions.active.end())
-//   {
-//     it->second->send_msg(msg, is_final);
-//   }
-//   else
-//   {
-//     std::ostringstream os;
-//     os << "session send failed; cannot find session with id " << dest;
-//     throw std::runtime_error( os.str() );
-//   }
-// }
 
 //----------------------------------------------------------------------
 
