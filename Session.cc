@@ -112,7 +112,6 @@ Session::Session(SID s,
     m_hb_intvl(30),
     m_start(time(NULL)),
     m_opened(0),
-    m_closed(0),
     m_hb_last(0),
     m_request_id(0),
     m_buf( new char[65536] ), // TODO: make into to constant, and check during mempcy
@@ -158,13 +157,13 @@ void Session::on_close(int)
   /* IO thread */
   _INFO_( "Session::on_close #" << *m_session_handle);
 
+
   // important ... after the on_close, we must not call the IO handle again
+  change_state(eClosed,eClosed);
   {
     std::lock_guard<std::mutex> guard(m_handle_lock);
     m_handle = nullptr;
   }
-
-  m_closed = time(NULL);
 
   // if (m_listener)
   // {
@@ -973,5 +972,10 @@ void Session::notify_session_state_change(bool is_open)
 }
 
 //----------------------------------------------------------------------
+
+bool Session::is_open() const
+{
+  return m_state == eOpen;
+}
 
 } // namespace XXX

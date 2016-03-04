@@ -99,7 +99,7 @@ int main(int /* argc */, char** /* argv */)
 
   mycs->start();
 
-  sleep(10);
+  while(1) sleep(10);
 
   // explicit deletion for better control
   _INFO_("main initialing shutdown");

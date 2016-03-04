@@ -75,7 +75,8 @@ namespace XXX
 
     for (auto i : m_sessions.active)
     {
-      i.second->send_msg(msg);
+      if (i.second->is_open())
+        i.second->send_msg(msg);
     }
 
   }
@@ -88,7 +89,7 @@ namespace XXX
     for (auto i : m_sessions.active)
     {
       // TODO: do I need to test if session is open?
-      i.second->close(1);
+        i.second->close(1);
     }
   }
 

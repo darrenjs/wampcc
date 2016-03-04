@@ -85,7 +85,7 @@ void client_service::handle_session_state_change(session_handle sh, bool is_open
       {
         if (it->first.s == *sp)
         {
-          _INFO_("erasing registion " << *sp);
+          //_INFO_("erasing registion " << *sp);
           m_registrationid_map.erase( it++ );
         }
         else ++it;

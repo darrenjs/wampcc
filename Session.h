@@ -94,6 +94,8 @@ namespace XXX {
 
     session_handle handle() { return m_session_handle; }
 
+    bool is_open() const;
+
   private:
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
@@ -149,7 +151,7 @@ namespace XXX {
     int m_hb_intvl;
     time_t m_start;
     time_t m_opened;
-    time_t m_closed;
+
     time_t m_hb_last;
 
     uint64_t m_request_id;
