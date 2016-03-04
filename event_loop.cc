@@ -25,12 +25,14 @@ event_loop::event_loop(Logger *logptr)
 /* Destructor */
 event_loop::~event_loop()
 {
+  stop();
+}
+
+void event_loop::stop()
+{
   m_continue = false;
-  _INFO_("doing the push");
   push( 0 );
-  _INFO_("doing the join");
-  m_thread.join();
-  _INFO_("Have joined with EV thread");
+  if (m_thread.joinable()) m_thread.join();
 }
 
 void event_loop::set_rpc_man(rpc_man* r)

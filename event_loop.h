@@ -87,6 +87,8 @@ public:
     event_loop(Logger*);
     ~event_loop();
 
+    void stop();
+
     void init();
 
     void push(event* e);

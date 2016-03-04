@@ -51,6 +51,7 @@ dealer_service::dealer_service(Logger *logptr,
 dealer_service::~dealer_service()
 {
   m_io_loop->stop();
+  m_evl->stop();
 }
 
 //----------------------------------------------------------------------

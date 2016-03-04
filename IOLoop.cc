@@ -130,8 +130,7 @@ void IOLoop::stop()
   }
 
   async_send();
-  m_thread.join();
-  _INFO_("Have joined with IO thread");
+  if (m_thread.joinable()) m_thread.join();
 }
 
 IOLoop::~IOLoop()
