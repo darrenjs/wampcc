@@ -26,9 +26,6 @@ namespace XXX {
   typedef std::function<  jalson::json_array  ()    > build_message_cb_v4;
 
 
-  // TODO: bad : defined in multiple plasces
-  typedef std::function<jalson::json_array (int) > build_message_cb;
-
   class event_loop;
   class IOHandle;
   class SessionListener;

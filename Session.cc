@@ -634,33 +634,6 @@ void Session::call( const std::string& procedure )
   // TODO: set up a response handle
 }
 
-//   void Session::send_register( int, const std::string& procedure, Request_CB_Data* cb_data )
-// {
-//   uint64_t request_id = ++m_request_id; // TODO: needs to be atomic
-
-//   PendingRegister * pending = new PendingRegister();
-//   pending->reqid = request_id;
-//   pending->message_type = REGISTER;
-//   pending->cb_data = cb_data;
-
-//   {
-//     std::lock_guard<std::mutex> guard(m_pend_req_lock);
-//     m_pend_req[request_id] = pending;
-//   }
-
-//   jalson::json_array msg;
-//   msg.push_back( REGISTER );
-//   msg.push_back( request_id );
-//   msg.push_back( jalson::json_object() );
-//   msg.push_back( procedure  );
-
-//   pending->request = msg;
-
-//   this->send_msg( msg );
-
-// }
-
-
 
 void Session::send_request( int request_type,
                             unsigned int internal_req_id,
