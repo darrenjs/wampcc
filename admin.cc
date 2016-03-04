@@ -237,13 +237,6 @@ int main(int argc, char** argv)
   // start the internal thread of the client
   g_dealer->start();
 
-  // sleep until main loop is ready
-//  sleep(1);
-
-  // XXX::dealer_service::Request req;
-  // req.addr = "127.0.0.1";
-  // req.port = 55555;
-  // req.cb   = connect_cb;
   g_dealer->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
 
   // wait for a connection attempt to complete
