@@ -14,6 +14,32 @@ namespace XXX {
 
   class Session;
 
+// Base class for topics
+class topic
+{
+public:
+  topic(const std::string& uri)
+    : m_uri(uri)
+  {}
+
+  const std::string& uri() const { return m_uri; }
+
+private:
+  std::string m_uri;
+};
+
+
+class text_topic : public topic
+{
+public:
+  text_topic(const std::string& uri)
+    : topic( uri )
+  {
+  }
+
+  void update(const char* newstr);
+};
+
 class Topic
 {
   public:
