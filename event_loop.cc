@@ -8,7 +8,7 @@
 namespace XXX {
 
 // TODO: set to 1000; for testing, set to 1 ms
-#define SYSTEM_HEARTBEAT_MS 1
+#define SYSTEM_HEARTBEAT_MS 60000
 
 /* Constructor */
 event_loop::event_loop(Logger *logptr)
@@ -106,6 +106,7 @@ void event_loop::hb_check()
 
 void event_loop::eventmain()
 {
+  _INFO_("event_loop::eventmain");
   const auto timeout = std::chrono::milliseconds( SYSTEM_HEARTBEAT_MS );
 
   /* A note on memory management of the event objects.  Once they are pushed,
@@ -214,6 +215,13 @@ void event_loop::process_event(event * ev)
       process_outbound_call(ev2);
       break;
     }
+    case event::internal_outbound_call_event :
+    {
+      // TODO: create a template for this, which will throw etc.
+      internal_outbound_call_event* ev2 = dynamic_cast<internal_outbound_call_event*>(ev);
+      process_internal_outbound_call(ev2);
+      break;
+    }
     case event::outbound_response_event :
     {
       // TODO: create a template for this, which will throw etc. Will be a
@@ -282,6 +290,41 @@ void event_loop::process_event(event * ev)
       }
       case CALL :
       {
+        std::string uri = ev->ja[3].as_string();
+        rpc_details rpc = m_rpcman->get_rpc_details(uri);
+        if (rpc.registration_id)
+        {
+          if (rpc.type == rpc_details::eInternal)
+          {
+            _INFO_("TODO: have an internal rpc to handle " << uri);
+
+            //  m_internal_rpc_invocation(src, registrationid, args, reqid);
+            if (m_internal_invoke_cb)
+            {
+              t_request_id reqid = ev->ja[1].as_sint();
+              rpc_args my_rpc_args;
+              if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
+              m_internal_invoke_cb( ev->src,
+                                    reqid,
+                                    rpc.registration_id,
+                                    my_rpc_args);
+            }
+          }
+          else
+          {
+            _INFO_("TODO: have an outbound rpc to handle " << uri);
+          }
+        }
+        else
+        {
+          // TODO: add better handling here
+          _WARN_("uri not found " << uri);
+        }
+        // A request has arrived ... need to route it to the RPC man
+        //
+        //
+        //             D:  rpc .. find it, get reg
+        //
         _ERROR_( "THIS CODE IS DEPCRECATED -- NOT SURE IF IT WAS USED" );
         // //process_event_InboundCall( e );
         // // TODO: put this back in
@@ -311,6 +354,7 @@ void event_loop::process_event(event * ev)
         // TODO: handle ... should it even come here?
         break;
       case HELLO :
+      case RESULT :
       case REGISTERED :
       case INVOCATION :
       case CHALLENGE :
@@ -441,9 +485,9 @@ struct Request_INVOCATION_CB_Data : public Request_CB_Data
 
 void event_loop::process_outbound_call(outbound_call_event* ev)
 {
-
+  _INFO_("event_loop::process_outbound_call");
   // TODO: use wamp error here ... say I AM NOT BROKER
-  if (!m_rpcman) throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
+  if (!m_rpcman) throw event_error(WAMP_RUNTIME_ERROR, "rpc_man is null");
 
   /* find the RPC we need to invoke */
   rpc_details rpcinfo = m_rpcman->get_rpc_details( ev->rpc_name );
@@ -640,6 +684,20 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
       return msg;
     };
   }
+  else if (ev->response_type == RESULT)
+  {
+    msgbuilder = [ev](){
+      jalson::json_array msg;
+      msg.push_back(RESULT);
+      msg.push_back(ev->reqid);
+      msg.push_back(ev->options);
+      if (ev->args.args.is_null() == false)
+      {
+        msg.push_back(ev->args.args);
+      }
+      return msg;
+    };
+  }
   else
   {
     throw std::runtime_error("unknown response_type");
@@ -657,5 +715,40 @@ void event_loop::process_outbound_message(outbound_message* ev)
 }
 
 //----------------------------------------------------------------------
+
+void event_loop::process_internal_outbound_call(internal_outbound_call_event* ev)
+{
+  _INFO_("event_loop::process_internal_outbound_call");
+
+  // not good... we need a to a copy of the event for the later arrival of the
+  // YIELD/ERROR respons.  Eventually I need to try to just steal the source
+  // event.
+  //outbound_call_event * copy = new outbound_call_event( *ev );
+
+  // also not good ... need to create the request content data.  Is there way to
+  // just use the source event object directly?
+  //Request_INVOCATION_CB_Data* cb_data = new Request_INVOCATION_CB_Data(); // TODO: memleak?
+  //cb_data->cb_data = copy;
+
+  build_message_cb_v2 msg_builder2 = [&](int request_id)
+    {
+
+      jalson::json_array msg;
+      msg.push_back( CALL );
+      msg.push_back( request_id );
+      msg.push_back( jalson::json_object() );
+      msg.push_back( ev->rpc_name );
+      if (ev->args.args != nullptr)   // TODO: how the hell does this compile? Fix Jalson, and remove check.
+      {
+        msg.push_back( ev->args.args );
+      }
+
+      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+                                                                nullptr );
+
+    };
+
+  m_sesman->send_request( ev->dest, CALL, ev->internal_req_id, msg_builder2);
+}
 
 } // namespace XXX

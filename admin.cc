@@ -24,7 +24,7 @@
 XXX::NexioServer * server = nullptr;
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eInfo,
+                                              XXX::Logger::eAll,
                                               true);
 
 std::unique_ptr<XXX::dealer_service> g_dealer;

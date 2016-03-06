@@ -13,14 +13,17 @@
 
 namespace XXX {
 
-
 dealer_service::dealer_service(Logger *logptr,
-                               dealer_listener* l)
+                               dealer_listener* l,
+                               IOLoop* ext_ioloop,
+                               event_loop* ext_event_loop)
   : __logptr( logptr ),
-    m_io_loop( new IOLoop( logptr)),
-    m_evl( new event_loop( logptr ) ),
-  m_sesman( new SessionMan(logptr, *m_evl.get()) ),
-  m_rpcman( new rpc_man(logptr, *m_evl.get(), [this](const rpc_details*r){this->rpc_registered_cb(r); }) ),
+    m_io_loop( ext_ioloop? ext_ioloop : new IOLoop( logptr)),
+    m_evl( ext_event_loop? ext_event_loop : new event_loop( logptr ) ),
+    m_own_io(ext_ioloop == nullptr),
+    m_own_ev(ext_event_loop == nullptr),
+    m_sesman( new SessionMan(logptr, *m_evl) ),
+    m_rpcman( new rpc_man(logptr, *m_evl, [this](const rpc_details*r){this->rpc_registered_cb(r); }) ),
     m_listener( l ),
     m_next_internal_request_id(1)
 {
@@ -50,8 +53,11 @@ dealer_service::dealer_service(Logger *logptr,
 
 dealer_service::~dealer_service()
 {
-  m_io_loop->stop();
-  m_evl->stop();
+  if (m_own_io) m_io_loop->stop();
+  if (m_own_ev) m_evl->stop();
+
+  if (m_own_io) delete m_io_loop;
+  if (m_own_ev) delete m_evl;
 }
 
 //----------------------------------------------------------------------
@@ -73,7 +79,7 @@ void dealer_service::start()
   // uv_timer_start(&timer_req, __io_on_timer, 30000, 30000);
 
   // returns immediately
-  m_io_loop->start();
+  if (m_own_io) m_io_loop->start();
 }
 
 
@@ -178,6 +184,15 @@ void dealer_service::handle_YIELD(event* ev)
 
 }
 
+void dealer_service::listen(int port)
+{
+   m_io_loop->add_server( port );
+}
+
+int dealer_service::register_procedure(std::string uri)
+{
+  return m_rpcman->register_internal_rpc(uri);
+}
 
 
 } // namespace

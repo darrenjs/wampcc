@@ -552,6 +552,19 @@ void Session::process_message(jalson::json_value&jv)
               << ", pendreq:" << pendreq );
       break;
     }
+    case RESULT :
+    {
+      int const request_id = jv.as_array()[1].as_uint();
+      {
+        // TODO: need to delete from the map
+        std::lock_guard<std::mutex> guard(m_pend_req_lock);
+        pendreq = m_pend_req[request_id];
+        m_pend_req[request_id] = 0;
+        pend2 = m_pend_req_2[request_id]; // TODO: and remove?
+      }
+      break;
+    }
+
   }
 
 /*
@@ -638,6 +651,7 @@ void Session::send_request( int request_type,
                             unsigned int internal_req_id,
                             build_message_cb_v2 msg_builder )
 {
+  _INFO_("Session::send_request internal_req_id=" << internal_req_id);
   uint64_t request_id = ++m_request_id; // TODO: needs to be atomic
 
   // TODO: here I am using the PendingRegister struct ... but question is, do I

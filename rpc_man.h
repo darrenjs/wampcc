@@ -85,7 +85,7 @@ public:
   void handle_invocation(jalson::json_array& jv);
 
   // Register and RPC that is handled by the internal session
-  void register_internal_rpc(const std::string& rpc_uri);
+  int register_internal_rpc(const std::string& rpc_uri);
 
   // Start a CALL sequence to an RPC
   void call_rpc(std::string rpcname);

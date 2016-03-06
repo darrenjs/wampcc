@@ -52,7 +52,8 @@ JALSONLIBSTATIC=$(JALSONHOME)/lib/libjalson.a $(JANSSONLIBSTATIC)
 BIN1=nexio
 BIN2=admin
 BIN3=client
-TARGETS=$(BIN1) $(BIN2) $(BIN3)
+BIN4=newadmin
+TARGETS=$(BIN1) $(BIN2) $(BIN3)  $(BIN4)
 
 ##
 ## Sources that will need compiling
@@ -70,6 +71,11 @@ SOURCES_BIN2 =session_state_listener.cc   utils.cc NexioServer.cc SessionMan.cc 
 ##
 SOURCES_BIN3 = session_state_listener.cc  utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc client_service.cc dealer_service.cc event.cc Logger.cc  Callbacks.cc  client.cc
 
+##
+## Sources that will need compiling
+##
+SOURCES_BIN4 =session_state_listener.cc   utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc event.cc Logger.cc Callbacks.cc  newadmin.cc
+
 
 
 # "It is standard practice for every makefile to have a variable named
@@ -81,6 +87,8 @@ TEMP2=$(patsubst %.cc, %.o, $(SOURCES_BIN2))
 OBJECTS_BIN2=$(patsubst %.c, %.o, $(TEMP2))
 TEMP3=$(patsubst %.cc, %.o, $(SOURCES_BIN3))
 OBJECTS_BIN3=$(patsubst %.c, %.o, $(TEMP3))
+TEMP4=$(patsubst %.cc, %.o, $(SOURCES_BIN4))
+OBJECTS_BIN4=$(patsubst %.c, %.o, $(TEMP4))
 
 ##
 ## List other files to be 'cleaned'
@@ -151,6 +159,10 @@ ${BIN2}: ${OBJECTS_BIN2}
 
 ${BIN3}: ${OBJECTS_BIN3}
 	${CXX} -o $@ ${OBJECTS_BIN3}  ${LIBS} ${SANITIZE}
+
+${BIN4}: ${OBJECTS_BIN4}
+	${CXX} -o $@ ${OBJECTS_BIN4}  ${LIBS} ${SANITIZE}
+
 
 
 run: ${BIN1}

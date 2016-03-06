@@ -79,6 +79,10 @@ public:
 
   typedef std::function<void(event*) > event_cb;
   typedef std::function<void(inbound_message_event*) > event_cb2;
+  typedef std::function<void(session_handle&,
+                             t_request_id,
+                             int,
+                             rpc_args&) > internal_invoke_cb;
 
 
   class event_loop
@@ -114,6 +118,7 @@ public:
 
     void process_event_InboundCall(event* e);
     void process_outbound_call(outbound_call_event*);
+    void process_internal_outbound_call(internal_outbound_call_event*);
     void process_outbound_response(outbound_response_event *);
     void process_outbound_message(outbound_message *);
     void process_inbound_error(event* e);
@@ -137,6 +142,9 @@ public:
     std::vector<event_cb2> m_handlers2;
 
     std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
+  public:
+    internal_invoke_cb m_internal_invoke_cb;
+
 };
 
 } // namespace XXX

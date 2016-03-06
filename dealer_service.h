@@ -33,7 +33,7 @@ class dealer_service
 {
 public:
 
-  dealer_service(Logger*, dealer_listener*);
+  dealer_service(Logger*, dealer_listener*, IOLoop* io= nullptr, event_loop* ev = nullptr);
   ~dealer_service();
 
   void start();
@@ -44,8 +44,12 @@ public:
                tcp_connect_attempt_cb user_cb,
                void* user_data);
 
+  void listen(int port);
+
   /* Call an RPC registered within the dealer service */
   unsigned int call_rpc(std::string rpc, call_user_cb, rpc_args, void* cb_user_data);
+
+  int register_procedure(std::string procedure);
 
 private:
   dealer_service(const dealer_service&) = delete;
@@ -57,8 +61,10 @@ private:
 
   // essential components
   Logger *__logptr; /* name chosen for log macros */
-  std::unique_ptr<IOLoop> m_io_loop;
-  std::unique_ptr<event_loop> m_evl;
+  IOLoop*  m_io_loop;
+  event_loop* m_evl;
+  bool m_own_io;
+  bool m_own_ev;
 
   std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;

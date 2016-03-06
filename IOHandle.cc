@@ -417,6 +417,7 @@ void IOHandle::on_passive_close()
 // TODO: need to use the close variable
 void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
 {
+  // TODO EASY: add DEBUG logging of the output data
   std::vector< uv_buf_t > bufs;
   bufs.reserve(count);
 
@@ -429,11 +430,11 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
     bufs.push_back(buf);
   }
 
-
   {
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
     m_pending_write.insert(m_pending_write.end(), bufs.begin(), bufs.end());
   }
+
   if (m_async_allowed)
   {
     uv_async_send( &m_write_async );

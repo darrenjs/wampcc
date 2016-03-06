@@ -29,15 +29,24 @@ rpc_man::~rpc_man()
 }
 
 
-void rpc_man::register_internal_rpc(const std::string& rpc_uri)
+// TODO: instead of int, use a typedef
+int rpc_man::register_internal_rpc(const std::string& procedure_uri)
 {
-  std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+  rpc_details* r = new rpc_details();
+  r->registration_id = 0;
+  r->uri = procedure_uri;
+  r->type = rpc_details::eInternal;
 
-  // TODO: handle duplicates
-  rpc_details* myrpc = new rpc_details();
-  myrpc->type = rpc_details::eInternal;
-  m_rpc_map2[ rpc_uri ] = myrpc;
+  {
+    // TODO: handle duplicates
+    r->registration_id = m_next_regid++;
+    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+    m_rpc_map2[ procedure_uri ] = r;
+  }
+  _INFO_( "Internal RPC '" << procedure_uri <<"' registered with id " << r->registration_id );
 
+  if (m_rpc_added_cb) m_rpc_added_cb( r );
+  return r->registration_id;
 }
 
 
@@ -135,8 +144,10 @@ int rpc_man::handle_register_event(session_handle& sh,
   r->registration_id = 0;
   r->uri = procedure_uri;
   r->sesionh = sh;
+  r->type = rpc_details::eRemote;
 
   {
+    // TODO: handle duplicates
     r->registration_id = m_next_regid++;
     std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
     m_rpc_map2[ procedure_uri ] = r;

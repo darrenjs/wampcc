@@ -14,7 +14,7 @@
 #include <string.h>
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eInfo,
+                                              XXX::Logger::eAll,
                                               true);
 
 struct callback_t
@@ -85,7 +85,10 @@ int main(int /* argc */, char** /* argv */)
   XXX::Logger * __logptr = logger;
   XXX::client_service::config cfg;
   cfg.port = 55555;
+  cfg.enable_embed_router = true;
 
+
+  std::unique_ptr<XXX::text_topic> t1( new XXX::text_topic("T1") );
 
   std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger, cfg) );
 

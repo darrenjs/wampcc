@@ -42,6 +42,7 @@ public:
     eNone = 0,
     session_state_event,
     outbound_call_event,
+    internal_outbound_call_event,
     outbound_response_event,
     outbound_message,
     tcp_connect_event
@@ -164,6 +165,25 @@ struct outbound_call_event : public event
   {
   }
 
+  std::string rpc_name;
+  call_user_cb cb;
+  void * cb_user_data;
+  rpc_args args;
+  unsigned int internal_req_id;
+};
+
+
+// TODO: here I am trying the concept of a class type per event, to see if it
+// works.
+struct internal_outbound_call_event : public event
+{
+  internal_outbound_call_event()
+    : event( event::internal_outbound_call_event ),
+      cb_user_data( nullptr )
+  {
+  }
+
+  session_handle dest;
   std::string rpc_name;
   call_user_cb cb;
   void * cb_user_data;
