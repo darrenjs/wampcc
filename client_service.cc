@@ -427,9 +427,6 @@ void client_service::handle_INVOCATION(inbound_message_event* ev) // change to l
 //----------------------------------------------------------------------
 
 void client_service::post_reply(t_invoke_id callid,
-                                t_request_id reqid, // TODO: why is this here?
-                                                    // Should onl be the callid
-                                                    // really.
                                 rpc_args& the_args)
 {
   /* user thread or EV thread */

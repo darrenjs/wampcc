@@ -50,7 +50,7 @@ void procedure_cb(XXX::t_invoke_id callid,
   jalson::json_array & arr = my_args.args.as_array();
   arr.push_back("hello");
   arr.push_back("back");
-  cbdata->svc->post_reply(callid, req_id, my_args);
+  cbdata->svc->post_reply(callid, my_args);
 
 
 

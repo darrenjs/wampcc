@@ -105,7 +105,6 @@ public:
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_reply(t_invoke_id,
-                  t_request_id request_id,
                   rpc_args& the_args);
 
   /* Used by the CALLEE to respond to a procedure call */
