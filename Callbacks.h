@@ -77,7 +77,7 @@ struct rpc_args
 struct call_info
 {
   t_request_id reqid;     /* protocol ID that was used */
-  std::string  procedure; /* rpc target */
+  std::string  procedure; /* rpc target */  // TODO: standardise the varname for rpc name
 };
 
 typedef std::function<void(t_call_id,
