@@ -536,15 +536,15 @@ void client_service::connect(const std::string & addr,
  * client (ie, TCP based).  The callback is the entry point into the user code
  * when a YIELD or ERROR is received.
  */
-unsigned int client_service::call_rpc(session_handle& sh,
-                                      std::string proc_uri,
-                                      call_user_cb cb,
-                                      rpc_args args,
-                                      void* cb_user_data)
+t_client_request_id client_service::call_rpc(session_handle& sh,
+                                             std::string proc_uri,
+                                             call_user_cb cb,
+                                             rpc_args args,
+                                             void* cb_user_data)
 {
   /* USER thread */
 
-  unsigned int int_req_id = m_next_internal_request_id++;
+  t_client_request_id int_req_id = m_next_internal_request_id++;
 
   {
     std::lock_guard<std::mutex> guard( m_pending_requests_lock );

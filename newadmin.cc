@@ -255,12 +255,12 @@ int main(int argc, char** argv)
   ja.push_back( "world" );
   args.args = ja ;
 
-  int callreqid = g_client->call_rpc(g_sid,
-                                     "stop",
-                                     [](XXX::call_info& reqdet, XXX::rpc_args& args, void* cb_data)
-                                     { call_cb(reqdet, args, cb_data);},
-                                     args, (void*)"I_called_stop");
-  _INFO_("making attempt at RPC ... callreqid " << callreqid);
+  XXX::t_client_request_id callreqid = g_client->call_rpc(g_sid,
+                                                          "stop",
+                                                          [](XXX::call_info& reqdet, XXX::rpc_args& args, void* cb_data)
+                                                          { call_cb(reqdet, args, cb_data);},
+                                                          args, (void*)"I_called_stop");
+  _INFO_("making attempt at RPC ...  client_request_id " << callreqid);
 
 
   while (1)   sleep(1);

@@ -89,11 +89,11 @@ public:
                                     void* user_data);
 
   /* Call an RPC on the peer router */
-  unsigned int call_rpc(session_handle& sh,
-                        std::string rpc,
-                        call_user_cb,
-                        rpc_args,
-                        void* cb_user_data);
+  t_client_request_id call_rpc(session_handle& sh,
+                               std::string rpc,
+                               call_user_cb,
+                               rpc_args,
+                               void* cb_user_data);
 
   void start();
 
@@ -188,7 +188,7 @@ private:
   std::mutex                       m_calls_lock;
   dealer_service *                 m_embed_router = nullptr;
 
-  unsigned int m_next_internal_request_id;
+  t_client_request_id  m_next_internal_request_id;
 
   // TODO: move to impl
   struct pending_request

@@ -21,6 +21,7 @@ namespace XXX {
 
 typedef int t_request_id;
 typedef uint64_t t_invoke_id;
+typedef uint64_t t_client_request_id;
 typedef uint64_t t_sid;
 
 typedef std::weak_ptr<t_sid> session_handle;
