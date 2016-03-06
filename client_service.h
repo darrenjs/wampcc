@@ -109,7 +109,6 @@ public:
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_error(t_invoke_id,
-                  t_request_id request_id,
                   std::string& error);
 
   void add_topic(topic*);

@@ -84,7 +84,6 @@ struct call_info
 
 typedef std::function<void(t_invoke_id,
                            const std::string&,
-                           int request_id,
                            rpc_args&,
                            session_handle&,
                            void* user) > rpc_cb;

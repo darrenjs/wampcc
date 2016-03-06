@@ -257,7 +257,9 @@ int main(int argc, char** argv)
 
   XXX::t_client_request_id callreqid = g_client->call_rpc(g_sid,
                                                           "stop",
-                                                          [](XXX::call_info& reqdet, XXX::rpc_args& args, void* cb_data)
+                                                          [](XXX::call_info& reqdet,
+                                                             XXX::rpc_args& args,
+                                                             void* cb_data)
                                                           { call_cb(reqdet, args, cb_data);},
                                                           args, (void*)"I_called_stop");
   _INFO_("making attempt at RPC ...  client_request_id " << callreqid);

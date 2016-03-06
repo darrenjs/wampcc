@@ -30,7 +30,6 @@ struct callback_t
 
 void procedure_cb(XXX::t_invoke_id callid,
                   const std::string& procedure,
-                  XXX::t_request_id req_id,
                   XXX::rpc_args& the_args,
                   XXX::session_handle&,
                   void*  user  )
@@ -40,8 +39,7 @@ void procedure_cb(XXX::t_invoke_id callid,
   /* called when a procedure within a CALLEE is triggered */
   auto __logptr = logger;
   _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args
-          << ", user:" << cbdata->request
-          << ", req_id:" << req_id);
+          << ", user:" << cbdata->request );
 
 //  throw std::runtime_error("bad alloc");
   auto my_args = the_args;

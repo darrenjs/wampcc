@@ -401,7 +401,7 @@ void client_service::handle_INVOCATION(inbound_message_event* ev) // change to l
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname, reqid, my_rpc_args, ev->src, rpc_actual.second);
+      rpc_actual.first(mycallid, procname,  my_rpc_args, ev->src, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -467,7 +467,6 @@ void client_service::post_reply(t_invoke_id callid,
 //----------------------------------------------------------------------
 
 void client_service::post_error(t_invoke_id callid,
-                                t_request_id reqid,
                                 std::string& error_uri)
 {
   /* user thread or EVL thread */
@@ -493,7 +492,7 @@ void client_service::post_error(t_invoke_id callid,
   ev->destination   = context.seshandle;
   ev->response_type = ERROR;
   ev->request_type  = INVOCATION;
-  ev->reqid         = reqid;
+  ev->reqid         = context.requestid;
   ev->error_uri     = error_uri;
 
   m_evl->push( ev );
@@ -668,7 +667,7 @@ if (rpc_actual.first)
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname, req_id, args, sh, rpc_actual.second);
+      rpc_actual.first(mycallid, procname, args, sh, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -793,7 +792,7 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname, reqid, my_rpc_args, ev->src, rpc_actual.second);
+      rpc_actual.first(mycallid, procname, my_rpc_args, ev->src, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
