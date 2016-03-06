@@ -104,12 +104,12 @@ public:
                      void * data);
 
   /* Used by the CALLEE to respond to a procedure call */
-  void post_reply(t_call_id,
+  void post_reply(t_invoke_id,
                   t_request_id request_id,
                   rpc_args& the_args);
 
   /* Used by the CALLEE to respond to a procedure call */
-  void post_error(t_call_id,
+  void post_error(t_invoke_id,
                   t_request_id request_id,
                   std::string& error);
 

@@ -28,7 +28,7 @@ struct callback_t
   const char* request;
 };
 
-void procedure_cb(XXX::t_call_id callid,
+void procedure_cb(XXX::t_invoke_id callid,
                   const std::string& procedure,
                   XXX::t_request_id req_id,
                   XXX::rpc_args& the_args,

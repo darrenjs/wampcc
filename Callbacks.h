@@ -20,7 +20,7 @@ namespace XXX {
 
 
 typedef int t_request_id;
-typedef uint64_t t_call_id;
+typedef uint64_t t_invoke_id;
 typedef uint64_t t_sid;
 
 typedef std::weak_ptr<t_sid> session_handle;
@@ -74,13 +74,14 @@ struct rpc_args
   jalson::json_object options;
 };
 
+// TODO: no need to have this, can be expanded in places where it is
 struct call_info
 {
   t_request_id reqid;     /* protocol ID that was used */
   std::string  procedure; /* rpc target */  // TODO: standardise the varname for rpc name
 };
 
-typedef std::function<void(t_call_id,
+typedef std::function<void(t_invoke_id,
                            const std::string&,
                            int request_id,
                            rpc_args&,
