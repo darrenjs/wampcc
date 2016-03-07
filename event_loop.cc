@@ -208,13 +208,13 @@ void event_loop::process_event(event * ev)
       /* old style event */
       event_handled = false;
       break;
-    case event::outbound_call_event :
-    {
-      // TODO: create a template for this, which will throw etc.
-      outbound_call_event* ev2 = dynamic_cast<outbound_call_event*>(ev);
-      process_outbound_call(ev2);
-      break;
-    }
+    // case event::outbound_call_event :
+    // {
+    //   // TODO: create a template for this, which will throw etc.
+    //   outbound_call_event* ev2 = dynamic_cast<outbound_call_event*>(ev);
+    //   process_outbound_call(ev2);
+    //   break;
+    // }
     case event::internal_outbound_call_event :
     {
       // TODO: create a template for this, which will throw etc.
@@ -483,94 +483,95 @@ struct Request_INVOCATION_CB_Data : public Request_CB_Data
 
 //----------------------------------------------------------------------
 
-void event_loop::process_outbound_call(outbound_call_event* ev)
-{
-  _INFO_("event_loop::process_outbound_call");
-  // TODO: use wamp error here ... say I AM NOT BROKER
-  if (!m_rpcman) throw event_error(WAMP_RUNTIME_ERROR, "rpc_man is null");
+// void event_loop::process_outbound_call(outbound_call_event* ev)
+// {
+//   _INFO_("event_loop::process_outbound_call");
+//   // TODO: use wamp error here ... say I AM NOT BROKER
+//   if (!m_rpcman) throw event_error(WAMP_RUNTIME_ERROR, "rpc_man is null");
 
-  /* find the RPC we need to invoke */
-  rpc_details rpcinfo = m_rpcman->get_rpc_details( ev->rpc_name );
-  if (rpcinfo.registration_id == 0)
-  {
-    throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
-  }
+//   /* find the RPC we need to invoke */
+//   rpc_details rpcinfo = m_rpcman->get_rpc_details( ev->rpc_name );
+//   if (rpcinfo.registration_id == 0)
+//   {
+//     throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
+//   }
 
-  // not good... we need a to a copy of the event for the later arrival of the
-  // YIELD/ERROR respons.  Eventually I need to try to just steal the source
-  // event.
-  //outbound_call_event * copy = new outbound_call_event( *ev );
+//   // not good... we need a to a copy of the event for the later arrival of the
+//   // YIELD/ERROR respons.  Eventually I need to try to just steal the source
+//   // event.
+//   //outbound_call_event * copy = new outbound_call_event( *ev );
 
-  // also not good ... need to create the request content data.  Is there way to
-  // just use the source event object directly?
-  //Request_INVOCATION_CB_Data* cb_data = new Request_INVOCATION_CB_Data(); // TODO: memleak?
-  //cb_data->cb_data = copy;
+//   // also not good ... need to create the request content data.  Is there way to
+//   // just use the source event object directly?
+//   //Request_INVOCATION_CB_Data* cb_data = new Request_INVOCATION_CB_Data(); // TODO: memleak?
+//   //cb_data->cb_data = copy;
 
-  build_message_cb_v2 msg_builder2 = [&](int request_id)
-    {
-       /* WAMP spec.
-          [
-            INVOCATION,
-            Request|id,
-            REGISTERED.Registration|id,
-            Details|dict
-            CALL.Arguments|list,
-            CALL.ArgumentsKw|dict
-          ]
-       */
+//   build_message_cb_v2 msg_builder2 = [&](int request_id)
+//     {
+//        /* WAMP spec.
+//           [
+//             INVOCATION,
+//             Request|id,
+//             REGISTERED.Registration|id,
+//             Details|dict
+//             CALL.Arguments|list,
+//             CALL.ArgumentsKw|dict
+//           ]
+//        */
 
-      jalson::json_array msg;
-      msg.push_back( INVOCATION );
-      msg.push_back( request_id );
-      msg.push_back( rpcinfo.registration_id );
-      msg.push_back( jalson::json_object() );
-      if (ev->args.args != nullptr)   // TODO: how the hell does this compile? Fix Jalson, and remove check.
-      {
-        msg.push_back( ev->args.args );
-      }
+//       jalson::json_array msg;
+//       msg.push_back( INVOCATION );
+//       msg.push_back( request_id );
+//       msg.push_back( rpcinfo.registration_id );
+//       msg.push_back( jalson::json_object() );
+//       if (ev->args.args != nullptr)   // TODO: how the hell does this compile? Fix Jalson, and remove check.
+//       {
+//         msg.push_back( ev->args.args );
+//       }
 
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                nullptr );
+//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                 nullptr );
 
-    };
+//     };
 
-  m_sesman->send_request( rpcinfo.sesionh, INVOCATION, ev->internal_req_id, msg_builder2);
-}
+//   m_sesman->send_request( rpcinfo.sesionh, INVOCATION, ev->internal_req_id, msg_builder2);
+// }
 
 //----------------------------------------------------------------------
 
 void event_loop::process_inbound_error(event* e)
 {
 
-  Request_INVOCATION_CB_Data* request_cb_data
-    = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
+  // Request_INVOCATION_CB_Data* request_cb_data
+  //   = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
 
-  if (request_cb_data != nullptr)
-  {
-    outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
-    if (origev && origev->cb)
-    {
+  // if (request_cb_data != nullptr)
+  // {
+  //   outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
+  //   if (origev && origev->cb)
+  //   {
 
-      // TODO: create a generic callback function, which does all the exception
-      // catch/log etc
-      try
-      {
+  //     // TODO: create a generic callback function, which does all the exception
+  //     // catch/log etc
+  //     try
+  //     {
 
-        call_info info; // TODO: dfill in
-        // TODO: should use an error callback
-        rpc_args args;
-        origev->cb(info, args, origev->cb_user_data);  /* TODO: take from network message */
-      }
-      catch(...)
-      {
-        // TODO: log exceptions here
-      }
-    }
-  }
-  else
-  {
-    _ERROR_( "error, no request_cb_data found\n" );
-  }
+  //       call_info info; // TODO: dfill in
+  //       // TODO: should use an error callback
+  //       rpc_args args;
+  //       origev->cb(info, args, origev->cb_user_data);  /* TODO: take from network message */
+  //     }
+  //     catch(...)
+  //     {
+  //       // TODO: log exceptions here
+  //     }
+  //   }
+  // }
+  // else
+  // {
+  //   _ERROR_( "error, no request_cb_data found\n" );
+  // }
+  _ERROR_("TODO: put in support for handling inbound errors, and directing to call handler");
 }
 //----------------------------------------------------------------------
 void event_loop::process_inbound_yield(event* e)

@@ -135,10 +135,10 @@ public:
       ja.push_back( "world" );   //TODO: why do I not see thi value arrise at the other side? Jalson error?
       args.args = ja ;
 
-      g_dealer->call_rpc("stop",
-                         [](XXX::call_info& reqdet, XXX::rpc_args& args, void* cb_data)
-                         { call_cb(reqdet, args, cb_data);},
-                         args, (void*)"I_called_stop");
+      // g_dealer->call_rpc("stop",
+      //                    [](XXX::call_info& reqdet, XXX::rpc_args& args, void* cb_data)
+      //                    { call_cb(reqdet, args, cb_data);},
+      //                   args, (void*)"I_called_stop");
 
     }
 

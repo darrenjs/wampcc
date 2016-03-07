@@ -96,42 +96,42 @@ void dealer_service::connect(const std::string & addr,
 }
 
 
-/* This is the special interface on the dealer_service API which allows CALL
- * sequences to be triggered by the API client, rather than a traditiona WAMP
- * client (ie, TCP based).  The callback is the entry point into the user code
- * when a YIELD or ERROR is received.
- */
-unsigned int dealer_service::call_rpc(std::string rpc,
-                                      call_user_cb cb,
-                                      rpc_args args,
-                                      void* cb_user_data)
-{
-  /* USER-THREAD */
+// /* This is the special interface on the dealer_service API which allows CALL
+//  * sequences to be triggered by the API client, rather than a traditiona WAMP
+//  * client (ie, TCP based).  The callback is the entry point into the user code
+//  * when a YIELD or ERROR is received.
+//  */
+// unsigned int dealer_service::call_rpc(std::string rpc,
+//                                       call_user_cb cb,
+//                                       rpc_args args,
+//                                       void* cb_user_data)
+// {
+//   /* USER-THREAD */
 
-  unsigned int int_req_id = m_next_internal_request_id++;
+//   unsigned int int_req_id = m_next_internal_request_id++;
 
-  {
-    std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-    auto & pending = m_pending_requests[int_req_id];
-    pending.cb = cb;
-    pending.user_cb_data = cb_user_data;
-  }
+//   {
+//     std::lock_guard<std::mutex> guard( m_pending_requests_lock );
+//     auto & pending = m_pending_requests[int_req_id];
+//     pending.cb = cb;
+//     pending.user_cb_data = cb_user_data;
+//   }
 
-  outbound_call_event * ev = new outbound_call_event();
+//   outbound_call_event * ev = new outbound_call_event();
 
-  ev->mode = event::eOutbound;
-  ev->msg_type = CALL;
-  ev->rpc_name= rpc;
-  ev->cb = cb;  // memleak?
-  ev->args = args; // memleak?
-  ev->cb_user_data = cb_user_data;
-  ev->internal_req_id=int_req_id;
+//   ev->mode = event::eOutbound;
+//   ev->msg_type = CALL;
+//   ev->rpc_name= rpc;
+//   ev->cb = cb;  // memleak?
+//   ev->args = args; // memleak?
+//   ev->cb_user_data = cb_user_data;
+//   ev->internal_req_id=int_req_id;
 
-  m_evl->push( ev );
+//   m_evl->push( ev );
 
 
-  return int_req_id;
-}
+//   return int_req_id;
+// }
 
 //----------------------------------------------------------------------
 

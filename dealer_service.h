@@ -46,8 +46,8 @@ public:
 
   void listen(int port);
 
-  /* Call an RPC registered within the dealer service */
-  unsigned int call_rpc(std::string rpc, call_user_cb, rpc_args, void* cb_user_data);
+  // /* Call an RPC registered within the dealer service */
+  // unsigned int call_rpc(std::string rpc, call_user_cb, rpc_args, void* cb_user_data);
 
   int register_procedure(std::string procedure);
 
