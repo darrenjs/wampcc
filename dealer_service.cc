@@ -34,21 +34,21 @@ dealer_service::dealer_service(Logger *logptr,
                     [this](class event* ev){ this->handle_YIELD(ev); } );
 
 
-  m_io_loop->m_new_client_cb = [this](IOHandle *h,
-                                      int  status,
-                                      tcp_connect_attempt_cb user_cb,
-                                      void* user_data)
-    {
+  // m_io_loop->m_new_client_cb = [this](IOHandle *h,
+  //                                     int  status,
+  //                                     tcp_connect_attempt_cb user_cb,
+  //                                     void* user_data)
+  //   {
 
-      /* === Called on IO thread === */
-      tcp_connect_event * ev = new tcp_connect_event(user_cb, user_data, status);
-      if (h)
-      {
-        Session* sptr = m_sesman -> create_session(h, true);
-        ev->src = sptr->handle();
-      }
-      m_evl->push( ev );
-    };
+  //     /* === Called on IO thread === */
+  //     tcp_connect_event * ev = new tcp_connect_event(user_cb, user_data, status);
+  //     if (h)
+  //     {
+  //       Session* sptr = m_sesman -> create_session(h, true);
+  //       ev->src = sptr->handle();
+  //     }
+  //     m_evl->push( ev );
+  //   };
 }
 
 dealer_service::~dealer_service()
@@ -83,17 +83,17 @@ void dealer_service::start()
 }
 
 
-// TODO: the whole connector business should be in a separate object
-void dealer_service::connect(const std::string & addr,
-                             int port,
-                             tcp_connect_attempt_cb user_cb,
-                             void* user_data)
-{
-  m_io_loop->add_connection(addr,
-                           port,
-                           user_cb,
-                           user_data);
-}
+// // TODO: the whole connector business should be in a separate object
+// void dealer_service::connect(const std::string & addr,
+//                              int port,
+//                              tcp_connect_attempt_cb user_cb,
+//                              void* user_data)
+// {
+//   m_io_loop->add_connection(addr,
+//                            port,
+//                            user_cb,
+//                            user_data);
+// }
 
 
 // /* This is the special interface on the dealer_service API which allows CALL

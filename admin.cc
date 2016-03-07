@@ -111,13 +111,13 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
   event_queue_condition.notify_one();
 }
 
-void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)
-{
-  std::lock_guard<std::mutex> guard(g_active_session_mutex);
-  g_sid = sh;
-  g_active_session_notifed = true;
-  g_active_session_condition.notify_one();
-}
+// void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)
+// {
+//   std::lock_guard<std::mutex> guard(g_active_session_mutex);
+//   g_sid = sh;
+//   g_active_session_notifed = true;
+//   g_active_session_condition.notify_one();
+// }
 
 class dealer_events : public XXX::dealer_listener
 {
@@ -237,7 +237,7 @@ int main(int argc, char** argv)
   // start the internal thread of the client
   g_dealer->start();
 
-  g_dealer->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
+//  g_dealer->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
 
   // wait for a connection attempt to complete
   _INFO_("starting wait for a connection...");
