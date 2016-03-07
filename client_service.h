@@ -114,9 +114,6 @@ public:
   void add_topic(topic*);
 
 
-  // which session would this go out?  i.e. can this client_service support multiple sessions?
-  void call_remote_rpc() {}
-
   // how do we find out the list of remote topics? and if we have multiple
   // sessions, then, which session has the topic we want?
   void subscribe_remote_topic() {}
@@ -165,8 +162,6 @@ private:
   std::map <int, std::string>                       m_registrationid_map2;
   std::mutex                                        m_registrationid_map_lock2;
 
-
-
   std::map<std::string, topic*> m_topics;
   std::mutex                    m_topics_lock;
 
@@ -186,7 +181,7 @@ private:
   std::mutex                       m_calls_lock;
   dealer_service *                 m_embed_router = nullptr;
 
-  t_client_request_id  m_next_internal_request_id;
+  t_client_request_id  m_next_client_request_id;
 
   // TODO: move to impl
   struct pending_request

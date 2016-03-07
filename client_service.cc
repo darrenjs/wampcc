@@ -43,7 +43,7 @@ client_service::client_service(Logger * logptr,
     m_io_loop( new IOLoop(logptr) ),
     m_evl( new event_loop(logptr) ),
     m_sesman(new SessionMan(__logptr, *m_evl.get())),
-    m_next_internal_request_id(100)
+    m_next_client_request_id(100)
 {
   _INFO_("client_service::client_service");
   m_evl->set_session_man( m_sesman.get() );
@@ -540,7 +540,8 @@ t_client_request_id client_service::call_rpc(session_handle& sh,
 {
   /* USER thread */
 
-  t_client_request_id int_req_id = m_next_internal_request_id++;
+  // TODO: this ID needs to be atomic, because there could be multiple USER threads coming in here.
+  t_client_request_id int_req_id = m_next_client_request_id++;
 
   {
     std::lock_guard<std::mutex> guard( m_pending_requests_lock );
