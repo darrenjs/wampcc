@@ -65,19 +65,6 @@ dealer_service::~dealer_service()
 
 void dealer_service::start()
 {
-
-  // NOTE:  not using idler anymore, because it causes 100% CPU
-  // uv_idle_t idler;
-  // uv_idle_init(loop, &idler);
-  // uv_idle_start(&idler, io_on_idle);
-
-
-
-  // uv_timer_t timer_req;  // TODO: should be a member?
-  // uv_timer_init(loop, &timer_req);
-  // timer_req.data = this;
-  // uv_timer_start(&timer_req, __io_on_timer, 30000, 30000);
-
   // returns immediately
   if (m_own_io) m_io_loop->start();
 }
