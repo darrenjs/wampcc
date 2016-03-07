@@ -91,8 +91,8 @@ public:
   /* Call an RPC on the peer router */
   t_client_request_id call_rpc(session_handle& sh,
                                std::string rpc,
-                               call_user_cb,
                                rpc_args,
+                               call_user_cb,
                                void* cb_user_data);
 
   void start();

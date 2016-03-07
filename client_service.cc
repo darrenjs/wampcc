@@ -534,8 +534,8 @@ void client_service::connect(const std::string & addr,
  */
 t_client_request_id client_service::call_rpc(session_handle& sh,
                                              std::string proc_uri,
-                                             call_user_cb cb,
                                              rpc_args args,
+                                             call_user_cb cb,
                                              void* cb_user_data)
 {
   /* USER thread */
