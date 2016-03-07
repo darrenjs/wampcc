@@ -28,7 +28,7 @@ struct callback_t
   const char* request;
 };
 
-void procedure_cb(XXX::t_invoke_id callid,
+void procedure_cb(XXX::t_invoke_id invokeid,
                   const std::string& procedure,
                   XXX::rpc_args& the_args,
                   XXX::session_handle&,
@@ -48,7 +48,7 @@ void procedure_cb(XXX::t_invoke_id callid,
   jalson::json_array & arr = my_args.args.as_array();
   arr.push_back("hello");
   arr.push_back("back");
-  cbdata->svc->post_reply(callid, my_args);
+  cbdata->svc->post_reply(invokeid, my_args);
 
 
 
