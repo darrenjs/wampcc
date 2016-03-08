@@ -133,7 +133,6 @@ Session::Session(SID s,
 /* Destructor */
 Session::~Session()
 {
-  _INFO_("Session::~Session");
   delete [] m_buf;
 
   for (auto & item : m_pend_req) delete item.second;
@@ -808,8 +807,6 @@ void Session::handle_HELLO(jalson::json_array& ja)
   // get the user id
   std::string authid = jalson::get_or_throw(authopts, "authid").as_string();
 
-  _INFO_("HELLO: authid=" << authid);
-
   /* verify the supported auth methods */
 
   // look for the "wampcra"
@@ -826,7 +823,7 @@ void Session::handle_HELLO(jalson::json_array& ja)
 
   if (wampcra_found)
   {
-    _INFO_("HELLO: wampcra=" << wampcra_found);
+    // TODO: authentication?
   }
   else
   {

@@ -14,7 +14,7 @@
 #include <string.h>
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eAll,
+                                              XXX::Logger::eInfo,
                                               true);
 
 struct callback_t

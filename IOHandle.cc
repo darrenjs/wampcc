@@ -115,7 +115,7 @@ static void io_on_read_cb(uv_stream_t*  uvh,
     {
       if (nread == UV_EOF)
       {
-        std::cout << "got UV_EOF\n";
+        //std::cout << "got UV_EOF\n";
         // TODO: I should really call the IOHandler here
         //std::cout << "stream EOF\n";
       }
@@ -199,7 +199,7 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop)
 /* Destructor */
 IOHandle::~IOHandle()
 {
-  _INFO_( "IOHandle::~IOHandle");
+
   // Note, the assumption in here is that the socket will already have been
   // closed before this object is deleted.
 
@@ -293,7 +293,6 @@ void IOHandle::write_async_cb()
 
     // TODO: not sure I need these ... added when looking for a memory leak.  I
     // think I do need this, becuase without, I do get a lot of core dumps.
-    std::cout << "closing handles\n";
     uv_close((uv_handle_t*)&m_write_async, [](uv_handle_t* uvh){
         IOHandle * h = (IOHandle *) uvh->data;
         h->on_close();
@@ -398,8 +397,6 @@ void IOHandle::on_passive_close()
 {
   /* IO thread */
 
-  std::cout << "on_passive_close\n";
-
   // indicate we are closed at earliest oppurtunity
   m_open = false;
 
@@ -444,8 +441,6 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
 void IOHandle::active_close()
 {
   /* IO thread */
-
-  std::cout << "active_close\n";
 
   // indicate we are closed at earliest oppurtunity
   m_open = false;

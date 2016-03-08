@@ -143,7 +143,6 @@ IOLoop::~IOLoop()
   // uv_loop kept as raw pointer, because need to pass to several uv functions
   uv_loop_close(m_uv_loop);
   delete m_uv_loop;
-  _INFO_("!!!!!! ub loop deleted");
 }
 
 void IOLoop::create_tcp_server_socket(int port,
@@ -166,7 +165,7 @@ void IOLoop::create_tcp_server_socket(int port,
   unsigned flags = 0;
   uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
   int r = uv_listen((uv_stream_t *) &myserver->uvh, 5, __on_tcp_connect);
-  std::cout << "loop starting, r="<< r << "\n";
+//  std::cout << "loop starting, r="<< r << "\n";
 
   m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
 }
@@ -189,8 +188,6 @@ void IOLoop::on_async()
 
   if (pending_flags & eFinal)
   {
-    _INFO_("IOLoop::on_async -- starting handle cleanup");
-
     for (auto & i : m_handles)
       i->active_close();
 

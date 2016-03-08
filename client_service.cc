@@ -45,7 +45,6 @@ client_service::client_service(Logger * logptr,
     m_sesman(new SessionMan(__logptr, *m_evl.get())),
     m_next_client_request_id(100)
 {
-  _INFO_("client_service::client_service");
   m_evl->set_session_man( m_sesman.get() );
 
   m_sesman->set_session_event_listener(
@@ -84,8 +83,6 @@ client_service::client_service(Logger * logptr,
 /* Destructor */
 client_service::~client_service()
 {
-  _INFO_("client_service::~client_service");
-
   // TODO: dont think this is the best way to shutdown.  Should start by trying
   // to close all the sessions.
   m_io_loop->stop();
@@ -505,7 +502,6 @@ void client_service::connect(const std::string & addr,
                              tcp_connect_attempt_cb user_cb,
                              void* user_data)
 {
-  _INFO_("doing connect");
   m_io_loop->add_connection(addr,
                            port,
                            user_cb,

@@ -236,7 +236,6 @@ void SessionMan::send_request(session_handle handle_weak,
 
 void SessionMan::handle_event(session_state_event* ev)
 {
-  _INFO_("void SessionMan::handle_event");
   Session* sptr = NULL;
 
   {
@@ -265,7 +264,6 @@ void SessionMan::handle_event(session_state_event* ev)
   }
 
   if (m_session_event_cb) m_session_event_cb(sptr->handle(), ev->is_open);
-  _INFO_("void SessionMan::handle_event -- done");
 }
 
 //----------------------------------------------------------------------

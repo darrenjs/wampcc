@@ -24,7 +24,7 @@
 XXX::NexioServer * server = nullptr;
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eAll,
+                                              XXX::Logger::eInfo,
                                               true);
 
 std::unique_ptr<XXX::client_service> g_client;
@@ -260,16 +260,12 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  _INFO_("GOT CONNECTION");
-  sleep(5);
   XXX::rpc_args args;
   jalson::json_array ja;
   ja.push_back( "hello" );
   ja.push_back( "world" );
   args.args = ja ;
 
-
-  std::cout << "making CALL\n";
   XXX::t_client_request_id callreqid = g_client->call_rpc(g_sid,
                                                           "stop", args,
                                                           [](XXX::call_info& reqdet,

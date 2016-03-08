@@ -106,7 +106,6 @@ void event_loop::hb_check()
 
 void event_loop::eventmain()
 {
-  _INFO_("event_loop::eventmain");
   const auto timeout = std::chrono::milliseconds( SYSTEM_HEARTBEAT_MS );
 
   /* A note on memory management of the event objects.  Once they are pushed,
@@ -325,7 +324,7 @@ void event_loop::process_event(event * ev)
         //
         //             D:  rpc .. find it, get reg
         //
-        _ERROR_( "THIS CODE IS DEPCRECATED -- NOT SURE IF IT WAS USED" );
+
         // //process_event_InboundCall( e );
         // // TODO: put this back in
         // if (!m_rpcman) throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
@@ -719,8 +718,6 @@ void event_loop::process_outbound_message(outbound_message* ev)
 
 void event_loop::process_internal_outbound_call(internal_outbound_call_event* ev)
 {
-  _INFO_("event_loop::process_internal_outbound_call");
-
   // not good... we need a to a copy of the event for the later arrival of the
   // YIELD/ERROR respons.  Eventually I need to try to just steal the source
   // event.
