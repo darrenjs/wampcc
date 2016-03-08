@@ -104,7 +104,7 @@ Session::Session(SID s,
                  IOHandle* h,
                  SessionListener * listener,
                  event_loop & evl,
-                 bool is_dealer,
+                 bool is_passive,
                  tcp_connect_attempt_cb user_cb,
                  void* user_data)
   : m_state( eInit ),
@@ -120,7 +120,7 @@ Session::Session(SID s,
     m_bytes_avail(0),
     m_is_closing(false),
     m_evl(evl),
-    m_is_dealer(is_dealer),
+    m_is_passive(is_passive),
     m_session_handle(std::make_shared<t_sid>(s.unique_id())),
     m_user_cb(user_cb),
     m_user_data(user_data)
@@ -326,7 +326,7 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
     return;
   }
 
-  if (m_is_dealer)
+  if (m_is_passive)
   {
 
     // TODO: in both this function, and its outbound equivalent, need to have
@@ -405,7 +405,7 @@ void Session::change_state(DealerState expected, DealerState next)
 
 void Session::process_message(jalson::json_value&jv)
 {
-  _DEBUG_( "recv msg: " <<  jv  << ", is_dealer: " << m_is_dealer);
+  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
   // got a wamp-lite message here
 
@@ -438,7 +438,7 @@ void Session::process_message(jalson::json_value&jv)
   // TODO: eventually I need to refactor this code to move all the dealer
   // specific or client specific, to it own location.
   bool fail_session = false;
-  if (m_is_dealer)
+  if (m_is_passive)
   {
     if (message_type == HELLO)
     {

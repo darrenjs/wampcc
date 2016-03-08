@@ -63,7 +63,7 @@ namespace XXX {
   {
   public:
     Session(SID, Logger*, IOHandle *,
-            SessionListener*, event_loop&, bool is_dealer,
+            SessionListener*, event_loop&, bool is_passive,
             tcp_connect_attempt_cb = nullptr,
             void* = nullptr);
     ~Session();
@@ -167,7 +167,7 @@ namespace XXX {
 
     event_loop & m_evl;
 
-    bool m_is_dealer;
+    bool m_is_passive;
 
     jalson::json_value m_challenge; // full message
 

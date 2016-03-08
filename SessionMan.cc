@@ -34,7 +34,7 @@ namespace XXX
   }
 
 
-  Session* SessionMan::create_session(IOHandle * iohandle, bool is_dealer,
+  Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
                                       tcp_connect_attempt_cb user_cb, void* user_data)
   {
     /* IO thread */
@@ -53,14 +53,14 @@ namespace XXX
                         iohandle,
                         this,
                         m_evl,
-                        is_dealer,
+                        is_passive,
                         user_cb,
                         user_data);
 
     m_sessions.active[ sid ] = sptr;
 
     _INFO_( "session created, id=" << sid );
-    if (!is_dealer) sptr->initiate_handshake();
+    if (!is_passive) sptr->initiate_handshake();
 
     return sptr;
   }

@@ -36,7 +36,7 @@ public:
   SessionMan(Logger*, event_loop&);
   ~SessionMan();
 
-  Session* create_session(IOHandle *, bool is_dealer,
+  Session* create_session(IOHandle *, bool is_passive,
                           tcp_connect_attempt_cb=nullptr, void* = nullptr);
 
 //void send_all(const char* data);
