@@ -337,12 +337,7 @@ void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 {
   m_handles.push_back( iohandle );
 
-  if (m_new_client_cb) m_new_client_cb( iohandle, 0, tcp_connect_attempt_cb(), nullptr );
-
-  if (myserver->cb)
-  {
-    myserver->cb(myserver->port, iohandle);
-  }
+  if (myserver->cb) myserver->cb(myserver->port, iohandle);
 }
 
 
