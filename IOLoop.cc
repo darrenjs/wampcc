@@ -9,7 +9,7 @@
 #include <string.h>
 
 
-#define SYSTEM_HEARTBEAT_MS 5000
+#define SYSTEM_HEARTBEAT_MS 10
 
 namespace XXX {
 
@@ -49,6 +49,7 @@ static void __on_connect(uv_connect_t* __req, int status )
 static void __on_tcp_connect(uv_stream_t* server, int status)
 {
   // IOLoop has set itself as the uv_loop data member
+  tcp_server* myserver = (tcp_server*) server;
   IOLoop * myIOLoop = static_cast<IOLoop* >(server->loop->data);
 
   if (status < 0)
@@ -76,7 +77,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
     }
 
     // register the stream before beginning read operations
-    myIOLoop->add_passive_handle( ioh );
+    myserver->ioloop->add_passive_handle(myserver, ioh );
 
   //   // NOTE: registration of read event moved into the handle
 
@@ -145,24 +146,29 @@ IOLoop::~IOLoop()
   _INFO_("!!!!!! ub loop deleted");
 }
 
-void IOLoop::create_tcp_server_socket(int port)
+void IOLoop::create_tcp_server_socket(int port,
+                                      socket_accept_cb cb
+  )
 {
   /* UV Loop */
 
   // Create a tcp socket, and configure for listen
-  uv_tcp_t * server = new uv_tcp_t(); // TODO: what if this goes out of scope?
-  uv_tcp_init(m_uv_loop, server);
-  server->data = this;
+  tcp_server * myserver = new tcp_server();
+  myserver->port   = port;
+  myserver->ioloop = this;
+  myserver->cb = cb;
+
+  uv_tcp_init(m_uv_loop, &myserver->uvh);
 
   struct sockaddr_in addr;
   uv_ip4_addr("0.0.0.0", port, &addr);
 
   unsigned flags = 0;
-  uv_tcp_bind(server, (const struct sockaddr*)&addr, flags);
-  int r = uv_listen((uv_stream_t *) server, 5, __on_tcp_connect);
+  uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
+  int r = uv_listen((uv_stream_t *) &myserver->uvh, 5, __on_tcp_connect);
   std::cout << "loop starting, r="<< r << "\n";
 
-  m_server_handles.push_back( std::unique_ptr<uv_tcp_t>(server) );
+  m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
 }
 
 
@@ -203,7 +209,7 @@ void IOLoop::on_async()
     if (item.addr.empty())
     {
       // TODO: check we dont already have port on this.
-      create_tcp_server_socket(item.port);
+      create_tcp_server_socket(item.port, item.on_accept);
     }
     else
     {
@@ -296,12 +302,13 @@ void IOLoop::on_timer()
   if (need_remove) m_handles.remove( nullptr );
 }
 
-void IOLoop::add_server(int port)
+void IOLoop::add_server(int port, socket_accept_cb cb)
 {
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     io_request r( __logptr );
     r.port = port;
+    r.on_accept = cb;
     m_pending_requests.push_back( r );
   }
 
@@ -326,12 +333,16 @@ void IOLoop::add_connection(std::string addr,
   this->async_send();
 }
 
-void IOLoop::add_passive_handle(IOHandle* iohandle)
+void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 {
   m_handles.push_back( iohandle );
 
   if (m_new_client_cb) m_new_client_cb( iohandle, 0, tcp_connect_attempt_cb(), nullptr );
 
+  if (myserver->cb)
+  {
+    myserver->cb(myserver->port, iohandle);
+  }
 }
 
 

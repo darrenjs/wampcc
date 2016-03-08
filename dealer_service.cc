@@ -173,7 +173,13 @@ void dealer_service::handle_YIELD(event* ev)
 
 void dealer_service::listen(int port)
 {
-   m_io_loop->add_server( port );
+  _INFO_("dealer_service::listen port" << port);
+  m_io_loop->add_server( port,
+                         [this](int port,
+                                IOHandle* hndl) {
+                           _INFO_("dealer got a connection");
+      /* received a connect ... here, I likely need to start the handshake ?*/
+    } );
 }
 
 int dealer_service::register_procedure(std::string uri)

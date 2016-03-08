@@ -22,7 +22,9 @@ class IOLoop;
 class IOHandle;
 
 
+
 typedef std::function<void(IOHandle* ,int, tcp_connect_attempt_cb, void*)> NewConnectionCallback;
+  typedef std::function<void(int port, IOHandle*)> socket_accept_cb;
 
 // TODO: try to move to impl file
 struct io_request
@@ -33,7 +35,19 @@ struct io_request
   tcp_connect_attempt_cb user_cb;
   void* user_data = nullptr;
   Logger * logptr;
+  socket_accept_cb on_accept;
   io_request(Logger * __logptr) : logptr(__logptr) {}
+};
+
+
+
+struct  tcp_server
+{
+  uv_tcp_t uvh;
+  int port;
+  IOLoop * ioloop;
+  char tmp[20480]; // TODO: delete me
+  socket_accept_cb cb;
 };
 
 // TODO: maybe the IO loop should also do the TCP connect stuff? I.e., it all goes there?
@@ -53,10 +67,10 @@ public:
 
   void async_send();
 
-  void add_passive_handle(IOHandle* iohandle);
+  void add_passive_handle(tcp_server* server, IOHandle* iohandle);
   void add_active_handle(IOHandle* iohandle, int status, io_request*);
 
-  void add_server(int port);
+  void add_server(int port, socket_accept_cb);
   void add_connection(std::string addr, int port,
                       tcp_connect_attempt_cb, void*);
 
@@ -78,7 +92,7 @@ public:
 
 private:
 
-  void create_tcp_server_socket(int port);
+  void create_tcp_server_socket(int port, socket_accept_cb cb);
 
   std::vector< io_request > m_pending_requests;
   std::mutex                m_pending_requests_lock;
@@ -94,7 +108,7 @@ private:
   std::list< IOHandle* >m_handles; // TODO: need lock? No.
 
 
-  std::list< std::unique_ptr<uv_tcp_t> > m_server_handles;
+  std::list< std::unique_ptr<tcp_server> > m_server_handles;
 
 
 };
