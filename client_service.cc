@@ -71,7 +71,7 @@ client_service::client_service(Logger * logptr,
                                        int reg_id,
                                        rpc_args& args){this->invoke_direct(h, req_id, reg_id, args);};
 
-  m_io_loop->m_new_client_cb = [this](IOHandle* h, int status ,tcp_connect_attempt_cb user_cb, void* user_data ){this->new_client(h, status, user_cb, user_data);};
+ m_io_loop->m_new_client_cb = [this](IOHandle* h, int status ,tcp_connect_attempt_cb user_cb, void* user_data ){this->new_client(h, status, user_cb, user_data);};
 
   if (config.enable_embed_router)
   {
@@ -205,31 +205,18 @@ void client_service::new_client(IOHandle *h,
                                 tcp_connect_attempt_cb user_cb,
                                 void* user_data)
 {
-  _INFO_("client_service::new_client");
-  /* === Called on IO thread === */
-
-  std::string the_realm="default";
-  tcp_connect_event * ev = new tcp_connect_event(user_cb, user_data, status);
+  /* IO */
 
   if (h)
   {
-    Session* sptr = m_sesman -> create_session(h, false);
-    ev->src = sptr->handle();
-
-    // TODO: probably want to move this into the Session
-    {
-      jalson::json_array msg;
-      msg.push_back( HELLO );
-      msg.push_back( the_realm );
-      jalson::json_object& opt = jalson::append_object( msg );
-      opt[ "roles" ] = jalson::json_object();
-      opt[ "authid"] = "peter";
-      opt[ "authmethods"] = jalson::json_array({"wampcra"});
-      sptr->send_msg( msg );
-    }
+    m_sesman -> create_session(h, false, user_cb, user_data);
   }
-
-  m_evl->push( ev );
+  else
+  {
+    // push failure event
+    tcp_connect_event * ev = new tcp_connect_event(user_cb, user_data, status);
+    m_evl->push( ev );
+  }
 }
 
 //----------------------------------------------------------------------

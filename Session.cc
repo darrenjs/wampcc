@@ -104,7 +104,9 @@ Session::Session(SID s,
                  IOHandle* h,
                  SessionListener * listener,
                  event_loop & evl,
-                 bool is_dealer)
+                 bool is_dealer,
+                 tcp_connect_attempt_cb user_cb,
+                 void* user_data)
   : m_state( eInit ),
     __logptr(logptr),
     m_listener( listener ),
@@ -119,7 +121,9 @@ Session::Session(SID s,
     m_is_closing(false),
     m_evl(evl),
     m_is_dealer(is_dealer),
-    m_session_handle(std::make_shared<t_sid>(s.unique_id()))
+    m_session_handle(std::make_shared<t_sid>(s.unique_id())),
+    m_user_cb(user_cb),
+    m_user_data(user_data)
 {
   m_handle->set_listener(this);
 }
@@ -983,6 +987,14 @@ void Session::notify_session_state_change(bool is_open)
   e->src  = handle();
   e->mode = event::eInbound;
   m_evl.push( e );
+
+  if (is_open)
+  {
+    tcp_connect_event * ev = new tcp_connect_event(m_user_cb, m_user_data, 0);
+    ev->src = this->handle();
+    m_evl.push( ev );
+  }
+
 }
 
 //----------------------------------------------------------------------
@@ -990,6 +1002,22 @@ void Session::notify_session_state_change(bool is_open)
 bool Session::is_open() const
 {
   return m_state == eOpen;
+}
+
+//----------------------------------------------------------------------
+
+void Session::initiate_handshake()
+{
+  /* IO thread */
+
+  jalson::json_array msg;
+  msg.push_back( HELLO );
+  msg.push_back( "the_realm" );
+  jalson::json_object& opt = jalson::append_object( msg );
+  opt[ "roles" ] = jalson::json_object();
+  opt[ "authid"] = "peter";
+  opt[ "authmethods"] = jalson::json_array({"wampcra"});
+  this->send_msg( msg );
 }
 
 } // namespace XXX

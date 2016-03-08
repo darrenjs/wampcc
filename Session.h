@@ -63,7 +63,9 @@ namespace XXX {
   {
   public:
     Session(SID, Logger*, IOHandle *,
-            SessionListener*, event_loop&, bool is_dealer);
+            SessionListener*, event_loop&, bool is_dealer,
+            tcp_connect_attempt_cb = nullptr,
+            void* = nullptr);
     ~Session();
 
     /* Build CALL and enque on socket. Currently used by client-code. Might not
@@ -95,6 +97,8 @@ namespace XXX {
     session_handle handle() { return m_session_handle; }
 
     bool is_open() const;
+
+    void initiate_handshake();
 
   private:
     Session(const Session&) = delete;
@@ -174,6 +178,9 @@ namespace XXX {
     std::mutex m_pend_req_lock;
 
     std::shared_ptr< t_sid > m_session_handle;
+
+    tcp_connect_attempt_cb m_user_cb;
+    void* m_user_data;
   };
 
 } // namespace XXX

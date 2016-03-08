@@ -34,7 +34,8 @@ namespace XXX
   }
 
 
-  Session* SessionMan::create_session(IOHandle * iohandle, bool is_dealer)
+  Session* SessionMan::create_session(IOHandle * iohandle, bool is_dealer,
+                                      tcp_connect_attempt_cb user_cb, void* user_data)
   {
     /* IO thread */
 
@@ -52,15 +53,16 @@ namespace XXX
                         iohandle,
                         this,
                         m_evl,
-                        is_dealer);
+                        is_dealer,
+                        user_cb,
+                        user_data);
 
     m_sessions.active[ sid ] = sptr;
 
-    // Send the logon message
-    //sptr->send("logon");
-
 
     _INFO_( "session created, id=" << sid );
+    sptr->initiate_handshake();
+
 
     return sptr;
   }
