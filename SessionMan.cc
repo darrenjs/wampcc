@@ -10,6 +10,8 @@
 
 #include <string.h>
 
+#define PENDING_DURATION_KILL_SECS 3
+
 namespace XXX
 {
 
@@ -77,6 +79,10 @@ namespace XXX
     {
       if (i.second->is_open())
         i.second->send_msg(msg);
+      else if (i.second->duration_pending_open() > PENDING_DURATION_KILL_SECS * 1000 )
+      {
+        _INFO_("TODO: need to kill this session");
+      }
     }
 
   }

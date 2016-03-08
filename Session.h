@@ -100,6 +100,10 @@ namespace XXX {
 
     void initiate_handshake();
 
+    /* If session is not open, then return number of milliseconds since
+     * creation.  Else return 0/  */
+    int duration_pending_open() const;
+
   private:
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
@@ -153,7 +157,7 @@ namespace XXX {
         might not be too reliable, because the underlying housekeeping timer has
         around a 20 second precision. */
     int m_hb_intvl;
-    time_t m_start;
+    time_t m_time_create;
     time_t m_opened;
 
     time_t m_hb_last;

@@ -112,7 +112,7 @@ Session::Session(SID s,
     m_listener( listener ),
     m_handle( h ),
     m_hb_intvl(30),
-    m_start(time(NULL)),
+    m_time_create(time(NULL)),
     m_opened(0),
     m_hb_last(0),
     m_request_id(0),
@@ -1016,5 +1016,15 @@ void Session::initiate_handshake()
   opt[ "authmethods"] = jalson::json_array({"wampcra"});
   this->send_msg( msg );
 }
+
+
+int Session::duration_pending_open() const
+{
+  if (is_open())
+    return 0;
+  else
+    return (time(NULL) - m_time_create)*1000;
+}
+
 
 } // namespace XXX
