@@ -254,6 +254,12 @@ int main(int argc, char** argv)
       return 1;
     }
   }
+  if (!g_sid.lock())
+  {
+    std::cout << "no connection\n";
+    return 1;
+  }
+
   _INFO_("GOT CONNECTION");
   sleep(5);
   XXX::rpc_args args;
@@ -305,6 +311,7 @@ int main(int argc, char** argv)
 
   //while (1)   sleep(1);
 
+  g_client.reset();
   delete logger;
   return 0;
 }
