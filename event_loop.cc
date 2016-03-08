@@ -245,9 +245,9 @@ void event_loop::process_event(event * ev)
       break;
     }
 
-    case event::tcp_connect_event :
+    case event::tcp_active_connect_event :
     {
-      tcp_connect_event * tcpev = (tcp_connect_event*) ev;
+      tcp_active_connect_event * tcpev = (tcp_active_connect_event*) ev;
       if (tcpev->user_cb)
         tcpev->user_cb(tcpev->src, tcpev->status, tcpev->user_data);
       return;

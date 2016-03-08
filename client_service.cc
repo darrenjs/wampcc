@@ -211,7 +211,7 @@ void client_service::new_client(IOHandle *h,
   else
   {
     // push failure event
-    tcp_connect_event * ev = new tcp_connect_event(user_cb, user_data, status);
+    tcp_active_connect_event * ev = new tcp_active_connect_event(user_cb, user_data, status);
     m_evl->push( ev );
   }
 }

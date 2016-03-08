@@ -45,7 +45,7 @@ public:
     internal_outbound_call_event,
     outbound_response_event,
     outbound_message,
-    tcp_connect_event
+    tcp_active_connect_event
   } type;
 
   enum Mode
@@ -92,15 +92,15 @@ public:
   }
 };
 
-struct tcp_connect_event : public event
+struct tcp_active_connect_event : public event
 {
   tcp_connect_attempt_cb user_cb;
   void* user_data;
   int status;  /* 0 is no error */
-  tcp_connect_event(tcp_connect_attempt_cb __user_cb,
+  tcp_active_connect_event(tcp_connect_attempt_cb __user_cb,
                     void* ud,
                     int st)
-    : event( event::tcp_connect_event ),
+    : event( event::tcp_active_connect_event ),
       user_cb(__user_cb),
       user_data(ud),
       status(st)

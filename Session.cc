@@ -987,7 +987,7 @@ void Session::notify_session_state_change(bool is_open)
 
   if (is_open)
   {
-    tcp_connect_event * ev = new tcp_connect_event(m_user_cb, m_user_data, 0);
+    tcp_active_connect_event * ev = new tcp_active_connect_event(m_user_cb, m_user_data, 0);
     ev->src = this->handle();
     m_evl.push( ev );
   }
