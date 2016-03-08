@@ -60,11 +60,9 @@ void event_loop::set_handler2(unsigned int eventid, event_cb2 handler)
 {
   if (eventid > m_handlers2.size() )
   {
-    _ERROR_("resizing handler vector for eventid " << eventid);
     m_handlers2.resize( eventid+1 );
   }
   m_handlers2[ eventid ] = handler;
-
 }
 
 /*
