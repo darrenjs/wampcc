@@ -6,7 +6,7 @@
 #include "Logger.h"
 #include "event_loop.h"
 #include "client_service.h"
-#include "dealer_service.h"
+
 
 #include <Logger.h>
 
@@ -27,7 +27,8 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eAll,
                                               true);
 
-std::unique_ptr<XXX::dealer_service> g_dealer;
+std::unique_ptr<XXX::client_service> g_client;
+
 
 struct user_options
 {
@@ -111,42 +112,38 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
   event_queue_condition.notify_one();
 }
 
-// void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)
-// {
-//   std::lock_guard<std::mutex> guard(g_active_session_mutex);
-//   g_sid = sh;
-//   g_active_session_notifed = true;
-//   g_active_session_condition.notify_one();
-// }
-
-class dealer_events : public XXX::dealer_listener
+void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)
 {
-public:
+  std::lock_guard<std::mutex> guard(g_active_session_mutex);
+  g_sid = sh;
+  g_active_session_notifed = true;
+  g_active_session_condition.notify_all();
+}
 
-  void rpc_registered(std::string uri)
-  {
-    // TODO: this is the code for rasing an RPC... temporary comented out for a test
+// class dealer_events : public XXX::dealer_listener
+// {
+// public:
 
-    if (uri == "stop")
-    {
-      XXX::rpc_args args;
-      jalson::json_array ja;
-      ja.push_back( "hello" );
-      ja.push_back( "world" );   //TODO: why do I not see thi value arrise at the other side? Jalson error?
-      args.args = ja ;
+//   void rpc_registered(std::string uri)
+//   {
+//     // TODO: this is the code for rasing an RPC... temporary comented out for a test
 
-      // g_dealer->call_rpc("stop",
-      //                    [](XXX::call_info& reqdet, XXX::rpc_args& args, void* cb_data)
-      //                    { call_cb(reqdet, args, cb_data);},
-      //                   args, (void*)"I_called_stop");
+//     if (uri == "stop")
+//     {
+//       XXX::rpc_args args;
+//       jalson::json_array ja;
+//       ja.push_back( "hello" );
+//       ja.push_back( "world" );   //TODO: why do I not see thi value arrise at the other side? Jalson error?
+//       args.args = ja ;
 
-    }
 
-    std::unique_lock< std::mutex > guard( event_queue_mutex );
-    event_queue.push( eRPCSent );
-    event_queue_condition.notify_one();
-  }
-};
+//     }
+
+//     std::unique_lock< std::mutex > guard( event_queue_mutex );
+//     event_queue.push( eRPCSent );
+//     event_queue_condition.notify_one();
+//   }
+// };
 
 
 static void die(const char* e)
@@ -231,37 +228,50 @@ int main(int argc, char** argv)
   auto __logptr = logger;
 
   /* new client service */
-  dealer_events de;
-  g_dealer.reset( new XXX::dealer_service(logger, &de) );
+//  dealer_events de;
 
-  // start the internal thread of the client
-  g_dealer->start();
+  XXX::client_service::config config;
+  config.port = 0;
+  g_client.reset( new XXX::client_service(logger, config) );
 
-//  g_dealer->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
+
+  g_client->start();
+
+  g_client->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
 
   // wait for a connection attempt to complete
-  _INFO_("starting wait for a connection...");
+
+  auto wait_interval = std::chrono::seconds(7);
   {
     std::unique_lock<std::mutex> guard(g_active_session_mutex);
-    // TODO: put in a time limit?
-    g_active_session_condition.wait(guard,
-                                    [](){ return g_active_session_notifed; } );
+
+    bool hasevent = g_active_session_condition.wait_for(guard,
+                                                        wait_interval,
+                                                        [](){ return g_active_session_notifed; });
+    if (!hasevent)
+    {
+      std::cout << "no connection\n";
+      return 1;
+    }
   }
+  _INFO_("GOT CONNECTION");
+  sleep(5);
+  XXX::rpc_args args;
+  jalson::json_array ja;
+  ja.push_back( "hello" );
+  ja.push_back( "world" );
+  args.args = ja ;
 
 
-  _INFO_("... wait complete");
+  std::cout << "making CALL\n";
+  XXX::t_client_request_id callreqid = g_client->call_rpc(g_sid,
+                                                          "stop", args,
+                                                          [](XXX::call_info& reqdet,
+                                                             XXX::rpc_args& args,
+                                                             void* cb_data)
+                                                          { call_cb(reqdet, args, cb_data);},
+                                                          (void*)"I_called_stop");
 
-  auto sp = g_sid.lock();
-  if (!sp)
-  {
-    /* we failed to connect */
-    _WARN_("failed to connect");
-    return 1;
-  }
-  _INFO_( "got session, sid=" << *sp );
-
-
-  auto wait_interval = std::chrono::seconds(5);
 
   bool keep_waiting = true;
   while (keep_waiting)
@@ -294,7 +304,7 @@ int main(int argc, char** argv)
   }
 
   //while (1)   sleep(1);
-  g_dealer.reset(); // delete before logger
+
   delete logger;
   return 0;
 }
