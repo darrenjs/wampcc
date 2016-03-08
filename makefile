@@ -52,7 +52,7 @@ JALSONLIBSTATIC=$(JALSONHOME)/lib/libjalson.a $(JANSSONLIBSTATIC)
 BIN1=nexio
 BIN2=admin
 BIN3=client
-BIN4=newadmin
+BIN4=
 TARGETS=$(BIN1) $(BIN2) $(BIN3)  $(BIN4)
 
 ##
@@ -74,7 +74,7 @@ SOURCES_BIN3 = session_state_listener.cc  utils.cc NexioServer.cc SessionMan.cc 
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN4 =session_state_listener.cc   utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc event.cc Logger.cc Callbacks.cc  newadmin.cc
+SOURCES_BIN4 =
 
 
 
