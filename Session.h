@@ -22,7 +22,6 @@ namespace XXX {
 
 
   typedef std::function< std::pair< jalson::json_array, Request_CB_Data*> (int) > build_message_cb_v2;
-  typedef std::function<  jalson::json_array  (int) > build_message_cb_v3;
   typedef std::function<  jalson::json_array  ()    > build_message_cb_v4;
 
 
@@ -79,9 +78,9 @@ namespace XXX {
                        unsigned int internal_req_id,
                        build_message_cb_v2 msg_builder );
 
-    void send_request( int request_type,
-                       build_message_cb_v3 msg_builder,
-                       Request_CB_Data* = 0);
+    // void send_request( int request_type,
+    //                    build_message_cb_v3 msg_builder,
+    //                    Request_CB_Data* = 0);
 
     void subscribe()  {}
 
