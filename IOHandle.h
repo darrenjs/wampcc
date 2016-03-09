@@ -30,19 +30,11 @@ public:
   /* Enqueue bytes to be sent */
   void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool close);
 
-  /* Request a socket close */
-  void close(int);
-
   void write_async_cb();
-  void writeclose_async_cb();
-  void close_async_cb();
-
 
   // IO callbacks -- these get invoked on the IO thread
   void on_close();
   void on_read(char*, size_t);
-
-  void close_uv_handle();
 
   void on_passive_close();
   void active_close();
@@ -64,10 +56,7 @@ private:
   IOLoop* m_loop;
   bool m_open = true;
 
-  // TODO: do I need all these asyncs?
   uv_async_t   m_write_async;
-  uv_async_t   m_writeclose_async;
-  uv_async_t   m_close_async;
 
   bool m_async_allowed = true;
   bool m_ready_for_delete = false;

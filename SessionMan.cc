@@ -95,7 +95,8 @@ namespace XXX
     for (auto i : m_sessions.active)
     {
       // TODO: do I need to test if session is open?
-        i.second->close(1);
+      // TODO: need to do the close here
+//        i.second->close(1);
     }
   }
 

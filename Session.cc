@@ -141,16 +141,16 @@ Session::~Session()
 
 //----------------------------------------------------------------------
 
-void Session::close(int)
-{
-  std::lock_guard<std::mutex> guard(m_handle_lock);
-  m_handle = nullptr;
-  _INFO_("Session::close");
-  // TODO: note, I am trying to run without this, because at the moment I have a
-  // race condition in the uv_close
+// void Session::close(int)
+// {
+//   std::lock_guard<std::mutex> guard(m_handle_lock);
+//   m_handle = nullptr;
+//   _INFO_("Session::close");
+//   // TODO: note, I am trying to run without this, because at the moment I have a
+//   // race condition in the uv_close
 
-//    if (m_handle) m_handle->close();
-}
+// //    if (m_handle) m_handle->close();
+// }
 
 //----------------------------------------------------------------------
 
@@ -376,7 +376,7 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
 }
 //----------------------------------------------------------------------
 
-void Session::change_state(DealerState expected, DealerState next)
+void Session::change_state(SessionState expected, SessionState next)
 {
   std::vector<std::string> names = {"eInit","eRecvHello","eSentChallenge",
                                     "eRecvAuth","eOpen","eClosed",

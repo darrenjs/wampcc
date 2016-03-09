@@ -114,11 +114,9 @@ namespace XXX {
 
     void update_state_for_outbound(const jalson::json_array& msg);
 
-
-
     friend class IOHandle;
 
-    enum DealerState
+    enum SessionState
     {
       eInit = 0,
       eRecvHello,
@@ -135,7 +133,7 @@ namespace XXX {
       eStateMax
     } m_state;   // TODO: this is my experiment with makeing a session specific to a session owned by a delare
 
-    void change_state(DealerState expected, DealerState next);
+    void change_state(SessionState expected, SessionState next);
 
     void handle_HELLO(jalson::json_array& ja);
     void handle_CHALLENGE(jalson::json_array& ja);
