@@ -117,8 +117,7 @@ public:
     void process_event_error(event* e, event_error&);
 
     void process_event_InboundCall(event* e);
-//    void process_outbound_call(outbound_call_event*);
-    void process_internal_outbound_call(internal_outbound_call_event*);
+    void process_outbound_call(outbound_call_event*);
     void process_outbound_response(outbound_response_event *);
     void process_outbound_message(outbound_message *);
     void process_inbound_error(event* e);

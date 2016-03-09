@@ -534,7 +534,7 @@ t_client_request_id client_service::call_rpc(session_handle& sh,
     pending.rpc= proc_uri;
   }
 
-  internal_outbound_call_event * ev = new internal_outbound_call_event();
+  outbound_call_event * ev = new outbound_call_event();
 
   ev->mode = event::eOutbound;
   ev->dest = sh;

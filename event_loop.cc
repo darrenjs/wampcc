@@ -205,18 +205,11 @@ void event_loop::process_event(event * ev)
       /* old style event */
       event_handled = false;
       break;
-    // case event::outbound_call_event :
-    // {
-    //   // TODO: create a template for this, which will throw etc.
-    //   outbound_call_event* ev2 = dynamic_cast<outbound_call_event*>(ev);
-    //   process_outbound_call(ev2);
-    //   break;
-    // }
-    case event::internal_outbound_call_event :
+    case event::outbound_call_event :
     {
       // TODO: create a template for this, which will throw etc.
-      internal_outbound_call_event* ev2 = dynamic_cast<internal_outbound_call_event*>(ev);
-      process_internal_outbound_call(ev2);
+      outbound_call_event* ev2 = dynamic_cast<outbound_call_event*>(ev);
+      process_outbound_call(ev2);
       break;
     }
     case event::outbound_response_event :
@@ -714,7 +707,7 @@ void event_loop::process_outbound_message(outbound_message* ev)
 
 //----------------------------------------------------------------------
 
-void event_loop::process_internal_outbound_call(internal_outbound_call_event* ev)
+void event_loop::process_outbound_call(outbound_call_event* ev)
 {
   // not good... we need a to a copy of the event for the later arrival of the
   // YIELD/ERROR respons.  Eventually I need to try to just steal the source
