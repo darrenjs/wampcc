@@ -67,19 +67,17 @@ static void io_on_read_cb(uv_stream_t*  uvh,
 
   try
   {
-    if (nread < 0)
+    if ((nread == UV_EOF) ||  (nread < 0))
     {
-      if (nread == UV_EOF)
-      {
-        //std::cout << "got UV_EOF\n";
-        // TODO: I should really call the IOHandler here
-        //std::cout << "stream EOF\n";
-      }
       iohandle->on_passive_close();
     }
     else if (nread > 0)
     {
       iohandle->on_read(buf->base, nread);
+    }
+    else if (nread == 0)
+    {
+      // spinning?
     }
   }
   catch (...)
@@ -90,7 +88,6 @@ static void io_on_read_cb(uv_stream_t*  uvh,
     std::cout << "caught exception during io callback\n";
   }
 
-  //if (buf->len > 0)
   delete [] buf->base;
 }
 
