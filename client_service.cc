@@ -492,6 +492,9 @@ void client_service::add_topic(topic* topic)
   std::unique_lock<std::mutex> guard(m_topics_lock);
   m_topics[ topic->uri() ] = topic;
 
+//  topic->add_observer();
+
+
 }
 
 //----------------------------------------------------------------------

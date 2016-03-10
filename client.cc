@@ -5,10 +5,11 @@
 #include <client_service.h>
 #include <Logger.h>
 
-#include <sstream>
 #include <condition_variable>
-#include <mutex>
 #include <iostream>
+#include <mutex>
+#include <sstream>
+#include <thread>
 
 #include <unistd.h>
 #include <string.h>
@@ -76,11 +77,20 @@ void procedure_cb(XXX::t_invoke_id invokeid,
 
 }
 
+void publisher_tep()
+{
+  while(true)
+  {
+
+    sleep(1);
+    std::cout <<"update\n";
+  }
+}
+
 
 
 int main(int /* argc */, char** /* argv */)
 {
-  XXX::Logger * __logptr = logger;
   XXX::client_service::config cfg;
   cfg.port = 55555;
   cfg.enable_embed_router = true;
@@ -90,6 +100,8 @@ int main(int /* argc */, char** /* argv */)
 
   std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger, cfg) );
 
+  mycs->add_topic( t1.get() );
+
   std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_hello") );
   std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_start") );
   std::unique_ptr<callback_t> cb3( new callback_t(mycs.get(),"my_stop") );
@@ -98,12 +110,16 @@ int main(int /* argc */, char** /* argv */)
   mycs->add_procedure("start", procedure_cb, (void*) cb2.get());
   mycs->add_procedure("stop",  procedure_cb, (void*) cb3.get());
 
+
   mycs->start();
+
+  std::thread publisher( publisher_tep );
 
   while(1) sleep(10);
 
   // explicit deletion for better control
-  _INFO_("main initialing shutdown");
+
+  publisher.join();
   mycs.reset();
   delete logger;
   return 0;

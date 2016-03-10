@@ -15,14 +15,26 @@ namespace XXX {
   class Session;
 
 // Base class for topics
+
+
+
 class topic
 {
+  class observer
+  {
+  public:
+    virtual void on_change();
+  };
+
 public:
   topic(const std::string& uri)
     : m_uri(uri)
   {}
 
   const std::string& uri() const { return m_uri; }
+
+
+  void add_observer( observer* ) {}
 
 private:
   std::string m_uri;
