@@ -72,31 +72,6 @@ struct PendingRegister : public PendingReq
   std::string procedure;
 };
 
-void to_hex(const unsigned char * p, size_t size,
-            std::ostream& os,
-            const char* prefix = NULL,
-            bool brackets = false)
-{
-   std::ios_base::fmtflags flags = os.flags(); // save state
-
-   if (brackets) os << "[";
-
-   // set up our stream for hex output
-   os << std::setfill('0');
-   os << std::hex;
-   os << std::uppercase;
-   os << std::right;
-
-   for (size_t i = 0; i < size; ++i)
-   {
-      if (prefix) os << prefix;
-      os << std::setw(2) << static_cast<int>(p[i]) ;
-   }
-
-   os.flags(flags);   // reset stream state
-
-   if (brackets) os << "]";
-}
 
 /* Constructor */
 Session::Session(SID s,
@@ -141,16 +116,12 @@ Session::~Session()
 
 //----------------------------------------------------------------------
 
-// void Session::close(int)
-// {
-//   std::lock_guard<std::mutex> guard(m_handle_lock);
-//   m_handle = nullptr;
-//   _INFO_("Session::close");
-//   // TODO: note, I am trying to run without this, because at the moment I have a
-//   // race condition in the uv_close
-
-// //    if (m_handle) m_handle->close();
-// }
+void Session::close(int)
+{
+  // TODO: is this correct approach?
+  //std::lock_guard<std::mutex> guard(m_handle_lock);
+  //m_handle->active_close();
+}
 
 //----------------------------------------------------------------------
 
@@ -407,23 +378,6 @@ void Session::process_message(jalson::json_value&jv)
 {
   _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
-  // got a wamp-lite message here
-
-    // if (obj.type != msgpack::type::ARRAY) {
-    //     throw protocol_error("invalid message structure - message is not an array");
-    // }
-
-    // wamp_message message;
-    // obj.convert(&message);
-
-    // if (message.size() < 1) {
-    //     throw protocol_error("invalid message structure - missing message code");
-    // }
-
-    // if (message[0].type != msgpack::type::POSITIVE_INTEGER) {
-    //     throw protocol_error("invalid message code type - not an integer");
-    // }
-
   // TODO: need basic WAMP checking here
 
   jalson::json_array ja = jv.as_array();  // TODO: raise a protocol error if fails
@@ -580,16 +534,6 @@ void Session::process_message(jalson::json_value&jv)
   // event loop.  Although, there will be some stuff we need to handle at the
   // session layer.
 
-  // event * e = new event();
-  // e->src  = m_sid;
-  // e->mode = event::eInbound;
-  // e->msg_type = message_type;
-  // e->ja = ja;
-  // if (pendreq) e->cb_data = pendreq->cb_data;
-  // e->internal_req_id = pend2.internal_req_id;
-  // e->user = pend2.user;
-  // m_evl.push( e );
-
   // new style, using a dedicated event class for inbound messages
   inbound_message_event * ev = new inbound_message_event(message_type);
   ev->src = handle();
@@ -699,7 +643,6 @@ void Session::send_msg(jalson::json_array& jv, bool final)
     bufs[0].first  = (char*)&msglen;
     bufs[0].second = sizeof(msglen);
 
-    // TODO: not sure if this is the correct way to close a libuv socket.
     // write message
     update_state_for_outbound(jv);
     if (final)
@@ -737,8 +680,6 @@ void Session::send_msg(build_message_cb_v4 builder)
     bufs[0].first  = (char*)&msglen;
     bufs[0].second = sizeof(msglen);
 
-    usleep(500); // TODO: delete me
-
     // write message
     bufs[1].first  = (char*)str.c_str();
     bufs[1].second = str.size();
@@ -748,11 +689,9 @@ void Session::send_msg(build_message_cb_v4 builder)
 
 //----------------------------------------------------------------------
 
-//----------------------------------------------------------------------
-
-  bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count, bool final)
+bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count, bool final)
 {
-  /* EVL thread */
+  /* EV thread */
 
   if (!m_is_closing)
   {
