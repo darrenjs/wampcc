@@ -36,6 +36,7 @@ struct user_options
     std::string port;
     std::string cmd;
     std::list< std::string > cmdargs;
+    std::list< std::string > subscribe_topics;
 
     int verbose;
 
@@ -179,9 +180,10 @@ static void process_options(int argc, char** argv)
   static struct option long_options[] = {
     {"help",    no_argument, 0, 'h'},
     {"version", no_argument, 0, 'v'},
+    {"subscribe", required_argument, 0, 's'},
     {NULL, 0, NULL, 0}
   };
-  const char* optstr="hvd:";
+  const char* optstr="hvds:";
 
   ::opterr=1;
 
@@ -207,6 +209,7 @@ static void process_options(int argc, char** argv)
       case 'd' : uopts.verbose++; break;
       case 'h' : usage();
       case 'v' : version();
+      case 's' : uopts.subscribe_topics.push_back(optarg); break;
       case '?' : exit(1); // invalid option
       default:
       {
