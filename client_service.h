@@ -116,7 +116,8 @@ public:
 
   // how do we find out the list of remote topics? and if we have multiple
   // sessions, then, which session has the topic we want?
-  void subscribe_remote_topic() {}
+  void subscribe_remote_topic(session_handle& sh,
+                              const std::string& uri);
 
   void invoke_direct(session_handle&,
                      t_request_id,
@@ -199,6 +200,7 @@ private:
 
   std::map<std::pair<std::string,int>, router_session*> m_router_sessions;
   std::mutex m_router_sessions_lock;
+
 };
 
 } // namespace XXX

@@ -14,6 +14,7 @@ namespace XXX {
 
   class SessionMan;
   class Session;
+  class pubsub_man;
   class rpc_man;
   class Logger;
   struct rpc_details;
@@ -57,6 +58,7 @@ private:
 
   void rpc_registered_cb(const rpc_details*);
   void handle_YIELD(event* ev);
+  void handle_SUBSCRIBE(event* ev);
 
 
   // essential components
@@ -68,6 +70,7 @@ private:
 
   std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;
+  std::unique_ptr<pubsub_man> m_pubsub;
 
   dealer_listener* m_listener;
 

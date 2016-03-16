@@ -483,6 +483,7 @@ void client_service::post_error(t_invoke_id callid,
 
 }
 
+
 //----------------------------------------------------------------------
 
 void client_service::add_topic(topic* topic)
@@ -492,9 +493,26 @@ void client_service::add_topic(topic* topic)
   std::unique_lock<std::mutex> guard(m_topics_lock);
   m_topics[ topic->uri() ] = topic;
 
-//  topic->add_observer();
 
 
+  topic->add_observer(this,
+                      [this](const XXX::topic* src)
+                      {
+                        // TODO: here, I need to obtain our session to the
+                        // router.  Currently we have not stored that anywhere.
+
+                        std::cout << "TODO: need to publish2";
+
+                        // generate an internal event destined for the embedded
+                        // router
+                        if (m_embed_router != nullptr)
+                        {
+                          ev_inbound_publish* ev = new ev_inbound_publish(true,
+                                                                          src->uri());
+                          m_evl->push( ev );
+
+                        }
+                      });
 }
 
 //----------------------------------------------------------------------
@@ -801,5 +819,20 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
 
   return;
 }
+
+//----------------------------------------------------------------------
+
+void client_service::subscribe_remote_topic(session_handle& sh,
+                                            const std::string& uri)
+{
+
+  // TODO: check: have we already subscribed for this?
+
+  ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri);
+  ev->dest = sh;
+  m_evl->push( ev );
+
+}
+
 
 } // namespace XXX

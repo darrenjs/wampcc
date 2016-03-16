@@ -29,6 +29,8 @@ struct callback_t
   const char* request;
 };
 
+XXX::text_topic topic("topic1");
+
 void procedure_cb(XXX::t_invoke_id invokeid,
                   const std::string& procedure,
                   XXX::rpc_args& the_args,
@@ -83,6 +85,7 @@ void publisher_tep()
   {
 
     sleep(1);
+    topic.update( "new" );
     std::cout <<"update\n";
   }
 }
@@ -110,6 +113,7 @@ int main(int /* argc */, char** /* argv */)
   mycs->add_procedure("start", procedure_cb, (void*) cb2.get());
   mycs->add_procedure("stop",  procedure_cb, (void*) cb3.get());
 
+  mycs->add_topic( &topic );
 
   mycs->start();
 

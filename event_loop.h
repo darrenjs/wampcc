@@ -16,6 +16,7 @@
 namespace XXX {
 
   class rpc_man;
+  class pubsub_man;
   class SessionMan;
   class Logger;
 
@@ -100,6 +101,7 @@ public:
     void request_stop() { m_continue=false; }
 
     void set_rpc_man(rpc_man*);
+    void set_pubsub_man(pubsub_man*);
     void set_session_man(SessionMan*);
 
     void set_handler(unsigned int eventid, event_cb handler);
@@ -122,6 +124,7 @@ public:
     void process_outbound_message(outbound_message *);
     void process_inbound_error(event* e);
     void process_inbound_yield(event* e);
+    void process_outbound_subscribe(ev_outbound_subscribe* e);
 
     void hb_check();
 
@@ -135,6 +138,7 @@ public:
     std::thread m_thread;
 
     rpc_man* m_rpcman;
+    pubsub_man* m_pubsubman;
     SessionMan* m_sesman;
 
     std::vector<event_cb> m_handlers;

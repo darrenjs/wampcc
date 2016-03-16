@@ -44,7 +44,9 @@ public:
     outbound_call_event,
     outbound_response_event,
     outbound_message,
-    tcp_active_connect_event
+    inbound_publish,
+    tcp_active_connect_event,
+    outbound_subscribe
   } type;
 
   enum Mode
@@ -154,7 +156,6 @@ struct outbound_response_event : public event
 
 
 
-
 struct outbound_call_event : public event
 {
   outbound_call_event()
@@ -171,6 +172,33 @@ struct outbound_call_event : public event
   unsigned int internal_req_id;
 };
 
+
+struct ev_inbound_publish : public event
+{
+  bool is_internal;
+  std::string uri;
+
+  ev_inbound_publish(bool source_is_internal,
+                     const std::string & __topic_uri)
+  :  event( event::inbound_publish ),
+     is_internal( source_is_internal ),
+     uri( __topic_uri )
+  {
+  }
+};
+
+struct ev_outbound_subscribe : public event
+{
+  session_handle dest;
+  std::string uri;
+  int internal_req_id;
+
+  ev_outbound_subscribe(const std::string & __topic_uri)
+  :  event( event::outbound_subscribe ),
+     uri( __topic_uri )
+  {
+  }
+};
 } // namespace xxx
 
 #endif

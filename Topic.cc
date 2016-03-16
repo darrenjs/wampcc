@@ -92,4 +92,26 @@ void Topic::publish(std::list<jalson::json_array>& updates)
 
 }
 
+void topic::add_observer(observer* ptr)
+{
+  m_observers.push_back(ptr);
+}
+
+void topic::notify()
+{
+
+  for (auto & item : m_observers2)
+  {
+    item.second(this);
+  }
+
+
+}
+
+
+void text_topic::update(const char* newstr)
+{
+  notify();
+}
+
 } // namespace XXX

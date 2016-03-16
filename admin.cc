@@ -291,7 +291,10 @@ int main(int argc, char** argv)
 
       return 1;
     }
-    else while (!event_queue.empty())
+
+    g_client->subscribe_remote_topic(g_sid, "test1");
+
+    while (!event_queue.empty())
     {
       AdminEvent aev = event_queue.front();
       event_queue.pop();
@@ -305,7 +308,7 @@ int main(int argc, char** argv)
     }
   }
 
-  //while (1)   sleep(1);
+  while (1)   sleep(1);
 
   g_client.reset();
   delete logger;

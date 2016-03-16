@@ -13,17 +13,23 @@
 namespace XXX {
 
   class Session;
+  class topic;
 
 // Base class for topics
 
 
+  typedef std::function< void(const topic*) >  topic_cb;
+
 
 class topic
 {
+public:
+
   class observer
   {
   public:
-    virtual void on_change();
+    virtual ~observer() {}
+    virtual void on_change() = 0;
   };
 
 public:
@@ -34,10 +40,22 @@ public:
   const std::string& uri() const { return m_uri; }
 
 
-  void add_observer( observer* ) {}
+
+  void add_observer( observer* );
+
+  void add_observer(void* key, topic_cb cb)
+  {
+    m_observers2[key]=cb;
+  }
+
+protected:
+
+  void notify();
 
 private:
   std::string m_uri;
+  std::vector< observer* > m_observers;
+  std::map< void* , topic_cb > m_observers2;
 };
 
 

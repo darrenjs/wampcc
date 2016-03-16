@@ -1,5 +1,6 @@
 #include "event_loop.h"
 #include "rpc_man.h"
+#include "pubsub_man.h"
 #include "SessionMan.h"
 #include "WampTypes.h"
 #include "Logger.h"
@@ -16,6 +17,7 @@ event_loop::event_loop(Logger *logptr)
     m_continue(true),
     m_thread(&event_loop::eventmain, this),
     m_rpcman(nullptr),
+    m_pubsubman(nullptr),
     m_sesman(nullptr),
     m_handlers( WAMP_MSGID_MAX ), /* initial handles are empty */
     m_last_hb( std::chrono::steady_clock::now() )
@@ -38,6 +40,10 @@ void event_loop::stop()
 void event_loop::set_rpc_man(rpc_man* r)
 {
   m_rpcman = r;
+}
+void event_loop::set_pubsub_man(pubsub_man* p)
+{
+  m_pubsubman = p;
 }
 
 void event_loop::set_session_man(SessionMan* sm)
@@ -205,6 +211,13 @@ void event_loop::process_event(event * ev)
       /* old style event */
       event_handled = false;
       break;
+    case event::outbound_subscribe :
+    {
+      // TODO: create a template for this, which will throw etc.
+      ev_outbound_subscribe* ev2 = dynamic_cast<ev_outbound_subscribe*>(ev);
+      process_outbound_subscribe(ev2);
+      break;
+    }
     case event::outbound_call_event :
     {
       // TODO: create a template for this, which will throw etc.
@@ -235,6 +248,14 @@ void event_loop::process_event(event * ev)
         m_sesman->handle_event( ev2 );
       else
         throw std::runtime_error("no handler for session state event");  // TODO: should be a event exception?
+      break;
+    }
+
+    case event::inbound_publish :
+    {
+      ev_inbound_publish * ev2 = dynamic_cast<ev_inbound_publish *>(ev);
+      if (m_pubsubman)
+        m_pubsubman->handle_event(ev2);
       break;
     }
 
@@ -271,6 +292,17 @@ void event_loop::process_event(event * ev)
         /* We have received a YIELD off a socket; needs to be routed to the
          * originator. */
         process_inbound_yield( ev );
+        break;
+      }
+      case SUBSCRIBE:
+      {
+        // TODO: improve this
+        event_cb& cb = m_handlers[ ev->msg_type ];
+        if (cb)
+        {
+          cb( ev );
+        }
+
         break;
       }
       case ERROR :
@@ -682,6 +714,26 @@ void event_loop::process_outbound_call(outbound_call_event* ev)
     };
 
   m_sesman->send_request( ev->dest, CALL, ev->internal_req_id, msg_builder2);
+}
+
+//----------------------------------------------------------------------
+
+void event_loop::process_outbound_subscribe(ev_outbound_subscribe* ev)
+{
+  build_message_cb_v2 msg_builder2 = [&](int request_id)
+    {
+      jalson::json_array msg;
+      msg.push_back( SUBSCRIBE );
+      msg.push_back( request_id );
+      msg.push_back( jalson::json_object() );
+      msg.push_back( ev->uri );
+
+      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+                                                                nullptr );
+
+    };
+
+  m_sesman->send_request( ev->dest,SUBSCRIBE , ev->internal_req_id, msg_builder2);
 }
 
 } // namespace XXX
