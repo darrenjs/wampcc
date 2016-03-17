@@ -18,7 +18,8 @@ namespace XXX {
 // Base class for topics
 
 
-  typedef std::function< void(const topic*) >  topic_cb;
+  typedef std::function< void(const topic*,
+                              const jalson::json_value&) >  topic_cb;
 
 
 class topic
@@ -50,10 +51,11 @@ public:
 
 protected:
 
-  void notify();
+  void notify(const jalson::json_value& patch);
 
 private:
   std::string m_uri;
+  // TODO: lock?
   std::vector< observer* > m_observers;
   std::map< void* , topic_cb > m_observers2;
 };
@@ -61,6 +63,7 @@ private:
 
 class text_topic : public topic
 {
+
 public:
   text_topic(const std::string& uri)
     : topic( uri )
@@ -68,6 +71,9 @@ public:
   }
 
   void update(const char* newstr);
+
+private:
+  std::string m_text;
 };
 
 class Topic

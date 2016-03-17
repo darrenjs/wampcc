@@ -97,12 +97,12 @@ void topic::add_observer(observer* ptr)
   m_observers.push_back(ptr);
 }
 
-void topic::notify()
+void topic::notify(const jalson::json_value& patch)
 {
 
   for (auto & item : m_observers2)
   {
-    item.second(this);
+    item.second(this, patch);
   }
 
 
@@ -111,7 +111,10 @@ void topic::notify()
 
 void text_topic::update(const char* newstr)
 {
-  notify();
+  m_text = newstr;
+
+  jalson::json_string patch( newstr );
+  notify( patch );
 }
 
 } // namespace XXX
