@@ -178,12 +178,15 @@ struct ev_inbound_publish : public event
 {
   bool is_internal;
   std::string uri;
+  jalson::json_value patch;
 
   ev_inbound_publish(bool source_is_internal,
-                     const std::string & __topic_uri)
+                     const std::string & __topic_uri,
+                     const jalson::json_value& __patch)
   :  event( event::inbound_publish ),
      is_internal( source_is_internal ),
-     uri( __topic_uri )
+     uri( __topic_uri ),
+     patch( __patch )
   {
   }
 };

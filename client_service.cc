@@ -507,7 +507,8 @@ void client_service::add_topic(topic* topic)
 
 
   topic->add_observer(this,
-                      [this](const XXX::topic* src)
+                      [this](const XXX::topic* src,
+                             const jalson::json_value& patch)
                       {
                         // TODO: here, I need to obtain our session to the
                         // router.  Currently we have not stored that anywhere.
@@ -519,7 +520,8 @@ void client_service::add_topic(topic* topic)
                         if (m_embed_router != nullptr)
                         {
                           ev_inbound_publish* ev = new ev_inbound_publish(true,
-                                                                          src->uri());
+                                                                          src->uri(),
+                                                                          patch);
                           m_evl->push( ev );
 
                         }

@@ -165,7 +165,12 @@ void IOLoop::create_tcp_server_socket(int port,
   unsigned flags = 0;
   uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
   int r = uv_listen((uv_stream_t *) &myserver->uvh, 5, __on_tcp_connect);
-//  std::cout << "loop starting, r="<< r << "\n";
+  if (!r)
+  {
+    // TODO: handle listen failure
+  }
+//
+  std::cout << "loop starting, r="<< r << "\n";
 
   m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
 }

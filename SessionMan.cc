@@ -92,12 +92,11 @@ namespace XXX
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
 
-    for (auto i : m_sessions.active)
-    {
-      // TODO: do I need to test if session is open?
-      // TODO: need to do the close here
-//        i.second->close(1);
-    }
+    // TODO: test who is still open, and close them
+    // for (auto i : m_sessions.active)
+    // {
+    //     i.second->close(1);
+    // }
   }
 
 

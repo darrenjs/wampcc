@@ -516,7 +516,7 @@ struct Request_INVOCATION_CB_Data : public Request_CB_Data
 
 //----------------------------------------------------------------------
 
-void event_loop::process_inbound_error(event* e)
+  void event_loop::process_inbound_error(event* /*e*/)
 {
 
   // Request_INVOCATION_CB_Data* request_cb_data

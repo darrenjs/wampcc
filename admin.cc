@@ -116,7 +116,7 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
 
 void subscribe_cb(XXX::t_invoke_id /*unused*/,
                   const std::string&,
-                  void* user)
+                  void* /*user*/)
 {
   std::cout << "received topic update!!!\n";
 }
@@ -236,7 +236,6 @@ static void process_options(int argc, char** argv)
 int main(int argc, char** argv)
 {
   process_options(argc, argv);
-  auto __logptr = logger;
 
   /* new client service */
 //  dealer_events de;
@@ -261,14 +260,12 @@ int main(int argc, char** argv)
                                                         [](){ return g_active_session_notifed; });
     if (!hasevent)
     {
-      std::cout << "no connection\n";
-      return 1;
+      die("no connection");
     }
   }
   if (!g_sid.lock())
   {
-    std::cout << "no connection\n";
-    return 1;
+    die("no connection");
   }
 
   XXX::rpc_args args;
@@ -277,13 +274,15 @@ int main(int argc, char** argv)
   ja.push_back( "world" );
   args.args = ja ;
 
-  XXX::t_client_request_id callreqid = g_client->call_rpc(g_sid,
-                                                          "stop", args,
-                                                          [](XXX::call_info& reqdet,
-                                                             XXX::rpc_args& args,
-                                                             void* cb_data)
-                                                          { call_cb(reqdet, args, cb_data);},
-                                                          (void*)"I_called_stop");
+
+  /* XXX::t_client_request_id callreqid = */
+    g_client->call_rpc(g_sid,
+                       "stop", args,
+                       [](XXX::call_info& reqdet,
+                          XXX::rpc_args& args,
+                          void* cb_data)
+                       { call_cb(reqdet, args, cb_data);},
+                       (void*)"I_called_stop");
 
 
   bool keep_waiting = true;

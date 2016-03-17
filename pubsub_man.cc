@@ -12,6 +12,10 @@ namespace XXX {
 struct managed_topic
 {
   std::list< session_handle > m_subscribers;
+
+  // current upto date image of the value
+  jalson::json_value image;
+  // TODO: nees to also have ability to take a patch and apply it
 };
 
 /* Constructor */
