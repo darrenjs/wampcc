@@ -26,8 +26,7 @@ class event_loop;
 class inbound_message_event;
 class topic;
 class dealer_service;
-
-
+class ev_inbound_subscribed;
 
 
 class router_session
@@ -117,7 +116,9 @@ public:
   // how do we find out the list of remote topics? and if we have multiple
   // sessions, then, which session has the topic we want?
   void subscribe_remote_topic(session_handle& sh,
-                              const std::string& uri);
+                              const std::string& uri,
+                              subscription_cb cb,
+                              void * user);
 
   void invoke_direct(session_handle&,
                      t_request_id,
@@ -134,7 +135,7 @@ private:
   void handle_RESULT(inbound_message_event*);
   void handle_ERROR(inbound_message_event*);
   void handle_session_state_change(session_handle, bool is_open);
-
+  void handle_SUBSCRIBED(ev_inbound_subscribed*);
   void register_procedures();
 
   void new_client(IOHandle *hndl,
@@ -200,6 +201,24 @@ private:
 
   std::map<std::pair<std::string,int>, router_session*> m_router_sessions;
   std::mutex m_router_sessions_lock;
+
+  /*
+    TODO: Currently have a pending map, for subscriptions.  Can try to remove
+    this, but to do that,I need the Session class to allow an arbitraty object
+    to be passed in, as the callback data.
+   */
+  struct subscription
+  {
+    session_handle sh;
+    std::string uri;
+    subscription_cb user_cb;
+    void * user_data;
+  };
+  std::map<std::string, subscription> m_subscriptions;
+  std::map<t_client_request_id, subscription> m_pending_subscription;
+  t_client_request_id m_subscription_req_id = 1;
+  std::mutex m_subscriptions_lock;
+
 
 };
 

@@ -522,6 +522,25 @@ void Session::process_message(jalson::json_value&jv)
       break;
     }
 
+    case SUBSCRIBED:
+    {
+      int const request_id = jv.as_array()[1].as_uint();
+      {
+        // TODO: need to delete from the map
+        std::lock_guard<std::mutex> guard(m_pend_req_lock);
+        pendreq = m_pend_req[request_id];
+        m_pend_req[request_id] = 0;
+        pend2 = m_pend_req_2[request_id];  // TODO: and remove?
+      }
+
+      ev_inbound_subscribed* ev = new ev_inbound_subscribed();
+      ev->src = handle();
+      ev->internal_req_id  = pend2.internal_req_id;
+      m_evl.push( ev );
+      delete pendreq;
+      return;
+    }
+
   }
 
 /*

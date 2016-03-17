@@ -35,6 +35,9 @@ bool client_service::RegistrationKey::operator<(const RegistrationKey& rhs) cons
 
 //----------------------------------------------------------------------
 
+
+
+
 /* Constructor */
 client_service::client_service(Logger * logptr,
                                config config)
@@ -45,6 +48,14 @@ client_service::client_service(Logger * logptr,
     m_sesman(new SessionMan(__logptr, *m_evl.get())),
     m_next_client_request_id(100)
 {
+  // TODO: make this a member
+  client_event_handler local_handler;
+  local_handler.handler_inbound_subscribed=
+    [this](ev_inbound_subscribed* ev) { handle_SUBSCRIBED(ev); };
+
+
+
+  m_evl->set_handler( local_handler );
   m_evl->set_session_man( m_sesman.get() );
 
   m_sesman->set_session_event_listener(
@@ -823,15 +834,61 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
 //----------------------------------------------------------------------
 
 void client_service::subscribe_remote_topic(session_handle& sh,
-                                            const std::string& uri)
+                                            const std::string& uri,
+                                            subscription_cb cb,
+                                            void * user)
 {
+  t_client_request_id int_req_id = 0;
+  // TODO: maybe later, upgrade this to use an internal client request ID?
+  {
+    std::unique_lock<std::mutex> guard(m_subscriptions_lock);
 
-  // TODO: check: have we already subscribed for this?
+    auto it = m_subscriptions.find(uri);
+    if (it != m_subscriptions.end()) return; // return false
+
+    // TODO: what is C++11 idiom for direct insertion, using perfect forwarding?
+    subscription subs;
+    subs.sh        = sh;
+    subs.uri       = uri;
+    subs.user_cb   = cb;
+    subs.user_data = user;
+
+    int_req_id = m_subscription_req_id++;
+    m_pending_subscription[int_req_id] = subs;
+
+    m_subscriptions.insert(std::make_pair(uri, subs));
+  }
+
 
   ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri);
+  ev->internal_req_id = int_req_id;
   ev->dest = sh;
   m_evl->push( ev );
 
+}
+
+
+void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
+{
+  /* EV thread */
+
+  subscription temp;
+  std::cout << "got subscribed evnet, " << ev->internal_req_id << "\n";
+  {
+    std::unique_lock<std::mutex> guard(m_subscriptions_lock);
+
+    auto pendit = m_pending_subscription.find(ev->internal_req_id);
+    if (pendit == m_pending_subscription.end())
+    {
+      _WARN_("Ingoring SUBSCRIBED event; cannot find original request");
+      return;
+    }
+
+    m_subscriptions[ pendit->second.uri ] = pendit->second;
+    temp = pendit->second;
+    m_pending_subscription.erase(pendit);
+  }
+  temp.user_cb(0,temp.uri,temp.user_data);
 }
 
 

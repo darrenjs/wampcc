@@ -113,6 +113,14 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
   event_queue_condition.notify_one();
 }
 
+
+void subscribe_cb(XXX::t_invoke_id /*unused*/,
+                  const std::string&,
+                  void* user)
+{
+  std::cout << "received topic update!!!\n";
+}
+
 void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
@@ -295,7 +303,8 @@ int main(int argc, char** argv)
       return 1;
     }
 
-    g_client->subscribe_remote_topic(g_sid, "test1");
+    std::cout << "sendiung syub\n";
+    g_client->subscribe_remote_topic(g_sid, "topic1", subscribe_cb, nullptr);
 
     while (!event_queue.empty())
     {

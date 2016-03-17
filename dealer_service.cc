@@ -25,7 +25,7 @@ dealer_service::dealer_service(Logger *logptr,
     m_own_ev(ext_event_loop == nullptr),
     m_sesman( new SessionMan(logptr, *m_evl) ),
     m_rpcman( new rpc_man(logptr, *m_evl, [this](const rpc_details*r){this->rpc_registered_cb(r); }) ),
-    m_pubsub(new pubsub_man()),
+    m_pubsub(new pubsub_man(logptr, *m_evl)),
     m_listener( l ),
     m_next_internal_request_id(1)
 {
@@ -199,44 +199,7 @@ int dealer_service::register_procedure(std::string uri)
 void dealer_service::handle_SUBSCRIBE(event* ev)
 {
   std::cout << "receive subscribtion\n";
-//   unsigned int internal_req_id = ev->internal_req_id;
-// //  void * user = ev->user;
-
-//   pending_request pend ;
-
-//   {
-//     std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-//     pend = m_pending_requests[internal_req_id];
-//   }
-
-//   call_info info;
-//   info.reqid = ev->ja[1].as_uint();
-//   info.procedure = pend.procedure;
-
-//   rpc_args args;
-//   args.args    = ev->ja[3]; // dont care about the type
-//   args.options = ev->ja[2].as_object();  // TODO: need to pre-verify the message
-
-
-//   // TODO: catch and log exception
-//   if ( pend.cb )
-//   {
-//     try
-//     {
-//       pend.cb(info, args, pend.user_cb_data);
-//     }
-//     // TODO: try to print
-//     catch (...)
-//     {
-//       _WARN_("exception during user callback");
-//     }
-
-//   }
-//   else
-//   {
-//     _WARN_("no callback function to handle request response");
-//   }
-
+  m_pubsub->handle_subscribe(ev);
 }
 
 

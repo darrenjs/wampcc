@@ -21,6 +21,15 @@ namespace XXX {
   class Logger;
 
 
+class client_event_handler
+{
+public:
+
+  std::function<void(ev_inbound_subscribed*)> handler_inbound_subscribed;
+};
+
+
+
 
 class event_error : public std::runtime_error
 {
@@ -106,7 +115,7 @@ public:
 
     void set_handler(unsigned int eventid, event_cb handler);
     void set_handler2(unsigned int eventid, event_cb2 handler);
-
+    void set_handler(client_event_handler& h) { m_client_handler=h; }
 
   private:
     event_loop(const event_loop&); // no copy
@@ -145,6 +154,8 @@ public:
     std::vector<event_cb2> m_handlers2;
 
     std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
+
+    client_event_handler m_client_handler;
   public:
     internal_invoke_cb m_internal_invoke_cb;
 

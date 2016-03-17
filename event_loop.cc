@@ -211,6 +211,17 @@ void event_loop::process_event(event * ev)
       /* old style event */
       event_handled = false;
       break;
+
+    case event::inbound_subscribed:
+    {
+      // TODO: create a template for this, which will throw etc.
+      if (m_client_handler.handler_inbound_subscribed)
+      {
+        ev_inbound_subscribed* ev2 = dynamic_cast<ev_inbound_subscribed*>(ev);
+        if (ev2) m_client_handler.handler_inbound_subscribed( ev2 );
+      }
+      break;
+    }
     case event::outbound_subscribe :
     {
       // TODO: create a template for this, which will throw etc.
@@ -630,6 +641,20 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
     msgbuilder = [ev](){
       jalson::json_array msg;
       msg.push_back(YIELD);
+      msg.push_back(ev->reqid);
+      msg.push_back(ev->options);
+      if (ev->args.args.is_null() == false)
+      {
+        msg.push_back(ev->args.args);
+      }
+      return msg;
+    };
+  }
+  if (ev->response_type == SUBSCRIBED)
+  {
+    msgbuilder = [ev](){
+      jalson::json_array msg;
+      msg.push_back(SUBSCRIBED);
       msg.push_back(ev->reqid);
       msg.push_back(ev->options);
       if (ev->args.args.is_null() == false)

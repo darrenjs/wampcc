@@ -82,6 +82,12 @@ struct call_info
   std::string  procedure; /* rpc target */  // TODO: standardise the varname for rpc name
 };
 
+
+typedef std::function<void(t_client_request_id unused,
+                           const std::string& uri,
+                           void* user) > subscription_cb;
+
+
 typedef std::function<void(t_invoke_id,
                            const std::string&,
                            rpc_args&,

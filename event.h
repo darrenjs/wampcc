@@ -46,7 +46,8 @@ public:
     outbound_message,
     inbound_publish,
     tcp_active_connect_event,
-    outbound_subscribe
+    outbound_subscribe,
+    inbound_subscribed
   } type;
 
   enum Mode
@@ -199,6 +200,19 @@ struct ev_outbound_subscribe : public event
   {
   }
 };
+
+struct ev_inbound_subscribed : public event
+{
+  session_handle src;
+  unsigned int internal_req_id;
+
+  ev_inbound_subscribed()
+    : event( event::inbound_subscribed )
+  {
+  }
+
+};
+
 } // namespace xxx
 
 #endif
