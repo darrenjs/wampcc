@@ -7,7 +7,6 @@
 #include <string.h>
 
 
-
 namespace jalson {
 
 
@@ -625,6 +624,13 @@ type_mismatch::type_mismatch(JSONType __actual,
   : json_error(type_mismatch_str(__actual, __requested)),
     actual(__actual),
     requested(__requested)
+{
+}
+
+
+pointer_fail::pointer_fail(const std::string& msg, size_t __index_failed)
+  : json_error(msg),
+    path_index( __index_failed )
 {
 }
 

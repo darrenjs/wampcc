@@ -119,6 +119,14 @@ public:
   virtual ~type_mismatch() throw() {}
 };
 
+class pointer_fail : public json_error
+{
+public:
+  size_t path_index;
+  pointer_fail(const std::string&,
+               size_t index);
+};
+
 // ======================================================================
 //
 // Container types
