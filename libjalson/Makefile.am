@@ -39,7 +39,7 @@ nobase_include_HEADERS = jalson/jalson.h jalson/jalson_internals.h
 
 
 # List the sources for an individual library
-libjalson_la_SOURCES=jalson.cc vendors.cc
+libjalson_la_SOURCES=json_pointer.cc jalson.cc vendors.cc
 libjalson_la_LIBADD=$(janssonlib)
 
 # Include compile and link flags for an individual library.
