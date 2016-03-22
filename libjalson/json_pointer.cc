@@ -27,8 +27,37 @@ as defined in IETF RFC 6901.
 
 namespace jalson {
 
-static json_value select_child(json_object& refvalue, const char* path2, size_t pathindex);
-static json_value select_child(json_array& refvalue, const char* path2, size_t pathindex);
+struct operation
+{
+
+  enum opcode
+  {
+    eAdd,
+    eReplace,
+    eRemove,
+    eRead,
+    eCut,     /* delete and keep a copy */
+    eTest
+  };
+
+  opcode action;
+  const json_value * source;
+  json_value * output;
+  json_value * move_target;
+  json_value * target;
+  json_value value;
+
+  operation(opcode op)
+  : action(op),
+    source(0),
+    output(0)
+  {
+  }
+};
+
+
+static void  select_child(json_object& refvalue, const char* path2, size_t pathindex, operation*);
+static void  select_child(json_array& refvalue, const char* path2, size_t pathindex, operation*);
 
 
 
@@ -89,7 +118,8 @@ char* expand_str(const char* start, const char *end)
 }
 
 
-json_value select_child(json_object& refvalue, const char* path, size_t pathindex)
+void select_child(json_object& refvalue, const char* path, size_t pathindex,
+                  operation* op)
 {
   const char* next_delim = strchr(path, JPDELIM);
 
@@ -103,38 +133,95 @@ json_value select_child(json_object& refvalue, const char* path, size_t pathinde
   }
 
   json_object::iterator it = refvalue.find( token );
-  if (it != refvalue.end())
-  {
 
-    if (next_delim)
+  if (next_delim)
+  {
+    if (it != refvalue.end())
     {
       if (it->second.is_array())
-        return select_child(it->second.as_array(), next_delim+1, pathindex+1);
+        select_child(it->second.as_array(), next_delim+1, pathindex+1, op);
       else if (it->second.is_object())
-        return select_child(it->second.as_object(), next_delim+1, pathindex+1);
+        select_child(it->second.as_object(), next_delim+1, pathindex+1, op);
       else
+        throw pointer_fail("pointer cannot continue, value selected in object is not a container", pathindex);
+
+    }
+    else
+      throw pointer_fail("pointer cannot continue, object does not contain name", pathindex);
+  }
+  else
+  {
+    if (it != refvalue.end())
+    {
+      json_value & self = it->second;
+      switch (op->action)
       {
-        throw pointer_fail("value selected in object is not a container", pathindex);
+        case operation::eAdd :
+        {
+          self.swap( op->value );
+          op->target = &self;
+          break;
+        }
+        case operation::eReplace :
+        {
+          self = *(op->source);
+          break;
+        }
+        case operation::eRemove :
+        {
+          refvalue.erase( it );
+          break;
+        }
+        case operation::eCut :
+        {
+          op->value.swap( self );
+          refvalue.erase( it );
+          break;
+        }
+        case operation::eRead :
+        {
+          op->source = &self;
+          break;
+        }
+        case operation::operation::eTest:
+        {
+          if (self != *op->source)
+            throw std::runtime_error("test operation failed");
+          break;
+        }
+
       }
     }
     else
     {
-      return it->second;
+      switch (op->action)
+      {
+        case operation::eAdd :
+        {
+//          std::pair<json_object::iterator, bool> r = refvalue.insert(std::make_pair(token, *(op->source)));
+          std::pair<json_object::iterator, bool> r = refvalue.insert(std::make_pair(token, json_value::make_null()));
+          r.first->second.swap( op->value );
+          op->target = &(r.first->second);
+          break;
+        }
+
+        default:
+        {
+          throw pointer_fail("name not present in object", pathindex);
+        }
+      }
     }
-  }
-  else
-  {
-    throw pointer_fail("name not present in object", pathindex);
   }
 }
 
-
-static json_value select_child(json_array& refvalue, const char* path, size_t pathindex)
+static void select_child(json_array& refvalue, const char* path,
+                         size_t pathindex,
+                         operation* op)
 {
   const char* next_delim = strchr(path, JPDELIM);
 
   std::string token = next_delim? std::string(path, next_delim-path) : path;
-  size_t index = json_pointer_str_to_index(token.c_str());
+  size_t index = (token=="-")? refvalue.size() : json_pointer_str_to_index(token.c_str());
 
   if (index < refvalue.size() )
   {
@@ -142,9 +229,9 @@ static json_value select_child(json_array& refvalue, const char* path, size_t pa
     if (next_delim)
     {
       if (refvalue[index].is_array())
-        return select_child(refvalue[index].as_array(), next_delim+1, pathindex+1);
+        select_child(refvalue[index].as_array(), next_delim+1, pathindex+1, op);
       else if (refvalue[index].is_object())
-        return select_child(refvalue[index].as_object(), next_delim+1, pathindex+1);
+        select_child(refvalue[index].as_object(), next_delim+1, pathindex+1, op);
       else
       {
         throw pointer_fail("value selected in array is not a container", pathindex);
@@ -152,19 +239,74 @@ static json_value select_child(json_array& refvalue, const char* path, size_t pa
     }
     else
     {
-      return refvalue[index];
+      json_value & self = refvalue[index];
+      switch (op->action)
+      {
+        case operation::eAdd :
+        {
+//          refvalue.insert( refvalue.begin() + index,  *(op->source));
+          refvalue.insert( refvalue.begin() + index,  json_value::make_null());
+          refvalue[index].swap( op->value );
+          op->target = & refvalue[index];
+          break;
+        }
+        case operation::eReplace :
+        {
+          self = *(op->source);
+          break;
+        }
+        case operation::eRemove :
+        {
+          refvalue.erase( refvalue.begin() + index );
+          break;
+        }
+        case operation::eCut :
+        {
+          op->value.swap( self );
+          refvalue.erase( refvalue.begin() + index );
+          break;
+        }
+        case operation::eRead :
+        {
+          op->source = &self;
+          break;
+        }
+        case operation::operation::eTest:
+        {
+          if (self != *op->source)
+            throw std::runtime_error("test failed");
+          break;
+        }
+      }
     }
   }
   else
   {
+    switch (op->action)
+    {
+      case operation::eAdd :
+      {
+        if (index == refvalue.size())
+        {
+//          refvalue.push_back( *(op->source) );
+          refvalue.push_back( json_value::make_null() );
+          refvalue[index].swap( op->value );
+          op->target = &refvalue[index];
+          return;
+        }
+        break;
+      }
+      default:
+        break;
+    }
     throw pointer_fail("index not present in array", pathindex);
   }
 }
 
 
-
-
-json_value select(json_value& root, const std::string& path)
+void resolve(json_value& root,
+             const std::string& path,
+             struct operation* op)
 {
   const char* path2 = path.c_str();
 
@@ -173,17 +315,49 @@ json_value select(json_value& root, const std::string& path)
     case '\0' :
     {
       // empty string , which implies the full document
-      return root;
+      // TODO: need to apply operation here
+
+      switch (op->action)
+      {
+        case operation::eReplace:
+        case operation::eAdd :
+        {
+          root.swap( op->value );
+          break;
+        }
+        case operation::eRemove :
+        {
+          root = json_value::make_null();
+          break;
+        }
+        case operation::eRead :
+        {
+          op->source = &root;
+          break;
+        }
+        case operation::eCut :
+        {
+          op->value.swap( root  );
+          break;
+        }
+        case operation::operation::eTest:
+        {
+          if (root != *op->source)
+            throw std::runtime_error("test failed");
+          break;
+        }
+      }
+      return;
     }
     case JPDELIM :
     {
       if (root.is_array())
       {
-        return select_child(root.as_array(),  path2+1 , 0);
+        select_child(root.as_array(),  path2+1 , 0, op);
       }
       else if (root.is_object())
       {
-        return select_child(root.as_object(), path2+1, 0);
+        select_child(root.as_object(), path2+1, 0, op);
       }
       else
       {
@@ -199,5 +373,62 @@ json_value select(json_value& root, const std::string& path)
 
 }
 
+
+void apply_patch(json_value& doc,
+                 const json_array& patch)
+{
+  for (json_array::const_iterator it = patch.begin();
+       it != patch.end(); ++it)
+  {
+    const json_object & cur_operation = it->as_object();
+    json_string op = get_or_throw(cur_operation, "op").as_string();
+    if (op == "add")
+    {
+      operation op(operation::eAdd);
+      op.value = get_or_throw(cur_operation, "value");
+//      op.source = &get_or_throw(cur_operation, "value");
+      resolve(doc,get_or_throw(cur_operation, "path").as_string(), &op);
+    }
+    else if (op == "remove")
+    {
+      operation op(operation::eRemove);
+      resolve(doc,get_or_throw(cur_operation, "path").as_string(), &op);
+    }
+    else if (op == "replace")
+    {
+      operation op(operation::eReplace);
+      op.source = &get_or_throw(cur_operation, "value");
+      resolve(doc,get_or_throw(cur_operation, "path").as_string(), &op);
+    }
+    else if (op == "move")
+    {
+      operation op(operation::eCut);
+      resolve(doc, get_or_throw(cur_operation, "from").as_string(), &op);
+
+      op.action = operation::eAdd;
+      resolve(doc, get_or_throw(cur_operation, "path").as_string(), &op);
+    }
+    else if (op == "copy")
+    {
+      operation op(operation::eRead);
+      resolve(doc,get_or_throw(cur_operation, "from").as_string(), &op);
+
+      op.action = operation::eAdd;
+      op.value  = *(op.source);
+      resolve(doc, get_or_throw(cur_operation, "path").as_string(), &op);
+    }
+    else if (op == "test")
+    {
+      operation op(operation::eTest);
+      op.source = &get_or_throw(cur_operation, "value");
+      resolve(doc,get_or_throw(cur_operation, "path").as_string(), &op);
+    }
+    else
+    {
+      // TODO: throw bad_patch
+      throw std::runtime_error("invalid patch op code");
+    }
+  }
+}
 
 }
