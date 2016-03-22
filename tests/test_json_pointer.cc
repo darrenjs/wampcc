@@ -53,13 +53,34 @@ bool test_pointer_success(json_value doc, std::string path, json_value expected)
   }
 
 }
+bool test_pointer_fail(json_value doc, std::string path)
+{
+  try
+  {
+    operation op(operation::eRead);
+    resolve(doc, path, &op);
+    return false;  // we expected fail
+  }
+  catch (const pointer_fail& e)
+  {
+    std::cout << "xfail: " << e.what() << ", pathindex " << e.path_index << "\n";
+
+  }
+  catch (const std::runtime_error& e)
+  {
+    std::cout << "xfail: " << e.what() << "\n";
+
+  }
+  return true;
+}
+
 
 
 DEFTEST( test_example )
 {
   const char* jsonstr="\
    {                                            \
-      \"foo\": [\"bar\", \"baz\"],              \
+      \"foo\": [\"bar\", \"baz\",[10,20,30]],   \
       \"\": 0,                                  \
       \"a/b\": 1,                               \
       \"c%d\": 2,                               \
@@ -74,7 +95,7 @@ DEFTEST( test_example )
 
 
   ASSERT_TRUE( test_pointer_success(doc, "",       doc) ); // full doc match
-  ASSERT_TRUE( test_pointer_success(doc, "/foo",   decode("[\"bar\", \"baz\"]")));
+  ASSERT_TRUE( test_pointer_success(doc, "/foo",   decode("[\"bar\", \"baz\",[10,20,30]]")));
   ASSERT_TRUE( test_pointer_success(doc, "/foo/0", json_value::make_string("bar")));
   ASSERT_TRUE( test_pointer_success(doc, "/",      json_value::make_int(0)));
   ASSERT_TRUE( test_pointer_success(doc, "/a~1b",  json_value::make_int(1)));
@@ -85,6 +106,11 @@ DEFTEST( test_example )
   ASSERT_TRUE( test_pointer_success(doc, "/k\"l",  json_value::make_int(6)));
   ASSERT_TRUE( test_pointer_success(doc, "/ ",     json_value::make_int(7)));
   ASSERT_TRUE( test_pointer_success(doc, "/m~0n",  json_value::make_int(8)));
+
+  ASSERT_TRUE( test_pointer_fail(doc, "/foo//" ));
+  ASSERT_TRUE( test_pointer_fail(doc, "/foo/01" ));
+  ASSERT_TRUE( test_pointer_fail(doc, "/foo/01/0" ));
+  ASSERT_TRUE( test_pointer_fail(doc, "/foo/00" ));
 
   return 1;
 }
