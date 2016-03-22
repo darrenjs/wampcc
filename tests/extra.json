@@ -1,0 +1,25 @@
+[
+    { "comment": "delete array index 0",
+      "doc":      { "baz": 1, "foo": [{"qux": "hello"}, true, false]},
+      "patch":    [ {"op": "remove", "path": "/foo/0"} ],
+      "expected": { "baz": 1, "foo": [true, false]}
+    },
+
+    { "comment": "treat 00 as invalid",
+      "doc":      { "baz": 1, "foo": [{"qux": "hello"}, true, false]},
+      "patch":    [ {"op": "remove", "path": "/foo/00"} ],
+      "error": "leading zeros not permitted"
+    },
+
+    { "comment": "treat 01 as invalid",
+      "doc":      { "baz": 1, "foo": [{"qux": "hello"}, true, false]},
+      "patch":    [ {"op": "remove", "path": "/foo/01"} ],
+      "error": "leading zeros not permitted"
+    },
+
+    { "comment": "treat 00 as invalid",
+      "doc":      { "baz": 1, "foo": [{"qux": "hello"}, true, false]},
+      "patch":    [ {"op": "remove", "path": "/foo/~00"} ],
+      "error": "invalid array index"
+    }
+]

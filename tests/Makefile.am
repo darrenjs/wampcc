@@ -3,16 +3,19 @@
 
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CPPFLAGS = -I$(top_srcdir)/libjalson -Wall -pthread -Wall
+AM_CPPFLAGS = -I$(top_srcdir)/libjalson -Wall -pthread -Wall -DJALSONDIR=\"${top_srcdir}\"
 
 # NOTE: -lrt added for posix clock support
 AM_LDFLAGS=-L$(top_builddir)/libjalson -ljalson -lrt -pthread
 
-TESTS=test_json_pointer
+TESTS=test_json_pointer test_json_patch
 
-noinst_PROGRAMS=test_json_pointer
+noinst_PROGRAMS=test_json_pointer test_json_patch
 #noinst_PROGRAMS=server_demo
 
 
 test_json_pointer_SOURCES=test_json_pointer.cc
 test_json_pointer_LDADD=$(janssonlib)
+test_json_patch_SOURCES=test_json_patch.cc
+test_json_patch_LDADD=$(janssonlib)
+

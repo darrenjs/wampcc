@@ -39,7 +39,7 @@ bool test_pointer_success(json_value doc, std::string path, json_value expected)
   {
     operation op(operation::eRead);
     resolve(doc, path, &op);
-    return (*op.source == expected);
+    return (*op.read_only == expected);
   }
   catch (const pointer_fail& e)
   {
