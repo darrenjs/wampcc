@@ -12,21 +12,27 @@
 using namespace jalson;
 
 //----------------------------------------------------------------------
+
+bool test_has_escape_seq(const char* p)
+{
+  return has_escape_seq(p, p+strlen(p));
+}
+
 DEFTEST( has_escape_seq )
 {
-  ASSERT_TRUE( has_escape_seq("") == 0);
-  ASSERT_TRUE( has_escape_seq("xxx") == 0);
-  ASSERT_TRUE( has_escape_seq("~") == 0);
-  ASSERT_TRUE( has_escape_seq(" ~ 1 ") == 0);
-  ASSERT_TRUE( has_escape_seq("~/") == 0);
-  ASSERT_TRUE( has_escape_seq("   ~ 0") == 0);
+  ASSERT_TRUE( test_has_escape_seq("") == 0);
+  ASSERT_TRUE( test_has_escape_seq("xxx") == 0);
+  ASSERT_TRUE( test_has_escape_seq("~") == 0);
+  ASSERT_TRUE( test_has_escape_seq(" ~ 1 ") == 0);
+  ASSERT_TRUE( test_has_escape_seq("~/") == 0);
+  ASSERT_TRUE( test_has_escape_seq("   ~ 0") == 0);
 
-  ASSERT_TRUE( has_escape_seq("~0") != 0);
-  ASSERT_TRUE( has_escape_seq(" ~0") != 0);
-  ASSERT_TRUE( has_escape_seq("   ~0") != 0);
-  ASSERT_TRUE( has_escape_seq("~1") != 0);
-  ASSERT_TRUE( has_escape_seq("~1 ") != 0);
-  ASSERT_TRUE( has_escape_seq(" ~~1 ") != 0);
+  ASSERT_TRUE( test_has_escape_seq("~0") != 0);
+  ASSERT_TRUE( test_has_escape_seq(" ~0") != 0);
+  ASSERT_TRUE( test_has_escape_seq("   ~0") != 0);
+  ASSERT_TRUE( test_has_escape_seq("~1") != 0);
+  ASSERT_TRUE( test_has_escape_seq("~1 ") != 0);
+  ASSERT_TRUE( test_has_escape_seq(" ~~1 ") != 0);
 
   return 1;
 }

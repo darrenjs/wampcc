@@ -115,8 +115,6 @@ static size_t json_pointer_str_to_index(const char* p, size_t path_index)
 }
 
 
-
-
 static const char* has_escape_seq(const char* p, const char* end)
 {
   while (p < end)
@@ -131,10 +129,6 @@ static const char* has_escape_seq(const char* p, const char* end)
   return 0;
 }
 
-static const char* has_escape_seq(const char* p)
-{
-  return has_escape_seq(p, p+strlen(p));
-}
 
 char* expand_str(const char* start, const char *end)
 {
@@ -451,69 +445,81 @@ void resolve(json_value& root,
 void apply_patch(json_value& doc,
                  const json_array& patch)
 {
-  for (json_array::const_iterator it = patch.begin();
-       it != patch.end(); ++it)
+  // Take a copy, which we will use to restore the source document if there is
+  // an error when applying the patch.  There are more efficient approaches that
+  // we could use here, e.g., copy on write, or accumulation of reverse patches.
+  json_value copy = doc;
+  try
   {
-    const json_object & cur_operation = it->as_object();
-    json_string op = get_or_throw(cur_operation, "op").as_string();
-    const std::string& path = get_or_throw(cur_operation, "path").as_string();
-    if (op == "add")
+    for (json_array::const_iterator it = patch.begin();
+         it != patch.end(); ++it)
     {
-      // TODO: if source patch is non-const, use the temp variable
-      // new item, MOVE possible, otherwise copy
-      operation op(operation::eAdd);
-      op.read_only = &get_or_throw(cur_operation, "value");
-      resolve(doc, path, &op);
-    }
-    else if (op == "remove")
-    {
-      operation op(operation::eRemove);
-      resolve(doc, path, &op);
-    }
-    else if (op == "replace")
-    {
-      // TODO: can MOVE if a non-const was passed in
-      operation op(operation::eReplace);
-      op.read_only = &get_or_throw(cur_operation, "value");
-      resolve(doc, path, &op);
-    }
-    else if (op == "move")
-    {
-      const std::string& from = get_or_throw(cur_operation, "from").as_string();
-      if (from != path)
+      const json_object & cur_operation = it->as_object();
+      json_string op = get_or_throw(cur_operation, "op").as_string();
+      const std::string& path = get_or_throw(cur_operation, "path").as_string();
+      if (op == "add")
       {
-        // first the eCut swaps the 'from' value into temp, and then later that is
-        // swapped into the value at 'path'
-        operation op(operation::eCut);
-        resolve(doc, from, &op);
-
-        op.action = operation::eAdd;
+        // TODO: if source patch is non-const, use the temp variable
+        // new item, MOVE possible, otherwise copy
+        operation op(operation::eAdd);
+        op.read_only = &get_or_throw(cur_operation, "value");
         resolve(doc, path, &op);
       }
-    }
-    else if (op == "copy")
-    {
-      const std::string& from = get_or_throw(cur_operation, "from").as_string();
-      if (from != path)
+      else if (op == "remove")
       {
-        operation op(operation::eRead);
-        resolve(doc, from, &op);
-
-        op.action = operation::eAdd;
+        operation op(operation::eRemove);
         resolve(doc, path, &op);
       }
+      else if (op == "replace")
+      {
+        // TODO: can MOVE if a non-const was passed in
+        operation op(operation::eReplace);
+        op.read_only = &get_or_throw(cur_operation, "value");
+        resolve(doc, path, &op);
+      }
+      else if (op == "move")
+      {
+        const std::string& from = get_or_throw(cur_operation, "from").as_string();
+        if (from != path)
+        {
+          // first the eCut swaps the 'from' value into temp, and then later that is
+          // swapped into the value at 'path'
+          operation op(operation::eCut);
+          resolve(doc, from, &op);
+
+          op.action = operation::eAdd;
+          resolve(doc, path, &op);
+        }
+      }
+      else if (op == "copy")
+      {
+        const std::string& from = get_or_throw(cur_operation, "from").as_string();
+        if (from != path)
+        {
+          operation op(operation::eRead);
+          resolve(doc, from, &op);
+
+          op.action = operation::eAdd;
+          resolve(doc, path, &op);
+        }
+      }
+      else if (op == "test")
+      {
+        operation op(operation::eTest);
+        op.read_only = &get_or_throw(cur_operation, "value");
+        resolve(doc, path, &op);
+      }
+      else
+      {
+        // TODO: throw bad_patch
+        throw std::runtime_error("invalid patch op code");
+      }
     }
-    else if (op == "test")
-    {
-      operation op(operation::eTest);
-      op.read_only = &get_or_throw(cur_operation, "value");
-      resolve(doc, path, &op);
-    }
-    else
-    {
-      // TODO: throw bad_patch
-      throw std::runtime_error("invalid patch op code");
-    }
+  }
+  catch (...)
+  {
+    doc.swap(copy);
+    throw;
   }
 }
 
