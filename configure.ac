@@ -95,7 +95,7 @@ fi
 
 #========== User options ==========
 
-export DIRS="libjalson examples/interact examples/manual_tests tests"
+export DIRS="libjalson  examples/manual_tests tests"
 extrabuild=
 dnl QT option
 AC_ARG_ENABLE([gui],
@@ -116,7 +116,6 @@ AC_SUBST(DIRS)
 AC_CONFIG_FILES([
 Makefile
 libjalson/Makefile
-examples/interact/Makefile
 examples/manual_tests/Makefile
 tests/Makefile
 ])

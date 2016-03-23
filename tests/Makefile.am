@@ -8,9 +8,9 @@ AM_CPPFLAGS = -I$(top_srcdir)/libjalson -Wall -pthread -Wall -DJALSONDIR=\"${top
 # NOTE: -lrt added for posix clock support
 AM_LDFLAGS=-L$(top_builddir)/libjalson -ljalson -lrt -pthread
 
-TESTS=test_json_pointer test_json_patch test_json_patch2
+TESTS=test_json_pointer test_json_patch test_json_patch2 test_basic_jalson
 
-noinst_PROGRAMS=test_json_pointer test_json_patch test_json_patch2
+noinst_PROGRAMS=test_json_pointer test_json_patch test_json_patch2 test_basic_jalson
 #noinst_PROGRAMS=server_demo
 
 
@@ -20,4 +20,7 @@ test_json_patch_SOURCES=test_json_patch.cc
 test_json_patch_LDADD=$(janssonlib)
 test_json_patch2_SOURCES=test_json_patch2.cc
 test_json_patch2_LDADD=$(janssonlib)
+
+test_basic_jalson_SOURCES=test_basic_jalson.cc
+test_basic_jalson_LDADD=$(janssonlib)
 
