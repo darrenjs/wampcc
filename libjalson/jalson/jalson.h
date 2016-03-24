@@ -287,6 +287,10 @@ public:
 
   void swap(json_value&);
 
+
+  // Apply a JSON Patch (IETF RFC 6902)
+  void patch(const json_array&);
+
   // Prevent accidental initialisation of json_value from a pointer
 #if __cplusplus > 199711L
   template<typename T> json_value(const T*)

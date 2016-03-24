@@ -1,4 +1,5 @@
 #include <jalson/jalson.h>
+#include "json_pointer.h"
 
 #include <iostream>
 #include <sstream>
@@ -658,6 +659,12 @@ std::ostream& operator<<(std::ostream& os, const json_value& v)
   }
 
   return os;
+}
+
+
+void json_value::patch(const json_array& patch)
+{
+  apply_patch(*this, patch);
 }
 
 
