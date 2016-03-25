@@ -127,6 +127,14 @@ public:
                size_t index);
 };
 
+class bad_patch : public json_error
+{
+public:
+  size_t patch_index;
+  bad_patch(const std::string&,
+             size_t index);
+};
+
 // ======================================================================
 //
 // Container types

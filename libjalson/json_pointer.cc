@@ -442,6 +442,26 @@ void resolve(json_value& root,
 }
 
 
+const json_string & get_field_str(const json_object& cur_operation, const char* fieldname, int patch_index)
+{
+  json_object::const_iterator it = cur_operation.find( fieldname );
+  if (it == cur_operation.end() || !it->second.is_string())
+  {
+    throw bad_patch("invalid patch operation", patch_index);
+  }
+  return it->second.as_string();
+}
+
+const json_value * get_value(const json_object& cur_operation, int patch_index)
+{
+  json_object::const_iterator it = cur_operation.find( "value" );
+  if (it == cur_operation.end())
+  {
+    throw bad_patch("missing 'value'", patch_index);
+  }
+  return &it->second;
+}
+
 void apply_patch(json_value& doc,
                  const json_array& patch)
 {
@@ -449,20 +469,26 @@ void apply_patch(json_value& doc,
   // an error when applying the patch.  There are more efficient approaches that
   // we could use here, e.g., copy on write, or accumulation of reverse patches.
   json_value copy = doc;
+  size_t patch_index = 0;
   try
   {
     for (json_array::const_iterator it = patch.begin();
-         it != patch.end(); ++it)
+         it != patch.end(); ++it, ++patch_index)
     {
+      if (!it->is_object())
+        throw bad_patch("operation must be a JSON object", patch_index);
+
       const json_object & cur_operation = it->as_object();
-      json_string op = get_or_throw(cur_operation, "op").as_string();
-      const std::string& path = get_or_throw(cur_operation, "path").as_string();
+
+      const json_string& op = get_field_str(cur_operation, "op", patch_index);
+      const json_string& path = get_field_str(cur_operation, "path", patch_index);
+
       if (op == "add")
       {
         // TODO: if source patch is non-const, use the temp variable
         // new item, MOVE possible, otherwise copy
         operation op(operation::eAdd);
-        op.read_only = &get_or_throw(cur_operation, "value");
+        op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
       }
       else if (op == "remove")
@@ -474,12 +500,12 @@ void apply_patch(json_value& doc,
       {
         // TODO: can MOVE if a non-const was passed in
         operation op(operation::eReplace);
-        op.read_only = &get_or_throw(cur_operation, "value");
+        op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
       }
       else if (op == "move")
       {
-        const std::string& from = get_or_throw(cur_operation, "from").as_string();
+        const std::string& from = get_field_str(cur_operation, "from", patch_index);
         if (from != path)
         {
           // first the eCut swaps the 'from' value into temp, and then later that is
@@ -493,7 +519,7 @@ void apply_patch(json_value& doc,
       }
       else if (op == "copy")
       {
-        const std::string& from = get_or_throw(cur_operation, "from").as_string();
+        const std::string& from = get_field_str(cur_operation, "from", patch_index);
         if (from != path)
         {
           operation op(operation::eRead);
@@ -506,13 +532,13 @@ void apply_patch(json_value& doc,
       else if (op == "test")
       {
         operation op(operation::eTest);
-        op.read_only = &get_or_throw(cur_operation, "value");
+
+        op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
       }
       else
       {
-        // TODO: throw bad_patch
-        throw std::runtime_error("invalid patch op code");
+        throw bad_patch("invalid patch op member", patch_index);
       }
     }
   }

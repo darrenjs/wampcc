@@ -635,6 +635,15 @@ pointer_fail::pointer_fail(const std::string& msg, size_t __index_failed)
 {
 }
 
+
+bad_patch::bad_patch(const std::string& msg,
+                     size_t i)
+  : json_error(msg),
+      patch_index(i)
+{
+}
+
+
 //----------------------------------------------------------------------
 
 
