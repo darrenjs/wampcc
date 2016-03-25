@@ -59,6 +59,7 @@ struct nonconst_variant
 };
 
 
+template<typename T>
 struct operation
 {
   opcode::value action;
@@ -74,8 +75,11 @@ struct operation
 };
 
 
-static void  select_child(json_object& refvalue, const char* path2, size_t pathindex, operation*);
-static void  select_child(json_array& refvalue, const char* path2, size_t pathindex, operation*);
+template<typename T>
+static void  select_child(json_object& refvalue, const char* path2, size_t pathindex, operation<T>*);
+
+template<typename T>
+static void  select_child(json_array& refvalue, const char* path2, size_t pathindex, operation<T>*);
 
 
 enum str_to_num_error
@@ -178,8 +182,9 @@ char* expand_str(const char* start, const char *end)
 }
 
 
+template<typename T>
 void select_child(json_object& refvalue, const char* path, size_t pathindex,
-                  operation* op)
+                  operation<T>* op)
 {
   const char* next_delim = strchr(path, JPDELIM);
 
@@ -281,9 +286,10 @@ void select_child(json_object& refvalue, const char* path, size_t pathindex,
   }
 }
 
+template<typename T>
 static void select_child(json_array& refvalue, const char* path,
                          size_t pathindex,
-                         operation* op)
+                         operation<T>* op)
 {
   const char* next_delim = strchr(path, JPDELIM);
 
@@ -384,9 +390,10 @@ static void select_child(json_array& refvalue, const char* path,
 }
 
 
+template<typename T>
 void resolve(json_value& root,
              const std::string& __path,
-             struct operation* op)
+             struct operation<T>* op)
 {
   const char* path = __path.c_str();
 
@@ -503,19 +510,19 @@ void apply_patch(json_value& doc,
       {
         // TODO: if source patch is non-const, use the temp variable
         // new item, MOVE possible, otherwise copy
-        operation op(opcode::eAdd);
+        operation<nonconst_variant> op(opcode::eAdd);
         op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
       }
       else if (op == "remove")
       {
-        operation op(opcode::eRemove);
+        operation<nonconst_variant> op(opcode::eRemove);
         resolve(doc, path, &op);
       }
       else if (op == "replace")
       {
         // TODO: can MOVE if a non-const was passed in
-        operation op(opcode::eReplace);
+        operation<nonconst_variant> op(opcode::eReplace);
         op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
       }
@@ -526,7 +533,7 @@ void apply_patch(json_value& doc,
         {
           // first the eCut swaps the 'from' value into temp, and then later that is
           // swapped into the value at 'path'
-          operation op(opcode::eCut);
+          operation<nonconst_variant> op(opcode::eCut);
           resolve(doc, from, &op);
 
           op.action = opcode::eAdd;
@@ -538,7 +545,7 @@ void apply_patch(json_value& doc,
         const std::string& from = get_field_str(cur_operation, "from", patch_index);
         if (from != path)
         {
-          operation op(opcode::eRead);
+          operation<nonconst_variant> op(opcode::eRead);
           resolve(doc, from, &op);
 
           op.action = opcode::eAdd;
@@ -547,7 +554,7 @@ void apply_patch(json_value& doc,
       }
       else if (op == "test")
       {
-        operation op(opcode::eTest);
+        operation<nonconst_variant> op(opcode::eTest);
 
         op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
