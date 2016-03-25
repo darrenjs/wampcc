@@ -43,7 +43,7 @@ bool test_pointer_success(json_value doc, std::string path, json_value expected)
 {
   try
   {
-    operation op(operation::eRead);
+    operation op(opcode::eRead);
     resolve(doc, path, &op);
     return (*op.read_only == expected);
   }
@@ -63,7 +63,7 @@ bool test_pointer_fail(json_value doc, std::string path)
 {
   try
   {
-    operation op(operation::eRead);
+    operation op(opcode::eRead);
     resolve(doc, path, &op);
     return false;  // we expected fail
   }

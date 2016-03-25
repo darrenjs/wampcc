@@ -28,10 +28,9 @@ This file contains an implementation of:
 
 namespace jalson {
 
-struct operation
+namespace opcode
 {
-
-  enum opcode
+  enum value
   {
     eAdd,
     eReplace,
@@ -39,16 +38,37 @@ struct operation
     eRead,
     eCut,     /* delete and keep a copy */
     eTest
-  } action;
+  };
+}
 
+
+struct const_variant
+{
+  typedef const json_value value_type;
+  typedef const json_array array_type;
+  typedef const json_object object_type;
+  typedef json_object::const_iterator iterator;
+};
+
+struct nonconst_variant
+{
+  typedef json_value value_type;
+  typedef json_array array_type;
+  typedef json_object object_type;
+  typedef json_object::iterator iterator;
+};
+
+
+struct operation
+{
+  opcode::value action;
 
   const json_value * read_only;
-//  json_value * target;
   json_value temp;
 
-  operation(opcode op)
-  : action(op),
-    read_only(0)
+  operation(opcode::value op)
+    : action(op),
+      read_only(0)
   {
   }
 };
@@ -195,7 +215,7 @@ void select_child(json_object& refvalue, const char* path, size_t pathindex,
       json_value & self = it->second;
       switch (op->action)
       {
-        case operation::eAdd :
+        case opcode::eAdd :
         {
           if (op->read_only)
           {
@@ -205,31 +225,30 @@ void select_child(json_object& refvalue, const char* path, size_t pathindex,
           {
             self.swap( op->temp );
           }
-//          op->target = &self;
           break;
         }
-        case operation::eReplace :
+        case opcode::eReplace :
         {
           self = *(op->read_only);
           break;
         }
-        case operation::eRemove :
+        case opcode::eRemove :
         {
           refvalue.erase( it );
           break;
         }
-        case operation::eCut :
+        case opcode::eCut :
         {
           op->temp.swap( self );
           refvalue.erase( it );
           break;
         }
-        case operation::eRead :
+        case opcode::eRead :
         {
           op->read_only = &self;
           break;
         }
-        case operation::operation::eTest:
+        case opcode::eTest:
         {
           if (self != *op->read_only)
             throw std::runtime_error("test operation failed");// TODO: use patch exception
@@ -242,7 +261,7 @@ void select_child(json_object& refvalue, const char* path, size_t pathindex,
     {
       switch (op->action)
       {
-        case operation::eAdd :
+        case opcode::eAdd :
         {
           std::pair<json_object::iterator, bool> r;
           if (op->read_only)
@@ -254,7 +273,6 @@ void select_child(json_object& refvalue, const char* path, size_t pathindex,
             r = refvalue.insert(std::make_pair(token, json_value::make_null()));
             r.first->second.swap( op->temp );
           }
-//          op->target = &(r.first->second);
           break;
         }
         default: throw pointer_fail("name not present in object", pathindex);
@@ -297,7 +315,7 @@ static void select_child(json_array& refvalue, const char* path,
       json_value & self = refvalue[index];
       switch (op->action)
       {
-        case operation::eAdd :
+        case opcode::eAdd :
         {
           if (op->read_only)
           {
@@ -308,31 +326,30 @@ static void select_child(json_array& refvalue, const char* path,
             refvalue.insert( refvalue.begin() + index,  json_value::make_null());
             refvalue[index].swap( op->temp );
           }
-//          op->target = & refvalue[index];
           break;
         }
-        case operation::eReplace :
+        case opcode::eReplace :
         {
           self = *(op->read_only);
           break;
         }
-        case operation::eRemove :
+        case opcode::eRemove :
         {
           refvalue.erase( refvalue.begin() + index );
           break;
         }
-        case operation::eCut :
+        case opcode::eCut :
         {
           op->temp.swap( self );
           refvalue.erase( refvalue.begin() + index );
           break;
         }
-        case operation::eRead :
+        case opcode::eRead :
         {
           op->read_only = &self;
           break;
         }
-        case operation::operation::eTest:
+        case opcode::eTest:
         {
           if (self != *op->read_only)
             throw std::runtime_error("test failed"); // TODO: use patch exception
@@ -344,7 +361,7 @@ static void select_child(json_array& refvalue, const char* path,
     {
       switch (op->action)
       {
-        case operation::eAdd :
+        case opcode::eAdd :
         {
           if (index == refvalue.size())
           {
@@ -357,7 +374,6 @@ static void select_child(json_array& refvalue, const char* path,
               refvalue.push_back( json_value::make_null() );  // swap
               refvalue[index].swap( op->temp );
             }
-//            op->target = &refvalue[index];
             return;
           }
         }
@@ -380,12 +396,12 @@ void resolve(json_value& root,
     {
       switch (op->action)
       {
-        case operation::eReplace:
+        case opcode::eReplace:
         {
           root = *(op->read_only);
           break;
         }
-        case operation::eAdd :
+        case opcode::eAdd :
         {
           if (op->read_only)
             root = *op->read_only;
@@ -393,22 +409,22 @@ void resolve(json_value& root,
             root.swap( op->temp );
           break;
         }
-        case operation::eRemove :
+        case opcode::eRemove :
         {
           root = json_value::make_null();
           break;
         }
-        case operation::eRead :
+        case opcode::eRead :
         {
           op->read_only = &root;
           break;
         }
-        case operation::eCut :
+        case opcode::eCut :
         {
           op->temp.swap( root );
           break;
         }
-        case operation::operation::eTest:
+        case opcode::eTest:
         {
           if (root != *op->read_only)
             throw std::runtime_error("test failed");
@@ -487,19 +503,19 @@ void apply_patch(json_value& doc,
       {
         // TODO: if source patch is non-const, use the temp variable
         // new item, MOVE possible, otherwise copy
-        operation op(operation::eAdd);
+        operation op(opcode::eAdd);
         op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
       }
       else if (op == "remove")
       {
-        operation op(operation::eRemove);
+        operation op(opcode::eRemove);
         resolve(doc, path, &op);
       }
       else if (op == "replace")
       {
         // TODO: can MOVE if a non-const was passed in
-        operation op(operation::eReplace);
+        operation op(opcode::eReplace);
         op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
       }
@@ -510,10 +526,10 @@ void apply_patch(json_value& doc,
         {
           // first the eCut swaps the 'from' value into temp, and then later that is
           // swapped into the value at 'path'
-          operation op(operation::eCut);
+          operation op(opcode::eCut);
           resolve(doc, from, &op);
 
-          op.action = operation::eAdd;
+          op.action = opcode::eAdd;
           resolve(doc, path, &op);
         }
       }
@@ -522,16 +538,16 @@ void apply_patch(json_value& doc,
         const std::string& from = get_field_str(cur_operation, "from", patch_index);
         if (from != path)
         {
-          operation op(operation::eRead);
+          operation op(opcode::eRead);
           resolve(doc, from, &op);
 
-          op.action = operation::eAdd;
+          op.action = opcode::eAdd;
           resolve(doc, path, &op);
         }
       }
       else if (op == "test")
       {
-        operation op(operation::eTest);
+        operation op(opcode::eTest);
 
         op.read_only = get_value(cur_operation, patch_index);
         resolve(doc, path, &op);
