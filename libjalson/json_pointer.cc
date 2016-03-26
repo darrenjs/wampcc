@@ -65,11 +65,16 @@ struct operation
   opcode::value action;
 
   const json_value * read_only;
+  typename T::value_type * output;
   json_value temp;
+  size_t path_index;
 
   operation(opcode::value op)
     : action(op),
-      read_only(0)
+      read_only(0),
+      output(0),
+      path_index(0)
+
   {
   }
 };
@@ -132,10 +137,10 @@ static size_t json_pointer_str_to_index(const char* p, size_t path_index)
   str_to_num_error errptr;
   size_t result = string_to_unsigned<size_t>(p, &errptr);
 
-  if (errptr!=eSuccess)
-    throw pointer_fail("string to int fail", path_index);
-
-  return result;
+  if (errptr==eSuccess)
+    return result;
+  else
+    throw pointer_fail("cannot convert string to integer", path_index);
 }
 
 
@@ -570,6 +575,164 @@ void apply_patch(json_value& doc,
     doc.swap(copy);
     throw;
   }
+}
+
+struct read_operation
+{
+  template<typename T>
+  static void operate_on_target(typename T::value_type& target,
+                                operation<T>* op)
+  {
+    op->output = &target;
+  }
+
+
+  template<typename T>
+  static void operate_on_object(typename T::object_type & container,
+                                const std::string& token,
+                                operation<T>* op)
+  {
+    typename T::iterator it = container.find( token );
+    if (it != container.end())
+      operate_on_target(it->second, op);
+  }
+
+
+  template<typename T>
+  static void operate_on_array(typename T::array_type & container,
+                               size_t i,
+                               operation<T>* op)
+  {
+    if (i < container.size() )
+      operate_on_target(container[i], op);
+  }
+};
+
+
+
+// forward references
+template <typename F, typename T>
+static void resolve_path_on_object(typename T::object_type & refvalue,
+                                   const char* path,
+                                   operation<T>* op);
+template <typename F, typename T>
+static void resolve_path_on_array(typename T::array_type & refvalue,
+                                  const char* path,
+                                  operation<T>* op);
+
+template <typename F, typename T>
+static void resolve_path_on_object(typename T::object_type & refvalue,
+                                   const char* path,
+                                   operation<T>* op)
+{
+  op->path_index++;
+  const char* next_delim = strchr(path, JPDELIM);
+
+  // TODO: improve memory usage here
+  std::string token = next_delim? std::string(path, next_delim-path) : path;
+  const char * escaped = has_escape_seq(path, (next_delim)? next_delim : path+strlen(path));
+
+  if (escaped)
+  {
+    // TODO: improve memory usage here
+    char *  copy = expand_str( path, (next_delim)? next_delim : path+strlen(path));
+    token = copy;
+    delete [] copy;
+  }
+
+  if (next_delim)
+  {
+    typename T::iterator it = refvalue.find( token );
+    if (it != refvalue.end())
+    {
+      if (it->second.is_array())
+        return resolve_path_on_array<F>(it->second.as_array(), next_delim+1, op);
+      else if (it->second.is_object())
+        return resolve_path_on_object<F>(it->second.as_object(), next_delim+1, op);
+    }
+  }
+  else
+  {
+    F::operate_on_object(refvalue, token, op);
+  }
+}
+
+
+template <typename F, typename T>
+static void resolve_path_on_array(typename T::array_type & refvalue,
+                                  const char* path,
+                                  operation<T>* op)
+{
+  op->path_index++;
+  const char* next_delim = strchr(path, JPDELIM);
+
+  std::string token = next_delim? std::string(path, next_delim-path) : path;
+  size_t index = (token=="-")? refvalue.size() : json_pointer_str_to_index(token.c_str(), op->path_index);
+
+  if (next_delim)
+  {
+    if (index < refvalue.size() )
+    {
+      if (refvalue[index].is_array())
+        return resolve_path_on_array<F>(refvalue[index].as_array(), next_delim+1, op);
+      if (refvalue[index].is_object())
+        return resolve_path_on_object<F>(refvalue[index].as_object(), next_delim+1, op);
+    }
+  }
+  else
+  {
+    F::operate_on_array(refvalue, index, op);
+  }
+}
+
+template <typename F, typename T>
+static void resolve_path_from_root(typename T::value_type& root,
+                                   const std::string& __path,
+                                   operation<T>* op)
+{
+  const char* path = __path.c_str();
+
+  if (*path == '\0')
+  {
+    F::operate_on_target(root, op);
+  }
+  else if (*path == JPDELIM )
+  {
+    if (root.is_array())
+      resolve_path_on_array<F>(root.as_array(),  path+1 , op);
+    if (root.is_object())
+     resolve_path_on_object<F>(root.as_object(), path+1, op);
+  }
+  else
+    throw pointer_fail("invalid pointer syntax", 0);
+}
+
+
+const json_value * eval_json_pointer(const json_value& doc,
+                                     const char* path)
+{
+  operation< const_variant > op(opcode::eRead);
+
+  resolve_path_from_root<read_operation, const_variant>(
+    doc,
+    std::string(path),
+    &op);
+
+  return op.output;
+}
+
+
+json_value * eval_json_pointer(json_value& doc,
+                               const char* path)
+{
+  operation< nonconst_variant > op(opcode::eRead);
+
+  resolve_path_from_root<read_operation, nonconst_variant>(
+    doc,
+    std::string(path),
+    &op);
+
+  return op.output;
 }
 
 }

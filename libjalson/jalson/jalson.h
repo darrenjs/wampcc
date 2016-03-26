@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#if __cplusplus > 199711L
+#if __cplusplus >=201103L
 #include <type_traits>
 #endif
 
@@ -299,8 +299,15 @@ public:
   // Apply a JSON Patch (IETF RFC 6902)
   void patch(const json_array&);
 
+  /* Evaulate a JSON Pointer (IETF RFC 6902). Return a pointer to the value
+   * identified by the JSON Pointer, or null if not found. If the JSON Pointer
+   * has illegal syntax a pointer_fail exception is thrown.
+   */
+  const json_value * eval(const char* json_pointer) const;
+  json_value *       eval(const char* json_pointer);
+
   // Prevent accidental initialisation of json_value from a pointer
-#if __cplusplus > 199711L
+#if __cplusplus >= 201103L
   template<typename T> json_value(const T*)
   {
     static_assert(sizeof(T)==0,

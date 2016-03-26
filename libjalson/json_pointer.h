@@ -15,6 +15,12 @@ namespace jalson
 
 void apply_patch(json_value& doc, const json_array& patch);
 
+const json_value * eval_json_pointer(const json_value& doc,
+                                     const char* path);
+
+json_value * eval_json_pointer(json_value& doc,
+                               const char* path);
+
 }
 
 #endif
