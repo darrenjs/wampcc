@@ -185,6 +185,12 @@ public:
   valueimpl::Details clone_details() const;
 };
 
+#if __cplusplus >= 201103L
+static_assert( std::is_pod<valueimpl::Details>::value,
+               "expected to be POD" );
+#endif
+
+
 }
 
 
