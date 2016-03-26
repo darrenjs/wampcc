@@ -9,8 +9,6 @@
 #define __JALSON_H__
 
 
-// TODO: move the test code in hello.cc to the test case, then can dlete that file.
-
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -47,9 +45,9 @@ void get_vendor_details(vendor_details*);
 Fundamental JSON types.
 
 Note that the json Number type is broken down into to separate types, real and
-integer
+integer.
 
-note there is not a separate True and False types
+Note there is not a separate True and False types.
 */
 
 typedef enum
@@ -296,7 +294,9 @@ public:
   void swap(json_value&);
 
 
-  // Apply a JSON Patch (IETF RFC 6902)
+  /* Apply a JSON Patch (IETF RFC 6902). If the JSON Pointer
+   * has illegal syntax a pointer_fail exception is thrown.
+   */
   void patch(const json_array&);
 
   /* Evaulate a JSON Pointer (IETF RFC 6902). Return a pointer to the value

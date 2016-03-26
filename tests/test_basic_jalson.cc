@@ -373,6 +373,56 @@ DEFTEST( copy_memleak )
 }
 
 //----------------------------------------------------------------------
+DEFTEST( equality )
+{
+  jalson::json_value j1 = jalson::decode( "{ \"foo\": [50, 20, 30, 40]} " );
+  jalson::json_value j2 = jalson::decode( "{ \"foo\": [10, 20, 30, 40]} " );
+  jalson::json_value j3 = jalson::decode( "{ \"foo\": [10, 20, 30, 40]} " );
+
+  ASSERT_TRUE( j1 == j1 );
+  ASSERT_TRUE( (j1 != j1) == false );
+  ASSERT_TRUE( j1 != j2 );
+  ASSERT_TRUE( (j1 == j2) == false );
+  ASSERT_TRUE( j2 == j3 );
+  ASSERT_TRUE( (j2 != j3) == false );
+
+
+  jalson::json_value j4 = jalson::decode( "{ \"foo\": [1.1, 2.2 ], \"a\": true }" );
+  jalson::json_value j5 = jalson::decode( "{ \"foo\": [1.2, 2.3 ], \"a\": true }" );
+  jalson::json_value j6 = jalson::decode( "{ \"a\":true, \"foo\": [1.1, 2.2 ] }" );
+
+  ASSERT_TRUE( j4 == j4 );
+  ASSERT_TRUE( j4 != j5 );
+  ASSERT_TRUE( (j4 == j5) == false );
+  ASSERT_TRUE( j4 == j6 );
+
+  jalson::json_value j7 = jalson::decode( "{ \"foo\": [-50, -20, -30, -40]} " );
+  jalson::json_value j8 = jalson::decode( "{ \"foo\": [-10, -20, -30, -40]} " );
+  jalson::json_value j9 = jalson::decode( "{ \"foo\": [-10, -20, -30, -40]} " );
+
+  ASSERT_TRUE( j7 == j7 );
+  ASSERT_TRUE( (j7 != j7) == false );
+  ASSERT_TRUE( j7 != j8 );
+  ASSERT_TRUE( (j7 == j8) == false );
+  ASSERT_TRUE( j8 == j9 );
+  ASSERT_TRUE( (j8 != j9) == false );
+
+  jalson::json_value j10 = jalson::decode( "{ \"foo\": [true, false, true, false ]} " );
+  jalson::json_value j11 = jalson::decode( "{ \"foo\": [true, false, true, true  ]} " );
+  jalson::json_value j12 = jalson::decode( "{ \"foo\": [true, false, true, true  ]} " );
+
+  ASSERT_TRUE( j10 == j10 );
+  ASSERT_TRUE( (j10 != j10) == false );
+  ASSERT_TRUE( j10 != j11 );
+  ASSERT_TRUE( (j10 == j11) == false );
+  ASSERT_TRUE( j11 == j12 );
+  ASSERT_TRUE( (j11 != j12) == false );
+
+
+  return 1;
+}
+
+//----------------------------------------------------------------------
 // DEFTEST( demo_test )
 // {
 //   jalson::json_array msg;

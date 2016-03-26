@@ -212,6 +212,10 @@ bool valueimpl::operator==(const valueimpl& rhs) const
   {
     switch(this->details.type)
     {
+      case valueimpl::e_null:
+      {
+        return true;
+      }
       case valueimpl::e_object:
       {
         return *(this->details.data.object) == *(rhs.details.data.object);
@@ -224,7 +228,23 @@ bool valueimpl::operator==(const valueimpl& rhs) const
       {
         return *(this->details.data.string) ==  *rhs.details.data.string;
       }
-      default: return true; // does types: true, false, null,int, double
+      case valueimpl::e_bool:
+      {
+        return this->details.data.boolean == rhs.details.data.boolean;
+      }
+      case valueimpl::e_double:
+      {
+        return this->details.data.real == rhs.details.data.real;
+      }
+      case valueimpl::e_signed:
+      {
+        return this->details.data.sint == rhs.details.data.sint;
+      }
+      case valueimpl::e_unsigned:
+      {
+        return this->details.data.uint == rhs.details.data.uint;
+      }
+      default: return false;
     }
   }
   else return false;
