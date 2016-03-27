@@ -117,14 +117,16 @@ public:
   virtual ~type_mismatch() throw() {}
 };
 
-class pointer_fail : public json_error
+// exception when handling a JSON Pointer
+class bad_pointer : public json_error
 {
 public:
   size_t path_index;
-  pointer_fail(const std::string&,
+  bad_pointer(const std::string&,
                size_t index);
 };
 
+// exception when handling a JSON Patch
 class bad_patch : public json_error
 {
 public:
@@ -294,14 +296,12 @@ public:
   void swap(json_value&);
 
 
-  /* Apply a JSON Patch (IETF RFC 6902). If the JSON Pointer
-   * has illegal syntax a pointer_fail exception is thrown.
-   */
+  /* Apply a JSON Patch (IETF RFC 6902). Can throw bad_pointer and bad_patch. */
   void patch(const json_array&);
 
   /* Evaulate a JSON Pointer (IETF RFC 6902). Return a pointer to the value
    * identified by the JSON Pointer, or null if not found. If the JSON Pointer
-   * has illegal syntax a pointer_fail exception is thrown.
+   * has illegal syntax a bad_pointer exception is thrown.
    */
   const json_value * eval(const char* json_pointer) const;
   json_value *       eval(const char* json_pointer);

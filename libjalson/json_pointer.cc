@@ -139,7 +139,7 @@ static size_t json_pointer_str_to_index(const char* p, size_t path_index)
   if (errptr==eSuccess)
     return result;
   else
-    throw pointer_fail("cannot convert string to integer", path_index);
+    throw bad_pointer("cannot convert string to integer", path_index);
 }
 
 
@@ -210,10 +210,10 @@ static char* expand_str(const char* start, const char *end)
 //       else if (it->second.is_object())
 //         select_child(it->second.as_object(), next_delim+1, pathindex+1, op);
 //       else
-//         throw pointer_fail("pointer cannot continue, value selected in object is not a container", pathindex);
+//         throw bad_pointer("pointer cannot continue, value selected in object is not a container", pathindex);
 //     }
 //     else
-//       throw pointer_fail("pointer cannot continue, object does not contain name", pathindex);
+//       throw bad_pointer("pointer cannot continue, object does not contain name", pathindex);
 //   }
 //   else
 //   {
@@ -282,7 +282,7 @@ static char* expand_str(const char* start, const char *end)
 //           }
 //           break;
 //         }
-//         default: throw pointer_fail("name not present in object", pathindex);
+//         default: throw bad_pointer("name not present in object", pathindex);
 //       }
 //     }
 //   }
@@ -310,11 +310,11 @@ static char* expand_str(const char* start, const char *end)
 //         select_child(refvalue[index].as_object(), next_delim+1, pathindex+1, op);
 //       else
 //       {
-//         throw pointer_fail("value selected in array is not a container", pathindex);
+//         throw bad_pointer("value selected in array is not a container", pathindex);
 //       }
 //     }
 //     else
-//       throw pointer_fail("index not present in array", pathindex);
+//       throw bad_pointer("index not present in array", pathindex);
 //   }
 //   else
 //   {
@@ -385,7 +385,7 @@ static char* expand_str(const char* start, const char *end)
 //             return;
 //           }
 //         }
-//         default: throw pointer_fail("index not present in array", pathindex);
+//         default: throw bad_pointer("index not present in array", pathindex);
 //       }
 //     }
 //   }
@@ -454,13 +454,13 @@ static char* expand_str(const char* start, const char *end)
 //       }
 //       else
 //       {
-//         throw pointer_fail("root item not a container", 0);
+//         throw bad_pointer("root item not a container", 0);
 //       }
 //       break;
 //     }
 //     default :
 //     {
-//       throw pointer_fail("string is not a invalid pointer", 0);
+//       throw bad_pointer("string is not a invalid pointer", 0);
 //     }
 //   }
 
@@ -854,7 +854,7 @@ static bool resolve_path_from_root(typename T::value_type& root,
      return resolve_path_on_object<F>(root.as_object(), path+1, op);
   }
   else
-    throw pointer_fail("invalid pointer syntax", 0);
+    throw bad_pointer("invalid pointer syntax", 0);
 
   return false;
 }

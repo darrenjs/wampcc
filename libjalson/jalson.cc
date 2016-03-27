@@ -646,7 +646,7 @@ type_mismatch::type_mismatch(JSONType __actual,
 }
 
 
-pointer_fail::pointer_fail(const std::string& msg, size_t __index_failed)
+bad_pointer::bad_pointer(const std::string& msg, size_t __index_failed)
   : json_error(msg),
     path_index( __index_failed )
 {
