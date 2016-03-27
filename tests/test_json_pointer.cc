@@ -44,7 +44,7 @@ bool test_pointer_success(json_value doc, std::string path, json_value expected)
   try
   {
     operation<nonconst_variant> op(opcode::eRead);
-    resolve(doc, path, &op);
+    apply_single_patch(doc, path, &op);
     return (*op.read_only == expected);
   }
   catch (const pointer_fail& e)
@@ -64,7 +64,7 @@ bool test_pointer_fail(json_value doc, std::string path)
   try
   {
     operation<nonconst_variant> op(opcode::eRead);
-    resolve(doc, path, &op);
+    apply_single_patch(doc, path, &op);
     return false;  // we expected fail
   }
   catch (const pointer_fail& e)
@@ -164,7 +164,9 @@ bool patch_test(const char* docstr, const char* patchstr, const char * expectstr
   json_value orig = doc;
   json_array patch=decode(patchstr).as_array();
   json_value expect=decode(expectstr);
-  apply_patch(doc, patch);
+  bool result = apply_patch(doc, patch);
+
+  if (result == false) return false;
 
   bool equal = (doc == expect);
 
@@ -180,24 +182,17 @@ bool patch_test(const char* docstr, const char* patchstr, const char * expectstr
 
 bool patch_test_fail(const char* docstr, const char* patchstr)
 {
-  try
-  {
-   json_value doc=decode(docstr);
-   json_value orig = doc;
-   json_array patch=decode(patchstr).as_array();
-   apply_patch(doc, patch);
+  json_value doc=decode(docstr);
+  json_value orig = doc;
+  json_array patch=decode(patchstr).as_array();
+  bool result = apply_patch(doc, patch);
 
-   std::cout << "doc: '" << orig << "'\n"
-             << "patch: '" << patch << "'\n"
-             << "actual: '" << doc << "'\n";
+  std::cout << "doc: '" << orig << "'\n"
+            << "patch: '" << patch << "'\n"
+            << "actual: '" << doc << "'\n";
 
-   return false; /* we exepct it to fail*/
-  }
-  catch (const std::exception& e)
-  {
-    std::cout << "exception: " << e.what() << "\n";
-    return true;
-  }
+  return result == false; /* we exepct it to fail*/
+
 }
 
 

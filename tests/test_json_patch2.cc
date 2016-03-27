@@ -14,8 +14,8 @@ using namespace jalson;
 //----------------------------------------------------------------------
 
 /* Test that the application of a bad patch does not leave the target object in
-    intermediate state.  I.e. if a patch fails, the target object should be
-    unchanged.
+   intermediate state.  I.e. if a patch fails, the target object should be
+   unchanged.
  */
 static bool patch_test(const char* docstr, const char* patchstr)
 {
@@ -23,11 +23,12 @@ static bool patch_test(const char* docstr, const char* patchstr)
   json_value orig = doc;
   json_array patch=decode(patchstr).as_array();
   bool had_exception = true;
+  bool patch_ok;
 
   // apply the patch, ignore errors
   try
   {
-    apply_patch(doc, patch);
+    patch_ok = apply_patch(doc, patch);
     had_exception = false;
   }
   catch (std::exception& e)
@@ -35,7 +36,8 @@ static bool patch_test(const char* docstr, const char* patchstr)
     std::cout << "apply patch exception: " << e.what() << "\n";
   }
 
-  if (!had_exception) throw std::runtime_error("test was expected to throw");
+  if (!had_exception && patch_ok)
+    throw std::runtime_error("test was expected to fail");
 
   bool equal = (doc == orig);
 

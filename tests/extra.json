@@ -21,5 +21,62 @@
       "doc":      { "baz": 1, "foo": [{"qux": "hello"}, true, false]},
       "patch":    [ {"op": "remove", "path": "/foo/~00"} ],
       "error": "invalid array index"
+    },
+
+    { "comment": "copy operation, target is non exisint array item",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "copy", "from": "/foo/0", "path":"/foo/3" } ],
+      "expected": { "foo": [10, 20, 30, 10] }
+    },
+
+    { "comment": "copy operation, target is non exisint array item",
+      "doc":      { "foo": [50, 20, 30]},
+      "patch":    [ {"op": "copy", "from": "/foo/0", "path":"/foo/-" } ],
+      "expected": { "foo": [50, 20, 30, 50] }
+    },
+
+    { "comment": "move operation, target is non exisint array item",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "move", "from": "/foo/0", "path":"/foo/2" } ],
+      "expected": { "foo": [20, 30, 10] }
+    },
+
+    { "comment": "move operation, target is non exisint array item",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "move", "from": "/foo/0", "path":"/foo/-" } ],
+      "expected": { "foo": [20, 30, 10] }
+    },
+
+    { "comment": "replace at array end, expect to fail",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "replace", "value": "NEW", "path":"/foo/-" } ],
+      "error":    "cannot replace because target does not exist"
+    },
+
+    { "comment": "replace at array end, expect to fail",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "replace", "value": "NEW", "path":"/foo/3" } ],
+      "error":    "cannot replace because target does not exist"
+    },
+
+    { "comment": "replace at array last item",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "replace", "value": "NEW", "path":"/foo/2" } ],
+      "expected": { "foo": [10, 20, "NEW"] }
+    },
+
+    { "comment": "apply a correct change, but then encounter a bad pointer",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "replace", "value": "NEW", "path":"/foo/2" },
+                    {"op":"test", "path":"foo/2", "value":"NEW" } ],
+      "error": "patch shall not be applied, because second operation failed"
+    },
+
+    { "comment": "apply a correct change, but then encounter a bad pointer",
+      "doc":      { "foo": [10, 20, 30]},
+      "patch":    [ {"op": "replace", "value": "NEW", "path":"/foo/2" },
+                    null ],
+      "error": "patch shall not be applied, because second operation failed"
     }
+
 ]

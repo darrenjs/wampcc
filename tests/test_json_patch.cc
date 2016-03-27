@@ -39,7 +39,7 @@ bool run_test(json_object& tc, int testid)
 {
   std::cout << "--------------------------------------------------\n";
   std::cout << "testid: " << testid << "\n";
-  std::cout << "test: " << tc["comment"] << "\n";
+  std::cout << "test  : " << tc["comment"] << "\n";
 
 
   enum
@@ -65,8 +65,8 @@ bool run_test(json_object& tc, int testid)
     disabled = tc["disabled"];
 
 
-    std::cout << "doc: '" << orig << "'\n"
-              << "patch: '" << patch << "'\n";
+    std::cout << "start : '" << orig << "'\n"
+              << "patch : '" << patch << "'\n";
 
     if (disabled.is_true())
     {
@@ -90,19 +90,21 @@ bool run_test(json_object& tc, int testid)
   {
     try
     {
-      apply_patch(doc, patch);
+      bool patch_ok = apply_patch(doc, patch);
+      if (!patch_ok) result = ePatchFailed;
     }
     catch(pointer_fail&e)
     {
-      std::cout << "patch exception:" << e.what() << ", index " << e.path_index << "\n";
+      std::cout << "caught: pointer_fail" << e.what() << ", index " << e.path_index << "\n";
       result = ePatchFailed;
     }
     catch(std::exception&e)
     {
-      std::cout << "patch exception:" << e.what() << "\n";
+      std::cout << "caught: std::exception, " << e.what() << "\n";
       result = ePatchFailed;
     }
   }
+  std::cout << "after : '" << doc << "'\n";
 
   if (result == eSuccess)
   {
@@ -110,16 +112,19 @@ bool run_test(json_object& tc, int testid)
 
     if (expect != tc.end())
     {
-      bool equal = (doc == expect->second);
 
-      if (!equal)
+      std::cout << "expect : '" << expect->second << "'\n";
+
+      if (doc != expect->second)
       {
-        std::cout << "expect: '" << expect->second << "'\n"
-                  << "actual: '" << doc << "'\n";
+        std::cout << "result: not equal\n";
         result = eDiffFailed;
       }
+      else
+      {
+        std::cout << "result: equal\n";
+      }
     }
-
   }
 
   if (expect_fail)
@@ -131,8 +136,17 @@ bool run_test(json_object& tc, int testid)
     }
     else
     {
-      std::cout << "result: PASS - expected fail and had "<< names[result] << "\n";
-      return true;
+      bool doc_restored = (doc == orig);
+      if (doc_restored)
+      {
+        std::cout << "result: PASS - expected fail and had "<< names[result] << ", and orig state restored\n";
+        return true;
+      }
+      else
+      {
+        std::cout << "result: FAIL - expected and got fail "<< names[result] << ", but doc not in orig state\n";
+        return false;
+      }
     }
   }
   else
