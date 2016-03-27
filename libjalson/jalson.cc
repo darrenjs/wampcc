@@ -312,11 +312,11 @@ bool valueimpl::as_bool_unchecked() const
 
 
 // poor mans template
-#define ARRAY_APPEND( C, T )                         \
-  T * newitem = new T ();                            \
-  internals::valueimpl temp( newitem );              \
+#define ARRAY_APPEND( C, T )                          \
+  T * newitem = new T ();                             \
+  internals::valueimpl temp( newitem );               \
   C.push_back( json_value() );                        \
-  C.back().m_impl.swap( temp );                      \
+  C.back().m_impl.swap( temp );                       \
   return *newitem;
 
 json_array  &  append_array(jalson::json_array& c)
@@ -328,16 +328,6 @@ json_object  &  append_object(jalson::json_array& c)
 {
   ARRAY_APPEND(c, json_object);
 }
-
-
-// poor mans template
-#define ARRAY_APPEND( C, T )                         \
-  T * newitem = new T ();                            \
-  internals::valueimpl temp( newitem );              \
-  C.push_back( json_value() );                        \
-  C.back().m_impl.swap( temp );                      \
-  return *newitem;
-
 
 
 json_object& insert_object(jalson::json_object& c, const std::string& key)

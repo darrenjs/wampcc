@@ -20,7 +20,7 @@ jalson::json_value build_json()
   v.as<jalson::json_array>().push_back( v );
   v.as<jalson::json_array>().push_back( v );
 
-  jalson::json_object & obj = jalson::append_object(v.as_array());
+  jalson::json_object & obj = v.append_object();
   obj["one"] = v;
   obj["two"] = v;
   v.as<jalson::json_array>().push_back( v );

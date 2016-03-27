@@ -269,9 +269,13 @@ public:
   const json_value&  operator[](size_t i) const {  return this->as<json_array>()[i]; }
   json_value&        at(size_t i)       {  return this->as<json_array>().at(i); }
   const json_value&  at(size_t i) const {  return this->as<json_array>().at(i); }
+  json_object&       insert_object(const std::string& key);
+  json_array&        insert_array(const std::string& key);
 
   // utility methods if self holds an object
   json_value&        operator[](const std::string& k) { return this->as<json_object>()[k];}
+  json_object&       append_object();
+  json_array&        append_array();
 
 
   // void   add(v);  add(k,v);    TODO
@@ -391,6 +395,27 @@ std::string encode_any(const json_value& src);
 void decode(json_value& dest, const char*);
 
 json_value decode(const char*);
+
+// implementation of inline methods
+inline json_array  &  json_value::append_array()
+{
+  return jalson::append_array( this->as<json_array>() );
+}
+
+inline json_object  &  json_value::append_object()
+{
+  return jalson::append_object( this->as<json_array>() );
+}
+
+inline json_object&  json_value::insert_object(const std::string& key)
+{
+  return jalson::insert_object( this->as<json_object>(), key );
+}
+
+inline json_array&   json_value::insert_array (const std::string& key)
+{
+  return jalson::insert_array( this->as<json_object>(), key );
+}
 
 }
 
