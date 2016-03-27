@@ -75,7 +75,7 @@ bool run_test(json_object& tc, int testid)
     }
     expect_fail = (tc.find("error") != tc.end());
   }
-  catch(pointer_fail&e)
+  catch(bad_pointer&e)
   {
     std::cout << "patch exception:" << e.what() << ", index " << e.path_index << "\n";
     result = ePatchFailed;
@@ -93,9 +93,9 @@ bool run_test(json_object& tc, int testid)
       bool patch_ok = apply_patch(doc, patch);
       if (!patch_ok) result = ePatchFailed;
     }
-    catch(pointer_fail&e)
+    catch(bad_pointer&e)
     {
-      std::cout << "caught: pointer_fail" << e.what() << ", index " << e.path_index << "\n";
+      std::cout << "caught: bad_pointer" << e.what() << ", index " << e.path_index << "\n";
       result = ePatchFailed;
     }
     catch(std::exception&e)

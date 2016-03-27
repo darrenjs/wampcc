@@ -47,7 +47,7 @@ bool test_pointer_success(json_value doc, std::string path, json_value expected)
     apply_single_patch(doc, path, &op);
     return (*op.read_only == expected);
   }
-  catch (const pointer_fail& e)
+  catch (const bad_pointer& e)
   {
     std::cout << "FAILED: " << e.what() << ", pathindex " << e.path_index << "\n";
     return false;
@@ -59,7 +59,7 @@ bool test_pointer_success(json_value doc, std::string path, json_value expected)
   }
 
 }
-bool test_pointer_fail(json_value doc, std::string path)
+bool test_bad_pointer(json_value doc, std::string path)
 {
   try
   {
@@ -67,7 +67,7 @@ bool test_pointer_fail(json_value doc, std::string path)
     apply_single_patch(doc, path, &op);
     return false;  // we expected fail
   }
-  catch (const pointer_fail& e)
+  catch (const bad_pointer& e)
   {
     std::cout << "xfail: " << e.what() << ", pathindex " << e.path_index << "\n";
 
@@ -113,10 +113,10 @@ DEFTEST( test_example )
   ASSERT_TRUE( test_pointer_success(doc, "/ ",     json_value::make_int(7)));
   ASSERT_TRUE( test_pointer_success(doc, "/m~0n",  json_value::make_int(8)));
 
-  ASSERT_TRUE( test_pointer_fail(doc, "/foo//" ));
-  ASSERT_TRUE( test_pointer_fail(doc, "/foo/01" ));
-  ASSERT_TRUE( test_pointer_fail(doc, "/foo/01/0" ));
-  ASSERT_TRUE( test_pointer_fail(doc, "/foo/00" ));
+  ASSERT_TRUE( test_bad_pointer(doc, "/foo//" ));
+  ASSERT_TRUE( test_bad_pointer(doc, "/foo/01" ));
+  ASSERT_TRUE( test_bad_pointer(doc, "/foo/01/0" ));
+  ASSERT_TRUE( test_bad_pointer(doc, "/foo/00" ));
 
   return 1;
 }
