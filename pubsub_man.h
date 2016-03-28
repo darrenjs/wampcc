@@ -11,12 +11,12 @@ class ev_inbound_publish;
 class event;
 class event_loop;
 class managed_topic;
-
+class SessionMan;
 
 class pubsub_man
 {
 public:
-  pubsub_man(Logger *, event_loop&);
+  pubsub_man(Logger *, event_loop&, SessionMan&);
   ~pubsub_man();
 
   void handle_event(ev_inbound_publish*);
@@ -28,8 +28,10 @@ private:
 
   Logger *__logptr; /* name chosen for log macros */
   event_loop& m_evl;
+  SessionMan& m_sesman;
 
   std::map<std::string, managed_topic*> m_topics;
+  size_t m_next_subscription_id;
 
 };
 

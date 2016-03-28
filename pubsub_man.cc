@@ -3,25 +3,49 @@
 #include "event.h"
 #include "event_loop.h"
 #include "Logger.h"
+#include "WampTypes.h"
+#include "SessionMan.h"
 
 #include <list>
 
 namespace XXX {
 
+/*
+TODO: what locking is needed around this?
 
+- as subs are added, they will READ.  need to sync the addition of the
+  subscriber, with the series of images and updates it sees.
+
+- as PUBLISH events arrive, they will write
+
+
+*/
 struct managed_topic
 {
-  std::list< session_handle > m_subscribers;
+  std::vector< session_handle > m_subscribers;
 
   // current upto date image of the value
   jalson::json_value image;
   // TODO: nees to also have ability to take a patch and apply it
+
+  // Note, we are tieing the subscription ID direct to the topic.  WAMP does
+  // allow this, and it has the benefit that we can perform a single message
+  // serialisation for all subscribers.  Might have to change later if more
+  // complex subscription features are supported.
+  size_t subscription_id;
+
+  managed_topic(size_t __subscription_id)
+  : subscription_id(__subscription_id)
+  {
+  }
 };
 
 /* Constructor */
-pubsub_man::pubsub_man(Logger * logptr, event_loop&evl)
+  pubsub_man::pubsub_man(Logger * logptr, event_loop&evl, SessionMan& sm)
   : __logptr(logptr),
-  m_evl(evl)
+    m_evl(evl),
+    m_sesman( sm ),
+    m_next_subscription_id(1)
 {
 }
 
@@ -30,25 +54,62 @@ pubsub_man::~pubsub_man()
 {
 }
 
+/* Handle arrival of the a PUBLISH event, targeted at a topic.
+ *
+ */
 void pubsub_man::handle_event(ev_inbound_publish* ev)
 {
   // TODO: lock me?  Or will only be the event thread?
-
-  std::cout << "TODO: need to generete events now, for topic " << ev->uri <<"\n";
 
   // find or create a topic
   auto iter = m_topics.find( ev->uri );
   if (iter == m_topics.end())
   {
     std::cout << "topic created: " << ev->uri << "\n";
-    managed_topic * mt = new managed_topic();
+    managed_topic * mt = new managed_topic(m_next_subscription_id++);
     auto result = m_topics.insert(std::make_pair(ev->uri , mt));
     iter = result.first;
   }
 
-  for (auto it : iter->second->m_subscribers)
+  // apply the patch
+  managed_topic* mt = iter->second;
+
+  try
   {
-    std::cout << "TODO: next need to send EVENT to session\n";
+    mt->image.patch(ev->patch.as_array());
+
+    /*
+      [ EVENT,
+        SUBSCRIBED.Subscription|id,
+        PUBLISHED.Publication|id,
+        Details|dict,
+        PUBLISH.Arguments|list,
+        PUBLISH.ArgumentKw|dict
+      ]
+    */
+
+    jalson::json_array msg;
+    msg.push_back( EVENT );
+    msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
+    msg.push_back( 2 ); // TODO: generate publication ID
+    msg.push_back( jalson::json_value::make_object() );
+    jalson::json_array& args = jalson::append_array(msg);
+    msg.push_back( jalson::json_value::make_object() );
+    args.push_back(ev->patch);
+
+    m_sesman.send_to_session(mt->m_subscribers,
+                             msg);
+
+    // TODO EASY - dont need to use the event loop here, because we are in an
+    // event handler, ie, alread on the event thread. Indeed, could even just call send_to_session from here?
+    // ev_outbound_event * ev = new ev_outbound_event("TOPIC",
+    //                                                mt->m_subscribers,
+    //                                                msg);
+    // m_evl.push( ev );
+  }
+  catch (const std::exception& e)
+  {
+    _ERROR_("patch failed: " << e.what());
   }
 }
 
@@ -71,7 +132,7 @@ void pubsub_man::handle_subscribe(event* ev)
 
     if (allow_auto_create)
     {
-      managed_topic * mt = new managed_topic();
+      managed_topic * mt = new managed_topic(m_next_subscription_id++);
       auto insres = m_topics.insert(std::make_pair(uri,mt));
       it = insres.first;
     }
@@ -84,19 +145,25 @@ void pubsub_man::handle_subscribe(event* ev)
 
   }
 
-  // TODO: dont allow same subscription twice?
-  it->second->m_subscribers.push_back(ev->src);
 
-  _INFO_("subscribed to topic '"<< uri<< "'");
+  {
+    auto sp = ev->src.lock();
+    if (!sp) return;
+    it->second->m_subscribers.push_back(ev->src);
+    _INFO_("session " << *sp << " subscribed to topic '"<< uri<< "'");
 
-  outbound_response_event* evout = new outbound_response_event();
+    // TODO: probably could call the session manager directly here, instead of
+    // going via the event loop. I.e., in this function, we should already be on
+    // the event thread.
+    outbound_response_event* evout = new outbound_response_event();
 
-  evout->destination   = ev->src;
-  evout->response_type = SUBSCRIBED;
-  evout->request_type  = SUBSCRIBE;
-  evout->reqid         = request_id;
-
-  m_evl.push( evout );
+    evout->destination   = ev->src;
+    evout->response_type = SUBSCRIBED;
+    evout->request_type  = SUBSCRIBE;
+    evout->reqid         = request_id;
+    evout->subscription_id = it->second->subscription_id;
+    m_evl.push( evout );
+  }
 
 }
 

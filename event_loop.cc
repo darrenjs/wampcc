@@ -264,9 +264,8 @@ void event_loop::process_event(event * ev)
 
     case event::inbound_publish :
     {
-      ev_inbound_publish * ev2 = dynamic_cast<ev_inbound_publish *>(ev);
       if (m_pubsubman)
-        m_pubsubman->handle_event(ev2);
+        m_pubsubman->handle_event(dynamic_cast<ev_inbound_publish *>(ev));
       break;
     }
 
@@ -656,7 +655,7 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
       jalson::json_array msg;
       msg.push_back(SUBSCRIBED);
       msg.push_back(ev->reqid);
-      msg.push_back(ev->options);
+      msg.push_back(ev->subscription_id);
       if (ev->args.args.is_null() == false)
       {
         msg.push_back(ev->args.args);

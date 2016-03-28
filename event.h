@@ -48,6 +48,7 @@ public:
     tcp_active_connect_event,
     outbound_subscribe,
     inbound_subscribed
+//    outbound_event
   } type;
 
   enum Mode
@@ -146,6 +147,7 @@ struct outbound_response_event : public event
 
   jalson::json_object options;
   std::string error_uri;  // used only for ERROR
+  jalson::json_value subscription_id;
 
   rpc_args args;
 
@@ -176,20 +178,39 @@ struct outbound_call_event : public event
 
 struct ev_inbound_publish : public event
 {
+  // 'is_internal' indicates the source of the publish is internal to the
+  // program, rather than coming from an external client
   bool is_internal;
   std::string uri;
-  jalson::json_value patch;
+  jalson::json_value patch;  // TODO EASY: later, maybe change to array
 
-  ev_inbound_publish(bool source_is_internal,
+  ev_inbound_publish(bool __is_internal,
                      const std::string & __topic_uri,
                      const jalson::json_value& __patch)
   :  event( event::inbound_publish ),
-     is_internal( source_is_internal ),
+     is_internal( __is_internal ),
      uri( __topic_uri ),
      patch( __patch )
   {
   }
 };
+
+// struct ev_outbound_event : public event
+// {
+//   std::string uri;
+//   std::vector< session_handle > dest;
+//   jalson::json_value event_msg;
+
+//   ev_outbound_event(const std::string& __topic_uri,
+//                    const std::vector< session_handle >& __dest,
+//                    const jalson::json_value& __event_msg)
+//   :  event( event::outbound_event ),
+//      uri( __topic_uri ),
+//      dest(__dest),
+//      event_msg(__event_msg)
+//   {
+//   }
+// };
 
 struct ev_outbound_subscribe : public event
 {
