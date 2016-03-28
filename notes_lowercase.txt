@@ -127,3 +127,21 @@ or
 or
   [INVOCATION, Request|id, REGISTERED.Registration|id,
            Details|dict, CALL.Arguments|list, CALL.ArgumentsKw|dict]
+
+
+       ,---------.          ,------.          ,----------.
+       |Publisher|          |Broker|          |Subscriber|
+       `----+----'          `--+---'          `----+-----'
+            |     PUBLISH      |                   |
+            |------------------>                   |
+            |                  |                   |
+            |PUBLISHED or ERROR|                   |
+            |<------------------                   |
+            |                  |                   |
+            |                  |       EVENT       |
+            |                  | ------------------>
+       ,----+----.          ,--+---.          ,----+-----.
+       |Publisher|          |Broker|          |Subscriber|
+       `---------'          `------'          `----------'
+
+
