@@ -52,6 +52,8 @@ public:
   //void send_to_session(SID, jalson::json_array& msg);
   void send_to_session(session_handle,
                        jalson::json_array& msg);
+  void send_to_session(const std::vector<session_handle>&,
+                       jalson::json_array& msg);
 
   void send_to_session(session_handle,
                        build_message_cb_v4);
@@ -66,6 +68,8 @@ public:
 
 private:
 
+  void send_to_session_impl(session_handle,
+                            jalson::json_array& msg);
   void heartbeat_all();
 
   Logger *__logptr; /* name chosen for log macros */

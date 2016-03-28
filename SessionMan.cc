@@ -170,7 +170,14 @@ void SessionMan::send_to_session(session_handle handle,
 void SessionMan::send_to_session(session_handle handle, jalson::json_array& msg)
 {
   std::lock_guard<std::mutex> guard(m_sessions.lock);
+  send_to_session_impl(handle, msg);
+}
 
+//----------------------------------------------------------------------
+
+void SessionMan::send_to_session_impl(session_handle handle,
+                                      jalson::json_array& msg)
+{
   auto sp = handle.lock();
   if (!sp)
   {
@@ -194,9 +201,29 @@ void SessionMan::send_to_session(session_handle handle, jalson::json_array& msg)
   }
   else
   {
+    // TODO: needs to throw?  Because causes problem for when we are looping of
+    // a list of sessions to send on.
     std::ostringstream os;
     os << "session send failed; cannot find session with id " << dest;
     throw std::runtime_error( os.str() );
+  }
+}
+
+
+void SessionMan::send_to_session(const std::vector<session_handle>& handles,
+                                 jalson::json_array& msg)
+{
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+  for (auto & handle : handles)
+  {
+    try {
+      send_to_session_impl(handle, msg);
+    }
+    catch (const std::exception& e)
+    {
+      _ERROR_("caught exception during broadcast: " << e.what());
+    }
   }
 }
 
