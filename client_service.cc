@@ -504,28 +504,25 @@ void client_service::add_topic(topic* topic)
   std::unique_lock<std::mutex> guard(m_topics_lock);
   m_topics[ topic->uri() ] = topic;
 
+  topic->add_observer(
+    this,
+    [this](const XXX::topic* src,
+           const jalson::json_value& patch)
+    {
+      // TODO: here, I need to obtain our session to the router, so that topic
+      // updates can be sent to the router, for it to the republish as events.
+      // Currently we have not stored that anywhere.
 
-
-  topic->add_observer(this,
-                      [this](const XXX::topic* src,
-                             const jalson::json_value& patch)
-                      {
-                        // TODO: here, I need to obtain our session to the
-                        // router.  Currently we have not stored that anywhere.
-
-                        std::cout << "TODO: need to publish2";
-
-                        // generate an internal event destined for the embedded
-                        // router
-                        if (m_embed_router != nullptr)
-                        {
-                          ev_inbound_publish* ev = new ev_inbound_publish(true,
-                                                                          src->uri(),
-                                                                          patch);
-                          m_evl->push( ev );
-
-                        }
-                      });
+      // generate an internal event destined for the embedded
+      // router
+      if (m_embed_router != nullptr)
+      {
+        ev_inbound_publish* ev = new ev_inbound_publish(true,
+                                                        src->uri(),
+                                                        patch);
+        m_evl->push( ev );
+      }
+    });
 }
 
 //----------------------------------------------------------------------
