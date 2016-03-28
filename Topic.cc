@@ -111,9 +111,16 @@ void topic::notify(const jalson::json_value& patch)
 
 void text_topic::update(const char* newstr)
 {
-  m_text = newstr;
+  // create a patch
+  jalson::json_value patch = jalson::json_value::make_array();
+  jalson::json_object& operation = patch.append_object();
+  operation["op"]   = "replace";
+  operation["path"] = "";
+  operation["value"] = newstr;
 
-  jalson::json_string patch( newstr );
+  // TODO: for safety, should test the application of the patch
+
+  m_text = newstr;
   notify( patch );
 }
 
