@@ -13,6 +13,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <sys/time.h>
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eInfo,
@@ -79,14 +80,31 @@ void procedure_cb(XXX::t_invoke_id invokeid,
 
 }
 
+
+std::string get_timestamp()
+{
+
+  // get current time
+  timeval now;
+  struct timezone * const tz = NULL; /* not used on Linux */
+  gettimeofday(&now, tz);
+
+  struct tm _tm;
+  localtime_r(&now.tv_sec, &_tm);
+
+  std::ostringstream os;
+  os << _tm.tm_hour << ":" << _tm.tm_min << ":" << _tm.tm_sec;
+
+  return os.str();
+}
+
 void publisher_tep()
 {
   while(true)
   {
-
     sleep(1);
-    topic.update( "new" );
-    std::cout <<"update\n";
+    std::string newvalue = "new@" + get_timestamp();
+    topic.update( newvalue.c_str() );
   }
 }
 
@@ -99,11 +117,9 @@ int main(int /* argc */, char** /* argv */)
   cfg.enable_embed_router = true;
 
 
-  std::unique_ptr<XXX::text_topic> t1( new XXX::text_topic("T1") );
 
   std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger, cfg) );
 
-  mycs->add_topic( t1.get() );
 
   std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_hello") );
   std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_start") );
