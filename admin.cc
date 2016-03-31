@@ -114,11 +114,12 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
 }
 
 
-void subscribe_cb(XXX::t_invoke_id /*unused*/,
+void subscribe_cb(XXX::subscription_event_type evtype,
                   const std::string&,
+                  const jalson::json_value& args,
                   void* /*user*/)
 {
-  std::cout << "received topic update!!!\n";
+  std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
 }
 
 void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)

@@ -82,9 +82,17 @@ struct call_info
   std::string  procedure; /* rpc target */  // TODO: standardise the varname for rpc name
 };
 
+enum subscription_event_type
+{
+  e_sub_failed,
+  e_sub_start,
+  e_sub_update,
+  e_sub_end
+};
 
-typedef std::function<void(t_client_request_id unused,
+typedef std::function<void(subscription_event_type evtype,
                            const std::string& uri,
+                           const jalson::json_value& args,
                            void* user) > subscription_cb;
 
 

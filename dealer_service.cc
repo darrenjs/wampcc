@@ -198,7 +198,6 @@ int dealer_service::register_procedure(std::string uri)
 
 void dealer_service::handle_SUBSCRIBE(event* ev)
 {
-  std::cout << "receive subscribtion\n";
   m_pubsub->handle_subscribe(ev);
 }
 

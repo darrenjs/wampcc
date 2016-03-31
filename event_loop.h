@@ -25,7 +25,8 @@ class client_event_handler
 {
 public:
 
-  std::function<void(ev_inbound_subscribed*)> handler_inbound_subscribed;
+  std::function<void(ev_inbound_subscribed*)> handle_inbound_subscribed;
+  std::function<void(inbound_message_event*)> handle_inbound_event;
 };
 
 

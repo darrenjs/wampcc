@@ -50,9 +50,11 @@ client_service::client_service(Logger * logptr,
 {
   // TODO: make this a member
   client_event_handler local_handler;
-  local_handler.handler_inbound_subscribed=
+  local_handler.handle_inbound_subscribed=
     [this](ev_inbound_subscribed* ev) { handle_SUBSCRIBED(ev); };
 
+  local_handler.handle_inbound_event=
+    [this](inbound_message_event* ev) { handle_EVENT(ev); };
 
 
   m_evl->set_handler( local_handler );
@@ -104,6 +106,7 @@ client_service::~client_service()
   m_evl.reset();
 }
 
+// Called when this client has established a connection to a remove router
 void client_service::handle_session_state_change(session_handle sh, bool is_open)
 {
   if (is_open == false)
@@ -871,8 +874,18 @@ void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
 {
   /* EV thread */
 
+  // get session id
+  auto sp = ev->src.lock();
+  if (!sp) return;
+  t_sid sid = *sp;
+
+  // get subscription id
+  size_t subscrid =  ev->ja[2].as_uint();
+
+
   subscription temp;
-  std::cout << "got subscribed evnet, " << ev->internal_req_id << "\n";
+  std::cout << "got subscribed event, " << ev->internal_req_id << ", subscription id " <<subscrid <<  "\n";
+
   {
     std::unique_lock<std::mutex> guard(m_subscriptions_lock);
 
@@ -886,9 +899,55 @@ void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
     m_subscriptions[ pendit->second.uri ] = pendit->second;
     temp = pendit->second;
     m_pending_subscription.erase(pendit);
+
+    auto & subs_for_session = m_subscriptions2[ sid ];
+    subs_for_session[ subscrid ] = temp;
+    subs_for_session[ 1 ] = temp;
   }
-  temp.user_cb(0,temp.uri,temp.user_data);
+
+  // user callback
+  try {
+  temp.user_cb(XXX::e_sub_start, temp.uri,jalson::json_value::make_null(), temp.user_data);
+  } catch (...) {}
 }
 
+
+void client_service::handle_EVENT(inbound_message_event* ev)
+{
+  /* EV thread */
+
+  session_handle src = ev->src;
+  size_t subscrid =  ev->ja[1].as_uint();
+
+
+  if (auto sp = src.lock())
+  {
+    t_sid sid = *sp;
+
+    auto iter = m_subscriptions2.find( sid );
+    if (iter == m_subscriptions2.end())
+    {
+      _WARN_("ignoring topic event, no subscriptions for session");
+      return;
+    }
+
+    auto iter2 = iter->second.find( 1 );
+    if (iter2 == iter->second.end())
+    {
+      _WARN_("ignoring topic event, subscription not found, subscription id " << subscrid);
+      return;
+    }
+
+    subscription& my_subscription = iter2->second;
+
+    try {
+      my_subscription.user_cb(e_sub_update,
+                              my_subscription.uri,
+                              jalson::json_value::make_null(),
+                              my_subscription.user_data);
+    } catch (...){}
+
+  }
+}
 
 } // namespace XXX

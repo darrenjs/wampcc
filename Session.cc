@@ -535,6 +535,7 @@ void Session::process_message(jalson::json_value&jv)
 
       ev_inbound_subscribed* ev = new ev_inbound_subscribed();
       ev->src = handle();
+      ev->ja = ja;
       ev->internal_req_id  = pend2.internal_req_id;
       m_evl.push( ev );
       delete pendreq;

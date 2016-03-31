@@ -215,10 +215,10 @@ void event_loop::process_event(event * ev)
     case event::inbound_subscribed:
     {
       // TODO: create a template for this, which will throw etc.
-      if (m_client_handler.handler_inbound_subscribed)
+      if (m_client_handler.handle_inbound_subscribed)
       {
         ev_inbound_subscribed* ev2 = dynamic_cast<ev_inbound_subscribed*>(ev);
-        if (ev2) m_client_handler.handler_inbound_subscribed( ev2 );
+        if (ev2) m_client_handler.handle_inbound_subscribed( ev2 );
       }
       break;
     }
@@ -382,6 +382,10 @@ void event_loop::process_event(event * ev)
 
         break;
       }
+      case EVENT :
+        if (m_client_handler.handle_inbound_event)
+          m_client_handler.handle_inbound_event(ev2);
+        break;
       case HEARTBEAT :
         // TODO: handle ... should it even come here?
         break;
@@ -392,7 +396,6 @@ void event_loop::process_event(event * ev)
       case CHALLENGE :
       case AUTHENTICATE :
       {
-
         event_cb2& cb = m_handlers2[ ev->msg_type ];
         if (cb)
         {

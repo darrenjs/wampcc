@@ -136,6 +136,7 @@ private:
   void handle_ERROR(inbound_message_event*);
   void handle_session_state_change(session_handle, bool is_open);
   void handle_SUBSCRIBED(ev_inbound_subscribed*);
+  void handle_EVENT(inbound_message_event*);
   void register_procedures();
 
   void new_client(IOHandle *hndl,
@@ -219,7 +220,7 @@ private:
   t_client_request_id m_subscription_req_id = 1;
   std::mutex m_subscriptions_lock;
 
-
+  std::map<t_sid, std::map<size_t, subscription> > m_subscriptions2;
 };
 
 } // namespace XXX
