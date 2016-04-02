@@ -27,7 +27,7 @@ namespace XXX {
   typedef std::function<jalson::json_array (int) > build_message_cb;
 
 
-  typedef std::function<void(session_handle, bool) > session_state_cb;
+  typedef std::function<void(session_state_event*) > session_state_cb;
 
 
 class SessionMan : public SessionListener
@@ -37,7 +37,7 @@ public:
   ~SessionMan();
 
   Session* create_session(IOHandle *, bool is_passive,
-                          tcp_connect_attempt_cb=nullptr, void* = nullptr);
+                          tcp_connect_attempt_cb=nullptr, void* = nullptr, int router_session_id = 0);
 
 //void send_all(const char* data);
 
@@ -66,6 +66,10 @@ public:
   void handle_event( session_state_event* );
   void handle_housekeeping_event( void );
 
+  bool session_is_open(session_handle sh) const;
+
+
+
 private:
 
   void send_to_session_impl(session_handle,
@@ -76,7 +80,7 @@ private:
 
   event_loop& m_evl;
 
-  struct
+  mutable struct
   {
     std::mutex lock;
     std::map<SID, Session*> active;

@@ -60,8 +60,9 @@ client_service::client_service(Logger * logptr,
   m_evl->set_handler( local_handler );
   m_evl->set_session_man( m_sesman.get() );
 
+  // TODO: remove this, and instead all the client_service directly from the event_loop
   m_sesman->set_session_event_listener(
-    [this](session_handle sh, bool b){this->handle_session_state_change(sh,b);});
+    [this](session_state_event* ev){this->handle_session_state_change(ev);});
 
   // m_evl.set_handler(CHALLENGE,
   //                   [this](class event* ev){ this->handle_CHALLENGE(ev); } );
@@ -83,7 +84,7 @@ client_service::client_service(Logger * logptr,
                                        int reg_id,
                                        rpc_args& args){this->invoke_direct(h, req_id, reg_id, args);};
 
- m_io_loop->m_new_client_cb = [this](IOHandle* h, int status ,tcp_connect_attempt_cb user_cb, void* user_data ){this->new_client(h, status, user_cb, user_data);};
+  m_io_loop->m_new_client_cb = [this](IOHandle* h, int status ,tcp_connect_attempt_cb user_cb, void* user_data, int rid ){this->new_client(h, status, user_cb, user_data,rid);};
 
   if (config.enable_embed_router)
   {
@@ -107,8 +108,10 @@ client_service::~client_service()
 }
 
 // Called when this client has established a connection to a remove router
-void client_service::handle_session_state_change(session_handle sh, bool is_open)
+void client_service::handle_session_state_change(session_state_event* ev)
 {
+  session_handle sh = ev->src;
+  bool is_open = ev->is_open;
   if (is_open == false)
   {
     auto sp = sh.lock();
@@ -207,6 +210,24 @@ void client_service::handle_session_state_change(session_handle sh, bool is_open
     }
 
   }
+
+  // TODO: here, should raise notification to user program
+  // need to find the router session id
+  // can we find the actual session object?
+  int router_session_id = ev->router_session_id;
+  {
+    std::unique_lock< std::mutex > guard(m_router_sessions_lock);
+    auto iter = m_router_sessions2.find( router_session_id );
+    if (iter != m_router_sessions2.end() && iter->second)
+    {
+      router_session* rsptr = iter->second;
+      rsptr->sh = ev->src;
+      if (rsptr->user_cb)
+      {
+        rsptr->user_cb(router_session_id, 0, nullptr);
+      }
+    }
+  }
 }
 
 //----------------------------------------------------------------------
@@ -214,19 +235,24 @@ void client_service::handle_session_state_change(session_handle sh, bool is_open
 void client_service::new_client(IOHandle *h,
                                 int  status,
                                 tcp_connect_attempt_cb user_cb,
-                                void* user_data)
+                                void* user_data,
+                                int router_session_id)
 {
   /* IO */
 
+  // TODO: bad design here.  IO event should not come to here, and then into the session manager.
   if (h)
   {
-    m_sesman -> create_session(h, false, user_cb, user_data);
+    m_sesman -> create_session(h, false, user_cb, user_data, router_session_id);
   }
   else
   {
+    // TODO: now that I no longer have the tcp_active_connect_event, need to
+    // have another kind of even to raise, in the event of a connection failure.
+
     // push failure event
-    tcp_active_connect_event * ev = new tcp_active_connect_event(user_cb, user_data, status);
-    m_evl->push( ev );
+//    tcp_active_connect_event * ev = new tcp_active_connect_event(user_cb, user_data, status);
+//    m_evl->push( ev );
   }
 }
 
@@ -530,17 +556,17 @@ void client_service::add_topic(topic* topic)
 
 //----------------------------------------------------------------------
 
-// TODO: the whole connector business should be in a separate object
-void client_service::connect(const std::string & addr,
-                             int port,
-                             tcp_connect_attempt_cb user_cb,
-                             void* user_data)
-{
-  m_io_loop->add_connection(addr,
-                           port,
-                           user_cb,
-                           user_data);
-}
+// // TODO: the whole connector business should be in a separate object
+// void client_service::connect(const std::string & addr,
+//                              int port,
+//                              tcp_connect_attempt_cb user_cb,
+//                              void* user_data)
+// {
+//   m_io_loop->add_connection(addr,
+//                             port,
+//                             user_cb,
+//                             user_data);
+// }
 
 //----------------------------------------------------------------------
 
@@ -549,13 +575,27 @@ void client_service::connect(const std::string & addr,
  * client (ie, TCP based).  The callback is the entry point into the user code
  * when a YIELD or ERROR is received.
  */
-t_client_request_id client_service::call_rpc(session_handle& sh,
+t_client_request_id client_service::call_rpc(int router_session_id,
                                              std::string proc_uri,
                                              rpc_args args,
                                              call_user_cb cb,
                                              void* cb_user_data)
 {
   /* USER thread */
+
+  session_handle sh;
+
+  {
+    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+    auto iter = m_router_sessions2.find( router_session_id );
+    if (iter != m_router_sessions2.end() && iter->second && m_sesman->session_is_open( iter->second->sh))
+    {
+      sh = iter->second->sh;
+    }
+    else
+      return 0;
+  }
+
 
   // TODO: this ID needs to be atomic, because there could be multiple USER threads coming in here.
   t_client_request_id int_req_id = m_next_client_request_id++;
@@ -595,36 +635,33 @@ router_session::router_session(const std::string & __addr,
 {
 }
 
-//----------------------------------------------------------------------
 
-// TODO: the whole connector business should be in a separate object
-router_session* client_service::connect_to_router(const std::string & addr,
-                                                  int port,
-                                                  tcp_connect_attempt_cb user_cb,
-                                                  void* user_data)
+// create a session ... trying for D0
+int client_service::create_session(const std::string & addr,
+                                   int port,
+                                   tcp_connect_attempt_cb user_cb,
+                                   void* user_data)
 {
-  router_session * rs = new router_session(addr,
-                                           port,
-                                           user_data);
-  {
-    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-    m_router_sessions[ std::make_pair(addr,port) ] = rs;
-  }
+  // TODO: make type
+  int rid = m_next_router_id++;
 
-  // create the router_session
-
-  // start the connect
-
-  //
-  _INFO_("doing connect");
-  m_io_loop->add_connection(addr,
-                           port,
-                           user_cb,
-                           user_data);
-
-  return rs;
+  router_session* r = new router_session(addr, port, user_data);
+  r->user_cb = user_cb;
+  m_router_sessions2[ rid ] = r;
+  return rid;
 }
 
+
+void client_service::session_attempt_connect(int router_session_id)
+{
+  router_session* rptr = m_router_sessions2[ router_session_id ];
+  if (rptr)
+  {
+    m_io_loop->add_connection(rptr->addr,
+                              rptr->port,
+                              router_session_id);
+  }
+}
 
 void client_service::invoke_direct(session_handle& sh,
                                    t_request_id req_id,
@@ -835,11 +872,23 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
 
 //----------------------------------------------------------------------
 
-void client_service::subscribe_remote_topic(session_handle& sh,
+void client_service::subscribe_remote_topic(int router_session_id,
                                             const std::string& uri,
                                             subscription_cb cb,
                                             void * user)
 {
+  session_handle sh;
+  {
+    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+    auto iter = m_router_sessions2.find( router_session_id );
+    if (iter != m_router_sessions2.end() && iter->second)
+    {
+      sh = iter->second->sh;
+    }
+    else
+      return; //  TODO: how to convey immediate failure
+  }
+
   t_client_request_id int_req_id = 0;
   // TODO: maybe later, upgrade this to use an internal client request ID?
   {
@@ -916,9 +965,14 @@ void client_service::handle_EVENT(inbound_message_event* ev)
 {
   /* EV thread */
 
+/*
+       [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id,
+       Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentKw|dict]
+*/
   session_handle src = ev->src;
   size_t subscrid =  ev->ja[1].as_uint();
 
+  jalson::json_value& args = ev->ja[4];
 
   if (auto sp = src.lock())
   {
@@ -943,11 +997,25 @@ void client_service::handle_EVENT(inbound_message_event* ev)
     try {
       my_subscription.user_cb(e_sub_update,
                               my_subscription.uri,
-                              jalson::json_value::make_null(),
+                              args,
                               my_subscription.user_data);
     } catch (...){}
 
   }
+}
+
+
+bool client_service::is_open(int router_session_id) const
+{
+  std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+
+  auto iter = m_router_sessions2.find( router_session_id );
+  if (iter != m_router_sessions2.end() && iter->second)
+  {
+    return m_sesman->session_is_open( iter->second->sh);
+  }
+
+  return false;
 }
 
 } // namespace XXX

@@ -82,7 +82,6 @@ int tep()
 
 std::mutex              g_active_session_mutex;
 std::condition_variable g_active_session_condition;
-XXX::session_handle g_sid;
 bool g_active_session_notifed = false;
 
 enum AdminEvent
@@ -121,11 +120,13 @@ void subscribe_cb(XXX::subscription_event_type evtype,
 {
   std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
 }
-
-void connect_cb_2(XXX::session_handle sh, int /*status*/, void* /* user */)
+int g_router_session_id = 0;
+void connect_cb_2(int router_session_id,
+                  int /*status*/,
+                  void* /* user */)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
-  g_sid = sh;
+  g_router_session_id = router_session_id;
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
 }
@@ -248,7 +249,11 @@ int main(int argc, char** argv)
 
   g_client->start();
 
-  g_client->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
+  int router_session_id = g_client->create_session("127.0.0.1", 55555, connect_cb_2, nullptr);
+
+  g_client->session_attempt_connect( router_session_id );
+
+//  g_client->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
 
   // wait for a connection attempt to complete
 
@@ -259,15 +264,10 @@ int main(int argc, char** argv)
     bool hasevent = g_active_session_condition.wait_for(guard,
                                                         wait_interval,
                                                         [](){ return g_active_session_notifed; });
-    if (!hasevent)
-    {
-      die("no connection");
-    }
+    if (!hasevent) die("no connection");
   }
-  if (!g_sid.lock())
-  {
-    die("no connection");
-  }
+
+  if (g_router_session_id == 0) die("no connection");
 
   XXX::rpc_args args;
   jalson::json_array ja;
@@ -277,13 +277,13 @@ int main(int argc, char** argv)
 
 
   /* XXX::t_client_request_id callreqid = */
-    g_client->call_rpc(g_sid,
-                       "stop", args,
-                       [](XXX::call_info& reqdet,
-                          XXX::rpc_args& args,
-                          void* cb_data)
-                       { call_cb(reqdet, args, cb_data);},
-                       (void*)"I_called_stop");
+  g_client->call_rpc(g_router_session_id,
+                     "stop", args,
+                     [](XXX::call_info& reqdet,
+                        XXX::rpc_args& args,
+                        void* cb_data)
+                     { call_cb(reqdet, args, cb_data);},
+                     (void*)"I_called_stop");
 
 
   bool keep_waiting = true;
@@ -304,7 +304,7 @@ int main(int argc, char** argv)
     }
 
     std::cout << "sendiung syub\n";
-    g_client->subscribe_remote_topic(g_sid, "topic1", subscribe_cb, nullptr);
+    g_client->subscribe_remote_topic(g_router_session_id, "topic1", subscribe_cb, nullptr);
 
     while (!event_queue.empty())
     {

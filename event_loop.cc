@@ -205,6 +205,7 @@ void event_loop::eventmain()
 void event_loop::process_event(event * ev)
 {
   bool event_handled= true;
+
   switch ( ev->type )
   {
     case event::eNone :
@@ -255,10 +256,8 @@ void event_loop::process_event(event * ev)
     case event::session_state_event :
     {
       session_state_event * ev2 = dynamic_cast<session_state_event *>(ev);
-      if (m_sesman)
-        m_sesman->handle_event( ev2 );
-      else
-        throw std::runtime_error("no handler for session state event");  // TODO: should be a event exception?
+      if (m_sesman) m_sesman->handle_event( ev2 );
+      if (m_pubsubman) m_pubsubman->handle_event( ev2 );
       break;
     }
 
@@ -269,13 +268,6 @@ void event_loop::process_event(event * ev)
       break;
     }
 
-    case event::tcp_active_connect_event :
-    {
-      tcp_active_connect_event * tcpev = (tcp_active_connect_event*) ev;
-      if (tcpev->user_cb)
-        tcpev->user_cb(tcpev->src, tcpev->status, tcpev->user_data);
-      return;
-    }
     default:
     {
       _ERROR_( "unsupported event type " << ev->type );

@@ -81,7 +81,8 @@ Session::Session(SID s,
                  event_loop & evl,
                  bool is_passive,
                  tcp_connect_attempt_cb user_cb,
-                 void* user_data)
+                 void* user_data,
+                 int __router_session_id)
   : m_state( eInit ),
     __logptr(logptr),
     m_listener( listener ),
@@ -98,7 +99,8 @@ Session::Session(SID s,
     m_is_passive(is_passive),
     m_session_handle(std::make_shared<t_sid>(s.unique_id())),
     m_user_cb(user_cb),
-    m_user_data(user_data)
+    m_user_data(user_data),
+    m_router_session_id(__router_session_id)
 {
   m_handle->set_listener(this);
 }
@@ -129,24 +131,14 @@ void Session::close(int)
 void Session::on_close(int)
 {
   /* IO thread */
-  _INFO_( "Session::on_close #" << *m_session_handle);
 
-
-  // important ... after the on_close, we must not call the IO handle again
-  change_state(eClosed,eClosed);
+  // follow call of this callback, we must not call the IO handle again
   {
     std::lock_guard<std::mutex> guard(m_handle_lock);
     m_handle = nullptr;
   }
 
-  // if (m_listener)
-  // {
-  //   m_listener->session_closed(*this);
-  //   m_listener = nullptr;
-  // }
-
-  // deliver an event on the event-loop
-  notify_session_state_change( false );
+  change_state(eClosed,eClosed);
 }
 
 //----------------------------------------------------------------------
@@ -355,8 +347,9 @@ void Session::change_state(SessionState expected, SessionState next)
 
   if (next == eClosed && m_state != eClosed)
   {
-    m_state = eClosed;
     _INFO_("Session closed");
+    m_state = eClosed;
+    notify_session_state_change( false );
     return;
   }
 
@@ -939,18 +932,10 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
  */
 void Session::notify_session_state_change(bool is_open)
 {
-  session_state_event * e = new session_state_event(is_open);
+  session_state_event * e = new session_state_event(is_open, m_router_session_id);
   e->src  = handle();
   e->mode = event::eInbound;
   m_evl.push( e );
-
-  if (is_open)
-  {
-    tcp_active_connect_event * ev = new tcp_active_connect_event(m_user_cb, m_user_data, 0);
-    ev->src = this->handle();
-    m_evl.push( ev );
-  }
-
 }
 
 //----------------------------------------------------------------------

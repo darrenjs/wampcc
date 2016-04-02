@@ -104,7 +104,9 @@ typedef std::function<void(t_invoke_id,
 
 typedef std::function<  void (call_info&, rpc_args&, void*) > call_user_cb; // TODO: rename me
 
-typedef std::function<void(session_handle, int, void*)> tcp_connect_attempt_cb;
+typedef std::function<void(int router_session_id,
+                           int status, /* 0 is no error */
+                           void* user)> tcp_connect_attempt_cb;
 
 } // namespace XXX
 

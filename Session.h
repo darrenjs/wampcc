@@ -64,7 +64,8 @@ namespace XXX {
     Session(SID, Logger*, IOHandle *,
             SessionListener*, event_loop&, bool is_passive,
             tcp_connect_attempt_cb = nullptr,
-            void* = nullptr);
+            void* = nullptr,
+            int router_session_id=0);
     ~Session();
 
     /* Build CALL and enque on socket. Currently used by client-code. Might not
@@ -182,6 +183,7 @@ namespace XXX {
 
     tcp_connect_attempt_cb m_user_cb;
     void* m_user_data;
+    int m_router_session_id = 0;
   };
 
 } // namespace XXX

@@ -37,7 +37,8 @@ namespace XXX
 
 
   Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
-                                      tcp_connect_attempt_cb user_cb, void* user_data)
+                                      tcp_connect_attempt_cb user_cb, void* user_data,
+                                      int router_session_id)
   {
     /* IO thread */
 
@@ -57,7 +58,8 @@ namespace XXX
                         m_evl,
                         is_passive,
                         user_cb,
-                        user_data);
+                        user_data,
+                        router_session_id);
 
     m_sessions.active[ sid ] = sptr;
 
@@ -103,20 +105,17 @@ namespace XXX
   void SessionMan::session_closed(Session& s)
   {
     /* IO thread */
+
     _INFO_("SessionMan::session_closed");
     std::lock_guard<std::mutex> guard(m_sessions.lock);
 
     // TODO tryong to do an immediate delete
     m_sessions.closed.push_back( & s );
 
-    auto it = m_sessions.active.begin();
-    while (it != m_sessions.active.end())
+    for (auto it = m_sessions.active.begin(); it != m_sessions.active.end(); )
     {
       if (it->second == &s)
-      {
-        m_sessions.active.erase( it );
-        it = m_sessions.active.begin();
-      }
+        m_sessions.active.erase( it++ );
       else
         it++;
     }
@@ -294,7 +293,7 @@ void SessionMan::handle_event(session_state_event* ev)
     }
   }
 
-  if (m_session_event_cb) m_session_event_cb(sptr->handle(), ev->is_open);
+  if (m_session_event_cb) m_session_event_cb(ev);
 }
 
 //----------------------------------------------------------------------
@@ -321,6 +320,24 @@ void SessionMan::handle_housekeeping_event()
     }
     m_sessions.closed.clear();
   }
+}
+
+//----------------------------------------------------------------------
+
+bool SessionMan::session_is_open(session_handle sh) const
+{
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+  auto sp = sh.lock();
+  if (!sp) return false;
+  SID sid ( *sp );
+
+  auto it = m_sessions.active.find( sid );
+
+  if (it == m_sessions.active.end()) return false;
+
+  Session * sptr = it->second;
+  return sptr->is_open();
 }
 
 }

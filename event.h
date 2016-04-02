@@ -45,9 +45,8 @@ public:
     outbound_response_event,
     outbound_message,
     inbound_publish,
-    tcp_active_connect_event,
     outbound_subscribe,
-    inbound_subscribed
+    inbound_subscribed,
 //    outbound_event
   } type;
 
@@ -95,30 +94,17 @@ public:
   }
 };
 
-struct tcp_active_connect_event : public event
-{
-  tcp_connect_attempt_cb user_cb;
-  void* user_data;
-  int status;  /* 0 is no error */
-  tcp_active_connect_event(tcp_connect_attempt_cb __user_cb,
-                    void* ud,
-                    int st)
-    : event( event::tcp_active_connect_event ),
-      user_cb(__user_cb),
-      user_data(ud),
-      status(st)
-  {
-  }
-};
-
 
 struct session_state_event : public event
 {
   bool is_open;
+  int router_session_id;
 
-  session_state_event(bool __session_open)
+  session_state_event(bool __session_open,
+                      int __router_session_id = 0)
   : event( event::session_state_event ),
-    is_open( __session_open )
+    is_open( __session_open ),
+    router_session_id( __router_session_id )
   {
   }
 };

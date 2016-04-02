@@ -27,7 +27,7 @@ class inbound_message_event;
 class topic;
 class dealer_service;
 class ev_inbound_subscribed;
-
+class session_state_event;
 
 class router_session
 {
@@ -35,6 +35,8 @@ public:
   std::string addr;
   int         port;
   void*       user;
+  tcp_connect_attempt_cb user_cb;
+  session_handle sh;
 
   router_session(const std::string & addr,
                  int port,
@@ -75,20 +77,30 @@ public:
   client_service(Logger*, config);
   ~client_service();
 
-  // TODO: the whole connector business shoudl be in a separate object
-  void connect(const std::string & addr,
-               int port,
-               tcp_connect_attempt_cb user_cb,
-               void* user_data);
+  // // TODO: the whole connector business shoudl be in a separate object
+  // void connect(const std::string & addr,
+  //              int port,
+  //              tcp_connect_attempt_cb user_cb,
+  //              void* user_data);
 
-  // TODO: the whole connector business shoudl be in a separate object
-  router_session* connect_to_router(const std::string & addr,
-                                    int port,
-                                    tcp_connect_attempt_cb user_cb,
-                                    void* user_data);
+
+  // create a session ... trying for D0
+  int create_session(const std::string & addr,
+                     int port,
+                     tcp_connect_attempt_cb user_cb,
+                     void* user_data);
+
+  void session_attempt_connect(int router_session_id);
+
+  bool is_open(int router_session_id) const;
+
+  void attempt_connection(int,
+                          tcp_connect_attempt_cb user_cb,
+                          void* user_data );
+
 
   /* Call an RPC on the peer router */
-  t_client_request_id call_rpc(session_handle& sh,
+  t_client_request_id call_rpc(int router_session_id,
                                std::string rpc,
                                rpc_args,
                                call_user_cb,
@@ -115,7 +127,7 @@ public:
 
   // how do we find out the list of remote topics? and if we have multiple
   // sessions, then, which session has the topic we want?
-  void subscribe_remote_topic(session_handle& sh,
+  void subscribe_remote_topic(int router_session_id,
                               const std::string& uri,
                               subscription_cb cb,
                               void * user);
@@ -124,6 +136,8 @@ public:
                      t_request_id,
                      int,
                      rpc_args&);
+
+
 
 private:
 
@@ -134,7 +148,7 @@ private:
   void handle_INVOCATION(inbound_message_event*);
   void handle_RESULT(inbound_message_event*);
   void handle_ERROR(inbound_message_event*);
-  void handle_session_state_change(session_handle, bool is_open);
+  void handle_session_state_change(session_state_event*);
   void handle_SUBSCRIBED(ev_inbound_subscribed*);
   void handle_EVENT(inbound_message_event*);
   void register_procedures();
@@ -142,7 +156,8 @@ private:
   void new_client(IOHandle *hndl,
                   int  status,
                   tcp_connect_attempt_cb user_cb,
-                  void* user_data);
+                  void* user_data,
+                  int router_session_id);
 
   Logger *__logptr; /* name chosen for log macros */
 
@@ -200,8 +215,11 @@ private:
   std::mutex m_pending_requests_lock;
 
 
+  typedef unsigned long router_id;
+  std::map<router_id, router_session*> m_router_sessions2;
   std::map<std::pair<std::string,int>, router_session*> m_router_sessions;
-  std::mutex m_router_sessions_lock;
+  mutable std::mutex m_router_sessions_lock;
+  int m_next_router_id = 1;
 
   /*
     TODO: Currently have a pending map, for subscriptions.  Can try to remove
@@ -221,6 +239,13 @@ private:
   std::mutex m_subscriptions_lock;
 
   std::map<t_sid, std::map<size_t, subscription> > m_subscriptions2;
+
+
+  // new style -- is this even this correct place
+  std::map<t_sid, std::map<size_t, subscription*> > m_active_subs;
+
+
+
 };
 
 } // namespace XXX
