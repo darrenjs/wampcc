@@ -26,7 +26,6 @@ struct managed_topic
 
   // current upto date image of the value
   jalson::json_value image;
-  // TODO: nees to also have ability to take a patch and apply it
 
   // Note, we are tieing the subscription ID direct to the topic.  WAMP does
   // allow this, and it has the benefit that we can perform a single message
@@ -59,6 +58,8 @@ pubsub_man::~pubsub_man()
  */
 void pubsub_man::handle_event(ev_inbound_publish* ev)
 {
+  /* EV thread */
+
   // TODO: lock me?  Or will only be the event thread?
 
   // find or create a topic
@@ -116,6 +117,8 @@ void pubsub_man::handle_event(ev_inbound_publish* ev)
 
 void pubsub_man::handle_subscribe(event* ev)
 {
+  /* EV thread */
+
   /* We have received an external request to subscribe to a top */
 
   // TODO: improve this parsing
@@ -165,6 +168,31 @@ void pubsub_man::handle_subscribe(event* ev)
     m_evl.push( evout );
   }
 
+}
+
+static bool compare_session(const session_handle& p1, const session_handle& p2)
+{
+  return ( !p1.owner_before(p2) && !p2.owner_before(p1) );
+}
+
+void pubsub_man::handle_event(session_state_event* ev)
+{
+  /* EV loop */
+
+  // TODO: design of this can be improved, ie, we should track what topics a
+  // session has subscribed too, rather than searching every topic.
+  for (auto & item : m_topics)
+  {
+    for (auto it = item.second->m_subscribers.begin();
+         it != item.second->m_subscribers.end(); it++)
+    {
+      if (compare_session(*it, ev->src))
+      {
+        item.second->m_subscribers.erase( it );
+        break;
+       }
+    }
+  }
 }
 
 

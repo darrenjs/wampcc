@@ -12,6 +12,7 @@ class event;
 class event_loop;
 class managed_topic;
 class SessionMan;
+class session_state_event;
 
 class pubsub_man
 {
@@ -21,6 +22,7 @@ public:
 
   void handle_event(ev_inbound_publish*);
   void handle_subscribe(event* ev);
+  void handle_event( session_state_event* );;
 
 private:
   pubsub_man(const pubsub_man&); // no copy
