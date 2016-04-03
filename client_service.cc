@@ -36,8 +36,6 @@ bool client_service::RegistrationKey::operator<(const RegistrationKey& rhs) cons
 //----------------------------------------------------------------------
 
 
-
-
 /* Constructor */
 client_service::client_service(Logger * logptr,
                                config config)
@@ -882,20 +880,16 @@ void client_service::subscribe_remote_topic(t_rsid router_session_id,
   {
     std::unique_lock<std::mutex> guard(m_subscriptions_lock);
 
-    auto it = m_subscriptions.find(uri);
-    if (it != m_subscriptions.end()) return; // return false
-
     // TODO: what is C++11 idiom for direct insertion, using perfect forwarding?
     subscription subs;
     subs.sh        = sh;
     subs.uri       = uri;
     subs.user_cb   = cb;
     subs.user_data = user;
+    subs.m_next_router_id = router_session_id;
 
     int_req_id = m_subscription_req_id++;
     m_pending_subscription[int_req_id] = subs;
-
-    m_subscriptions.insert(std::make_pair(uri, subs));
   }
 
 
@@ -903,7 +897,6 @@ void client_service::subscribe_remote_topic(t_rsid router_session_id,
   ev->internal_req_id = int_req_id;
   ev->dest = sh;
   m_evl->push( ev );
-
 }
 
 
@@ -933,13 +926,11 @@ void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
       return;
     }
 
-    m_subscriptions[ pendit->second.uri ] = pendit->second;
     temp = pendit->second;
     m_pending_subscription.erase(pendit);
 
-    auto & subs_for_session = m_subscriptions2[ sid ];
+    auto & subs_for_session = m_subscriptions[ sid ];
     subs_for_session[ subscrid ] = temp;
-    subs_for_session[ 1 ] = temp;
   }
 
   // user callback
@@ -966,8 +957,8 @@ void client_service::handle_EVENT(inbound_message_event* ev)
   {
     t_sid sid = *sp;
 
-    auto iter = m_subscriptions2.find( sid );
-    if (iter == m_subscriptions2.end())
+    auto iter = m_subscriptions.find( sid );
+    if (iter == m_subscriptions.end())
     {
       _WARN_("ignoring topic event, no subscriptions for session");
       return;

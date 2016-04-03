@@ -201,21 +201,15 @@ private:
   struct subscription
   {
     session_handle sh;
+    t_rsid m_next_router_id;
     std::string uri;
     subscription_cb user_cb;
     void * user_data;
   };
-  std::map<std::string, subscription> m_subscriptions;
   std::map<t_client_request_id, subscription> m_pending_subscription;
+  std::map<t_sid, std::map<size_t, subscription> > m_subscriptions;
   t_client_request_id m_subscription_req_id = 1;
   std::mutex m_subscriptions_lock;
-
-  std::map<t_sid, std::map<size_t, subscription> > m_subscriptions2;
-
-
-  // new style -- is this even this correct place
-  std::map<t_sid, std::map<size_t, subscription*> > m_active_subs;
-
 
 
 };
