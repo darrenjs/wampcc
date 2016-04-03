@@ -185,7 +185,7 @@ void dealer_service::listen(int port)
     [this](int /* port */,
            IOHandle* hndl)
     {
-      m_sesman->create_session(hndl,true, nullptr, nullptr);
+      m_sesman->create_session(hndl,true);
     } );
 }
 

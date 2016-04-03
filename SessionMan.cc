@@ -37,7 +37,6 @@ namespace XXX
 
 
   Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
-                                      tcp_connect_attempt_cb user_cb, void* user_data,
                                       t_rsid router_session_id)
   {
     /* IO thread */
@@ -57,8 +56,6 @@ namespace XXX
                         this,
                         m_evl,
                         is_passive,
-                        user_cb,
-                        user_data,
                         router_session_id);
 
     m_sessions.active[ sid ] = sptr;

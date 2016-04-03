@@ -37,7 +37,6 @@ public:
   ~SessionMan();
 
   Session* create_session(IOHandle *, bool is_passive,
-                          tcp_connect_attempt_cb=nullptr, void* = nullptr,
                           t_rsid router_session_id = 0);
 
 //void send_all(const char* data);

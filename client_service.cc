@@ -88,7 +88,7 @@ client_service::client_service(Logger * logptr,
                                        int reg_id,
                                        rpc_args& args){this->invoke_direct(h, req_id, reg_id, args);};
 
-  m_io_loop->m_new_client_cb = [this](IOHandle* h, int status ,tcp_connect_attempt_cb user_cb, void* user_data, int rid ){this->new_client(h, status, user_cb, user_data,rid);};
+  m_io_loop->m_new_client_cb = [this](IOHandle* h, int status, int rid ){this->new_client(h, status, rid);};
 
   if (config.enable_embed_router)
   {
@@ -237,8 +237,6 @@ void client_service::handle_session_state_change(session_state_event* ev)
 
 void client_service::new_client(IOHandle *h,
                                 int  status,
-                                tcp_connect_attempt_cb user_cb,
-                                void* user_data,
                                 t_rsid router_session_id)
 {
   /* IO */
@@ -246,7 +244,7 @@ void client_service::new_client(IOHandle *h,
   // TODO: bad design here.  IO event should not come to here, and then into the session manager.
   if (h)
   {
-    m_sesman -> create_session(h, false, user_cb, user_data, router_session_id);
+    m_sesman -> create_session(h, false, router_session_id);
   }
   else
   {
@@ -637,13 +635,13 @@ router_session::router_session(const std::string & __addr,
 
 
 // create a session ... trying for D0
-int client_service::create_session(const std::string & addr,
+t_rsid client_service::create_session(const std::string & addr,
                                    int port,
                                    tcp_connect_attempt_cb user_cb,
                                    void* user_data)
 {
   // TODO: make type
-  int rid = m_next_router_id++;
+  t_rsid rid = m_next_router_id++;
 
   router_session* r = new router_session(addr, port, user_data);
   r->user_cb = user_cb;

@@ -80,8 +80,6 @@ Session::Session(SID s,
                  SessionListener * listener,
                  event_loop & evl,
                  bool is_passive,
-                 tcp_connect_attempt_cb user_cb,
-                 void* user_data,
                  t_rsid __router_session_id)
   : m_state( eInit ),
     __logptr(logptr),
@@ -98,8 +96,6 @@ Session::Session(SID s,
     m_evl(evl),
     m_is_passive(is_passive),
     m_session_handle(std::make_shared<t_sid>(s.unique_id())),
-    m_user_cb(user_cb),
-    m_user_data(user_data),
     m_router_session_id(__router_session_id)
 {
   m_handle->set_listener(this);

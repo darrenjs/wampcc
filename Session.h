@@ -63,8 +63,6 @@ namespace XXX {
   public:
     Session(SID, Logger*, IOHandle *,
             SessionListener*, event_loop&, bool is_passive,
-            tcp_connect_attempt_cb = nullptr,
-            void* = nullptr,
             t_rsid router_session_id=0);
     ~Session();
 
@@ -181,8 +179,6 @@ namespace XXX {
 
     std::shared_ptr< t_sid > m_session_handle;
 
-    tcp_connect_attempt_cb m_user_cb;
-    void* m_user_data;
     t_rsid m_router_session_id = 0;
   };
 

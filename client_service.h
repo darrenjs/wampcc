@@ -85,17 +85,18 @@ public:
   //              void* user_data);
 
 
-  // create a session ... trying for D0
-  int create_session(const std::string & addr,
-                     int port,
-                     tcp_connect_attempt_cb user_cb,
-                     void* user_data);
+  // create a new session, returning either the assigned session ID, or zero if
+  // the session could not be created
+  t_rsid create_session(const std::string & addr,
+                        int port,
+                        tcp_connect_attempt_cb user_cb,
+                        void* user_data);
 
   void session_attempt_connect(t_rsid router_session_id);
 
   bool is_open(t_rsid router_session_id) const;
 
-  void attempt_connection(int,
+  void attempt_connection(t_rsid router_session_id,
                           tcp_connect_attempt_cb user_cb,
                           void* user_data );
 
@@ -157,8 +158,6 @@ private:
 
   void new_client(IOHandle *hndl,
                   int  status,
-                  tcp_connect_attempt_cb user_cb,
-                  void* user_data,
                   t_rsid router_session_id);
 
   Logger *__logptr; /* name chosen for log macros */

@@ -246,8 +246,6 @@ void IOLoop::on_async()
         if (m_new_client_cb)
           m_new_client_cb( nullptr,
                            r<0?-r:r,
-                           req->user_cb,
-                           req->user_data,
                            req->router_session_id);
       }
     }
@@ -318,23 +316,23 @@ void IOLoop::add_server(int port, socket_accept_cb cb)
   this->async_send();
 }
 
-void IOLoop::add_connection(std::string addr,
-                            int port,
-                            tcp_connect_attempt_cb user_cb,
-                            void* user_data)
-{
-  {
-    std::lock_guard< std::mutex > guard (m_pending_requests_lock  );
-    io_request r( __logptr );
-    r.addr = addr;
-    r.port = port;
-    r.user_cb = user_cb;
-    r.user_data = user_data;
-    m_pending_requests.push_back( r );
-  }
+// void IOLoop::add_connection(std::string addr,
+//                             int port,
+//                             tcp_connect_attempt_cb user_cb,
+//                             void* user_data)
+// {
+//   {
+//     std::lock_guard< std::mutex > guard (m_pending_requests_lock  );
+//     io_request r( __logptr );
+//     r.addr = addr;
+//     r.port = port;
+//     r.user_cb = user_cb;
+//     r.user_data = user_data;
+//     m_pending_requests.push_back( r );
+//   }
 
-  this->async_send();
-}
+//   this->async_send();
+// }
 
 void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 {
@@ -357,8 +355,6 @@ void IOLoop::add_active_handle(IOHandle * iohandle, int status, io_request * req
   if (m_new_client_cb)
     m_new_client_cb( iohandle,
                      status,
-                     req->user_cb,
-                     req->user_data,
                      req->router_session_id);
 }
 

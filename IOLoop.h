@@ -23,7 +23,7 @@ class IOHandle;
 
 
 
-typedef std::function<void(IOHandle* ,int, tcp_connect_attempt_cb, void*, int)> NewConnectionCallback;
+typedef std::function<void(IOHandle* ,int, int)> NewConnectionCallback;
 typedef std::function<void(int port, IOHandle*)> socket_accept_cb;
 
 // TODO: try to move to impl file
@@ -32,8 +32,6 @@ struct io_request
   std::string addr;
   int port = 0;
   uv_tcp_t * tcp_handle = nullptr;
-  tcp_connect_attempt_cb user_cb;
-  void* user_data = nullptr;
   Logger * logptr;
   socket_accept_cb on_accept;
   t_rsid router_session_id = 0;  // non-zero, for active connection attemps
@@ -72,8 +70,8 @@ public:
   void add_active_handle(IOHandle* iohandle, int status, io_request*);
 
   void add_server(int port, socket_accept_cb);
-  void add_connection(std::string addr, int port,
-                      tcp_connect_attempt_cb, void*);
+  // void add_connection(std::string addr, int port,
+  //                     tcp_connect_attempt_cb, void*);
 
   void add_connection(std::string addr, int port,
                       t_rsid router_session_id);
