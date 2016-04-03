@@ -341,7 +341,6 @@ int main(int argc, char** argv)
       return 1;
     }
 
-    std::cout << "sendiung syub\n";
     g_client->subscribe_remote_topic(g_router_session_id, "topic1", subscribe_cb, nullptr);
 
     while (!event_queue.empty())
