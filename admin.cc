@@ -150,8 +150,8 @@ void subscribe_cb(XXX::subscription_event_type evtype,
   std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
 }
 int g_connect_status = 0;
-int g_router_session_id = 0;
-void connect_cb_2(int router_session_id,
+XXX::t_rsid g_router_session_id = 0;
+void connect_cb_2(XXX::t_rsid router_session_id,
                   int status,
                   void* /* user */)
 {
@@ -281,7 +281,7 @@ int main(int argc, char** argv)
 
   g_client->start();
 
-  int router_session_id = g_client->create_session("127.0.0.1", 55555, connect_cb_2, nullptr);
+  auto router_session_id = g_client->create_session("127.0.0.1", 55555, connect_cb_2, nullptr);
 
   g_client->session_attempt_connect( router_session_id );
 

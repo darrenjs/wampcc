@@ -218,17 +218,16 @@ void client_service::handle_session_state_change(session_state_event* ev)
   // TODO: here, should raise notification to user program
   // need to find the router session id
   // can we find the actual session object?
-  int router_session_id = ev->router_session_id;
   {
     std::unique_lock< std::mutex > guard(m_router_sessions_lock);
-    auto iter = m_router_sessions2.find( router_session_id );
+    auto iter = m_router_sessions2.find( ev->router_session_id );
     if (iter != m_router_sessions2.end() && iter->second)
     {
       router_session* rsptr = iter->second;
       rsptr->sh = ev->src;
       if (rsptr->user_cb)
       {
-        rsptr->user_cb(router_session_id, 0, nullptr);
+        rsptr->user_cb(ev->router_session_id, 0, nullptr);
       }
     }
   }
@@ -240,7 +239,7 @@ void client_service::new_client(IOHandle *h,
                                 int  status,
                                 tcp_connect_attempt_cb user_cb,
                                 void* user_data,
-                                int router_session_id)
+                                t_rsid router_session_id)
 {
   /* IO */
 
@@ -576,7 +575,7 @@ void client_service::add_topic(topic* topic)
  * client (ie, TCP based).  The callback is the entry point into the user code
  * when a YIELD or ERROR is received.
  */
-t_client_request_id client_service::call_rpc(int router_session_id,
+t_client_request_id client_service::call_rpc(t_rsid router_session_id,
                                              std::string proc_uri,
                                              rpc_args args,
                                              call_user_cb cb,
@@ -653,7 +652,7 @@ int client_service::create_session(const std::string & addr,
 }
 
 
-void client_service::session_attempt_connect(int router_session_id)
+void client_service::session_attempt_connect(t_rsid router_session_id)
 {
   router_session* rptr = m_router_sessions2[ router_session_id ];
   if (rptr)
@@ -873,7 +872,7 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
 
 //----------------------------------------------------------------------
 
-void client_service::subscribe_remote_topic(int router_session_id,
+void client_service::subscribe_remote_topic(t_rsid router_session_id,
                                             const std::string& uri,
                                             subscription_cb cb,
                                             void * user)
@@ -1006,7 +1005,7 @@ void client_service::handle_EVENT(inbound_message_event* ev)
 }
 
 
-bool client_service::is_open(int router_session_id) const
+bool client_service::is_open(t_rsid router_session_id) const
 {
   std::unique_lock<std::mutex> guard(m_router_sessions_lock);
 

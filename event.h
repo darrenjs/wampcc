@@ -99,10 +99,10 @@ public:
 struct session_state_event : public event
 {
   bool is_open;
-  int router_session_id;
+  t_rsid router_session_id;
 
   session_state_event(bool __session_open,
-                      int __router_session_id = 0)
+                      t_rsid __router_session_id = 0)
   : event( event::session_state_event ),
     is_open( __session_open ),
     router_session_id( __router_session_id )
@@ -226,11 +226,11 @@ struct ev_inbound_subscribed : public event
 
 struct ev_router_session_connect_fail : public event
 {
-  int router_session_id;
+  t_rsid router_session_id;
   int status;  /* 0 is no error */
 
 
-  ev_router_session_connect_fail(int __router_session_id,
+  ev_router_session_connect_fail(t_rsid __router_session_id,
                                  int __status)
   :  event( event::router_session_connect_fail ),
      router_session_id(__router_session_id),

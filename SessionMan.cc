@@ -38,7 +38,7 @@ namespace XXX
 
   Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
                                       tcp_connect_attempt_cb user_cb, void* user_data,
-                                      int router_session_id)
+                                      t_rsid router_session_id)
   {
     /* IO thread */
 

@@ -365,7 +365,7 @@ void IOLoop::add_active_handle(IOHandle * iohandle, int status, io_request * req
 
 void IOLoop::add_connection(std::string addr,
                             int port,
-                            int router_session_id)
+                            t_rsid router_session_id)
 {
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock  );

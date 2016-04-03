@@ -82,7 +82,7 @@ Session::Session(SID s,
                  bool is_passive,
                  tcp_connect_attempt_cb user_cb,
                  void* user_data,
-                 int __router_session_id)
+                 t_rsid __router_session_id)
   : m_state( eInit ),
     __logptr(logptr),
     m_listener( listener ),

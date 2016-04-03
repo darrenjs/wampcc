@@ -91,9 +91,9 @@ public:
                      tcp_connect_attempt_cb user_cb,
                      void* user_data);
 
-  void session_attempt_connect(int router_session_id);
+  void session_attempt_connect(t_rsid router_session_id);
 
-  bool is_open(int router_session_id) const;
+  bool is_open(t_rsid router_session_id) const;
 
   void attempt_connection(int,
                           tcp_connect_attempt_cb user_cb,
@@ -101,7 +101,7 @@ public:
 
 
   /* Call an RPC on the peer router */
-  t_client_request_id call_rpc(int router_session_id,
+  t_client_request_id call_rpc(t_rsid router_session_id,
                                std::string rpc,
                                rpc_args,
                                call_user_cb,
@@ -128,7 +128,7 @@ public:
 
   // how do we find out the list of remote topics? and if we have multiple
   // sessions, then, which session has the topic we want?
-  void subscribe_remote_topic(int router_session_id,
+  void subscribe_remote_topic(t_rsid router_session_id,
                               const std::string& uri,
                               subscription_cb cb,
                               void * user);
@@ -159,7 +159,7 @@ private:
                   int  status,
                   tcp_connect_attempt_cb user_cb,
                   void* user_data,
-                  int router_session_id);
+                  t_rsid router_session_id);
 
   Logger *__logptr; /* name chosen for log macros */
 
@@ -216,12 +216,10 @@ private:
   std::map<int, pending_request> m_pending_requests;
   std::mutex m_pending_requests_lock;
 
-
-  typedef unsigned long router_id;
-  std::map<router_id, router_session*> m_router_sessions2;
+  std::map<t_rsid, router_session*> m_router_sessions2;
   std::map<std::pair<std::string,int>, router_session*> m_router_sessions;
   mutable std::mutex m_router_sessions_lock;
-  int m_next_router_id = 1;
+  t_rsid m_next_router_id = 1;
 
   /*
     TODO: Currently have a pending map, for subscriptions.  Can try to remove

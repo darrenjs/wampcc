@@ -18,6 +18,7 @@
 namespace XXX {
 
 
+typedef uint64_t t_rsid;
 
 typedef int t_request_id;
 typedef uint64_t t_invoke_id;
@@ -104,7 +105,7 @@ typedef std::function<void(t_invoke_id,
 
 typedef std::function<  void (call_info&, rpc_args&, void*) > call_user_cb; // TODO: rename me
 
-typedef std::function<void(int router_session_id,
+typedef std::function<void(t_rsid router_session_id,
                            int status, /* 0 is no error */
                            void* user)> tcp_connect_attempt_cb;
 
