@@ -46,6 +46,35 @@ struct user_options
     }
 } uopts;
 
+//----------------------------------------------------------------------
+std::string util_strerror(int e)
+{
+  std::string retval;
+
+  char errbuf[256];
+  memset(errbuf, 0, sizeof(errbuf));
+
+/*
+
+TODO: here I should be using the proper feature tests for the XSI
+implementation of strerror_r .  See man page.
+
+  (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+
+*/
+
+#ifdef _GNU_SOURCE
+  // the GNU implementation might not write to errbuf, so instead, always use
+  // the return value.
+  return ::strerror_r(e, errbuf, sizeof(errbuf)-1);
+#else
+  // XSI implementation
+  if (::strerror_r(e, errbuf, sizeof(errbuf)-1) == 0)
+    return errbuf;
+#endif
+
+  return "unknown";
+}
 
 int tep()
 {
@@ -120,13 +149,16 @@ void subscribe_cb(XXX::subscription_event_type evtype,
 {
   std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
 }
+int g_connect_status = 0;
 int g_router_session_id = 0;
 void connect_cb_2(int router_session_id,
-                  int /*status*/,
+                  int status,
                   void* /* user */)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
-  g_router_session_id = router_session_id;
+
+  g_connect_status = status;
+  if (status==0) g_router_session_id = router_session_id;
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
 }
@@ -267,7 +299,13 @@ int main(int argc, char** argv)
     if (!hasevent) die("no connection");
   }
 
-  if (g_router_session_id == 0) die("no connection");
+  if (g_connect_status != 0)
+  {
+    std::cout << "Unable to connect, error " << g_connect_status
+              << ": " << util_strerror(g_connect_status) << "\n";
+    exit(1);
+  }
+
 
   XXX::rpc_args args;
   jalson::json_array ja;

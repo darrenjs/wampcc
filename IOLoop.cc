@@ -29,10 +29,10 @@ static void __on_connect(uv_connect_t* __req, int status )
 
   if (status < 0)
   {
-    // TODO: question for libuv: is there a way to get the errno ?
+    // libuv, the status is the negative of the errno (on linux)
     _WARN_( "connect error, " <<  uv_strerror(status) );
 
-    ioloop->add_active_handle(nullptr, status, ioreq.get());
+    ioloop->add_active_handle(nullptr, abs(status), ioreq.get());
 
     delete ioreq->tcp_handle;
   }

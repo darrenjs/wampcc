@@ -47,6 +47,7 @@ public:
     inbound_publish,
     outbound_subscribe,
     inbound_subscribed,
+    router_session_connect_fail,
 //    outbound_event
   } type;
 
@@ -221,6 +222,21 @@ struct ev_inbound_subscribed : public event
   {
   }
 
+};
+
+struct ev_router_session_connect_fail : public event
+{
+  int router_session_id;
+  int status;  /* 0 is no error */
+
+
+  ev_router_session_connect_fail(int __router_session_id,
+                                 int __status)
+  :  event( event::router_session_connect_fail ),
+     router_session_id(__router_session_id),
+     status(__status)
+  {
+  }
 };
 
 } // namespace xxx

@@ -50,11 +50,15 @@ client_service::client_service(Logger * logptr,
 {
   // TODO: make this a member
   client_event_handler local_handler;
+
   local_handler.handle_inbound_subscribed=
     [this](ev_inbound_subscribed* ev) { handle_SUBSCRIBED(ev); };
 
   local_handler.handle_inbound_event=
     [this](inbound_message_event* ev) { handle_EVENT(ev); };
+
+  local_handler.handle_router_session_connect_fail=
+    [this](ev_router_session_connect_fail* ev) { handle_event(ev); };
 
 
   m_evl->set_handler( local_handler );
@@ -247,12 +251,9 @@ void client_service::new_client(IOHandle *h,
   }
   else
   {
-    // TODO: now that I no longer have the tcp_active_connect_event, need to
-    // have another kind of even to raise, in the event of a connection failure.
-
-    // push failure event
-//    tcp_active_connect_event * ev = new tcp_active_connect_event(user_cb, user_data, status);
-//    m_evl->push( ev );
+    ev_router_session_connect_fail * ev = new ev_router_session_connect_fail(
+      router_session_id, status);
+    m_evl->push( ev );
   }
 }
 
@@ -1016,6 +1017,27 @@ bool client_service::is_open(int router_session_id) const
   }
 
   return false;
+}
+
+void client_service::handle_event(ev_router_session_connect_fail* ev)
+{
+  /* EV thread */
+
+  std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+
+  auto iter = m_router_sessions2.find( ev->router_session_id );
+  if (iter != m_router_sessions2.end() && iter->second)
+  {
+    router_session* rs = iter->second;
+    if (rs->user_cb)
+    {
+      try {
+        rs->user_cb(ev->router_session_id, ev->status, rs->user);
+      }
+      catch (...){}
+    }
+  }
+
 }
 
 } // namespace XXX

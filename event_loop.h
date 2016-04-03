@@ -27,6 +27,7 @@ public:
 
   std::function<void(ev_inbound_subscribed*)> handle_inbound_subscribed;
   std::function<void(inbound_message_event*)> handle_inbound_event;
+  std::function<void(ev_router_session_connect_fail*)> handle_router_session_connect_fail;
 };
 
 

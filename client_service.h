@@ -28,6 +28,7 @@ class topic;
 class dealer_service;
 class ev_inbound_subscribed;
 class session_state_event;
+class ev_router_session_connect_fail;
 
 class router_session
 {
@@ -149,6 +150,7 @@ private:
   void handle_RESULT(inbound_message_event*);
   void handle_ERROR(inbound_message_event*);
   void handle_session_state_change(session_state_event*);
+  void handle_event(ev_router_session_connect_fail*);
   void handle_SUBSCRIBED(ev_inbound_subscribed*);
   void handle_EVENT(inbound_message_event*);
   void register_procedures();
