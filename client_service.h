@@ -30,21 +30,6 @@ class ev_inbound_subscribed;
 class session_state_event;
 class ev_router_session_connect_fail;
 
-class router_session
-{
-public:
-  std::string addr;
-  int         port;
-  void*       user;
-  tcp_connect_attempt_cb user_cb;
-  session_handle sh;
-
-  router_session(const std::string & addr,
-                 int port,
-                 void* user_data);
-
-private:
-};
 /*
   Combine the Callee and Caller interfaces
 
@@ -78,12 +63,7 @@ public:
   client_service(Logger*, config);
   ~client_service();
 
-  // // TODO: the whole connector business shoudl be in a separate object
-  // void connect(const std::string & addr,
-  //              int port,
-  //              tcp_connect_attempt_cb user_cb,
-  //              void* user_data);
-
+  void start();
 
   // create a new session, returning either the assigned session ID, or zero if
   // the session could not be created
@@ -96,11 +76,6 @@ public:
 
   bool is_open(t_rsid router_session_id) const;
 
-  void attempt_connection(t_rsid router_session_id,
-                          tcp_connect_attempt_cb user_cb,
-                          void* user_data );
-
-
   /* Call an RPC on the peer router */
   t_client_request_id call_rpc(t_rsid router_session_id,
                                std::string rpc,
@@ -108,7 +83,6 @@ public:
                                call_user_cb,
                                void* cb_user_data);
 
-  void start();
 
   /* Register a procedure.  Returns true if was added, or false if name already
    * existed. */
@@ -215,8 +189,22 @@ private:
   std::map<int, pending_request> m_pending_requests;
   std::mutex m_pending_requests_lock;
 
-  std::map<t_rsid, router_session*> m_router_sessions2;
-  std::map<std::pair<std::string,int>, router_session*> m_router_sessions;
+
+  struct router_session
+  {
+    std::string addr;
+    int         port;
+    void*       user;
+    tcp_connect_attempt_cb user_cb;
+    session_handle sh;
+
+    router_session();
+    router_session(const std::string & addr,
+                   int port,
+                   void* user_data);
+  };
+
+  std::map<t_rsid, router_session> m_router_sessions;
   mutable std::mutex m_router_sessions_lock;
   t_rsid m_next_router_id = 1;
 

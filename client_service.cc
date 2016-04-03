@@ -220,14 +220,14 @@ void client_service::handle_session_state_change(session_state_event* ev)
   // can we find the actual session object?
   {
     std::unique_lock< std::mutex > guard(m_router_sessions_lock);
-    auto iter = m_router_sessions2.find( ev->router_session_id );
-    if (iter != m_router_sessions2.end() && iter->second)
+    auto iter = m_router_sessions.find( ev->router_session_id );
+    if (iter != m_router_sessions.end())
     {
-      router_session* rsptr = iter->second;
-      rsptr->sh = ev->src;
-      if (rsptr->user_cb)
+      router_session& rsptr = iter->second;
+      rsptr.sh = ev->src;
+      if (rsptr.user_cb)
       {
-        rsptr->user_cb(ev->router_session_id, 0, nullptr);
+        rsptr.user_cb(ev->router_session_id, 0, nullptr);
       }
     }
   }
@@ -552,19 +552,6 @@ void client_service::add_topic(topic* topic)
     });
 }
 
-//----------------------------------------------------------------------
-
-// // TODO: the whole connector business should be in a separate object
-// void client_service::connect(const std::string & addr,
-//                              int port,
-//                              tcp_connect_attempt_cb user_cb,
-//                              void* user_data)
-// {
-//   m_io_loop->add_connection(addr,
-//                             port,
-//                             user_cb,
-//                             user_data);
-// }
 
 //----------------------------------------------------------------------
 
@@ -585,10 +572,10 @@ t_client_request_id client_service::call_rpc(t_rsid router_session_id,
 
   {
     std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-    auto iter = m_router_sessions2.find( router_session_id );
-    if (iter != m_router_sessions2.end() && iter->second && m_sesman->session_is_open( iter->second->sh))
+    auto iter = m_router_sessions.find( router_session_id );
+    if (iter != m_router_sessions.end() && m_sesman->session_is_open( iter->second.sh))
     {
-      sh = iter->second->sh;
+      sh = iter->second.sh;
     }
     else
       return 0;
@@ -624,7 +611,13 @@ t_client_request_id client_service::call_rpc(t_rsid router_session_id,
 }
 
 
-router_session::router_session(const std::string & __addr,
+client_service::router_session::router_session()
+ : port(0),
+   user(0)
+{
+}
+
+client_service::router_session::router_session(const std::string & __addr,
                                int __port,
                                void* __user_data)
  : addr(__addr),
@@ -634,7 +627,6 @@ router_session::router_session(const std::string & __addr,
 }
 
 
-// create a session ... trying for D0
 t_rsid client_service::create_session(const std::string & addr,
                                    int port,
                                    tcp_connect_attempt_cb user_cb,
@@ -643,22 +635,20 @@ t_rsid client_service::create_session(const std::string & addr,
   // TODO: make type
   t_rsid rid = m_next_router_id++;
 
-  router_session* r = new router_session(addr, port, user_data);
-  r->user_cb = user_cb;
-  m_router_sessions2[ rid ] = r;
+  router_session rs(addr, port, user_data);
+  rs.user_cb = user_cb;
+  m_router_sessions.insert( std::make_pair(rid, rs) );
   return rid;
 }
 
 
 void client_service::session_attempt_connect(t_rsid router_session_id)
 {
-  router_session* rptr = m_router_sessions2[ router_session_id ];
-  if (rptr)
-  {
-    m_io_loop->add_connection(rptr->addr,
-                              rptr->port,
-                              router_session_id);
-  }
+  // TODO: check if session exists
+  router_session& rs = m_router_sessions[ router_session_id ];
+  m_io_loop->add_connection(rs.addr,
+                            rs.port,
+                            router_session_id);
 }
 
 void client_service::invoke_direct(session_handle& sh,
@@ -878,10 +868,10 @@ void client_service::subscribe_remote_topic(t_rsid router_session_id,
   session_handle sh;
   {
     std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-    auto iter = m_router_sessions2.find( router_session_id );
-    if (iter != m_router_sessions2.end() && iter->second)
+    auto iter = m_router_sessions.find( router_session_id );
+    if (iter != m_router_sessions.end())
     {
-      sh = iter->second->sh;
+      sh = iter->second.sh;
     }
     else
       return; //  TODO: how to convey immediate failure
@@ -1007,10 +997,10 @@ bool client_service::is_open(t_rsid router_session_id) const
 {
   std::unique_lock<std::mutex> guard(m_router_sessions_lock);
 
-  auto iter = m_router_sessions2.find( router_session_id );
-  if (iter != m_router_sessions2.end() && iter->second)
+  auto iter = m_router_sessions.find( router_session_id );
+  if (iter != m_router_sessions.end())
   {
-    return m_sesman->session_is_open( iter->second->sh);
+    return m_sesman->session_is_open( iter->second.sh);
   }
 
   return false;
@@ -1022,14 +1012,14 @@ void client_service::handle_event(ev_router_session_connect_fail* ev)
 
   std::unique_lock<std::mutex> guard(m_router_sessions_lock);
 
-  auto iter = m_router_sessions2.find( ev->router_session_id );
-  if (iter != m_router_sessions2.end() && iter->second)
+  auto iter = m_router_sessions.find( ev->router_session_id );
+  if (iter != m_router_sessions.end())
   {
-    router_session* rs = iter->second;
-    if (rs->user_cb)
+    router_session& rs = iter->second;
+    if (rs.user_cb)
     {
       try {
-        rs->user_cb(ev->router_session_id, ev->status, rs->user);
+        rs.user_cb(ev->router_session_id, ev->status, rs.user);
       }
       catch (...){}
     }
