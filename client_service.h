@@ -31,22 +31,7 @@ class session_state_event;
 class ev_router_session_connect_fail;
 
 /*
-  Combine the Callee and Caller interfaces
-
-  Used for external and internal service
-
-  Note sure how to design this; will just try to evolve it
-
-  Ideally want to use this for following scenarios:
-
-  - an application which serves as a Dealer but also has internal procedures
-
-  - an admin-style application, which wants to make Calls to a remote dealer
-
-  - an endpoint application which registers RPCs
-
-  - can we have a hybrid? ie., I expose a socket and can either register my
-    procuedures to an external dealer, or, can handle calls/invokes myself?
+  Combine the Callee and Caller interfaces.
  */
 class client_service
 {
