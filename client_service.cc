@@ -137,7 +137,7 @@ void client_service::handle_session_state_change(session_state_event* ev)
     return;
   }
 
-  _INFO_("session is now ready #" << ev->router_session_id << " ... registering procedures");
+  _INFO_("session is now ready #" << ev->user_conn_id << " ... registering procedures");
 
   // register our procedures
   {
@@ -221,7 +221,7 @@ void client_service::handle_session_state_change(session_state_event* ev)
   // can we find the actual session object?
   {
     std::unique_lock< std::mutex > guard(m_router_sessions_lock);
-    auto iter = m_router_sessions.find( ev->router_session_id );
+    auto iter = m_router_sessions.find( ev->user_conn_id );
     if (iter != m_router_sessions.end())
     {
       router_conn*  rs = iter->second;
@@ -240,19 +240,19 @@ void client_service::handle_session_state_change(session_state_event* ev)
 
 void client_service::new_client(IOHandle *h,
                                 int  status,
-                                t_rsid router_session_id)
+                                t_connection_id user_conn_id)
 {
   /* IO */
 
   // TODO: bad design here.  IO event should not come to here, and then into the session manager.
   if (h)
   {
-    m_sesman -> create_session(h, false, router_session_id);
+    m_sesman -> create_session(h, false, user_conn_id);
   }
   else
   {
     ev_router_session_connect_fail * ev = new ev_router_session_connect_fail(
-      router_session_id , status);
+      user_conn_id , status);
     m_evl->push( ev );
   }
 }

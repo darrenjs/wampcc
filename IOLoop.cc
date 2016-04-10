@@ -246,7 +246,7 @@ void IOLoop::on_async()
         if (m_new_client_cb)
           m_new_client_cb( nullptr,
                            r<0?-r:r,
-                           req->router_session_id);
+                           req->user_conn_id);
       }
     }
   }
@@ -355,20 +355,20 @@ void IOLoop::add_active_handle(IOHandle * iohandle, int status, io_request * req
   if (m_new_client_cb)
     m_new_client_cb( iohandle,
                      status,
-                     req->router_session_id);
+                     req->user_conn_id);
 }
 
 
 void IOLoop::add_connection(std::string addr,
                             int port,
-                            t_rsid router_session_id)
+                            t_connection_id user_conn_id)
 {
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock  );
     io_request r( __logptr );
     r.addr = addr;
     r.port = port;
-    r.router_session_id = router_session_id;
+    r.user_conn_id = user_conn_id;
     m_pending_requests.push_back( r );
   }
 

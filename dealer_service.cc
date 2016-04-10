@@ -185,7 +185,8 @@ void dealer_service::listen(int port)
     [this](int /* port */,
            IOHandle* hndl)
     {
-      m_sesman->create_session(hndl,true);
+      // note, we dont make use of the user connection id for passive sessions
+      m_sesman->create_session(hndl, true, t_connection_id());
     } );
 }
 

@@ -63,7 +63,7 @@ namespace XXX {
   public:
     Session(SID, Logger*, IOHandle *,
             SessionListener*, event_loop&, bool is_passive,
-            t_rsid router_session_id=0);
+            t_connection_id user_conn_id);
     ~Session();
 
     /* Build CALL and enque on socket. Currently used by client-code. Might not
@@ -179,7 +179,7 @@ namespace XXX {
 
     std::shared_ptr< t_sid > m_session_handle;
 
-    t_rsid m_router_session_id = 0;
+    t_connection_id m_user_conn_id;
   };
 
 } // namespace XXX

@@ -80,7 +80,7 @@ Session::Session(SID s,
                  SessionListener * listener,
                  event_loop & evl,
                  bool is_passive,
-                 t_rsid __router_session_id)
+                 t_connection_id __user_conn_id)
   : m_state( eInit ),
     __logptr(logptr),
     m_listener( listener ),
@@ -96,7 +96,7 @@ Session::Session(SID s,
     m_evl(evl),
     m_is_passive(is_passive),
     m_session_handle(std::make_shared<t_sid>(s.unique_id())),
-    m_router_session_id(__router_session_id)
+    m_user_conn_id(__user_conn_id)
 {
   m_handle->set_listener(this);
 }
@@ -928,7 +928,7 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
  */
 void Session::notify_session_state_change(bool is_open)
 {
-  session_state_event * e = new session_state_event(is_open, m_router_session_id);
+  session_state_event * e = new session_state_event(is_open, m_user_conn_id);
   e->src  = handle();
   e->mode = event::eInbound;
   m_evl.push( e );

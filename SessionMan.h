@@ -37,7 +37,7 @@ public:
   ~SessionMan();
 
   Session* create_session(IOHandle *, bool is_passive,
-                          t_rsid router_session_id = 0);
+                          t_connection_id user_conn_id);
 
 //void send_all(const char* data);
 

@@ -34,7 +34,7 @@ struct io_request
   uv_tcp_t * tcp_handle = nullptr;
   Logger * logptr;
   socket_accept_cb on_accept;
-  t_rsid router_session_id = 0;  // non-zero, for active connection attemps
+  t_connection_id user_conn_id = t_connection_id();
   io_request(Logger * __logptr) : logptr(__logptr) {}
 };
 
@@ -74,7 +74,7 @@ public:
   //                     tcp_connect_attempt_cb, void*);
 
   void add_connection(std::string addr, int port,
-                      t_rsid router_session_id);
+                      t_connection_id);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 

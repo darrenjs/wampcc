@@ -114,7 +114,7 @@ private:
 
   void new_client(IOHandle *hndl,
                   int  status,
-                  t_rsid router_session_id);
+                  t_connection_id router_session_id);
 
   Logger *__logptr; /* name chosen for log macros */
 
@@ -173,9 +173,9 @@ private:
   std::mutex m_pending_requests_lock;
 
   /* Sessions to remote routers */
-  std::map<t_rsid, router_conn*> m_router_sessions;
+  std::map<t_connection_id, router_conn*> m_router_sessions;
   mutable std::mutex m_router_sessions_lock;
-  t_rsid m_next_router_session_id = 1;
+  t_connection_id m_next_router_session_id = 1;
 
   /*
     TODO: Currently have a pending map, for subscriptions.  Can try to remove
@@ -185,7 +185,7 @@ private:
   struct subscription
   {
     session_handle sh;
-    t_rsid router_session_idxx;
+    t_connection_id router_session_idxx;
     std::string uri;
     subscription_cb user_cb;
     void * user_data;
