@@ -87,8 +87,11 @@ class inbound_message_event : public event
 {
 public:
   jalson::json_array msg;
+  t_connection_id user_conn_id;
 
-  inbound_message_event(int __msgtype)
+  inbound_message_event(int __msgtype,
+                        t_connection_id __user_conn_id)
+    : user_conn_id(__user_conn_id)
   {
     this->mode =  event::eInbound;
     this->msg_type = __msgtype;
@@ -102,7 +105,7 @@ struct session_state_event : public event
   t_connection_id user_conn_id;
 
   session_state_event(bool __session_open,
-                      t_connection_id __user_conn_id = 0)
+                      t_connection_id __user_conn_id)
   : event( event::session_state_event ),
     is_open( __session_open ),
     user_conn_id( __user_conn_id )

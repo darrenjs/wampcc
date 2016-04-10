@@ -544,7 +544,7 @@ void Session::process_message(jalson::json_value&jv)
   // session layer.
 
   // new style, using a dedicated event class for inbound messages
-  inbound_message_event * ev = new inbound_message_event(message_type);
+  inbound_message_event * ev = new inbound_message_event(message_type, m_user_conn_id);
   ev->src = handle();
   ev->ja = ja;
   ev->msg = ja;
