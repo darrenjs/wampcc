@@ -151,9 +151,9 @@ void subscribe_cb(XXX::subscription_event_type evtype,
 }
 int g_connect_status = 0;
 
-void connect_cb_2(XXX::router_conn* router_session,
+void connect_cb_2(XXX::router_conn* /*router_session*/,
                   int status,
-                  bool is_open)
+                  bool /*is_open*/)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
