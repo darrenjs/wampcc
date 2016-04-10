@@ -17,6 +17,7 @@
 
 namespace XXX {
 
+class router_conn;
 
 typedef uint64_t t_rsid;
 
@@ -105,9 +106,9 @@ typedef std::function<void(t_invoke_id,
 
 typedef std::function<  void (call_info&, rpc_args&, void*) > call_user_cb; // TODO: rename me
 
-typedef std::function<void(t_rsid router_session_id,
+typedef std::function<void(router_conn*,
                            int status, /* 0 is no error */
-                           void* user)> tcp_connect_attempt_cb;
+                           bool is_open)> router_session_connect_cb;
 
 } // namespace XXX
 

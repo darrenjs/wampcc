@@ -150,15 +150,15 @@ void subscribe_cb(XXX::subscription_event_type evtype,
   std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
 }
 int g_connect_status = 0;
-XXX::t_rsid g_router_session_id = 0;
-void connect_cb_2(XXX::t_rsid router_session_id,
+
+void connect_cb_2(XXX::router_conn* router_session,
                   int status,
-                  void* /* user */)
+                  bool is_open)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
   g_connect_status = status;
-  if (status==0) g_router_session_id = router_session_id;
+
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
 }
@@ -281,14 +281,11 @@ int main(int argc, char** argv)
 
   g_client->start();
 
-  auto router_session_id = g_client->create_session("127.0.0.1", 55555, connect_cb_2, nullptr);
+  XXX::router_conn rconn( g_client.get(), connect_cb_2, nullptr ); // NEW STYLE
 
-  g_client->session_attempt_connect( router_session_id );
-
-//  g_client->connect( "127.0.0.1", 55555, connect_cb_2, nullptr);
+  rconn.connect("127.0.0.1", 55555);
 
   // wait for a connection attempt to complete
-
   auto wait_interval = std::chrono::seconds(7);
   {
     std::unique_lock<std::mutex> guard(g_active_session_mutex);
@@ -314,15 +311,12 @@ int main(int argc, char** argv)
   args.args = ja ;
 
 
-  /* XXX::t_client_request_id callreqid = */
-  g_client->call_rpc(g_router_session_id,
-                     "stop", args,
-                     [](XXX::call_info& reqdet,
-                        XXX::rpc_args& args,
-                        void* cb_data)
-                     { call_cb(reqdet, args, cb_data);},
-                     (void*)"I_called_stop");
-
+  rconn.call("stop", args,
+             [](XXX::call_info& reqdet,
+                XXX::rpc_args& args,
+                void* cb_data)
+             { call_cb(reqdet, args, cb_data);},
+             (void*)"I_called_stop");
 
   bool keep_waiting = true;
   while (keep_waiting)
@@ -341,7 +335,7 @@ int main(int argc, char** argv)
       return 1;
     }
 
-    g_client->subscribe_remote_topic(g_router_session_id, "topic1", subscribe_cb, nullptr);
+    rconn.subscribe("topic1", subscribe_cb, nullptr);
 
     while (!event_queue.empty())
     {
@@ -357,7 +351,7 @@ int main(int argc, char** argv)
     }
   }
 
-  while (1)   sleep(1);
+  while (1) sleep(1);
 
   g_client.reset();
   delete logger;

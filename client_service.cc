@@ -86,6 +86,7 @@ client_service::client_service(Logger * logptr,
                                        int reg_id,
                                        rpc_args& args){this->invoke_direct(h, req_id, reg_id, args);};
 
+  /* TODO: remove legacy interaction between IO thread and user space */
   m_io_loop->m_new_client_cb = [this](IOHandle* h, int status, int rid ){this->new_client(h, status, rid);};
 
   if (config.enable_embed_router)
@@ -109,22 +110,25 @@ client_service::~client_service()
   m_evl.reset();
 }
 
-// Called when this client has established a connection to a remove router
+//----------------------------------------------------------------------
+
 void client_service::handle_session_state_change(session_state_event* ev)
 {
+  /* EV thread */
+
   session_handle sh = ev->src;
-  bool is_open = ev->is_open;
-  if (is_open == false)
+
+  if (! ev->is_open)
   {
     auto sp = sh.lock();
     if (sp)
     {
+      // remove the RPC registrations that are associated with the connection
       std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
       for (auto it = m_registrationid_map.begin(); it!=m_registrationid_map.end();)
       {
         if (it->first.s == *sp)
         {
-          //_INFO_("erasing registion " << *sp);
           m_registrationid_map.erase( it++ );
         }
         else ++it;
@@ -133,9 +137,8 @@ void client_service::handle_session_state_change(session_state_event* ev)
     return;
   }
 
-  _INFO_("session is now ready ... registering procedures");
+  _INFO_("session is now ready #" << ev->router_session_id << " ... registering procedures");
 
-  // TODO: this must come only after we have been authenticated
   // register our procedures
   {
     std::lock_guard< std::mutex > guard ( m_procedures_lock );
@@ -221,14 +224,16 @@ void client_service::handle_session_state_change(session_state_event* ev)
     auto iter = m_router_sessions.find( ev->router_session_id );
     if (iter != m_router_sessions.end())
     {
-      router_session& rsptr = iter->second;
-      rsptr.sh = ev->src;
-      if (rsptr.user_cb)
-      {
-        rsptr.user_cb(ev->router_session_id, 0, nullptr);
-      }
+      router_conn*  rs = iter->second;
+      rs->m_internal_session_handle = sh;
+      if (rs->m_connection_cb)
+        try {
+          rs->m_connection_cb(rs, 0, true);
+        } catch(...){}
     }
   }
+
+
 }
 
 //----------------------------------------------------------------------
@@ -247,7 +252,7 @@ void client_service::new_client(IOHandle *h,
   else
   {
     ev_router_session_connect_fail * ev = new ev_router_session_connect_fail(
-      router_session_id, status);
+      router_session_id , status);
     m_evl->push( ev );
   }
 }
@@ -284,9 +289,6 @@ void client_service::start()
     m_embed_router->listen(m_config.port);
   }
 
-  // TODO: this is where the client used to listen, so revert/delete
-  // if (m_config.port )
-  //   m_io_loop->add_server( m_config.port );
 }
 
 //----------------------------------------------------------------------
@@ -369,11 +371,6 @@ void client_service::handle_INVOCATION(inbound_message_event* ev) // change to l
   {
     std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
     auto it = m_registrationid_map.find(rkey);
-
-    // for (auto i : m_registrationid_map)
-    // {
-    //   std::cout << "key " << i.first << "\n";
-    // }
 
     if (it == m_registrationid_map.end())
     {
@@ -553,12 +550,13 @@ void client_service::add_topic(topic* topic)
 
 //----------------------------------------------------------------------
 
+
 /* This was the special interface on the dealer_service API which allows CALL
  * sequences to be triggered by the API client, rather than a traditiona WAMP
  * client (ie, TCP based).  The callback is the entry point into the user code
  * when a YIELD or ERROR is received.
  */
-t_client_request_id client_service::call_rpc(t_rsid router_session_id,
+t_client_request_id client_service::call_rpc(router_conn* rs,
                                              std::string proc_uri,
                                              rpc_args args,
                                              call_user_cb cb,
@@ -566,19 +564,11 @@ t_client_request_id client_service::call_rpc(t_rsid router_session_id,
 {
   /* USER thread */
 
-  session_handle sh;
-
+  session_handle sh = rs->m_internal_session_handle;
+  if (m_sesman->session_is_open(sh ) == false)
   {
-    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-    auto iter = m_router_sessions.find( router_session_id );
-    if (iter != m_router_sessions.end() && m_sesman->session_is_open( iter->second.sh))
-    {
-      sh = iter->second.sh;
-    }
-    else
-      return 0;
+    return 0;
   }
-
 
   // TODO: this ID needs to be atomic, because there could be multiple USER threads coming in here.
   t_client_request_id int_req_id = m_next_client_request_id++;
@@ -604,50 +594,22 @@ t_client_request_id client_service::call_rpc(t_rsid router_session_id,
 
   m_evl->push( ev );
 
-
   return int_req_id;
 }
 
 
-client_service::router_session::router_session()
- : port(0),
-   user(0)
+int client_service::connect_session(router_conn& rs,
+                                    const std::string & addr,
+                                    int port)
 {
+  /* USER thread */
+
+  m_io_loop->add_connection(addr,
+                            port,
+                            rs.router_session_id());
+  return 0;
 }
 
-client_service::router_session::router_session(const std::string & __addr,
-                               int __port,
-                               void* __user_data)
- : addr(__addr),
-   port(__port),
-   user(__user_data)
-{
-}
-
-
-t_rsid client_service::create_session(const std::string & addr,
-                                   int port,
-                                   tcp_connect_attempt_cb user_cb,
-                                   void* user_data)
-{
-  // TODO: make type
-  t_rsid rid = m_next_router_id++;
-
-  router_session rs(addr, port, user_data);
-  rs.user_cb = user_cb;
-  m_router_sessions.insert( std::make_pair(rid, rs) );
-  return rid;
-}
-
-
-void client_service::session_attempt_connect(t_rsid router_session_id)
-{
-  // TODO: check if session exists
-  router_session& rs = m_router_sessions[ router_session_id ];
-  m_io_loop->add_connection(rs.addr,
-                            rs.port,
-                            router_session_id);
-}
 
 void client_service::invoke_direct(session_handle& sh,
                                    t_request_id req_id,
@@ -692,7 +654,7 @@ void client_service::invoke_direct(session_handle& sh,
     rpc_actual = it->second;
   }
 
-if (rpc_actual.first)
+  if (rpc_actual.first)
   {
     size_t mycallid = 0;
     bool had_exception = true;
@@ -782,11 +744,6 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
     std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
     auto it = m_registrationid_map.find(rkey);
 
-    // for (auto i : m_registrationid_map)
-    // {
-    //   std::cout << "key " << i.first << "\n";
-    // }
-
     if (it == m_registrationid_map.end())
     {
       throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
@@ -858,21 +815,15 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
 
 //----------------------------------------------------------------------
 
-void client_service::subscribe_remote_topic(t_rsid router_session_id,
+void client_service::subscribe_remote_topic(router_conn* rs,
                                             const std::string& uri,
                                             subscription_cb cb,
                                             void * user)
 {
-  session_handle sh;
+  session_handle sh = rs->m_internal_session_handle;
+  if (m_sesman->session_is_open(sh ) == false)
   {
-    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-    auto iter = m_router_sessions.find( router_session_id );
-    if (iter != m_router_sessions.end())
-    {
-      sh = iter->second.sh;
-    }
-    else
-      return; //  TODO: how to convey immediate failure
+    return ;  // TODO: how to convery this immedaite failyre back to caller?  Smae for RPC too
   }
 
   t_client_request_id int_req_id = 0;
@@ -886,7 +837,7 @@ void client_service::subscribe_remote_topic(t_rsid router_session_id,
     subs.uri       = uri;
     subs.user_cb   = cb;
     subs.user_data = user;
-    subs.m_next_router_id = router_session_id;
+    subs.router_session_idxx = rs->router_session_id(); // TODO: what is this used for?
 
     int_req_id = m_subscription_req_id++;
     m_pending_subscription[int_req_id] = subs;
@@ -898,7 +849,6 @@ void client_service::subscribe_remote_topic(t_rsid router_session_id,
   ev->dest = sh;
   m_evl->push( ev );
 }
-
 
 void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
 {
@@ -984,17 +934,9 @@ void client_service::handle_EVENT(inbound_message_event* ev)
 }
 
 
-bool client_service::is_open(t_rsid router_session_id) const
+bool client_service::is_open(const router_conn* rs) const
 {
-  std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-
-  auto iter = m_router_sessions.find( router_session_id );
-  if (iter != m_router_sessions.end())
-  {
-    return m_sesman->session_is_open( iter->second.sh);
-  }
-
-  return false;
+  return m_sesman->session_is_open( rs->m_internal_session_handle );
 }
 
 void client_service::handle_event(ev_router_session_connect_fail* ev)
@@ -1006,16 +948,60 @@ void client_service::handle_event(ev_router_session_connect_fail* ev)
   auto iter = m_router_sessions.find( ev->router_session_id );
   if (iter != m_router_sessions.end())
   {
-    router_session& rs = iter->second;
-    if (rs.user_cb)
-    {
+    router_conn * rs = iter->second;
+    if (rs->m_connection_cb)
       try {
-        rs.user_cb(ev->router_session_id, ev->status, rs.user);
+        rs->m_connection_cb(rs, ev->status, false);
       }
       catch (...){}
-    }
   }
-
 }
+
+void client_service::register_session(router_conn& rs)
+{
+  /* USER thread */
+
+  std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+
+  int router_session_id = m_next_router_session_id++;
+  rs.m_router_session_id = router_session_id;
+  m_router_sessions[ rs.router_session_id() ] = &rs;
+
+  _DEBUG_("router session registered, with ID " << rs.router_session_id());
+}
+
+router_conn::router_conn(client_service * __svc,
+                         router_session_connect_cb __cb,
+                         void * __user)
+  : user(__user),
+    m_svc(__svc),
+    m_connection_cb(__cb),
+    m_router_session_id(0)
+{
+  __svc->register_session( *this );
+}
+
+int router_conn::connect(const std::string & addr, int port)
+{
+  return m_svc->connect_session(*this, addr, port);
+}
+
+
+t_client_request_id router_conn::call(std::string uri,
+                                      rpc_args args,
+                                      call_user_cb user_cb,
+                                      void* user_data)
+{
+  return m_svc->call_rpc(this, uri, args, user_cb, user_data);
+}
+
+void router_conn::subscribe(const std::string& uri,
+                            subscription_cb user_cb,
+                            void * user_data)
+{
+  m_svc->subscribe_remote_topic(this, uri, user_cb, user_data);
+}
+
+
 
 } // namespace XXX

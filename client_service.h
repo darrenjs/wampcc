@@ -30,6 +30,9 @@ class ev_inbound_subscribed;
 class session_state_event;
 class ev_router_session_connect_fail;
 
+
+class router_conn;
+
 /*
   Combine the Callee and Caller interfaces.
  */
@@ -50,30 +53,14 @@ public:
 
   void start();
 
-  // create a new session, returning either the assigned session ID, or zero if
-  // the session could not be created
-  t_rsid create_session(const std::string & addr,
-                        int port,
-                        tcp_connect_attempt_cb user_cb,
-                        void* user_data);
-
-  void session_attempt_connect(t_rsid router_session_id);
-
-  bool is_open(t_rsid router_session_id) const;
-
-  /* Call an RPC on the peer router */
-  t_client_request_id call_rpc(t_rsid router_session_id,
-                               std::string rpc,
-                               rpc_args,
-                               call_user_cb,
-                               void* cb_user_data);
-
-
   /* Register a procedure.  Returns true if was added, or false if name already
    * existed. */
   bool add_procedure(const std::string& uri,
                      rpc_cb cb,
                      void * data);
+
+  /* Register a topic */
+  void add_topic(topic*);
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_reply(t_invoke_id,
@@ -83,27 +70,37 @@ public:
   void post_error(t_invoke_id,
                   std::string& error);
 
-  void add_topic(topic*);
-
-
-  // how do we find out the list of remote topics? and if we have multiple
-  // sessions, then, which session has the topic we want?
-  void subscribe_remote_topic(t_rsid router_session_id,
-                              const std::string& uri,
-                              subscription_cb cb,
-                              void * user);
-
   void invoke_direct(session_handle&,
                      t_request_id,
                      int,
                      rpc_args&);
 
-
-
 private:
 
   client_service(const client_service&) = delete;
   client_service& operator=(const client_service&) = delete;
+
+  int connect_session(router_conn&,
+                      const std::string & addr,
+                      int port);
+
+  bool is_open(const router_conn*) const;
+
+  /* Call an RPC on the peer router */
+  t_client_request_id call_rpc(router_conn*,
+                               std::string rpc,
+                               rpc_args,
+                               call_user_cb,
+                               void* cb_user_data);
+
+  // how do we find out the list of remote topics? and if we have multiple
+  // sessions, then, which session has the topic we want?
+  void subscribe_remote_topic(router_conn*,
+                              const std::string& uri,
+                              subscription_cb cb,
+                              void * user);
+
+  void register_session(router_conn&);
 
   void handle_REGISTERED(inbound_message_event*);
   void handle_INVOCATION(inbound_message_event*);
@@ -161,6 +158,7 @@ private:
 
   t_client_request_id  m_next_client_request_id;
 
+  /* outbound rpc call requests */
   // TODO: move to impl
   struct pending_request
   {
@@ -174,24 +172,10 @@ private:
   std::map<int, pending_request> m_pending_requests;
   std::mutex m_pending_requests_lock;
 
-
-  struct router_session
-  {
-    std::string addr;
-    int         port;
-    void*       user;
-    tcp_connect_attempt_cb user_cb;
-    session_handle sh;
-
-    router_session();
-    router_session(const std::string & addr,
-                   int port,
-                   void* user_data);
-  };
-
-  std::map<t_rsid, router_session> m_router_sessions;
+  /* Sessions to remote routers */
+  std::map<t_rsid, router_conn*> m_router_sessions;
   mutable std::mutex m_router_sessions_lock;
-  t_rsid m_next_router_id = 1;
+  t_rsid m_next_router_session_id = 1;
 
   /*
     TODO: Currently have a pending map, for subscriptions.  Can try to remove
@@ -201,7 +185,7 @@ private:
   struct subscription
   {
     session_handle sh;
-    t_rsid m_next_router_id;
+    t_rsid router_session_idxx;
     std::string uri;
     subscription_cb user_cb;
     void * user_data;
@@ -211,7 +195,43 @@ private:
   t_client_request_id m_subscription_req_id = 1;
   std::mutex m_subscriptions_lock;
 
+  friend class router_conn;
+};
 
+
+class router_conn
+{
+public:
+  void * user;
+
+  router_conn(client_service * __svc,
+              router_session_connect_cb,
+              void * __user = nullptr);
+
+  int connect(const std::string & addr,
+              int port);
+
+  t_client_request_id call(std::string rpc,
+                           rpc_args,
+                           call_user_cb,
+                           void* cb_user_data);
+
+  void subscribe(const std::string& uri,
+                 subscription_cb cb,
+                 void * user);
+
+  int router_session_id() const { return m_router_session_id;}
+
+  client_service * service() { return m_svc; }
+
+private:
+  client_service * m_svc;
+  router_session_connect_cb m_connection_cb;
+  int m_router_session_id;
+
+  session_handle m_internal_session_handle;
+
+  friend client_service;
 };
 
 } // namespace XXX
