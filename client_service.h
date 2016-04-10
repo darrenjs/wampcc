@@ -100,7 +100,7 @@ private:
                               subscription_cb cb,
                               void * user);
 
-  void register_session(router_conn&);
+  t_connection_id register_session(router_conn&);
 
   void handle_REGISTERED(inbound_message_event*);
   void handle_INVOCATION(inbound_message_event*);
@@ -227,7 +227,7 @@ public:
 private:
   client_service * m_svc;
   router_session_connect_cb m_connection_cb;
-  int m_router_session_id;
+  t_connection_id m_router_session_id;
 
   session_handle m_internal_session_handle;
 

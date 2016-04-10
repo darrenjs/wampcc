@@ -945,17 +945,19 @@ void client_service::handle_event(ev_router_session_connect_fail* ev)
   }
 }
 
-void client_service::register_session(router_conn& rs)
+t_connection_id client_service::register_session(router_conn& rs)
 {
   /* USER thread */
 
-  std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+  t_connection_id id = t_connection_id();
 
-  int router_session_id = m_next_router_session_id++;
-  rs.m_router_session_id = router_session_id;
-  m_router_sessions[ rs.router_session_id() ] = &rs;
+  {
+    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+    id = m_next_router_session_id++;
+    m_router_sessions[ id ] = &rs;
+  }
 
-  _DEBUG_("router session registered, with ID " << rs.router_session_id());
+  return id;
 }
 
 router_conn::router_conn(client_service * __svc,
@@ -964,9 +966,8 @@ router_conn::router_conn(client_service * __svc,
   : user(__user),
     m_svc(__svc),
     m_connection_cb(__cb),
-    m_router_session_id(0) // 0 is default valid, before it is registered
+    m_router_session_id( __svc->register_session( *this ) )
 {
-  __svc->register_session( *this );
 }
 
 int router_conn::connect(const std::string & addr, int port)
