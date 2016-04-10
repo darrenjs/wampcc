@@ -214,9 +214,7 @@ void client_service::handle_session_state_change(session_state_event* ev)
 
   }
 
-  // TODO: here, should raise notification to user program
-  // need to find the router session id
-  // can we find the actual session object?
+  // raise user callback to indicate session connection
   {
     std::unique_lock< std::mutex > guard(m_router_sessions_lock);
     auto iter = m_router_sessions.find( ev->user_conn_id );
@@ -571,8 +569,8 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
   {
     std::lock_guard<std::mutex> guard( m_pending_requests_lock );
     auto & pending = m_pending_requests[int_req_id];
-    pending.cb = cb;
-    pending.user_cb_data = cb_user_data;
+    pending.user_cb = cb;
+    pending.user_data = cb_user_data;
     pending.rpc= proc_uri;
   }
 
@@ -700,7 +698,7 @@ void client_service::handle_RESULT(inbound_message_event* ev) // change to lower
     pendingreq = m_pending_requests[ev->internal_req_id]; // TODO: need to erase after this
   }
 
-  if ( pendingreq.cb )
+  if ( pendingreq.user_cb )
   {
     call_info ci;
     ci.reqid = ev->internal_req_id;
@@ -711,7 +709,10 @@ void client_service::handle_RESULT(inbound_message_event* ev) // change to lower
     args.args    = ev->ja[3];
     args.options = ev->ja[2].as_object();
 
-    pendingreq.cb(ci, args, pendingreq.user_cb_data);
+    try {
+      pendingreq.user_cb(ci, args, pendingreq.user_data);
+    }
+    catch(...){}
   }
   else
   {

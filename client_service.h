@@ -159,14 +159,12 @@ private:
   t_client_request_id  m_next_client_request_id;
 
   /* outbound rpc call requests */
-  // TODO: move to impl
   struct pending_request
   {
-    call_user_cb cb;
-    std::string rpc; // TODO: standardise the varname for rpc name
-    void* user_cb_data;
-
-    pending_request() : user_cb_data( nullptr ) { }
+    std::string rpc;
+    call_user_cb user_cb;
+    void* user_data;
+    pending_request() : user_data( nullptr ) { }
   };
 
   std::map<int, pending_request> m_pending_requests;

@@ -61,6 +61,7 @@ public:
   int msg_type; // WAMP message type
 
   session_handle src;
+  t_connection_id user_conn_id;
   jalson::json_array ja;
 
   jalson::json_array orig_req; // populated for reply/error to a previous request
@@ -87,11 +88,7 @@ class inbound_message_event : public event
 {
 public:
   jalson::json_array msg;
-  t_connection_id user_conn_id;
-
-  inbound_message_event(int __msgtype,
-                        t_connection_id __user_conn_id)
-    : user_conn_id(__user_conn_id)
+  inbound_message_event(int __msgtype)
   {
     this->mode =  event::eInbound;
     this->msg_type = __msgtype;
@@ -102,13 +99,10 @@ public:
 struct session_state_event : public event
 {
   bool is_open;
-  t_connection_id user_conn_id;
 
-  session_state_event(bool __session_open,
-                      t_connection_id __user_conn_id)
+  session_state_event(bool __session_open)
   : event( event::session_state_event ),
-    is_open( __session_open ),
-    user_conn_id( __user_conn_id )
+    is_open( __session_open )
   {
   }
 };

@@ -524,6 +524,7 @@ void Session::process_message(jalson::json_value&jv)
 
       ev_inbound_subscribed* ev = new ev_inbound_subscribed();
       ev->src = handle();
+      ev->user_conn_id = m_user_conn_id;
       ev->ja = ja;
       ev->internal_req_id  = pend2.internal_req_id;
       m_evl.push( ev );
@@ -544,8 +545,9 @@ void Session::process_message(jalson::json_value&jv)
   // session layer.
 
   // new style, using a dedicated event class for inbound messages
-  inbound_message_event * ev = new inbound_message_event(message_type, m_user_conn_id);
+  inbound_message_event * ev = new inbound_message_event(message_type);
   ev->src = handle();
+  ev->user_conn_id = m_user_conn_id;
   ev->ja = ja;
   ev->msg = ja;
   if (pendreq) ev->cb_data  = pendreq->cb_data;
@@ -823,7 +825,7 @@ void Session::handle_CHALLENGE(jalson::json_array& ja)
 
 
   const jalson::json_object & extra = ja[2].as_object();
-  std::string challmsg = jalson::get(extra, "challenge", "").as_string();
+  std::string challmsg = jalson::get_copy(extra, "challenge", "").as_string();
 
   /* generate the authentication digest */
 
@@ -928,8 +930,9 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
  */
 void Session::notify_session_state_change(bool is_open)
 {
-  session_state_event * e = new session_state_event(is_open, m_user_conn_id);
+  session_state_event * e = new session_state_event(is_open);
   e->src  = handle();
+  e->user_conn_id = m_user_conn_id;
   e->mode = event::eInbound;
   m_evl.push( e );
 }
