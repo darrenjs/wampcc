@@ -423,6 +423,39 @@ DEFTEST( equality )
 }
 
 //----------------------------------------------------------------------
+DEFTEST( getters_api )
+{
+  jalson::json_value default_id = jalson::json_value::make_string("hello");
+
+  const jalson::json_value j1 = jalson::decode( "{ \"foo\": [50, 20, 30, 40]} " );
+
+  const jalson::json_object msg;
+
+
+  const jalson::json_value * id  = jalson::get_ptr(msg, "id");
+  ASSERT_TRUE( id == NULL);
+  // const jalson::json_value & id2 = jalson::get_ref(msg, "id");
+
+  // const jalson::json_value & id3 = jalson::get_ref(msg, "id", default_id);
+  const jalson::json_value & id4 = jalson::get_copy(msg, "id", jalson::json_value::make_string("hello"));
+  const jalson::json_value & id5 = jalson::get_ref(msg, "id", &default_id);
+  ASSERT_TRUE( id5 ==default_id  );
+  //const jalson::json_value & id6 = jalson::get_ref(msg, "id", &jalson::json_value::make_string("I am temp"));
+
+  // std::cout << "for id3 value is >" << id3 << "<\n";
+  std::cout << "for id4 value is >" << id4 << "<\n";
+  std::cout << "for id5 value is >" << id4 << "<\n";
+
+
+  const jalson::json_value expected = jalson::json_value::make_string("xyz");
+  std::string challmsg = jalson::get_copy(msg, "challenge", "xyz").as_string();
+  std::cout << "challmsg: >" << challmsg << "<\n";
+  ASSERT_TRUE( challmsg == expected.as_string() );
+
+
+  return 1;
+}
+//----------------------------------------------------------------------
 // DEFTEST( demo_test )
 // {
 //   jalson::json_array msg;

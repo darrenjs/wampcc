@@ -374,11 +374,17 @@ const json_value& get_or_throw(const json_object& ob, const std::string& key);
       json_value& get_or_throw(      json_array& ob, size_t index);
 const json_value& get_or_throw(const json_array& ob, size_t index);
 
-json_value get(const json_object&, const std::string& key,
-              const json_value & defValue = json_value());
 
-json_value get(const json_array&, size_t index,
-              const json_value & defValue = json_value());
+  const json_value* get_ptr  (const json_object&, const std::string& key, const json_value* default_value_ptr = 0);
+        json_value* get_ptr  (      json_object&, const std::string& key,       json_value* default_value_ptr = 0);
+
+  const json_value& get_ref  (const json_object&, const std::string& key, const json_value* default_value_ptr = 0); // may throw
+        json_value& get_ref  (      json_object&, const std::string& key,       json_value* default_value_ptr = 0); // may throw
+
+        json_value  get_copy (const json_object&, const std::string& key, const json_value& default_value_ref = json_value());
+
+
+  json_value        get_copy (const json_array&, size_t i, const json_value& default_value_ref = json_value());
 
 /* Encode & decode functions */
 

@@ -395,27 +395,8 @@ const json_value& get_or_throw(const json_array& ob, size_t i)
 }
 
 
-json_value get(const json_object& c, const std::string& key,
-              const json_value & defaultValue)
-{
-  json_object::const_iterator it = c.find( key );
-  if (it != c.end())
-  {
-    return it->second;
-  }
-  else
-    return defaultValue;
-}
 
 
-json_value get(const json_array& c, size_t index,
-              const json_value & defaultValue)
-{
-  if (index < c.size())
-    return c[index];
-  else
-    return defaultValue;
-}
 
 //----------------------------------------------------------------------
 
@@ -691,6 +672,75 @@ const json_value * json_value::eval(const char* path) const
 json_value * json_value::eval(const char* path)
 {
   return eval_json_pointer(*this, path);
+}
+
+const json_value* get_ptr(const json_object& ob, const std::string& key, const json_value* default_value_ptr)
+{
+  json_object::const_iterator it = ob.find( key );
+  if (it != ob.end())
+    return &it->second;
+  else
+    return default_value_ptr;
+}
+
+json_value* get_ptr(json_object& ob, const std::string& key, json_value* default_value_ptr)
+{
+  json_object::iterator it = ob.find( key );
+  if (it != ob.end())
+    return &it->second;
+  else
+    return default_value_ptr;
+}
+
+// const json_value& get_ref(const json_object& ob, const std::string& key)
+// {
+//   json_object::const_iterator it = ob.find( key );
+//   if (it != ob.end())
+//   {
+//     return it->second;
+//   }
+//   else throw field_not_found(key);
+// }
+
+
+// const json_value& get_ref(const json_object& ob, const std::string& key,  json_value& defval)
+// {
+//   json_object::const_iterator it = ob.find( key );
+//   if (it != ob.end())
+//   {
+//     return it->second;
+//   }
+//   else
+//   {
+//     return defval;
+//   }
+// }
+
+const json_value& get_ref(const json_object& ob, const std::string& key, const json_value* defval)
+{
+  json_object::const_iterator it = ob.find( key );
+
+  if (it != ob.end()) return it->second;
+
+  if (defval)
+    return *defval;
+  else
+    throw field_not_found(key);
+}
+
+json_value get_copy(const json_object& ob, const std::string& key, const json_value& defval)
+{
+  json_object::const_iterator it = ob.find( key );
+
+  if (it != ob.end())
+    return it->second;
+  else
+    return defval;
+}
+
+json_value get_copy(const json_array& ar, size_t i, const json_value & defval)
+{
+  return i < ar.size()? ar[i] : defval;
 }
 
 
