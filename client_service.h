@@ -125,7 +125,7 @@ private:
 
   struct RegistrationKey
   {
-    unsigned int s;
+    t_connection_id router_session_id;
     int id;
     bool operator<(const RegistrationKey& k) const;
   };

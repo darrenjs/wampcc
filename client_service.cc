@@ -30,7 +30,8 @@ struct Request_Register_CD_Data : public Request_CB_Data
 
 bool client_service::RegistrationKey::operator<(const RegistrationKey& rhs) const
 {
-  return ( (this->s < rhs.s) or ((this->s == rhs.s) and (this->id < rhs.id) ) );
+  return ( (this->router_session_id < rhs.router_session_id) or
+           ((this->router_session_id == rhs.router_session_id) and (this->id < rhs.id) ) );
 }
 
 //----------------------------------------------------------------------
@@ -120,20 +121,17 @@ void client_service::handle_session_state_change(session_state_event* ev)
 
   if (! ev->is_open)
   {
-    auto sp = sh.lock();
-    if (sp)
+    // remove the RPC registrations that are associated with the connection
+    std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
+    for (auto it = m_registrationid_map.begin(); it!=m_registrationid_map.end();)
     {
-      // remove the RPC registrations that are associated with the connection
-      std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
-      for (auto it = m_registrationid_map.begin(); it!=m_registrationid_map.end();)
+      if (it->first.router_session_id == ev->user_conn_id)
       {
-        if (it->first.s == *sp)
-        {
-          m_registrationid_map.erase( it++ );
-        }
-        else ++it;
+        m_registrationid_map.erase( it++ );
       }
+      else ++it;
     }
+
     return;
   }
 
@@ -327,23 +325,20 @@ void client_service::handle_REGISTERED(inbound_message_event* ev)
     // TODO: check, what type does WAMP allow here?
     int registration_id = ev->ja[2].as_sint();
 
-    if (auto sp = ev->src.lock())
+    RegistrationKey key;
+    key.router_session_id  = ev->user_conn_id;
+    key.id = registration_id;
+
+    // OKAY: when I sent a REGISTER request, I did not store the REQUEST ID
+    // anywhere, did I ? So I need to find that request, and store it.  Wheere is
+    // the best place to store it?
     {
-      RegistrationKey key;
-      key.s  = *sp;
-      key.id = registration_id;
-
-
-      // OKAY: when I sent a REGISTER request, I did not store the REQUEST ID
-      // anywhere, did I ? So I need to find that request, and store it.  Wheere is
-      // the best place to store it?
-      {
-        std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
-        m_registrationid_map[ key ] = cb_data->procedure;
-      }
-      _INFO_("procedure '" << cb_data->procedure << "' registered with key "
-             << key.s << ":" << key.id);
+      std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
+      m_registrationid_map[ key ] = cb_data->procedure;
     }
+    _INFO_("procedure '" << cb_data->procedure << "' registered with key "
+           << key.router_session_id << ":" << key.id);
+
   }
   else
   {
@@ -364,7 +359,7 @@ void client_service::handle_INVOCATION(inbound_message_event* ev) // change to l
 
   // TODO: need to parse the INVOCATION message here, eg, check it is valid
   RegistrationKey rkey;
-  rkey.s  = *sp;
+  rkey.router_session_id  = ev->user_conn_id;
   rkey.id = ev->ja[2].as_sint();
 
   std::string procname;
@@ -395,7 +390,7 @@ void client_service::handle_INVOCATION(inbound_message_event* ev) // change to l
     rpc_actual = it->second;
   }
 
-  _INFO_( "invoke lookup success, key " << rkey.s <<":"<<rkey.id  << " -> " << procname );
+  _INFO_( "invoke lookup success, key " << rkey.router_session_id <<":"<<rkey.id  << " -> " << procname );
 
   rpc_args my_rpc_args;
   if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
@@ -727,16 +722,9 @@ void client_service::handle_RESULT(inbound_message_event* ev) // change to lower
 
 void client_service::handle_ERROR(inbound_message_event* ev) // change to lowercase
 {
-  auto sp = ev->src.lock();
-  if (!sp)
-  {
-    // TODO: add handler for this situation
-    return;
-  }
-
   // TODO: need to parse the INVOCATION message here, eg, check it is valid
   RegistrationKey rkey;
-  rkey.s  = *sp;
+  rkey.router_session_id = ev->user_conn_id;
   rkey.id = ev->ja[2].as_sint();
 
   std::string procname;
@@ -767,7 +755,7 @@ void client_service::handle_ERROR(inbound_message_event* ev) // change to lowerc
     rpc_actual = it->second;
   }
 
-  _INFO_( "invoke lookup success, key " << rkey.s <<":"<<rkey.id  << " -> " << procname );
+  _INFO_( "invoke lookup success, key " << rkey.router_session_id <<":"<<rkey.id  << " -> " << procname );
 
   rpc_args my_rpc_args;
   if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
@@ -976,7 +964,7 @@ router_conn::router_conn(client_service * __svc,
   : user(__user),
     m_svc(__svc),
     m_connection_cb(__cb),
-    m_router_session_id(0)
+    m_router_session_id(0) // 0 is default valid, before it is registered
 {
   __svc->register_session( *this );
 }
