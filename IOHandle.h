@@ -42,12 +42,6 @@ public:
   bool can_be_deleted() const { return m_ready_for_delete; }
 private:
 
-  enum class event_type
-  {
-      Send,
-      Close
-  };
-
 
   Logger * __logptr;
 

@@ -169,8 +169,6 @@ void IOLoop::create_tcp_server_socket(int port,
   {
     // TODO: handle listen failure
   }
-//
-  std::cout << "loop starting, r="<< r << "\n";
 
   m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
 }

@@ -1,6 +1,5 @@
 
 
-#include "NexioServer.h"
 #include "Table.h"
 #include "Session.h"
 #include "Logger.h"
@@ -21,7 +20,7 @@
 
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
-XXX::NexioServer * server = nullptr;
+
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eInfo,
@@ -74,38 +73,6 @@ implementation of strerror_r .  See man page.
 #endif
 
   return "unknown";
-}
-
-int tep()
-{
-  auto __logptr = logger;
-  _INFO_( "tep started" );
-
-  sleep(3);
-
-  XXX::Topic * topic = new XXX::Topic("T1");
-  server -> addTopic( topic );
-
-  XXX::Table * topictable = new XXX::Table("T2");
-  server -> addTopic( topictable );
-
-  std::vector<std::string> cols = {"health","status","post"};
-  topictable->add_columns( cols );
-
-
-  int rowid = 2;
-  while (1)
-  {
-    sleep(1);
-
-    rowid++;
-    std::ostringstream os;
-    os << "R_"  << rowid;
-
-    topictable->update_row("r1", "f1", "v1");
-    topictable->update_row(os.str(), "f1", "v1");
-  }
-  return 0;
 }
 
 
@@ -162,31 +129,6 @@ void connect_cb_2(XXX::router_conn* /*router_session*/,
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
 }
-
-// class dealer_events : public XXX::dealer_listener
-// {
-// public:
-
-//   void rpc_registered(std::string uri)
-//   {
-//     // TODO: this is the code for rasing an RPC... temporary comented out for a test
-
-//     if (uri == "stop")
-//     {
-//       XXX::rpc_args args;
-//       jalson::json_array ja;
-//       ja.push_back( "hello" );
-//       ja.push_back( "world" );   //TODO: why do I not see thi value arrise at the other side? Jalson error?
-//       args.args = ja ;
-
-
-//     }
-
-//     std::unique_lock< std::mutex > guard( event_queue_mutex );
-//     event_queue.push( eRPCSent );
-//     event_queue_condition.notify_one();
-//   }
-// };
 
 
 static void die(const char* e)
@@ -271,17 +213,13 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-  /* new client service */
-//  dealer_events de;
-
   XXX::client_service::config config;
   config.port = 0;
   g_client.reset( new XXX::client_service(logger, config) );
 
-
   g_client->start();
 
-  XXX::router_conn rconn( g_client.get(), connect_cb_2, nullptr ); // NEW STYLE
+  XXX::router_conn rconn( g_client.get(), connect_cb_2, nullptr );
 
   rconn.connect("127.0.0.1", 55555);
 

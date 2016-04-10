@@ -70,8 +70,6 @@ public:
   void add_active_handle(IOHandle* iohandle, int status, io_request*);
 
   void add_server(int port, socket_accept_cb);
-  // void add_connection(std::string addr, int port,
-  //                     tcp_connect_attempt_cb, void*);
 
   void add_connection(std::string addr, int port,
                       t_connection_id);
@@ -118,13 +116,4 @@ private:
 } // namespace XXX
 
 
-/*
-
-#libuv
-
-lubuv:  can I submit bytes to write, off the io_loop thread?
-
- Saul: The one and *only* thread-safe function is uv_async_send.
-
- */
 #endif

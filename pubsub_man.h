@@ -32,7 +32,7 @@ private:
   event_loop& m_evl;
   SessionMan& m_sesman;
 
-  std::map<std::string, managed_topic*> m_topics;
+  std::map<std::string, managed_topic*> m_topics; // TODO:change to unqiue_ptr
   size_t m_next_subscription_id;
 
 };

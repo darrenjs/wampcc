@@ -2,9 +2,10 @@
 #define XXX_RPC_MAN_H
 
 #include "WampTypes.h"
+#include "Callbacks.h"
 
 #include <jalson/jalson.h>
-#include <event.h>  /* TODO: try to delete me */
+
 
 #include <functional>
 #include <map>

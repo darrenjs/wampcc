@@ -156,20 +156,12 @@ void dealer_service::handle_YIELD(event* ev)
   args.args    = ev->ja[3]; // dont care about the type
   args.options = ev->ja[2].as_object();  // TODO: need to pre-verify the message
 
-
-  // TODO: catch and log exception
   if ( pend.cb )
   {
-    try
-    {
+    try {
       pend.cb(info, args, pend.user_cb_data);
     }
-    // TODO: try to print
-    catch (...)
-    {
-      _WARN_("exception during user callback");
-    }
-
+    catch (...) { }
   }
   else
   {

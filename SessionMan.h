@@ -39,8 +39,6 @@ public:
   Session* create_session(IOHandle *, bool is_passive,
                           t_connection_id user_conn_id);
 
-//void send_all(const char* data);
-
   void close_all();
 
   void session_closed(Session&) override;
@@ -67,8 +65,6 @@ public:
   void handle_housekeeping_event( void );
 
   bool session_is_open(session_handle sh) const;
-
-
 
 private:
 

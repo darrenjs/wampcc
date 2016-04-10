@@ -49,7 +49,7 @@ JALSONLIBSTATIC=$(JALSONHOME)/lib/libjalson.a $(JANSSONLIBSTATIC)
 ##
 ## Targets to build
 ##
-BIN1=nexio
+BIN1=
 BIN2=admin
 BIN3=client
 BIN4=
@@ -58,18 +58,18 @@ TARGETS=$(BIN1) $(BIN2) $(BIN3)  $(BIN4)
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN1 =  session_state_listener.cc utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc event.cc Logger.cc Callbacks.cc pubsub_man.cc main.cc
+# SOURCES_BIN1 =
 
 
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN2 =session_state_listener.cc   utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc event.cc Logger.cc Callbacks.cc  pubsub_man.cc admin.cc
+SOURCES_BIN2 =session_state_listener.cc   utils.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc event.cc Logger.cc Callbacks.cc  pubsub_man.cc admin.cc
 
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN3 = session_state_listener.cc  utils.cc NexioServer.cc SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc client_service.cc dealer_service.cc event.cc Logger.cc  Callbacks.cc  pubsub_man.cc client.cc
+SOURCES_BIN3 = session_state_listener.cc  utils.cc  SessionMan.cc Session.cc IOHandle.cc Topic.cc  TopicMan.cc Table.cc IOLoop.cc rpc_man.cc event_loop.cc client_service.cc dealer_service.cc event.cc Logger.cc  Callbacks.cc  pubsub_man.cc client.cc
 
 ##
 ## Sources that will need compiling

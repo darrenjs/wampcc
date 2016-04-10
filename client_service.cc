@@ -950,13 +950,9 @@ t_connection_id client_service::register_session(router_conn& rs)
 {
   /* USER thread */
 
-  t_connection_id id = t_connection_id();
-
-  {
-    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-    id = m_next_router_session_id++;
-    m_router_sessions[ id ] = &rs;
-  }
+  std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+  t_connection_id id = m_next_router_session_id++;
+  m_router_sessions[ id ] = &rs;
 
   return id;
 }
