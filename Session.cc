@@ -755,13 +755,13 @@ void Session::handle_HELLO(jalson::json_array& ja)
   /* verify the user */
 
   // get the user id
-  std::string authid = jalson::get_or_throw(authopts, "authid").as_string();
+  std::string authid = jalson::get_copy(authopts, "authid", "").as_string();
 
   /* verify the supported auth methods */
 
   // look for the "wampcra"
   bool wampcra_found = false;
-  const jalson::json_array& methods = jalson::get_or_throw(authopts,"authmethods").as_array();
+  jalson::json_array methods = jalson::get_copy(authopts,"authmethods", jalson::json_value::make_array()).as_array();
   for (size_t i = 0; i < methods.size() && !wampcra_found; ++i)
   {
     if ( methods[i].is_string() )
