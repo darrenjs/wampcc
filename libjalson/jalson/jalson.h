@@ -366,25 +366,49 @@ json_array&  append_array  (json_array& c);
 json_object& insert_object(json_object&, const std::string& key);
 json_array&  insert_array (json_object&, const std::string& key);
 
-/* Utility methods for extracting a value from a container.  If not found,
- * throws json_error exceptions. */
-      json_value& get_or_throw(      json_object& ob, const std::string& key);
-const json_value& get_or_throw(const json_object& ob, const std::string& key);
+/** Return pointer to item if exists, else return default */
+const json_value* get_ptr(const json_object&, const std::string& key,
+                          const json_value* default_value_ptr = 0);
 
-      json_value& get_or_throw(      json_array& ob, size_t index);
-const json_value& get_or_throw(const json_array& ob, size_t index);
+/** Return pointer to item if exists, else return default */
+json_value*       get_ptr(json_object&, const std::string& key,
+                          json_value*default_value_ptr = 0);
 
+/** Return ref to item if exists, else return default. If default is 0, then
+ * throw field_not_found exception. */
+const json_value& get_ref(const json_object&, const std::string& key,
+                          const json_value* default_value_ptr = 0); // may throw
 
-  const json_value* get_ptr  (const json_object&, const std::string& key, const json_value* default_value_ptr = 0);
-        json_value* get_ptr  (      json_object&, const std::string& key,       json_value* default_value_ptr = 0);
+/** Return ref to item if exists, else return default. If default is 0, then
+ * throw field_not_found exception. */
+json_value&       get_ref(json_object&, const std::string& key,
+                          json_value* default_value_ptr = 0); // may throw
 
-  const json_value& get_ref  (const json_object&, const std::string& key, const json_value* default_value_ptr = 0); // may throw
-        json_value& get_ref  (      json_object&, const std::string& key,       json_value* default_value_ptr = 0); // may throw
+/** Return copy of item if exists, else return copy of default */
+json_value get_copy(const json_object&, const std::string& key,
+                    const json_value& default_value_ref = json_value::make_null());
 
-        json_value  get_copy (const json_object&, const std::string& key, const json_value& default_value_ref = json_value());
+/** Return pointer to element if exists, else return default */
+const json_value* get_ptr(const json_array&, size_t i,
+                          const json_value* default_value_ptr = 0);
 
+/** Return pointer to element if exists, else return default */
+json_value*       get_ptr(json_array&, size_t i,
+                          json_value*default_value_ptr = 0);
 
-  json_value        get_copy (const json_array&, size_t i, const json_value& default_value_ref = json_value());
+/** Return ref to element if exists, else return default. If default is 0, then
+ * throw field_not_found exception. */
+const json_value& get_ref(const json_array&, size_t i,
+                          const json_value* default_value_ptr = 0); // may throw
+
+/** Return ref to element if exists, else return default. If default is 0, then
+ * throw field_not_found exception. */
+json_value&       get_ref(json_array&, size_t i,
+                          json_value* default_value_ptr = 0); // may throw
+
+/** Return copy of element if exists, else return copy of default */
+json_value get_copy(const json_array&, size_t i,
+                    const json_value& default_value_ref = json_value::make_null());
 
 /* Encode & decode functions */
 

@@ -362,37 +362,9 @@ json_array& insert_array(jalson::json_object& c, const std::string& key)
 
 
 
-json_value& get_or_throw(json_object & ob, const std::string& key)
-{
-  json_object::iterator it = ob.find( key );
-  if (it != ob.end())
-  {
-    return it->second;
-  }
-  else throw field_not_found(key);
-}
 
-const json_value& get_or_throw(const json_object& ob, const std::string& key)
-{
-  json_object::const_iterator it = ob.find( key );
-  if (it != ob.end())
-  {
-    return it->second;
-  }
-  else throw field_not_found(key);
-}
 
-json_value& get_or_throw(json_array& ob, size_t i)
-{
-  if (i >= ob.size()) throw out_of_range(i);
-  return ob[i];
-}
 
-const json_value& get_or_throw(const json_array& ob, size_t i)
-{
-  if (i >= ob.size()) throw out_of_range(i);
-  return ob[i];
-}
 
 
 
@@ -674,7 +646,8 @@ json_value * json_value::eval(const char* path)
   return eval_json_pointer(*this, path);
 }
 
-const json_value* get_ptr(const json_object& ob, const std::string& key, const json_value* default_value_ptr)
+const json_value* get_ptr(const json_object& ob, const std::string& key,
+                          const json_value* default_value_ptr)
 {
   json_object::const_iterator it = ob.find( key );
   if (it != ob.end())
@@ -683,7 +656,8 @@ const json_value* get_ptr(const json_object& ob, const std::string& key, const j
     return default_value_ptr;
 }
 
-json_value* get_ptr(json_object& ob, const std::string& key, json_value* default_value_ptr)
+json_value* get_ptr(json_object& ob, const std::string& key,
+                    json_value* default_value_ptr)
 {
   json_object::iterator it = ob.find( key );
   if (it != ob.end())
@@ -692,31 +666,9 @@ json_value* get_ptr(json_object& ob, const std::string& key, json_value* default
     return default_value_ptr;
 }
 
-// const json_value& get_ref(const json_object& ob, const std::string& key)
-// {
-//   json_object::const_iterator it = ob.find( key );
-//   if (it != ob.end())
-//   {
-//     return it->second;
-//   }
-//   else throw field_not_found(key);
-// }
 
-
-// const json_value& get_ref(const json_object& ob, const std::string& key,  json_value& defval)
-// {
-//   json_object::const_iterator it = ob.find( key );
-//   if (it != ob.end())
-//   {
-//     return it->second;
-//   }
-//   else
-//   {
-//     return defval;
-//   }
-// }
-
-const json_value& get_ref(const json_object& ob, const std::string& key, const json_value* defval)
+const json_value& get_ref(const json_object& ob, const std::string& key,
+                          const json_value* defval)
 {
   json_object::const_iterator it = ob.find( key );
 
@@ -728,7 +680,21 @@ const json_value& get_ref(const json_object& ob, const std::string& key, const j
     throw field_not_found(key);
 }
 
-json_value get_copy(const json_object& ob, const std::string& key, const json_value& defval)
+json_value& get_ref(json_object& ob, const std::string& key,
+                    json_value* defval)
+{
+  json_object::iterator it = ob.find( key );
+
+  if (it != ob.end()) return it->second;
+
+  if (defval)
+    return *defval;
+  else
+    throw field_not_found(key);
+}
+
+json_value get_copy(const json_object& ob, const std::string& key,
+                    const json_value& defval)
 {
   json_object::const_iterator it = ob.find( key );
 
@@ -738,9 +704,44 @@ json_value get_copy(const json_object& ob, const std::string& key, const json_va
     return defval;
 }
 
-json_value get_copy(const json_array& ar, size_t i, const json_value & defval)
+const json_value* get_ptr(const json_array& ar, size_t i,
+                          const json_value* default_value_ptr )
 {
-  return i < ar.size()? ar[i] : defval;
+  return (i < ar.size())? &ar[i] : default_value_ptr;
+}
+
+json_value* get_ptr(json_array& ar, size_t i,
+                    json_value* default_value_ptr)
+{
+  return (i < ar.size())? &ar[i] : default_value_ptr;
+}
+
+const json_value& get_ref(const json_array& ar, size_t i,
+                          const json_value* default_value_ptr)
+{
+  if (i < ar.size()) return ar[i];
+
+  if (default_value_ptr)
+    return *default_value_ptr;
+  else
+    throw out_of_range(i);
+}
+
+json_value& get_ref(json_array& ar, size_t i,
+                    json_value* default_value_ptr)
+{
+  if (i < ar.size()) return ar[i];
+
+  if (default_value_ptr)
+    return *default_value_ptr;
+  else
+    throw out_of_range(i);
+}
+
+json_value get_copy(const json_array& ar, size_t i,
+                    const json_value & default_value_ref)
+{
+  return i < ar.size()? ar[i] : default_value_ref;
 }
 
 
