@@ -4,7 +4,8 @@
 
 namespace XXX {
 
-event::~event()
+
+ev_inbound_message::~ev_inbound_message()
 {
   delete cb_data;
 }

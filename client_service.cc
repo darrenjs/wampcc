@@ -54,7 +54,7 @@ client_service::client_service(Logger * logptr,
     [this](ev_inbound_subscribed* ev) { handle_SUBSCRIBED(ev); };
 
   local_handler.handle_inbound_event=
-    [this](inbound_message_event* ev) { handle_EVENT(ev); };
+    [this](ev_inbound_message* ev) { handle_EVENT(ev); };
 
   local_handler.handle_router_session_connect_fail=
     [this](ev_router_session_connect_fail* ev) { handle_event(ev); };
@@ -71,16 +71,16 @@ client_service::client_service(Logger * logptr,
   //                   [this](class event* ev){ this->handle_CHALLENGE(ev); } );
 
   m_evl->set_handler2(REGISTERED,
-                      [this](inbound_message_event* ev){ this->handle_REGISTERED(ev); } );
+                      [this](ev_inbound_message* ev){ this->handle_REGISTERED(ev); } );
 
   m_evl->set_handler2(INVOCATION,
-                      [this](inbound_message_event* ev){ this->handle_INVOCATION(ev); } );
+                      [this](ev_inbound_message* ev){ this->handle_INVOCATION(ev); } );
 
   m_evl->set_handler2(RESULT,
-                      [this](inbound_message_event* ev){ this->handle_RESULT(ev); } );
+                      [this](ev_inbound_message* ev){ this->handle_RESULT(ev); } );
 
   m_evl->set_handler2(ERROR,
-                      [this](inbound_message_event* ev){ this->handle_ERROR(ev); } );
+                      [this](ev_inbound_message* ev){ this->handle_ERROR(ev); } );
 
   m_evl->m_internal_invoke_cb = [this](session_handle& h,
                                        t_request_id req_id,
@@ -309,7 +309,7 @@ bool client_service::add_procedure(const std::string& uri,
 
 //----------------------------------------------------------------------
 
-void client_service::handle_REGISTERED(inbound_message_event* ev)
+void client_service::handle_REGISTERED(ev_inbound_message* ev)
 {
   Request_Register_CD_Data* cb_data = nullptr;
 
@@ -346,7 +346,7 @@ void client_service::handle_REGISTERED(inbound_message_event* ev)
 
 //----------------------------------------------------------------------
 
-void client_service::handle_INVOCATION(inbound_message_event* ev) // change to lowercase
+void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowercase
 {
   auto sp = ev->src.lock();
   if (!sp)
@@ -576,9 +576,8 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
 
   outbound_call_event * ev = new outbound_call_event();
 
-  ev->mode = event::eOutbound;
   ev->dest = sh;
-  ev->msg_type = CALL;
+//  ev->msg_type = CALL;
   ev->rpc_name= proc_uri;
   ev->cb = cb;  // memleak?
   ev->args = args; // memleak?
@@ -687,7 +686,7 @@ void client_service::invoke_direct(session_handle& sh,
 
 
 
-void client_service::handle_RESULT(inbound_message_event* ev) // change to lowercase
+void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercase
 {
   int reqid=ev->ja[1].as_sint();
   _INFO_("Got RESULT for reqid " << reqid << "," << ev->internal_req_id);
@@ -721,7 +720,7 @@ void client_service::handle_RESULT(inbound_message_event* ev) // change to lower
   }
 }
 
-void client_service::handle_ERROR(inbound_message_event* ev) // change to lowercase
+void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
 {
   // TODO: need to parse the INVOCATION message here, eg, check it is valid
   RegistrationKey rkey;
@@ -879,7 +878,7 @@ void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
 }
 
 
-void client_service::handle_EVENT(inbound_message_event* ev)
+void client_service::handle_EVENT(ev_inbound_message* ev)
 {
   /* EV thread */
 
@@ -931,10 +930,11 @@ bool client_service::is_open(const router_conn* rs) const
 void client_service::handle_event(ev_router_session_connect_fail* ev)
 {
   /* EV thread */
+  const t_connection_id router_session_id = ev->user_conn_id;
 
   std::unique_lock<std::mutex> guard(m_router_sessions_lock);
 
-  auto iter = m_router_sessions.find( ev->router_session_id );
+  auto iter = m_router_sessions.find( router_session_id );
   if (iter != m_router_sessions.end())
   {
     router_conn * rs = iter->second;

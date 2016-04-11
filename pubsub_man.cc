@@ -115,7 +115,7 @@ void pubsub_man::handle_event(ev_inbound_publish* ev)
 }
 
 
-void pubsub_man::handle_subscribe(event* ev)
+void pubsub_man::handle_subscribe(ev_inbound_message* ev)
 {
   /* EV thread */
 

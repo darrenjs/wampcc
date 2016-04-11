@@ -136,38 +136,46 @@ void dealer_service::rpc_registered_cb(const rpc_details* ev)
 
 //----------------------------------------------------------------------
 
+/* TODO: the way the handlers are set up, as callback via functional objects,
+ * means I have to pass in the base class 'event', even though earlier in the
+ * call sequence I would have detected a YIELD and corresponding type as
+ * ev_inbound_message.
+ */
 void dealer_service::handle_YIELD(event* ev)
 {
-  unsigned int internal_req_id = ev->internal_req_id;
+  ev_inbound_message * ev2 = dynamic_cast<ev_inbound_message *>(ev);
+  if (ev2)
+  {
+    unsigned int internal_req_id = ev2->internal_req_id;
 //  void * user = ev->user;
 
-  pending_request pend ;
+    pending_request pend ;
 
-  {
-    std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-    pend = m_pending_requests[internal_req_id];
-  }
-
-  call_info info;
-  info.reqid = ev->ja[1].as_uint();
-  info.procedure = pend.procedure;
-
-  rpc_args args;
-  args.args    = ev->ja[3]; // dont care about the type
-  args.options = ev->ja[2].as_object();  // TODO: need to pre-verify the message
-
-  if ( pend.cb )
-  {
-    try {
-      pend.cb(info, args, pend.user_cb_data);
+    {
+      std::lock_guard<std::mutex> guard( m_pending_requests_lock );
+      pend = m_pending_requests[internal_req_id];
     }
-    catch (...) { }
-  }
-  else
-  {
-    _WARN_("no callback function to handle request response");
-  }
 
+    call_info info;
+    info.reqid = ev2->ja[1].as_uint();
+    info.procedure = pend.procedure;
+
+    rpc_args args;
+    args.args    = ev2->ja[3]; // dont care about the type
+    args.options = ev2->ja[2].as_object();  // TODO: need to pre-verify the message
+
+    if ( pend.cb )
+    {
+      try {
+        pend.cb(info, args, pend.user_cb_data);
+      }
+      catch (...) { }
+    }
+    else
+    {
+      _WARN_("no callback function to handle request response");
+    }
+  }
 }
 
 void dealer_service::listen(int port)
@@ -191,7 +199,11 @@ int dealer_service::register_procedure(std::string uri)
 
 void dealer_service::handle_SUBSCRIBE(event* ev)
 {
-  m_pubsub->handle_subscribe(ev);
+  ev_inbound_message * ev2 = dynamic_cast<ev_inbound_message *>(ev);
+  if (ev2)
+  {
+    m_pubsub->handle_subscribe(ev2);
+  }
 }
 
 

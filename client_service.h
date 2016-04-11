@@ -23,7 +23,7 @@ class Session;
 class SessionMan;
 class client_service;
 class event_loop;
-class inbound_message_event;
+class ev_inbound_message;
 class topic;
 class dealer_service;
 class ev_inbound_subscribed;
@@ -102,14 +102,14 @@ private:
 
   t_connection_id register_session(router_conn&);
 
-  void handle_REGISTERED(inbound_message_event*);
-  void handle_INVOCATION(inbound_message_event*);
-  void handle_RESULT(inbound_message_event*);
-  void handle_ERROR(inbound_message_event*);
+  void handle_REGISTERED(ev_inbound_message*);
+  void handle_INVOCATION(ev_inbound_message*);
+  void handle_RESULT(ev_inbound_message*);
+  void handle_ERROR(ev_inbound_message*);
   void handle_session_state_change(session_state_event*);
   void handle_event(ev_router_session_connect_fail*);
   void handle_SUBSCRIBED(ev_inbound_subscribed*);
-  void handle_EVENT(inbound_message_event*);
+  void handle_EVENT(ev_inbound_message*);
   void register_procedures();
 
   void new_client(IOHandle *hndl,

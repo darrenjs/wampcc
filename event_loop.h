@@ -26,7 +26,7 @@ class client_event_handler
 public:
 
   std::function<void(ev_inbound_subscribed*)> handle_inbound_subscribed;
-  std::function<void(inbound_message_event*)> handle_inbound_event;
+  std::function<void(ev_inbound_message*)> handle_inbound_event;
   std::function<void(ev_router_session_connect_fail*)> handle_router_session_connect_fail;
 };
 
@@ -90,7 +90,7 @@ public:
 
 
   typedef std::function<void(event*) > event_cb;
-  typedef std::function<void(inbound_message_event*) > event_cb2;
+  typedef std::function<void(ev_inbound_message*) > event_cb2;
   typedef std::function<void(session_handle&,
                              t_request_id,
                              int,
@@ -124,6 +124,7 @@ public:
     event_loop& operator=(const event_loop&); // no assignment
 
 
+    void eventloop();
     void eventmain();
 
     void process_event(event* e);
@@ -134,7 +135,7 @@ public:
     void process_outbound_response(outbound_response_event *);
     void process_outbound_message(outbound_message *);
     void process_inbound_error(event* e);
-    void process_inbound_yield(event* e);
+    void process_inbound_yield(ev_inbound_message* e);
     void process_outbound_subscribe(ev_outbound_subscribe* e);
 
     void hb_check();

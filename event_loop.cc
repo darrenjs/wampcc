@@ -108,7 +108,7 @@ void event_loop::hb_check()
   }
 }
 
-void event_loop::eventmain()
+void event_loop::eventloop()
 {
   const auto timeout = std::chrono::milliseconds( SYSTEM_HEARTBEAT_MS );
 
@@ -120,7 +120,6 @@ void event_loop::eventmain()
   {
     std::vector< std::shared_ptr<event> > to_process;
     {
-
       std::unique_lock<std::mutex> guard(m_mutex);
       m_condvar.wait_for(guard,
                          timeout,
@@ -185,18 +184,29 @@ void event_loop::eventmain()
     } // loop end
 
 
-    // exception safe cleanup of events
-    try
-    {
-      to_process.clear();
-    }
-    catch ( ... )
-    {
-      _ERROR_("caught error during cleanup of expired event objects");
-    }
+    to_process.clear();
 
     // for when we simply timed out and never went into the loop
     hb_check();
+  }
+}
+
+void event_loop::eventmain()
+{
+  while (m_continue)
+  {
+    try
+    {
+      eventloop();
+    }
+    catch (const std::exception& e)
+    {
+      _ERROR_("exception in eventmain: " << e.what());
+    }
+    catch (...)
+    {
+      _ERROR_("unknown exception in eventmain");
+    }
   }
 }
 
@@ -204,15 +214,9 @@ void event_loop::eventmain()
 
 void event_loop::process_event(event * ev)
 {
-  bool event_handled= true;
 
   switch ( ev->type )
   {
-    case event::eNone :
-      /* old style event */
-      event_handled = false;
-      break;
-
     case event::inbound_subscribed:
     {
       // TODO: create a template for this, which will throw etc.
@@ -278,155 +282,110 @@ void event_loop::process_event(event * ev)
       break;
     }
 
-    default:
+    case event::inbound_message :
     {
-      _ERROR_( "unsupported event type " << ev->type );
+      ev_inbound_message * ev2 =
+        dynamic_cast<ev_inbound_message*>(ev);
+      if (ev2==nullptr) throw std::runtime_error("invalid inbound_message event");
 
-    }
-  }
-
-  if (event_handled) return;
-
-  if (ev->mode == event::eInbound)
-  {
-    inbound_message_event * ev2 =
-      dynamic_cast<inbound_message_event*>(ev);
-
-    if (ev2==nullptr)
-    {
-      _ERROR_("ev2 is null");
-    }
-
-    switch ( ev->msg_type )
-    {
-      case YIELD :
+      switch ( ev2->msg_type )
       {
-        /* We have received a YIELD off a socket; needs to be routed to the
-         * originator. */
-        process_inbound_yield( ev );
-        break;
-      }
-      case SUBSCRIBE:
-      {
-        // TODO: improve this
-        event_cb& cb = m_handlers[ ev->msg_type ];
-        if (cb)
+        case YIELD : { process_inbound_yield( ev2 ); break; }
+        case SUBSCRIBE:
         {
-          cb( ev );
+          // TODO: improve this
+          event_cb& cb = m_handlers[ ev2->msg_type ];
+          if (cb) cb( ev );
+          break;
         }
-
-        break;
-      }
-      case ERROR :
-      {
-        process_inbound_error( ev );
-        break;
-      }
-      case CALL :
-      {
-        std::string uri = ev->ja[3].as_string();
-        rpc_details rpc = m_rpcman->get_rpc_details(uri);
-        if (rpc.registration_id)
+        case ERROR : {  process_inbound_error( ev ); break; }
+        case CALL :
         {
-          if (rpc.type == rpc_details::eInternal)
+          std::string uri = ev2->ja[3].as_string();
+          rpc_details rpc = m_rpcman->get_rpc_details(uri);
+          if (rpc.registration_id)
           {
-            _INFO_("TODO: have an internal rpc to handle " << uri);
-
-            //  m_internal_rpc_invocation(src, registrationid, args, reqid);
-            if (m_internal_invoke_cb)
+            if (rpc.type == rpc_details::eInternal)
             {
-              t_request_id reqid = ev->ja[1].as_sint();
-              rpc_args my_rpc_args;
-              if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
-              m_internal_invoke_cb( ev->src,
-                                    reqid,
-                                    rpc.registration_id,
-                                    my_rpc_args);
+              _INFO_("TODO: have an internal rpc to handle " << uri);
+
+              //  m_internal_rpc_invocation(src, registrationid, args, reqid);
+              if (m_internal_invoke_cb)
+              {
+                t_request_id reqid = ev2->ja[1].as_sint();
+                rpc_args my_rpc_args;
+                if ( ev2->ja.size() > 4 ) my_rpc_args.args = ev2->ja[ 4 ];
+                m_internal_invoke_cb( ev->src,
+                                      reqid,
+                                      rpc.registration_id,
+                                      my_rpc_args);
+              }
+            }
+            else
+            {
+              _INFO_("TODO: have an outbound rpc to handle " << uri);
             }
           }
           else
           {
-            _INFO_("TODO: have an outbound rpc to handle " << uri);
+            // TODO: add better handling here
+            _WARN_("uri not found " << uri);
           }
+          break;
         }
-        else
+        case REGISTER :
         {
-          // TODO: add better handling here
-          _WARN_("uri not found " << uri);
+          if (!m_rpcman) throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
+
+          // Register the RPC. Once this function has been called, we should
+          // expect that requests can be sent immediately, so its important that
+          // we immediately sent the registration ID to the peer, before requests
+          // arrive.
+          int registration_id = m_rpcman->handle_register_event(ev2->src, ev2->ja);
+
+          jalson::json_array msg;
+          msg.push_back( REGISTERED );
+          msg.push_back( ev2->ja[1] );
+          msg.push_back( registration_id );
+          m_sesman->send_to_session( ev2->src, msg );
+
+          break;
         }
-        // A request has arrived ... need to route it to the RPC man
-        //
-        //
-        //             D:  rpc .. find it, get reg
-        //
-
-        // //process_event_InboundCall( e );
-        // // TODO: put this back in
-        // if (!m_rpcman) throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
-        // m_rpcman->invoke_rpc(ev->ja);
-        break;
-      }
-      case REGISTER :
-      {
-        if (!m_rpcman) throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
-
-        // Register the RPC. Once this function has been called, we should
-        // expect that requests can be sent immediately, so its important that
-        // we immediately sent the registration ID to the peer, before requests
-        // arrive.
-        int registration_id = m_rpcman->handle_register_event(ev2->src, ev->ja);
-
-        jalson::json_array msg;
-        msg.push_back( REGISTERED );
-        msg.push_back( ev2->ja[1] );
-        msg.push_back( registration_id );
-        m_sesman->send_to_session( ev2->src, msg );
-
-        break;
-      }
-      case EVENT :
-        if (m_client_handler.handle_inbound_event)
-          m_client_handler.handle_inbound_event(ev2);
-        break;
-      case HEARTBEAT :
-        // TODO: handle ... should it even come here?
-        break;
-      case HELLO :
-      case RESULT :
-      case REGISTERED :
-      case INVOCATION :
-      case CHALLENGE :
-      case AUTHENTICATE :
-      {
-        event_cb2& cb = m_handlers2[ ev->msg_type ];
-        if (cb)
+        case EVENT :
+          if (m_client_handler.handle_inbound_event)
+            m_client_handler.handle_inbound_event(ev2);
+          break;
+        case HEARTBEAT: break;
+        case HELLO :
+        case RESULT :
+        case REGISTERED :
+        case INVOCATION :
+        case CHALLENGE :
+        case AUTHENTICATE :
         {
-          cb( ev2 );
+          event_cb2& cb = m_handlers2[ ev2->msg_type ];
+          if (cb) cb( ev2 );
+          else
+          {
+            _ERROR_( "no handler for message type " << ev2->msg_type);
+          }
+          break;
         }
-        else
+        default:
         {
-          _ERROR_( "no handler for message type " << ev->msg_type);
+          // TODO: probably should reply here
+          std::ostringstream os;
+          os << "msg type " << ev2->msg_type << " not supported"; // DJS
+          _ERROR_( os.str() );
+          throw std::runtime_error(os.str());
         }
-        break;
-
       }
-      default:
-      {
-        // TODO: probably should reply here
-        std::ostringstream os;
-        os << "msg type " << ev->msg_type << " not supported"; // DJS
-        _ERROR_( os.str() );
-        throw std::runtime_error(os.str());
-      }
+      break;
     }
-  }
-  else if (ev->mode == event::eOutbound)
-  {
-    _ERROR_( "not yet handling outbound events" );
-  }
-  else
-  {
-    _ERROR_("unhandled event");
+    default:
+    {
+      _ERROR_( "unsupported event type " << ev->type );
+    }
   }
 
 }
@@ -465,43 +424,46 @@ void event_loop::process_event_error(event* ev, event_error& er)
       ArgumentsKw|dict
     ]
 */
-  switch ( ev->msg_type )
+
+  ev_inbound_message * ev2 = dynamic_cast<ev_inbound_message*>(ev);
+  if (ev2)
   {
-
-
-    case CALL :
+    switch ( ev2->msg_type )
     {
-      jalson::json_array msg;
-      msg.push_back( ERROR );
-      msg.push_back( CALL );
+      case CALL :
+      {
+        jalson::json_array msg;
+        msg.push_back( ERROR );
+        msg.push_back( CALL );
 //      msg.push_back( ev->ja[1]);   // TODO: put this back only when we check for its exsitence
-      msg.push_back( jalson::json_object() );
-      msg.push_back( er.error_uri );
-      msg.push_back( jalson::json_array() );
-      msg.push_back( jalson::json_object() );
+        msg.push_back( jalson::json_object() );
+        msg.push_back( er.error_uri );
+        msg.push_back( jalson::json_array() );
+        msg.push_back( jalson::json_object() );
 
-      m_sesman->send_to_session( ev->src, msg );
-      break;
-    }
-    case REGISTER :
-    {
-      jalson::json_array msg;
-      msg.push_back( ERROR );
-      msg.push_back( REGISTER );
-      msg.push_back( ev->ja[1]);
-      msg.push_back( jalson::json_object() );
-      msg.push_back( er.error_uri );
-      msg.push_back( jalson::json_array() );
-      msg.push_back( jalson::json_object() );
-      msg.push_back( "qazwsx" );
+        m_sesman->send_to_session( ev->src, msg );
+        break;
+      }
+      case REGISTER :
+      {
+        jalson::json_array msg;
+        msg.push_back( ERROR );
+        msg.push_back( REGISTER );
+        msg.push_back( ev2->ja[1]);
+        msg.push_back( jalson::json_object() );
+        msg.push_back( er.error_uri );
+        msg.push_back( jalson::json_array() );
+        msg.push_back( jalson::json_object() );
+        msg.push_back( "qazwsx" );
 
-      m_sesman->send_to_session( ev->src, msg );
-      break;
-    }
-    default:
-    {
-      THROW(std::runtime_error,
-            "unsupported event type " << ev->msg_type );
+        m_sesman->send_to_session( ev2->src, msg );
+        break;
+      }
+      default:
+      {
+        THROW(std::runtime_error,
+              "unsupported event type " << ev2->msg_type );
+      }
     }
   }
 
@@ -555,7 +517,7 @@ struct Request_INVOCATION_CB_Data : public Request_CB_Data
   _ERROR_("TODO: put in support for handling inbound errors, and directing to call handler");
 }
 //----------------------------------------------------------------------
-void event_loop::process_inbound_yield(event* e)
+void event_loop::process_inbound_yield(ev_inbound_message* e)
 {
   /* This handles a YIELD message received off a socket.  There are two possible
     options next.  Either route to the session which originated the CALL.  Or,

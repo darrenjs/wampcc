@@ -10,37 +10,13 @@
 
 namespace XXX {
 
-  struct Request_CB_Data;
+struct Request_CB_Data;
 
-
-/*
-  TODO: perhaps shoudl have a better taxonomy of event classes? current thoughts:
-
-  * need a base class
-
-  * represent event from an external peer (ie, will have source SID), and should
-    have a source message.
-
-  * represent an inbound request event
-    -> arrival of CALL, REGISTER, INVOCATION
-    -> inbound means the event was created inside a session, prob from IO callback
-
-  * represent an output response event
-    -> outbound means the event is destined for a session, then onto its IO
-
-  * somehow represent outbound events?
-
-
- */
-
-class event
+struct event
 {
-public:
-
   enum Type
   {
-    eNone = 0,
-    session_state_event,
+    session_state_event = 0,
     outbound_call_event,
     outbound_response_event,
     outbound_message,
@@ -48,51 +24,41 @@ public:
     outbound_subscribe,
     inbound_subscribed,
     router_session_connect_fail,
-//    outbound_event
+    inbound_message
   } type;
-
-  enum Mode
-  {
-    eModeInvalid = 0,
-    eInbound,
-    eOutbound
-  } mode;
-
-  int msg_type; // WAMP message type
 
   session_handle src;
   t_connection_id user_conn_id;
-  jalson::json_array ja;
 
-  jalson::json_array orig_req; // populated for reply/error to a previous request
-
-  Request_CB_Data* cb_data; // valid for responses to request
-
-  unsigned int internal_req_id;
-  void * user;
-
-  event(Type t = eNone)
+  event(Type t,
+        t_connection_id u = t_connection_id())
     : type(t),
-      cb_data( nullptr ),
-      internal_req_id(0),
-      user(nullptr)
-  {
-  }
+      user_conn_id(u)
+  {}
 
-  virtual ~event();
+  virtual ~event(){}
 };
 
 
-/* new style event */
-class inbound_message_event : public event
+struct ev_inbound_message : public event
 {
-public:
-  jalson::json_array msg;
-  inbound_message_event(int __msgtype)
+  int msg_type; // WAMP message type
+  jalson::json_array ja;
+
+  void * user;
+  Request_CB_Data* cb_data; // valid for responses to request
+
+  unsigned int internal_req_id;
+
+  ev_inbound_message(int __msgtype)
+    : event(inbound_message),
+      msg_type(__msgtype),
+      user(nullptr),
+      cb_data(nullptr)
   {
-    this->mode =  event::eInbound;
-    this->msg_type = __msgtype;
   }
+
+  ~ev_inbound_message();
 };
 
 
@@ -103,25 +69,21 @@ struct session_state_event : public event
   session_state_event(bool __session_open)
   : event( event::session_state_event ),
     is_open( __session_open )
-  {
-  }
+  {}
 };
 
 
-/* Another attempt at a generic outbound event */
 struct outbound_message : public event
 {
   session_handle destination;
-  int message_type;
+  jalson::json_array ja;
 
   outbound_message()
-    : event( event::outbound_message )
-  {
-  }
+  : event( event::outbound_message )
+  {}
 };
 
-/* New style event.  Using a specific class to capture response events, rather
- * than further overloading the base event class. */
+
 struct outbound_response_event : public event
 {
   session_handle destination;
@@ -137,26 +99,24 @@ struct outbound_response_event : public event
 
   outbound_response_event()
     : event( event::outbound_response_event )
-  {
-  }
+  {}
 };
 
 
 
 struct outbound_call_event : public event
 {
-  outbound_call_event()
-    : event( event::outbound_call_event ),
-      cb_user_data( nullptr )
-  {
-  }
-
   session_handle dest;
   std::string rpc_name;
   call_user_cb cb;
   void * cb_user_data;
   rpc_args args;
   unsigned int internal_req_id;
+
+  outbound_call_event()
+    : event( event::outbound_call_event ),
+      cb_user_data( nullptr )
+  {}
 };
 
 
@@ -166,17 +126,16 @@ struct ev_inbound_publish : public event
   // program, rather than coming from an external client
   bool is_internal;
   std::string uri;
-  jalson::json_value patch;  // TODO EASY: later, maybe change to array
+  jalson::json_value patch;  // TODO: maybe change to array?
 
   ev_inbound_publish(bool __is_internal,
                      const std::string & __topic_uri,
                      const jalson::json_value& __patch)
-  :  event( event::inbound_publish ),
-     is_internal( __is_internal ),
-     uri( __topic_uri ),
-     patch( __patch )
-  {
-  }
+    : event( event::inbound_publish ),
+      is_internal( __is_internal ),
+      uri( __topic_uri ),
+      patch( __patch )
+  {}
 };
 
 // struct ev_outbound_event : public event
@@ -196,6 +155,7 @@ struct ev_inbound_publish : public event
 //   }
 // };
 
+
 struct ev_outbound_subscribe : public event
 {
   session_handle dest;
@@ -205,35 +165,33 @@ struct ev_outbound_subscribe : public event
   ev_outbound_subscribe(const std::string & __topic_uri)
   :  event( event::outbound_subscribe ),
      uri( __topic_uri )
-  {
-  }
+  {}
 };
+
 
 struct ev_inbound_subscribed : public event
 {
   session_handle src;
   unsigned int internal_req_id;
+  jalson::json_array ja;
 
   ev_inbound_subscribed()
     : event( event::inbound_subscribed )
-  {
-  }
+  {}
 
 };
 
+
 struct ev_router_session_connect_fail : public event
 {
-  t_connection_id router_session_id;
   int status;  /* 0 is no error */
-
 
   ev_router_session_connect_fail(t_connection_id __conn_id,
                                  int __status)
-  :  event( event::router_session_connect_fail ),
-     router_session_id(__conn_id),
-     status(__status)
-  {
-  }
+    : event( event::router_session_connect_fail, __conn_id),
+      status(__status)
+  {}
+
 };
 
 } // namespace xxx
