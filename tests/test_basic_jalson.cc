@@ -238,10 +238,10 @@ DEFTEST( int_and_uint_and_real )
   jalson::json_array& msg=a.as<jalson::json_array>();
 
   ASSERT_TRUE( msg[0].is_uint() );
-  ASSERT_TRUE( msg[0].is_sint() );
-  ASSERT_TRUE( msg[1].is_sint() );
+  ASSERT_TRUE( msg[0].is_int() );
+  ASSERT_TRUE( msg[1].is_int() );
   ASSERT_EQ  ( msg[1].is_uint(),false );
-  ASSERT_TRUE( msg[2].is_sint() );
+  ASSERT_TRUE( msg[2].is_int() );
   ASSERT_TRUE( msg[2].is_uint() );
   ASSERT_TRUE( msg[3].is_number() );
   ASSERT_TRUE( msg[3].is_real() );

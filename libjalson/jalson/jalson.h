@@ -148,6 +148,12 @@ typedef std::vector<json_value>            json_array;
 typedef std::map<std::string, json_value>  json_object;
 typedef std::string                        json_string;
 
+
+// integer types used internally within jalson - platform widest
+typedef long long json_int_t;
+typedef unsigned long long json_uint_t;
+
+
 // ======================================================================
 //
 // Internal implementation, hidden away for readability of this header.
@@ -169,6 +175,12 @@ public:
   json_value(long);
   json_value(long long);
 
+  // caution with unsigned types, because underlying vendor may not support full
+  // unsigned range
+  json_value(unsigned int);
+  json_value(unsigned long);
+  json_value(unsigned long long);
+
   json_value(bool);
   json_value(double);
   json_value(const char*);
@@ -176,12 +188,6 @@ public:
   json_value(const std::string&);
   json_value(const json_array&);
   json_value(const json_object&);
-
-  /* WARNING: ensure the underlying implementation have uint capability before
-   * using any of these. */
-  json_value(unsigned int);
-  json_value(unsigned long);
-  json_value(unsigned long long);
 
   /* copy & assignment */
 
@@ -227,16 +233,16 @@ public:
 
   // int conversion can result in loss of value if actual type differs to
   // that requested
-  bool is_sint()    const  { return this->is_integer() && m_impl.is_sint(); }
+  bool is_int()     const  { return this->is_integer() && m_impl.is_sint(); }
   bool is_uint()    const  { return this->is_integer() && m_impl.is_uint(); }
 
   /* access the value */
 
-  bool                as_bool() const { return m_impl.as_bool(); }
-  double              as_real() const { return m_impl.as_real(); }
+  bool         as_bool() const { return m_impl.as_bool(); }
+  double       as_real() const { return m_impl.as_real(); }
 
-  long long           as_sint() const { return m_impl.as_sint_repr(); }
-  unsigned long long  as_uint() const { return m_impl.as_uint_repr(); }
+  json_int_t   as_int()  const { return m_impl.as_sint_repr(); }
+  json_uint_t  as_uint() const { return m_impl.as_uint_repr(); }
 
 
   // Future expansion. Added sizeed-int support, including methods to check int
@@ -264,7 +270,7 @@ public:
   json_object&       as_object()        { return this->as<json_object>(); }
   const json_object& as_object() const  { return this->as<json_object>(); }
 
-  // utility methods if self holds an array
+  // utility methods if self holds json_value::array
   json_value&        operator[](size_t i)       {  return this->as<json_array>()[i]; }
   const json_value&  operator[](size_t i) const {  return this->as<json_array>()[i]; }
   json_value&        at(size_t i)       {  return this->as<json_array>().at(i); }
@@ -272,7 +278,7 @@ public:
   json_object&       insert_object(const std::string& key);
   json_array&        insert_array(const std::string& key);
 
-  // utility methods if self holds an object
+  // utility methods if self holds json_value::object
   json_value&        operator[](const std::string& k) { return this->as<json_object>()[k];}
   json_object&       append_object();
   json_array&        append_array();

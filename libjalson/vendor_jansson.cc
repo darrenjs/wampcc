@@ -56,8 +56,8 @@ static jalson::json_value decode_jansson_ptr3(json_t * j)
     }
     case JSON_INTEGER :
     {
-      int64_t i = json_integer_value(j);
-      return jalson::json_value((int64_t)i);
+      long long i = json_integer_value(j);
+      return jalson::json_value(i);
     }
     case JSON_REAL :
     {
@@ -118,9 +118,9 @@ static json_t * encode_value3(const jalson::json_value& src)
     }
     case jalson::eINTEGER:
     {
-      if (src.is_sint())
+      if (src.is_int())
       {
-        return json_integer( src.as_sint() );
+        return json_integer( src.as_int() );
       }
       else
       {

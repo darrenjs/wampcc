@@ -21,9 +21,6 @@
 namespace internals
 {
 
-typedef long long          json_sint_t;
-typedef unsigned long long json_uint_t;
-
 template <typename T>
 struct traits
 {
@@ -74,10 +71,10 @@ public:
       json_array*         array;
       json_object*        object;
       json_string*        string;
-      json_uint_t        uint;
-      json_sint_t        sint;
-      double             real;
-      bool               boolean;
+      jalson::json_uint_t uint;
+      jalson::json_int_t  sint;
+      double              real;
+      bool                boolean;
     } data;
   } details;
 
