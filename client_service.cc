@@ -243,7 +243,7 @@ void client_service::new_client(IOHandle *h,
   // TODO: bad design here.  IO event should not come to here, and then into the session manager.
   if (h)
   {
-    m_sesman -> create_session(h, false, user_conn_id);
+    m_sesman -> create_session(h, false, user_conn_id, m_config.realm);
   }
   else
   {

@@ -63,23 +63,17 @@ namespace XXX {
   public:
     Session(SID, Logger*, IOHandle *,
             SessionListener*, event_loop&, bool is_passive,
-            t_connection_id user_conn_id);
+            t_connection_id user_conn_id,
+            std::string realm = "" /* should be empty for passive session */);
     ~Session();
 
     /* Build CALL and enque on socket. Currently used by client-code. Might not
      * be the best place for it? */
     void call( const std::string& procedure);
 
-    // /* Build REGISTER and enque on socket */
-    // void send_register(int, const std::string& procedure, Request_CB_Data* = 0);
-
     void send_request( int request_type,
                        unsigned int internal_req_id,
                        build_message_cb_v2 msg_builder );
-
-    // void send_request( int request_type,
-    //                    build_message_cb_v3 msg_builder,
-    //                    Request_CB_Data* = 0);
 
     void subscribe()  {}
 
@@ -101,6 +95,10 @@ namespace XXX {
     /* If session is not open, then return number of milliseconds since
      * creation.  Else return 0/  */
     int duration_pending_open() const;
+
+    /* return the realm, or empty string if a realm has not yet been provided,
+     * eg, in case of a passive session */
+    std::string realm() const;
 
   private:
     Session(const Session&) = delete;
@@ -171,6 +169,10 @@ namespace XXX {
 
     jalson::json_value m_challenge; // full message
 
+
+    std::string m_realm;
+    mutable std::mutex m_realm_lock;
+
   private:
     // TODO: why two?
     std::map<int, PendingReq* > m_pend_req;
@@ -180,6 +182,8 @@ namespace XXX {
     std::shared_ptr< t_sid > m_session_handle;
 
     t_connection_id m_user_conn_id;
+
+
   };
 
 } // namespace XXX

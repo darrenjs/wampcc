@@ -80,7 +80,8 @@ Session::Session(SID s,
                  SessionListener * listener,
                  event_loop & evl,
                  bool is_passive,
-                 t_connection_id __user_conn_id)
+                 t_connection_id __user_conn_id,
+                 std::string __realm)
   : m_state( eInit ),
     __logptr(logptr),
     m_listener( listener ),
@@ -95,6 +96,7 @@ Session::Session(SID s,
     m_is_closing(false),
     m_evl(evl),
     m_is_passive(is_passive),
+    m_realm(__realm),
     m_session_handle(std::make_shared<t_sid>(s.unique_id())),
     m_user_conn_id(__user_conn_id)
 {
@@ -214,7 +216,7 @@ void Session::on_read_impl(char* src, size_t len)
     }
     catch (const XXX::protocol_error& e)
     {
-      _DEBUG_( "Session::on_read_impl  protocol_error" );
+      _DEBUG_( "Session::on_read_impl protocol_error" );
       error_uri = e.error_uri;
       must_close_session = e.close_session;
       error_text = e.what();
@@ -737,6 +739,11 @@ void Session::handle_HELLO(jalson::json_array& ja)
   // m_sid = m_auth.hello_opts["authid"].as_string().value();
   // m_sid = m_auth.hello_opts["agentid"].as_string().value();
 
+  std::string realm = ja.at(1).as_string();
+
+  if (realm=="")
+    throw event_error(WAMP_NO_SUCH_REALM, "empty realm not allowed", true);
+
   const jalson::json_object & authopts = ja.at(2).as_object();
 
   /* TODO: verify the realm */
@@ -950,7 +957,7 @@ void Session::initiate_handshake()
 
   jalson::json_array msg;
   msg.push_back( HELLO );
-  msg.push_back( "the_realm" );
+  msg.push_back( m_realm );
   jalson::json_object& opt = jalson::append_object( msg );
   opt[ "roles" ] = jalson::json_object();
   opt[ "authid"] = "peter";
@@ -967,5 +974,11 @@ int Session::duration_pending_open() const
     return (time(NULL) - m_time_create)*1000;
 }
 
+std::string  Session::realm() const
+{
+  // need this lock, because realm might be updated from IO thread during logon
+  std::unique_lock<std::mutex> guard(m_realm_lock);
+  return m_realm;
+}
 
 } // namespace XXX

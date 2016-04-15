@@ -8,6 +8,32 @@ namespace XXX
 #define WAMP_URI_NO_SUCH_REGISTRATION "wamp.error.no_such_registration"
 #define WAMP_ERROR_INVALID_URI "wamp.error.invalid_uri"
 #define WAMP_RUNTIME_ERROR  "wamp.runtime_error"
+#define WAMP_NO_SUCH_REALM  "wamp.error.no_such_realm"
+// wamp.error.goodbye_and_out
+// wamp.error.not_authorized
+
+// wamp.error.no_such_subscription
+
+//        wamp.error.invalid_argument
+
+// wamp.error.procedure_already_exists
+
+//        wamp.error.system_shutdown
+
+
+
+//        wamp.error.close_realm
+//        wamp.error.close_realm
+//        wamp.error.not_authorized
+//        wamp.error.authorization_failed
+//        wamp.error.no_such_realm
+//        wamp.error.no_such_role
+//        wamp.error.canceled
+//        wamp.error.option_not_allowed
+//        wamp.error.no_eligible_callee
+//        wamp.error.option_disallowed.disclose_me
+//        wamp.error.network_failure
+
 
 enum WampMsgType
 {

@@ -37,7 +37,8 @@ namespace XXX
 
 
   Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
-                                      t_connection_id user_conn_id)
+                                      t_connection_id user_conn_id,
+                                      std::string realm)
   {
     /* IO thread */
 
@@ -56,7 +57,8 @@ namespace XXX
                         this,
                         m_evl,
                         is_passive,
-                        user_conn_id);
+                        user_conn_id,
+                        realm);
 
     m_sessions.active[ sid ] = sptr;
 
