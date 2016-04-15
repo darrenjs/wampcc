@@ -373,7 +373,7 @@ void Session::process_message(jalson::json_value&jv)
 
   if (!jv.as_array()[0].is_number()) return; // TODO: add better error handling
 
-  int const message_type = jv.as_array()[0].as_sint();
+  int const message_type = jv.as_array()[0].as_int();
 
 
   /* session state validation */

@@ -122,7 +122,7 @@ void pubsub_man::handle_subscribe(ev_inbound_message* ev)
   /* We have received an external request to subscribe to a top */
 
   // TODO: improve this parsing
-  int request_id = ev->ja[1].as_sint();
+  int request_id = ev->ja[1].as_int();
   jalson::json_string uri = ev->ja[3].as_string();
 
 

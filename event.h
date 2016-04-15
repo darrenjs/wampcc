@@ -3,7 +3,6 @@
 
 #include "Callbacks.h"
 
-
 #include <jalson/jalson.h>
 
 #include <functional>

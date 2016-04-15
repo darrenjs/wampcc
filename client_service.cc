@@ -321,7 +321,7 @@ void client_service::handle_REGISTERED(ev_inbound_message* ev)
   if (cb_data)
   {
     // TODO: check, what type does WAMP allow here?
-    int registration_id = ev->ja[2].as_sint();
+    int registration_id = ev->ja[2].as_int();
 
     RegistrationKey key;
     key.router_session_id  = ev->user_conn_id;
@@ -358,7 +358,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
   // TODO: need to parse the INVOCATION message here, eg, check it is valid
   RegistrationKey rkey;
   rkey.router_session_id  = ev->user_conn_id;
-  rkey.id = ev->ja[2].as_sint();
+  rkey.id = ev->ja[2].as_int();
 
   std::string procname;
   {
@@ -369,7 +369,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
     {
       throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
-                                       ev->ja[1].as_sint());
+                                       ev->ja[1].as_int());
     }
     procname = it->second;
   }
@@ -383,7 +383,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
     {
       throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
-                                       ev->ja[1].as_sint());
+                                       ev->ja[1].as_int());
     }
     rpc_actual = it->second;
   }
@@ -393,7 +393,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
   rpc_args my_rpc_args;
   if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
 
-  t_request_id reqid = ev->ja[1].as_sint(); // TODO: make a helper for this, ie, json to t_requetst_id
+  t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
 
   if (rpc_actual.first)
   {
@@ -688,7 +688,7 @@ void client_service::invoke_direct(session_handle& sh,
 
 void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercase
 {
-  int reqid=ev->ja[1].as_sint();
+  int reqid=ev->ja[1].as_int();
   _INFO_("Got RESULT for reqid " << reqid << "," << ev->internal_req_id);
 
   pending_request pendingreq;
@@ -725,7 +725,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
   // TODO: need to parse the INVOCATION message here, eg, check it is valid
   RegistrationKey rkey;
   rkey.router_session_id = ev->user_conn_id;
-  rkey.id = ev->ja[2].as_sint();
+  rkey.id = ev->ja[2].as_int();
 
   std::string procname;
   {
@@ -736,7 +736,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
     {
       throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
-                                       ev->ja[1].as_sint());
+                                       ev->ja[1].as_int());
     }
     procname = it->second;
   }
@@ -750,7 +750,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
     {
       throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
-                                       ev->ja[1].as_sint());
+                                       ev->ja[1].as_int());
     }
     rpc_actual = it->second;
   }
@@ -760,7 +760,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
   rpc_args my_rpc_args;
   if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
 
-  t_request_id reqid = ev->ja[1].as_sint(); // TODO: make a helper for this, ie, json to t_requetst_id
+  t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
 
   if (rpc_actual.first)
   {

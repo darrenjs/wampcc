@@ -312,7 +312,7 @@ void event_loop::process_event(event * ev)
               //  m_internal_rpc_invocation(src, registrationid, args, reqid);
               if (m_internal_invoke_cb)
               {
-                t_request_id reqid = ev2->ja[1].as_sint();
+                t_request_id reqid = ev2->ja[1].as_int();
                 rpc_args my_rpc_args;
                 if ( ev2->ja.size() > 4 ) my_rpc_args.args = ev2->ja[ 4 ];
                 m_internal_invoke_cb( ev->src,
