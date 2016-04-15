@@ -112,8 +112,8 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop)
 
   // set up the async handler
   uv_async_init(loop->uv_loop(), &m_write_async, [](uv_async_t* uvh){
-      IOHandle* h = static_cast<IOHandle*>( uvh->data );
-      h->write_async_cb();
+      IOHandle* ioh = static_cast<IOHandle*>( uvh->data );
+      ioh->write_async_cb();
     });
   m_write_async.data = this;
 

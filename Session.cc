@@ -742,7 +742,7 @@ void Session::handle_HELLO(jalson::json_array& ja)
   std::string realm = ja.at(1).as_string();
 
   if (realm=="")
-    throw event_error(WAMP_NO_SUCH_REALM, "empty realm not allowed", true);
+    throw event_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed", true);
 
   const jalson::json_object & authopts = ja.at(2).as_object();
 

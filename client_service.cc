@@ -367,7 +367,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
 
     if (it == m_registrationid_map.end())
     {
-      throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
+      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
                                        ev->ja[1].as_int());
     }
@@ -381,7 +381,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
 
     if (it == m_procedures.end())
     {
-      throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
+      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
                                        ev->ja[1].as_int());
     }
@@ -626,7 +626,7 @@ void client_service::invoke_direct(session_handle& sh,
     if (it == m_registrationid_map2.end())
     {
       // TODO: test this, ie, failure during direct CALL
-      throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
+      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION, // or CALL?
                                        req_id);
     }
@@ -639,7 +639,7 @@ void client_service::invoke_direct(session_handle& sh,
 
     if (it == m_procedures.end())
     {
-      throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
+      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
                                        req_id);
     }
@@ -734,7 +734,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
 
     if (it == m_registrationid_map.end())
     {
-      throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
+      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
                                        ev->ja[1].as_int());
     }
@@ -748,7 +748,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
 
     if (it == m_procedures.end())
     {
-      throw event_error::request_error(WAMP_URI_NO_SUCH_REGISTRATION,
+      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
                                        INVOCATION,
                                        ev->ja[1].as_int());
     }

@@ -336,7 +336,7 @@ void event_loop::process_event(event * ev)
         }
         case REGISTER :
         {
-          if (!m_rpcman) throw event_error(WAMP_URI_NO_SUCH_PROCEDURE);
+          if (!m_rpcman) throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
 
           // Register the RPC. Once this function has been called, we should
           // expect that requests can be sent immediately, so its important that
