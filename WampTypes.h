@@ -4,35 +4,26 @@
 namespace XXX
 {
 
-#define WAMP_URI_NO_SUCH_PROCEDURE "wamp.error.no_such_procedure"
-#define WAMP_URI_NO_SUCH_REGISTRATION "wamp.error.no_such_registration"
+#define WAMP_ERROR_AUTHORIZATION_FAILED "wamp.error.authorization_failed"
+#define WAMP_ERROR_CANCELED "wamp.error.canceled"
+#define WAMP_ERROR_CLOSE_REALM "wamp.error.close_realm"
+#define WAMP_ERROR_GOODBYE_AND_OUT "wamp.error.goodbye_and_out"
+#define WAMP_ERROR_INVALID_ARGUMENT "wamp.error.invalid_argument"
 #define WAMP_ERROR_INVALID_URI "wamp.error.invalid_uri"
-#define WAMP_RUNTIME_ERROR  "wamp.runtime_error"
-#define WAMP_NO_SUCH_REALM  "wamp.error.no_such_realm"
-// wamp.error.goodbye_and_out
-// wamp.error.not_authorized
+#define WAMP_ERROR_NETWORK_FAILURE "wamp.error.network_failure"
+#define WAMP_ERROR_NOT_AUTHORIZED "wamp.error.not_authorized"
+#define WAMP_ERROR_NO_ELIGIBLE_CALLEE "wamp.error.no_eligible_callee"
+#define WAMP_ERROR_NO_SUCH_REALM "wamp.error.no_such_realm"
+#define WAMP_ERROR_NO_SUCH_REALM "wamp.error.no_such_realm"
+#define WAMP_ERROR_NO_SUCH_ROLE "wamp.error.no_such_role"
+#define WAMP_ERROR_NO_SUCH_SUBSCRIPTION "wamp.error.no_such_subscription"
+#define WAMP_ERROR_OPTION_NOT_ALLOWED "wamp.error.option_not_allowed"
+#define WAMP_ERROR_PROCEDURE_ALREADY_EXISTS "wamp.error.procedure_already_exists"
+#define WAMP_ERROR_SYSTEM_SHUTDOWN "wamp.error.system_shutdown"
+#define WAMP_ERROR_URI_NO_SUCH_PROCEDURE "wamp.error.no_such_procedure"
+#define WAMP_ERROR_URI_NO_SUCH_REGISTRATION "wamp.error.no_such_registration"
 
-// wamp.error.no_such_subscription
-
-//        wamp.error.invalid_argument
-
-// wamp.error.procedure_already_exists
-
-//        wamp.error.system_shutdown
-
-
-
-//        wamp.error.close_realm
-//        wamp.error.close_realm
-//        wamp.error.not_authorized
-//        wamp.error.authorization_failed
-//        wamp.error.no_such_realm
-//        wamp.error.no_such_role
-//        wamp.error.canceled
-//        wamp.error.option_not_allowed
-//        wamp.error.no_eligible_callee
-//        wamp.error.option_disallowed.disclose_me
-//        wamp.error.network_failure
+#define WAMP_RUNTIME_ERROR "wamp.runtime_error"
 
 
 enum WampMsgType
@@ -70,4 +61,3 @@ enum WampMsgType
 } // namespace
 
 #endif
-
