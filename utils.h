@@ -1,6 +1,16 @@
 #ifndef XXX_UTILS_H
 #define XXX_UTILS_H
 
+#include <sstream>
+
+
+#define THROW(E, X )  do                        \
+  {                                             \
+    std::ostringstream __os;                    \
+    __os << X ;                                 \
+    throw E ( __os.str() );                     \
+  } while(false);
+
 
 // TODO: make an enum
 #define HMACSHA256_HEX    0

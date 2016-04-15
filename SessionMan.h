@@ -1,7 +1,7 @@
 #ifndef __SESSIONMAN_H_
 #define __SESSIONMAN_H_
 
-#include "Common.h"
+
 #include "Callbacks.h"
 
 #include "SessionListener.h"

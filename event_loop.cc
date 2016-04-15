@@ -4,6 +4,7 @@
 #include "SessionMan.h"
 #include "WampTypes.h"
 #include "Logger.h"
+#include "utils.h"
 
 
 namespace XXX {

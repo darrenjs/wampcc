@@ -1,8 +1,6 @@
 #ifndef XXX_TOPIC_H
 #define XXX_TOPIC_H
 
-#include "Common.h"
-
 #include <jalson/jalson.h>
 
 #include <string>
