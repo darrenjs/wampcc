@@ -2,6 +2,7 @@
 #define XXX_PUBSUB_MAN_H
 
 #include <map>
+#include <memory>
 
 namespace XXX {
 
@@ -36,9 +37,9 @@ private:
   event_loop& m_evl;
   SessionMan& m_sesman;
 
-  typedef  std::map< std::string, managed_topic* > topic_registry;
+  typedef  std::map< std::string, std::unique_ptr<managed_topic> > topic_registry;
   typedef  std::map< std::string, topic_registry >   realm_to_topicreg;
-  realm_to_topicreg m_topics; // TODO:change to unqiue_ptr
+  realm_to_topicreg m_topics;
   size_t m_next_subscription_id;
 };
 

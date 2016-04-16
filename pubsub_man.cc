@@ -195,13 +195,14 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
     if (allow_create)
     {
       std::cout << "CREATING topic: " << topic << "\n";
-      auto result = realm_iter->second.insert(std::make_pair(topic, new managed_topic(m_next_subscription_id++)));
+      std::unique_ptr<managed_topic> ptr(new managed_topic(m_next_subscription_id++));
+      auto result = realm_iter->second.insert(std::make_pair(topic, std::move( ptr )));
       topic_iter = result.first;
     }
     else return nullptr;
   }
 
-  return topic_iter->second;
+  return topic_iter->second.get();
 }
 
 } // namespace XXX
