@@ -108,7 +108,7 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
   event_queue_condition.notify_one();
 }
 
-
+/* called upon subscribed and update events */
 void subscribe_cb(XXX::subscription_event_type evtype,
                   const std::string&,
                   const jalson::json_value& args,
@@ -225,7 +225,7 @@ int main(int argc, char** argv)
   rconn.connect("127.0.0.1", 55555);
 
   // wait for a connection attempt to complete
-  auto wait_interval = std::chrono::seconds(7);
+  auto wait_interval = std::chrono::seconds(5);
   {
     std::unique_lock<std::mutex> guard(g_active_session_mutex);
 

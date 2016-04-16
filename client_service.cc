@@ -542,6 +542,7 @@ void client_service::add_topic(topic* topic)
         ev_inbound_publish* ev = new ev_inbound_publish(true,
                                                         src->uri(),
                                                         patch);
+        ev->realm = m_config.realm;
         m_evl->push( ev );
       }
     });

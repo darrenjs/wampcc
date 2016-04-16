@@ -63,18 +63,10 @@ void pubsub_man::handle_event(ev_inbound_publish* ev)
   // TODO: lock me?  Or will only be the event thread?
 
   // find or create a topic
-  auto iter = m_topics.find( ev->uri );
-  if (iter == m_topics.end())
-  {
-    std::cout << "topic created: " << ev->uri << "\n";
-    managed_topic * mt = new managed_topic(m_next_subscription_id++);
-    auto result = m_topics.insert(std::make_pair(ev->uri , mt));
-    iter = result.first;
-  }
+  managed_topic* mt = find_topic(ev->uri, ev->realm, true);
+  if (!mt) return; // TODO: dont I need to thow an event error here? Or, is this purely an internal event?
 
   // apply the patch
-  managed_topic* mt = iter->second;
-
   try
   {
     mt->image.patch(ev->patch.as_array());
@@ -125,34 +117,17 @@ void pubsub_man::handle_subscribe(ev_inbound_message* ev)
   int request_id = ev->ja[1].as_int();
   jalson::json_string uri = ev->ja[3].as_string();
 
+  // find or create a topic
+  _INFO_("SUBSCRIBE for " << ev->realm << "::" << uri);
+  managed_topic* mt = find_topic(uri, ev->realm, true);
 
-  // TODO: find or create the topic.
-  auto it = m_topics.find( uri );
-
-  bool allow_auto_create = true;
-  if (it == m_topics.end())
-  {
-
-    if (allow_auto_create)
-    {
-      managed_topic * mt = new managed_topic(m_next_subscription_id++);
-      auto insres = m_topics.insert(std::make_pair(uri,mt));
-      it = insres.first;
-    }
-    else
-    {
-      throw event_error::request_error("wamp.error.invalid_uri",
-                                       SUBSCRIBE, request_id);
-    }
-
-
-  }
-
-
+  if (!mt)
+    throw event_error::request_error(WAMP_ERROR_INVALID_URI,
+                                     SUBSCRIBE, request_id);
   {
     auto sp = ev->src.lock();
     if (!sp) return;
-    it->second->m_subscribers.push_back(ev->src);
+    mt->m_subscribers.push_back(ev->src);
     _INFO_("session " << *sp << " subscribed to topic '"<< uri<< "'");
 
     // TODO: probably could call the session manager directly here, instead of
@@ -164,7 +139,7 @@ void pubsub_man::handle_subscribe(ev_inbound_message* ev)
     evout->response_type = SUBSCRIBED;
     evout->request_type  = SUBSCRIBE;
     evout->reqid         = request_id;
-    evout->subscription_id = it->second->subscription_id;
+    evout->subscription_id = mt->subscription_id;
     m_evl.push( evout );
   }
 
@@ -181,19 +156,52 @@ void pubsub_man::handle_event(session_state_event* ev)
 
   // TODO: design of this can be improved, ie, we should track what topics a
   // session has subscribed too, rather than searching every topic.
-  for (auto & item : m_topics)
-  {
-    for (auto it = item.second->m_subscribers.begin();
-         it != item.second->m_subscribers.end(); it++)
+  for (auto & realm_iter : m_topics)
+    for (auto & item : realm_iter.second)
     {
-      if (compare_session(*it, ev->src))
+      for (auto it = item.second->m_subscribers.begin();
+           it != item.second->m_subscribers.end(); it++)
       {
-        item.second->m_subscribers.erase( it );
-        break;
-       }
+        if (compare_session(*it, ev->src))
+        {
+          item.second->m_subscribers.erase( it );
+          break;
+        }
+      }
     }
-  }
 }
 
+
+managed_topic* pubsub_man::find_topic(const std::string& topic,
+                                      const std::string& realm,
+                                      bool allow_create)
+{
+  auto realm_iter = m_topics.find( realm );
+  if (realm_iter == m_topics.end())
+  {
+    if (allow_create)
+    {
+      std::cout << "CREATING realm: " << realm << "\n";
+      auto result = m_topics.insert(std::make_pair(realm, topic_registry()));
+      realm_iter = result.first;
+    }
+    else
+      return nullptr;
+  }
+
+  auto topic_iter = realm_iter->second.find( topic );
+  if (topic_iter ==  realm_iter->second.end())
+  {
+    if (allow_create)
+    {
+      std::cout << "CREATING topic: " << topic << "\n";
+      auto result = realm_iter->second.insert(std::make_pair(topic, new managed_topic(m_next_subscription_id++)));
+      topic_iter = result.first;
+    }
+    else return nullptr;
+  }
+
+  return topic_iter->second;
+}
 
 } // namespace XXX

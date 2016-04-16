@@ -28,13 +28,18 @@ private:
   pubsub_man(const pubsub_man&); // no copy
   pubsub_man& operator=(const pubsub_man&); // no assignment
 
+  managed_topic* find_topic(const std::string& topic,
+                            const std::string& realm,
+                            bool allow_create);
+
   Logger *__logptr; /* name chosen for log macros */
   event_loop& m_evl;
   SessionMan& m_sesman;
 
-  std::map<std::string, managed_topic*> m_topics; // TODO:change to unqiue_ptr
+  typedef  std::map< std::string, managed_topic* > topic_registry;
+  typedef  std::map< std::string, topic_registry >   realm_to_topicreg;
+  realm_to_topicreg m_topics; // TODO:change to unqiue_ptr
   size_t m_next_subscription_id;
-
 };
 
 } // namespace XXX
