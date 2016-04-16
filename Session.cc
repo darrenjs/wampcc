@@ -526,6 +526,7 @@ void Session::process_message(jalson::json_value&jv)
 
       ev_inbound_subscribed* ev = new ev_inbound_subscribed();
       ev->src = handle();
+      ev->realm = m_realm;
       ev->user_conn_id = m_user_conn_id;
       ev->ja = ja;
       ev->internal_req_id  = pend2.internal_req_id;
@@ -549,6 +550,7 @@ void Session::process_message(jalson::json_value&jv)
   // new style, using a dedicated event class for inbound messages
   ev_inbound_message * ev = new ev_inbound_message(message_type);
   ev->src = handle();
+  ev->realm = m_realm;
   ev->user_conn_id = m_user_conn_id;
   ev->ja = ja;
   if (pendreq) ev->cb_data  = pendreq->cb_data;
@@ -741,8 +743,16 @@ void Session::handle_HELLO(jalson::json_array& ja)
 
   std::string realm = ja.at(1).as_string();
 
-  if (realm=="")
+  if (realm=="" || realm.empty())
     throw event_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed", true);
+
+  {
+    // update the realm, and protect from multiple assignments to the value, so
+    // that it cannot be changed once set
+    std::unique_lock<std::mutex> guard(m_realm_lock);
+    if (m_realm.empty() && !realm.empty())
+      m_realm = realm;
+  }
 
   const jalson::json_object & authopts = ja.at(2).as_object();
 

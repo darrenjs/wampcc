@@ -214,7 +214,7 @@ int main(int argc, char** argv)
   process_options(argc, argv);
 
   XXX::client_service::config config;
-  config.port = 0;
+  config.server_port = 0;
   config.realm = "default_realm";
   g_client.reset( new XXX::client_service(logger, config) );
 

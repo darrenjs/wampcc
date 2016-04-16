@@ -29,12 +29,11 @@ struct dealer_listener
   virtual void rpc_registered(std::string uri) = 0;
 };
 
-
 class dealer_service
 {
 public:
 
-  dealer_service(Logger*, dealer_listener*, IOLoop* io= nullptr, event_loop* ev = nullptr);
+  dealer_service(Logger*, dealer_listener*, IOLoop* io, event_loop* ev, internal_invoke_cb internal_rpc_cb);
   ~dealer_service();
 
   void start();
@@ -47,7 +46,8 @@ public:
 
   void listen(int port);
 
-  int register_procedure(std::string procedure);
+  int register_internal_procedure(std::string procedure,
+                                  const std::string& realm);
 
 private:
   dealer_service(const dealer_service&) = delete;

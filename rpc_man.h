@@ -18,6 +18,7 @@ namespace XXX {
 class event_loop;
 class client_service;
 class Logger;
+class ev_inbound_message;
 
 /* TODO: this is a duplcate definition. In fact, is this even needed now? I.e.,
  this structure is that a CALLEE-program will register with CALLEE-api
@@ -73,8 +74,11 @@ typedef std::function< void(const rpc_details*) > rpc_added_cb;
 class rpc_man
 {
 public:
-  rpc_man(Logger *, event_loop&, rpc_added_cb);
+  rpc_man(Logger *, event_loop&, rpc_added_cb, internal_invoke_cb);
   ~rpc_man();
+
+  // handle an inbound CALL event
+  void handle_inbound_CALL(ev_inbound_message*);
 
   // return the registion id
   int  handle_register_event(session_handle& sh,
@@ -86,12 +90,14 @@ public:
   void handle_invocation(jalson::json_array& jv);
 
   // Register and RPC that is handled by the internal session
-  int register_internal_rpc(const std::string& rpc_uri);
+  int register_internal_rpc(const std::string& rpc_uri,
+                            const std::string& realm);
 
   // Start a CALL sequence to an RPC
   void call_rpc(std::string rpcname);
 
-  rpc_details get_rpc_details( std::string rpcname );
+  rpc_details get_rpc_details( const std::string& rpcname,
+                               const std::string& realm);
 
 private:
   rpc_man(const rpc_man&); // no copy
@@ -100,10 +106,15 @@ private:
   Logger *__logptr; /* name chosen for log macros */
   event_loop& m_evl;
 
+  typedef  std::map< std::string, rpc_details* > rpc_registry;
+  typedef  std::map< std::string, rpc_registry > realm_to_rpc_registry;
+
+  std::mutex       m_rpc_map_lock;
+  realm_to_rpc_registry m_realm_to_registry;
   std::map< std::string, rpc_details* > m_rpc_map2;
   int m_next_regid;
-  std::mutex                                        m_rpc_map_lock;
   rpc_added_cb     m_rpc_added_cb;
+  internal_invoke_cb m_internal_invoke_cb;
 };
 
 } // namespace XXX

@@ -110,6 +110,11 @@ typedef std::function<void(router_conn*,
                            int status, /* 0 is no error */
                            bool is_open)> router_session_connect_cb;
 
+typedef std::function<void(session_handle&,
+                           t_request_id,
+                           int,
+                           rpc_args&) > internal_invoke_cb;
+
 } // namespace XXX
 
 #endif

@@ -17,14 +17,15 @@ namespace XXX {
 dealer_service::dealer_service(Logger *logptr,
                                dealer_listener* l,
                                IOLoop* ext_ioloop,
-                               event_loop* ext_event_loop)
+                               event_loop* ext_event_loop,
+                               internal_invoke_cb internal_rpc_cb)
   : __logptr( logptr ),
     m_io_loop( ext_ioloop? ext_ioloop : new IOLoop( logptr)),
     m_evl( ext_event_loop? ext_event_loop : new event_loop( logptr ) ),
     m_own_io(ext_ioloop == nullptr),
     m_own_ev(ext_event_loop == nullptr),
     m_sesman( new SessionMan(logptr, *m_evl) ),
-    m_rpcman( new rpc_man(logptr, *m_evl, [this](const rpc_details*r){this->rpc_registered_cb(r); }) ),
+    m_rpcman( new rpc_man(logptr, *m_evl, [this](const rpc_details*r){this->rpc_registered_cb(r); }, internal_rpc_cb)),
     m_pubsub(new pubsub_man(logptr, *m_evl, *m_sesman)),
     m_listener( l ),
     m_next_internal_request_id(1)
@@ -190,9 +191,10 @@ void dealer_service::listen(int port)
     } );
 }
 
-int dealer_service::register_procedure(std::string uri)
+int dealer_service::register_internal_procedure(std::string uri,
+                                                const std::string& realm)
 {
-  return m_rpcman->register_internal_rpc(uri);
+  return m_rpcman->register_internal_rpc(uri, realm);
 }
 
 //----------------------------------------------------------------------

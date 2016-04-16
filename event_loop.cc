@@ -300,40 +300,7 @@ void event_loop::process_event(event * ev)
           break;
         }
         case ERROR : {  process_inbound_error( ev ); break; }
-        case CALL :
-        {
-          std::string uri = ev2->ja[3].as_string();
-          rpc_details rpc = m_rpcman->get_rpc_details(uri);
-          if (rpc.registration_id)
-          {
-            if (rpc.type == rpc_details::eInternal)
-            {
-              _INFO_("TODO: have an internal rpc to handle " << uri);
-
-              //  m_internal_rpc_invocation(src, registrationid, args, reqid);
-              if (m_internal_invoke_cb)
-              {
-                t_request_id reqid = ev2->ja[1].as_int();
-                rpc_args my_rpc_args;
-                if ( ev2->ja.size() > 4 ) my_rpc_args.args = ev2->ja[ 4 ];
-                m_internal_invoke_cb( ev->src,
-                                      reqid,
-                                      rpc.registration_id,
-                                      my_rpc_args);
-              }
-            }
-            else
-            {
-              _INFO_("TODO: have an outbound rpc to handle " << uri);
-            }
-          }
-          else
-          {
-            // TODO: add better handling here
-            _WARN_("uri not found " << uri);
-          }
-          break;
-        }
+        case CALL :  {  m_rpcman->handle_inbound_CALL(ev2); break; }
         case REGISTER :
         {
           if (!m_rpcman) throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);

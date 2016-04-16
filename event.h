@@ -28,6 +28,7 @@ struct event
 
   session_handle src;
   t_connection_id user_conn_id;
+  std::string realm;  // TODO: long term, replace with an ID
 
   event(Type t,
         t_connection_id u = t_connection_id())

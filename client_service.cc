@@ -47,6 +47,9 @@ client_service::client_service(Logger * logptr,
     m_sesman(new SessionMan(__logptr, *m_evl.get())),
     m_next_client_request_id(100)
 {
+
+  if (m_config.realm.empty()) throw std::runtime_error("config.realm cannot be empty");
+
   // TODO: make this a member
   client_event_handler local_handler;
 
@@ -82,17 +85,18 @@ client_service::client_service(Logger * logptr,
   m_evl->set_handler2(ERROR,
                       [this](ev_inbound_message* ev){ this->handle_ERROR(ev); } );
 
-  m_evl->m_internal_invoke_cb = [this](session_handle& h,
-                                       t_request_id req_id,
-                                       int reg_id,
-                                       rpc_args& args){this->invoke_direct(h, req_id, reg_id, args);};
 
   /* TODO: remove legacy interaction between IO thread and user space */
   m_io_loop->m_new_client_cb = [this](IOHandle* h, int status, int rid ){this->new_client(h, status, rid);};
 
+  auto fun = [this](session_handle& h,
+                    t_request_id req_id,
+                    int reg_id,
+                    rpc_args& args){this->invoke_direct(h, req_id, reg_id, args);};
+
   if (config.enable_embed_router)
   {
-    m_embed_router = new dealer_service(logptr, nullptr, m_io_loop.get(), m_evl.get());
+    m_embed_router = new dealer_service(logptr, nullptr, m_io_loop.get(), m_evl.get(), fun );
   }
 }
 
@@ -257,6 +261,8 @@ void client_service::new_client(IOHandle *h,
 
 void client_service::start()
 {
+  /* USER thread */
+
   m_io_loop->start(); // returns immediately
 
   if (m_config.enable_embed_router)
@@ -268,7 +274,8 @@ void client_service::start()
       for (auto i : m_procedures)
       {
         const std::string & uri = i.first;
-        int registrationid = m_embed_router->register_procedure(uri);
+        int registrationid = m_embed_router->register_internal_procedure(uri,
+                                                                         m_config.realm);
         regid[ uri ] = registrationid;
       }
     }
@@ -282,7 +289,7 @@ void client_service::start()
     }
 
     m_embed_router->start();
-    m_embed_router->listen(m_config.port);
+    m_embed_router->listen(m_config.server_port);
   }
 
 }

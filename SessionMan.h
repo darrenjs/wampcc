@@ -38,7 +38,7 @@ public:
 
   Session* create_session(IOHandle *, bool is_passive,
                           t_connection_id user_conn_id,
-                          std::string realm); // TODO: not sure SM should have this.
+                          std::string realm);
 
   void close_all();
 

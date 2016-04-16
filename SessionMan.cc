@@ -62,7 +62,7 @@ namespace XXX
 
     m_sessions.active[ sid ] = sptr;
 
-    _INFO_( "session created, id=" << sid );
+    _INFO_( "session created, id:" << sid );
     if (!is_passive) sptr->initiate_handshake();
 
     return sptr;

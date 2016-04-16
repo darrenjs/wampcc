@@ -113,13 +113,10 @@ void publisher_tep()
 int main(int /* argc */, char** /* argv */)
 {
   XXX::client_service::config cfg;
-  cfg.port = 55555;
+  cfg.server_port = 55555;
   cfg.enable_embed_router = true;
 
-
-
   std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger, cfg) );
-
 
   std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_hello") );
   std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_start") );

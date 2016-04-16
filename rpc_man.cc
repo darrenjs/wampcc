@@ -10,11 +10,13 @@ namespace XXX {
 
 
 /* Constructor */
-rpc_man::rpc_man(Logger * logptr, event_loop&evl, rpc_added_cb cb)
+rpc_man::rpc_man(Logger * logptr, event_loop&evl, rpc_added_cb cb,
+                 internal_invoke_cb internal_rpc_cb)
   : __logptr(logptr),
     m_evl(evl),
     m_next_regid(1),
-    m_rpc_added_cb( cb )
+    m_rpc_added_cb( cb ),
+    m_internal_invoke_cb( internal_rpc_cb )
 {
   m_evl.set_rpc_man( this );
 }
@@ -30,7 +32,8 @@ rpc_man::~rpc_man()
 
 
 // TODO: instead of int, use a typedef
-int rpc_man::register_internal_rpc(const std::string& procedure_uri)
+int rpc_man::register_internal_rpc(const std::string& procedure_uri,
+                                   const std::string& realm)
 {
   rpc_details* r = new rpc_details();
   r->registration_id = 0;
@@ -38,36 +41,35 @@ int rpc_man::register_internal_rpc(const std::string& procedure_uri)
   r->type = rpc_details::eInternal;
 
   {
+    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+
+    auto & rpcreg = m_realm_to_registry [ realm ];
     // TODO: handle duplicates
     r->registration_id = m_next_regid++;
-    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-    m_rpc_map2[ procedure_uri ] = r;
+    rpcreg[ procedure_uri ] = r;
   }
-  _INFO_( "Internal RPC '" << procedure_uri <<"' registered with id " << r->registration_id );
+  _INFO_( "Internal  "<< realm << "::'" << procedure_uri <<"' registered with id " << r->registration_id );
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r->registration_id;
 }
 
 
-rpc_details rpc_man::get_rpc_details( std::string rpcname )
+rpc_details rpc_man::get_rpc_details( const std::string& rpcname,
+                                      const std::string& realm )
 {
   std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
 
-  // std::cout << "RPCs: ";
-  // for (auto i : m_rpc_map2)
-  // {
-  //   std::cout << i.second->rpc_name << " ";
-  // }
-  // std::cout << "\n";
+  auto realm_iter = m_realm_to_registry.find( realm );
 
-  auto it = m_rpc_map2.find( rpcname );
-  if (it != m_rpc_map2.end())
-  {
-    return *(it->second);
-  }
-  else
-    return rpc_details();
+  if (realm_iter == m_realm_to_registry.end())
+    return rpc_details(); // realm not found
+
+  auto rpc_iter = realm_iter->second.find(rpcname);
+  if (rpc_iter == realm_iter->second.end())
+    return rpc_details(); // procedure not found
+
+  return *rpc_iter->second;
 }
 
 // TODO: would be nice if jalson has better checking method, and doesnt throw
@@ -191,6 +193,49 @@ void rpc_man::call_rpc(std::string rpcname)
 
    */
 
+
+}
+
+void rpc_man::handle_inbound_CALL(ev_inbound_message* ev)
+{
+  // TODO: improve json parsing
+  std::string uri = ev->ja[3].as_string();
+
+  /* lookup the RPC */
+
+  // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
+  rpc_details rpc = this->get_rpc_details(uri, ev->realm);
+
+  if (rpc.registration_id)
+  {
+    if (rpc.type == rpc_details::eInternal)
+    {
+      _INFO_("TODO: have an internal rpc to handle " << uri);
+
+      //  m_internal_rpc_invocation(src, registrationid, args, reqid);
+      if (m_internal_invoke_cb)
+      {
+        t_request_id reqid = ev->ja[1].as_int();
+        rpc_args my_rpc_args;
+        if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
+        m_internal_invoke_cb( ev->src,
+                              reqid,
+                              rpc.registration_id,
+                              my_rpc_args);
+      }
+    }
+    else
+    {
+      _INFO_("TODO: have an outbound rpc to handle " << uri);
+    }
+  }
+  else
+  {
+    _WARN_("Failed to find RPC for CALL request: " << uri);
+     // TODO : test this path; should reulst in a ERROR going back to the
+     // client process, and that it can successfully handle it.
+    throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
+  }
 
 }
 

@@ -91,10 +91,6 @@ public:
 
   typedef std::function<void(event*) > event_cb;
   typedef std::function<void(ev_inbound_message*) > event_cb2;
-  typedef std::function<void(session_handle&,
-                             t_request_id,
-                             int,
-                             rpc_args&) > internal_invoke_cb;
 
 
   class event_loop
@@ -159,8 +155,6 @@ public:
     std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
 
     client_event_handler m_client_handler;
-  public:
-    internal_invoke_cb m_internal_invoke_cb;
 
 };
 

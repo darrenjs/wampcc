@@ -42,11 +42,9 @@ public:
 
   struct config
   {
-    int port = 0;
-    std::string remote_addr;
-    int remote_port = 0;
+    int server_port = 0;
     bool enable_embed_router = false;
-    std::string realm;
+    std::string realm = "default_realm";
   };
 
   client_service(Logger*, config);
