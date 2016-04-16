@@ -181,7 +181,6 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
   {
     if (allow_create)
     {
-      std::cout << "CREATING realm: " << realm << "\n";
       auto result = m_topics.insert(std::make_pair(realm, topic_registry()));
       realm_iter = result.first;
     }
@@ -194,7 +193,6 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
   {
     if (allow_create)
     {
-      std::cout << "CREATING topic: " << topic << "\n";
       std::unique_ptr<managed_topic> ptr(new managed_topic(m_next_subscription_id++));
       auto result = realm_iter->second.insert(std::make_pair(topic, std::move( ptr )));
       topic_iter = result.first;
