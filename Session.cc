@@ -2,7 +2,6 @@
 
 #include "IOHandle.h"
 #include "SessionListener.h"
-#include "TopicMan.h"
 #include "rpc_man.h"
 #include "WampTypes.h"
 #include "event_loop.h"
