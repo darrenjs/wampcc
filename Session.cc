@@ -612,7 +612,6 @@ void Session::send_request( int request_type,
                             unsigned int internal_req_id,
                             build_message_cb_v2 msg_builder )
 {
-  _INFO_("Session::send_request internal_req_id=" << internal_req_id);
   uint64_t request_id = ++m_request_id; // TODO: needs to be atomic
 
   // TODO: here I am using the PendingRegister struct ... but question is, do I
