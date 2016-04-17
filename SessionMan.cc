@@ -6,7 +6,6 @@
 
 #include "WampTypes.h"
 #include "Logger.h"
-#include "session_state_listener.h"
 
 #include <string.h>
 
