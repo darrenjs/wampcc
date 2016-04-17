@@ -97,6 +97,13 @@ void event_loop::push(event* ev)
   m_condvar.notify_one();
 }
 
+void event_loop::push(std::shared_ptr<event> sp)
+{
+  std::unique_lock<std::mutex> guard(m_mutex);
+  m_queue.push_back( sp );
+  m_condvar.notify_one();
+}
+
 
 void event_loop::hb_check()
 {
@@ -218,6 +225,12 @@ void event_loop::process_event(event * ev)
 
   switch ( ev->type )
   {
+    case event::outbound_publish:
+    {
+      ev_outbound_publish* ev2 = dynamic_cast<ev_outbound_publish*>(ev);
+      process_outbound_publish(ev2);
+      break;
+    }
     case event::inbound_subscribed:
     {
       // TODO: create a template for this, which will throw etc.
@@ -694,5 +707,31 @@ void event_loop::process_outbound_subscribe(ev_outbound_subscribe* ev)
 
   m_sesman->send_request( ev->dest,SUBSCRIBE , ev->internal_req_id, msg_builder2);
 }
+
+//----------------------------------------------------------------------
+
+void event_loop::process_outbound_publish(ev_outbound_publish* ev)
+{
+  jalson::json_array msg;
+  msg.push_back( PUBLISH );
+  msg.push_back( 0 );
+  msg.push_back( jalson::json_object() );
+  msg.push_back( ev->uri );
+  msg.push_back( ev->patch );
+
+  build_message_cb_v2 msg_builder2 = [&msg](int request_id)
+    {
+      msg[1] = request_id;
+
+      // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
+      return std::pair< jalson::json_array, Request_CB_Data*> ( msg, nullptr );
+
+    };
+
+  // TODO: instead of 0, need to have a valie intenral request id
+  for (auto & sh : ev->targets)
+    m_sesman->send_request(sh, PUBLISH, 0, msg_builder2);
+}
+
 
 } // namespace XXX

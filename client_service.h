@@ -221,6 +221,8 @@ public:
 
   client_service * service() { return m_svc; }
 
+  session_handle handle() { return m_internal_session_handle; }
+
 private:
   client_service * m_svc;
   router_session_connect_cb m_connection_cb;

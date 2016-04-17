@@ -531,6 +531,30 @@ void client_service::add_topic(topic* topic)
     [this](const XXX::topic* src,
            const jalson::json_value& patch)
     {
+      /* USER thread */
+
+      size_t router_session_count = 0;
+      {
+        std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+        router_session_count = m_router_sessions.size();
+      }
+      if (router_session_count>0)
+      {
+        auto sp = std::make_shared<ev_outbound_publish>(src->uri(),
+                                                        patch,
+                                                        router_session_count);
+        {
+          std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+          for (auto & item : m_router_sessions)
+          {
+            session_handle sh = item.second->handle();
+            sp->targets.push_back( sh );
+          }
+        }
+        m_evl->push( sp );
+      }
+
+
       // TODO: here, I need to obtain our session to the router, so that topic
       // updates can be sent to the router, for it to the republish as events.
       // Currently we have not stored that anywhere.

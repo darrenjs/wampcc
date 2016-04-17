@@ -23,7 +23,8 @@ struct event
     outbound_subscribe,
     inbound_subscribed,
     router_session_connect_fail,
-    inbound_message
+    inbound_message,
+    outbound_publish
   } type;
 
   session_handle src;
@@ -119,6 +120,23 @@ struct outbound_call_event : public event
   {}
 };
 
+
+struct ev_outbound_publish : public event
+{
+  std::string uri;
+  jalson::json_value patch;  // TODO: maybe change to array?
+  std::vector< session_handle > targets;
+
+  ev_outbound_publish(const std::string & __topic_uri,
+                      const jalson::json_value& __patch,
+                      size_t reserve_size)
+    : event( event::outbound_publish ),
+      uri( __topic_uri ),
+      patch( __patch )
+  {
+    targets.reserve( reserve_size );
+  }
+};
 
 struct ev_inbound_publish : public event
 {

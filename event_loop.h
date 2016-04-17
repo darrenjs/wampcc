@@ -104,6 +104,7 @@ public:
     void init();
 
     void push(event* e);
+    void push(std::shared_ptr<event> sp);
 
     void request_stop() { m_continue=false; }
 
@@ -133,6 +134,7 @@ public:
     void process_inbound_error(event* e);
     void process_inbound_yield(ev_inbound_message* e);
     void process_outbound_subscribe(ev_outbound_subscribe* e);
+    void process_outbound_publish(ev_outbound_publish* e);
 
     void hb_check();
 
