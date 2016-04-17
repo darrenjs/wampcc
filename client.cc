@@ -1,7 +1,6 @@
 
 
 #include <Topic.h>
-#include <Table.h>
 #include <client_service.h>
 #include <Logger.h>
 
@@ -16,7 +15,7 @@
 #include <sys/time.h>
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eInfo,
+                                              XXX::Logger::eAll,
                                               true);
 
 struct callback_t

@@ -1,10 +1,9 @@
 
-
-#include "Table.h"
 #include "Session.h"
 #include "Logger.h"
 #include "event_loop.h"
 #include "client_service.h"
+#include "Topic.h"
 
 
 #include <Logger.h>
@@ -13,17 +12,20 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
+#include <list>
 #include <iostream>
 
 #include <unistd.h>
 #include <string.h>
+
+#include <sys/time.h>
 
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
 
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eInfo,
+                                              XXX::Logger::eAll,
                                               true);
 
 std::unique_ptr<XXX::client_service> g_client;
@@ -118,9 +120,9 @@ void subscribe_cb(XXX::subscription_event_type evtype,
 }
 int g_connect_status = 0;
 
-void connect_cb_2(XXX::router_conn* /*router_session*/,
-                  int status,
-                  bool /*is_open*/)
+void router_connection_cb(XXX::router_conn* /*router_session*/,
+                          int status,
+                          bool /*is_open*/)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
@@ -209,6 +211,24 @@ static void process_options(int argc, char** argv)
   while (optind < argc) uopts.cmdargs.push_back(argv[optind++]);
 }
 
+std::string get_timestamp()
+{
+
+  // get current time
+  timeval now;
+  struct timezone * const tz = NULL; /* not used on Linux */
+  gettimeofday(&now, tz);
+
+  struct tm _tm;
+  localtime_r(&now.tv_sec, &_tm);
+
+  std::ostringstream os;
+  os << _tm.tm_hour << ":" << _tm.tm_min << ":" << _tm.tm_sec;
+
+  return os.str();
+}
+
+
 int main(int argc, char** argv)
 {
   process_options(argc, argv);
@@ -218,9 +238,13 @@ int main(int argc, char** argv)
   config.realm = "default_realm";
   g_client.reset( new XXX::client_service(logger, config) );
 
+  XXX::text_topic topic("topic1");
+
+  g_client->add_topic( &topic );
+
   g_client->start();
 
-  XXX::router_conn rconn( g_client.get(), connect_cb_2, nullptr );
+  XXX::router_conn rconn( g_client.get(), router_connection_cb, nullptr );
 
   rconn.connect("127.0.0.1", 55555);
 
@@ -232,7 +256,8 @@ int main(int argc, char** argv)
     bool hasevent = g_active_session_condition.wait_for(guard,
                                                         wait_interval,
                                                         [](){ return g_active_session_notifed; });
-    if (!hasevent) die("no connection");
+
+    if (!hasevent) die("failed to obtain remote connection");
   }
 
   if (g_connect_status != 0)
@@ -243,12 +268,12 @@ int main(int argc, char** argv)
   }
 
 
+  // TODO: take CALL parameters from command line
   XXX::rpc_args args;
   jalson::json_array ja;
   ja.push_back( "hello" );
   ja.push_back( "world" );
   args.args = ja ;
-
 
   rconn.call("stop", args,
              [](XXX::call_info& reqdet,
@@ -274,7 +299,7 @@ int main(int argc, char** argv)
       return 1;
     }
 
-    rconn.subscribe("topic1", subscribe_cb, nullptr);
+    //rconn.subscribe("topic1", subscribe_cb, nullptr);
 
     while (!event_queue.empty())
     {
@@ -288,7 +313,22 @@ int main(int argc, char** argv)
         case eReplyReceived : keep_waiting = false; break;
       }
     }
+
   }
+
+
+  // topic publication
+  bool do_publish = true;
+  if (do_publish)
+  {
+    while(true)
+    {
+      topic.update( get_timestamp().c_str() );
+      sleep(1);
+    }
+
+  }
+
 
   while (1) sleep(1);
 

@@ -352,6 +352,14 @@ void event_loop::process_event(event * ev)
           }
           break;
         }
+        case PUBLISH :
+        {
+          // TODO: route this to the managed topic
+          // TODO: update the topic
+          // TODO: generate the update, and send to clients
+          std::cout << "TODO: need to handle inbound PUBLISH message";
+          break;
+        }
         default:
         {
           // TODO: probably should reply here
