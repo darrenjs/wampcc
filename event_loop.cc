@@ -10,7 +10,7 @@
 namespace XXX {
 
 // TODO: set to 1000; for testing, set to 1 ms
-#define SYSTEM_HEARTBEAT_MS 250
+#define SYSTEM_HEARTBEAT_MS 1000
 
 /* Constructor */
 event_loop::event_loop(Logger *logptr)
