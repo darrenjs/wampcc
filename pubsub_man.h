@@ -1,6 +1,8 @@
 #ifndef XXX_PUBSUB_MAN_H
 #define XXX_PUBSUB_MAN_H
 
+#include "jalson/jalson.h"
+
 #include <map>
 #include <memory>
 
@@ -23,7 +25,8 @@ public:
 
   void handle_event(ev_inbound_publish*);
   void handle_subscribe(ev_inbound_message* ev);
-  void handle_event( session_state_event* );;
+  void handle_event( session_state_event* );
+  void handle_inbound_publish(ev_inbound_message*);
 
 private:
   pubsub_man(const pubsub_man&); // no copy
@@ -32,6 +35,11 @@ private:
   managed_topic* find_topic(const std::string& topic,
                             const std::string& realm,
                             bool allow_create);
+
+
+  void update_topic(const std::string& topic,
+                    const std::string& realm,
+                    jalson::json_array& patch);
 
   Logger *__logptr; /* name chosen for log macros */
   event_loop& m_evl;

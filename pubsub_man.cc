@@ -40,7 +40,7 @@ struct managed_topic
 };
 
 /* Constructor */
-  pubsub_man::pubsub_man(Logger * logptr, event_loop&evl, SessionMan& sm)
+pubsub_man::pubsub_man(Logger * logptr, event_loop&evl, SessionMan& sm)
   : __logptr(logptr),
     m_evl(evl),
     m_sesman( sm ),
@@ -48,62 +48,20 @@ struct managed_topic
 {
 }
 
-/* Destructor */
 pubsub_man::~pubsub_man()
 {
+  // destructor needed here so that unique_ptr can see the definition of
+  // managed_topic
 }
 
-/* Handle arrival of the a PUBLISH event, targeted at a topic.
- *
- */
+/* Handle arrival of an internl PUBLISH event, targeted at a topic. */
 void pubsub_man::handle_event(ev_inbound_publish* ev)
 {
   /* EV thread */
 
   // TODO: lock me?  Or will only be the event thread?
 
-  // find or create a topic
-  managed_topic* mt = find_topic(ev->uri, ev->realm, true);
-  if (!mt) return; // TODO: dont I need to thow an event error here? Or, is this purely an internal event?
-
-  // apply the patch
-  try
-  {
-    mt->image.patch(ev->patch.as_array());
-
-    /*
-      [ EVENT,
-        SUBSCRIBED.Subscription|id,
-        PUBLISHED.Publication|id,
-        Details|dict,
-        PUBLISH.Arguments|list,
-        PUBLISH.ArgumentKw|dict
-      ]
-    */
-
-    jalson::json_array msg;
-    msg.push_back( EVENT );
-    msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
-    msg.push_back( 2 ); // TODO: generate publication ID
-    msg.push_back( jalson::json_value::make_object() );
-    jalson::json_array& args = jalson::append_array(msg);
-    msg.push_back( jalson::json_value::make_object() );
-    args.push_back(ev->patch);
-
-    m_sesman.send_to_session(mt->m_subscribers,
-                             msg);
-
-    // TODO EASY - dont need to use the event loop here, because we are in an
-    // event handler, ie, alread on the event thread. Indeed, could even just call send_to_session from here?
-    // ev_outbound_event * ev = new ev_outbound_event("TOPIC",
-    //                                                mt->m_subscribers,
-    //                                                msg);
-    // m_evl.push( ev );
-  }
-  catch (const std::exception& e)
-  {
-    _ERROR_("patch failed: " << e.what());
-  }
+  update_topic(ev->uri, ev->realm, ev->patch.as_array());
 }
 
 
@@ -202,5 +160,69 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 
   return topic_iter->second.get();
 }
+
+
+void pubsub_man::update_topic(const std::string& topic,
+                              const std::string& realm,
+                              jalson::json_array& patch)
+{
+  /* EVENT thread */
+
+  // resolve topic
+  managed_topic* mt = find_topic(topic, realm, true);
+
+  // TODO: do we want to reply to the originating client, if we reject the
+  // publish? Also, we can have other exceptions (below), e.g., patch
+  // exceptions. Also, dont want to throw, if it is an internal update
+  if (!mt) return;
+
+
+  // apply the patch
+  try
+  {
+    mt->image.patch(patch);
+
+    /*
+      [ EVENT,
+        SUBSCRIBED.Subscription|id,
+        PUBLISHED.Publication|id,
+        Details|dict,
+        PUBLISH.Arguments|list,
+        PUBLISH.ArgumentKw|dict
+      ]
+    */
+
+    jalson::json_array msg;
+    msg.push_back( EVENT );
+    msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
+    msg.push_back( 2 ); // TODO: generate publication ID
+    msg.push_back( jalson::json_value::make_object() );
+    jalson::json_array& args = jalson::append_array(msg);
+    msg.push_back( jalson::json_value::make_object() );
+    args.push_back(patch);
+
+    m_sesman.send_to_session(mt->m_subscribers,
+                             msg);
+  }
+  catch (const std::exception& e)
+  {
+    _ERROR_("patch failed: " << e.what());
+  }
+
+}
+
+/* Handle arrival of the a PUBLISH event, targeted at a topic. */
+void pubsub_man::handle_inbound_publish(ev_inbound_message* ev)
+{
+  /* EV thread */
+
+  // parse message
+  std::string & topic = ev->ja[ 3 ].as_string();
+  jalson::json_array & patch = ev->ja[ 4 ].as_array();
+
+  // update
+  update_topic(topic, ev->realm, patch);
+}
+
 
 } // namespace XXX

@@ -354,10 +354,10 @@ void event_loop::process_event(event * ev)
         }
         case PUBLISH :
         {
-          // TODO: route this to the managed topic
-          // TODO: update the topic
-          // TODO: generate the update, and send to clients
-          std::cout << "TODO: need to handle inbound PUBLISH message";
+          if (m_pubsubman)
+            m_pubsubman->handle_inbound_publish(ev2);
+          else
+            _WARN_("unable to handle inbound PUBLISH message");
           break;
         }
         default:
@@ -722,7 +722,7 @@ void event_loop::process_outbound_publish(ev_outbound_publish* ev)
 {
   jalson::json_array msg;
   msg.push_back( PUBLISH );
-  msg.push_back( 0 );
+  msg.push_back( 0 ); // set in the callback, below
   msg.push_back( jalson::json_object() );
   msg.push_back( ev->uri );
   msg.push_back( ev->patch );
