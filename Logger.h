@@ -82,10 +82,28 @@ public:
   Logger(int l) : m_level(l) {}
   virtual ~Logger() {}
 
-  virtual void debug(const std::string& msg, const char* file, int ln) = 0;
-  virtual void info(const std::string& msg,  const char* file, int ln) = 0;
-  virtual void warn(const std::string& msg,  const char* file, int ln) = 0;
-  virtual void error(const std::string& msg, const char* file, int ln) = 0;
+  virtual void debug(const char*, const char* file, int ln) = 0;
+  virtual void info(const char*,  const char* file, int ln) = 0;
+  virtual void warn(const char*,  const char* file, int ln) = 0;
+  virtual void error(const char*, const char* file, int ln) = 0;
+
+  virtual void debug(const std::string& msg, const char* file, int ln)
+  {
+    debug(msg.c_str(), file, ln);
+  }
+  virtual void info(const std::string& msg,  const char* file, int ln)
+  {
+    info(msg.c_str(), file, ln);
+  }
+  virtual void warn(const std::string& msg,  const char* file, int ln)
+  {
+    warn(msg.c_str(), file, ln);
+  }
+  virtual void error(const std::string& msg, const char* file, int ln)
+  {
+    error(msg.c_str(), file, ln);
+  }
+
 
   bool want_debug() const { return m_level >= eDebug; }
   bool want_info()  const { return m_level >= eInfo; }
@@ -108,13 +126,14 @@ public:
                 bool incsource=false);
   ~ConsoleLogger();
 
-  virtual void debug(const std::string& msg, const char* file, int ln);
-  virtual void info(const std::string& msg,  const char* file, int ln);
-  virtual void warn(const std::string& msg,  const char* file, int ln);
-  virtual void error(const std::string& msg, const char* file, int ln);
+  virtual void debug(const char*, const char* file, int ln);
+  virtual void info(const char*,  const char* file, int ln);
+  virtual void warn(const char*,  const char* file, int ln);
+  virtual void error(const char*, const char* file, int ln);
+
 
 private:
-  void dolog(const char*, const std::string&, const char*, int);
+  void dolog(const char*, const char*, const char*, int);
   ConsoleLoggerImpl * m_impl;
 
 private:

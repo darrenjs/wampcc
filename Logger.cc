@@ -59,30 +59,30 @@ ConsoleLogger::~ConsoleLogger()
   delete m_impl;
 }
 //----------------------------------------------------------------------
-void ConsoleLogger::debug(const std::string&  s, const char* file, int ln)
+void ConsoleLogger::debug(const char*  s, const char* file, int ln)
 {
   dolog("DEBUG", s, file, ln);
 }
 //----------------------------------------------------------------------
-void ConsoleLogger::info(const std::string& s, const char* file, int ln)
+void ConsoleLogger::info(const char* s, const char* file, int ln)
 {
   dolog("INFO ", s, file, ln);
 }
 //----------------------------------------------------------------------
-void ConsoleLogger::error(const std::string& s, const char* file, int ln)
+void ConsoleLogger::error(const char* s, const char* file, int ln)
 {
   dolog("ERROR", s, file, ln);
 }
 //----------------------------------------------------------------------
-void ConsoleLogger::warn(const std::string&  s, const char* file, int ln)
+void ConsoleLogger::warn(const char*  s, const char* file, int ln)
 {
   dolog("WARN ", s, file, ln);
 }
 //----------------------------------------------------------------------
 void ConsoleLogger::ConsoleLogger::dolog(const char* level,
-                          const std::string& s,
-                          const char* file,
-                          int ln)
+                                         const char* s,
+                                         const char* file,
+                                         int ln)
 {
   int tid = syscall(SYS_gettid);
   std::ostringstream oss;
