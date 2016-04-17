@@ -33,18 +33,21 @@ std::unique_ptr<XXX::client_service> g_client;
 
 struct user_options
 {
-    std::string addr;
-    std::string port;
-    std::string cmd;
-    std::list< std::string > cmdargs;
-    std::list< std::string > subscribe_topics;
+  std::string addr;
+  std::string port;
+  std::string cmd;
+  std::list< std::string > cmdargs;
+  std::list< std::string > subscribe_topics;
 
-    int verbose;
+  std::string publish_topic;
+  std::string publish_message;
 
-    user_options()
-      : verbose(0)
-    {
-    }
+  int verbose;
+
+  user_options()
+    : verbose(0)
+  {
+  }
 } uopts;
 
 //----------------------------------------------------------------------
@@ -164,12 +167,14 @@ static void process_options(int argc, char** argv)
 
 //  int digit_optind = 0;
   static struct option long_options[] = {
-    {"help",    no_argument, 0, 'h'},
-    {"version", no_argument, 0, 'v'},
+    {"help",      no_argument, 0, 'h'},
+    {"version",   no_argument, 0, 'v'},
     {"subscribe", required_argument, 0, 's'},
+    {"publish",   required_argument, 0, 'p'},
+    {"msg",       required_argument, 0, 'm'},
     {NULL, 0, NULL, 0}
   };
-  const char* optstr="hvds:";
+  const char* optstr="hvds:p:m:";
 
   ::opterr=1;
 
@@ -196,6 +201,8 @@ static void process_options(int argc, char** argv)
       case 'h' : usage();
       case 'v' : version();
       case 's' : uopts.subscribe_topics.push_back(optarg); break;
+      case 'p' : uopts.publish_topic = optarg; break;
+      case 'm' : uopts.publish_message = optarg; break;
       case '?' : exit(1); // invalid option
       default:
       {
@@ -233,14 +240,18 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
+
   XXX::client_service::config config;
   config.server_port = 0;
   config.realm = "default_realm";
   g_client.reset( new XXX::client_service(logger, config) );
 
-  XXX::text_topic topic("topic1");
+  std::unique_ptr<XXX::text_topic> topic;
 
-  g_client->add_topic( &topic );
+  if (!uopts.publish_topic.empty())
+    topic.reset( new XXX::text_topic( uopts.publish_topic ) );
+
+  if (topic) g_client->add_topic( topic.get() );
 
   g_client->start();
 
@@ -299,7 +310,8 @@ int main(int argc, char** argv)
       return 1;
     }
 
-    //rconn.subscribe("topic1", subscribe_cb, nullptr);
+    for (auto & topic : uopts.subscribe_topics)
+      rconn.subscribe(topic, subscribe_cb, nullptr);
 
     while (!event_queue.empty())
     {
@@ -318,16 +330,7 @@ int main(int argc, char** argv)
 
 
   // topic publication
-  bool do_publish = true;
-  if (do_publish)
-  {
-    while(true)
-    {
-      topic.update( get_timestamp().c_str() );
-      sleep(1);
-    }
-
-  }
+  if (topic) topic->update( uopts.publish_message.c_str() );
 
 
   while (1) sleep(1);
