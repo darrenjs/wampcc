@@ -18,8 +18,21 @@
 // ======================================================================
 
 
+
 namespace internals
 {
+
+  template<typename V, typename U>
+  bool is_integer(U u)
+  {
+    const V v_min( std::numeric_limits<V>::min());
+    const V v_max( std::numeric_limits<V>::max());
+    const U u_min( std::numeric_limits<U>::min());
+    const U u_max( std::numeric_limits<U>::max());
+
+    return ((long long) u_min >= (long long) v_min || u >= (U) v_min)
+      && ( (unsigned long long) u_max <= (unsigned long long) v_max || u <= (U) v_max);
+  }
 
 template <typename T>
 struct traits
@@ -161,7 +174,6 @@ public:
   /* can the value be represented as a signed integer */
   bool is_sint() const;
 
-
   /* can the value be represented as an unsigned  integer */
   bool is_uint() const;
 
@@ -180,12 +192,26 @@ public:
   bool as_bool_unchecked() const;
 
   valueimpl::Details clone_details() const;
+
+
+  template<typename T>
+  bool is_integer() const
+  {
+   if  (details.type == e_signed)
+     return internals::is_integer<T>( details.data.sint );
+   else if (details.type == e_unsigned)
+     return internals::is_integer<T>( details.data.uint );
+   else
+    return false;
+  }
+
 };
 
 #if __cplusplus >= 201103L
 static_assert( std::is_pod<valueimpl::Details>::value,
                "expected to be POD" );
 #endif
+
 
 
 }

@@ -8,7 +8,7 @@
 #ifndef __JALSON_H__
 #define __JALSON_H__
 
-
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -236,6 +236,16 @@ public:
   bool is_int()     const  { return this->is_integer() && m_impl.is_sint(); }
   bool is_uint()    const  { return this->is_integer() && m_impl.is_uint(); }
 
+  // check for specific integer ranges
+  bool is_int8()  const { return m_impl.is_integer<int8_t>(); }
+  bool is_int16() const { return m_impl.is_integer<int16_t>(); }
+  bool is_int32() const { return m_impl.is_integer<int32_t>(); }
+  bool is_int64() const { return m_impl.is_integer<int64_t>(); }
+  bool is_uint8()  const { return m_impl.is_integer<uint8_t>(); }
+  bool is_uint16() const { return m_impl.is_integer<uint16_t>(); }
+  bool is_uint32() const { return m_impl.is_integer<uint32_t>(); }
+  bool is_uint64() const { return m_impl.is_integer<uint64_t>(); }
+
   /* access the value */
 
   bool         as_bool() const { return m_impl.as_bool(); }
@@ -243,22 +253,6 @@ public:
 
   json_int_t   as_int()  const { return m_impl.as_sint_repr(); }
   json_uint_t  as_uint() const { return m_impl.as_uint_repr(); }
-
-
-  // Future expansion. Added sizeed-int support, including methods to check int
-  // width. Do we need is_int / as_int etc.
-
-  // as_int16
-  // as_int32
-  // as_int64
-
-  // is_int16
-  // is_int32
-  // is_int64
-
-  // as_int / is_int
-  // as_long / is_long
-  // as_longlong / is_longlong
 
 
   json_string&       as_string()       { return this->as<json_string>(); }
