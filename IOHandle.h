@@ -40,6 +40,8 @@ public:
   void active_close();
 
   bool can_be_deleted() const { return m_ready_for_delete; }
+
+  void on_write_cb(uv_write_t * req, int status);
 private:
 
 
@@ -61,6 +63,10 @@ private:
   int m_close_count = 0;
 
   io_listener * m_listener;
+
+  // TODO: make atomic
+  size_t m_bytes_written = 0;
+  size_t m_bytes_pending = 0; // pending written
 };
 
 } // namespace XXX

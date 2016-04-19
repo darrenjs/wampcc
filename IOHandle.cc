@@ -35,25 +35,10 @@ namespace XXX {
   //     base = 0x0, len = 0}}}
 
 
-static void io_on_write(uv_write_t * req, int /*status*/)
+static void __on_write_cb(uv_write_t * req, int status)
 {
-  // TODO: what should I be doing in here?
-
-
-  // std::cout << "on_write: status=" << (int)status
-  //           << ", error=" << req->error << "\n";
-  // if (status < 0 )
-  // {
-  //   std::cout << "failed\n";
-  // }
-
-
-//   // TODO: added this, but does not have any effect on memory growth of program
-//   char *buffer = (char*) req->data;
-// //  free(buffer);
-//   delete [] buffer;
-
-  delete req;
+  IOHandle * iohandle = (IOHandle *) req->data;
+  iohandle->on_write_cb(req, status);
 }
 
 
@@ -206,7 +191,7 @@ void IOHandle::write_async_cb()
 
       // TODO: need to handle these return types ... eg, if r indicates error,
       // we need to free req here. And probably close the connection,
-      int r = uv_write(req, m_uv_handle, &copy[0], copy.size(), io_on_write);
+      int r = uv_write(req, m_uv_handle, &copy[0], copy.size(), __on_write_cb);
       if (r) delete req;
 
       // TODO: is this correcT? should we be freeing here?  NOOOO....
@@ -301,6 +286,37 @@ void IOHandle::active_close()
    * Session object which owns this handle. */
   m_do_async_close = true;
   uv_async_send( &m_write_async );
+}
+
+
+void IOHandle::on_write_cb(uv_write_t * req, int status)
+{
+  try
+  {
+    if (status == 0)
+    {
+      size_t total = 0;
+      for (size_t i = 0; i < req->nbufs; i++)
+      {
+        total += req->bufsml[i].len;
+      }
+      m_bytes_written += total;
+      if (m_bytes_pending > total)
+        m_bytes_pending -= total;
+      else
+        m_bytes_pending = 0;
+    }
+  }
+  catch (...){}
+
+
+  // TODO: what should I be doing in here?
+
+//   char *buffer = (char*) req->data;
+// //  free(buffer);
+//   delete [] buffer;
+
+  delete req;
 }
 
 } // namespace XXX
