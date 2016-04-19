@@ -354,6 +354,7 @@ void event_loop::process_event(event * ev)
         }
         case PUBLISH :
         {
+          std::cout << "here\n";
           if (m_pubsubman)
             m_pubsubman->handle_inbound_publish(ev2);
           else

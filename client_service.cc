@@ -185,9 +185,11 @@ void client_service::handle_session_state_change(session_state_event* ev)
   // publish our topics
   {
     std::lock_guard< std::mutex > guard ( m_topics_lock );
-    for (auto i : m_topics)
+    for (auto & i : m_topics)
     {
       const std::string & uri = i.first;
+      topic* topic = i.second;
+
       build_message_cb_v2 msg_builder2 = [&uri](int request_id)
         {
           /* WAMP spec.
@@ -206,6 +208,7 @@ void client_service::handle_session_state_change(session_state_event* ev)
           msg.push_back( request_id );
           msg.push_back( jalson::json_object() );
           msg.push_back( uri );
+          msg.push_back( jalson::json_array() );
 
           // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
           return std::pair< jalson::json_array, Request_CB_Data*> ( msg, nullptr );
@@ -538,6 +541,7 @@ void client_service::add_topic(topic* topic)
         std::unique_lock<std::mutex> guard(m_router_sessions_lock);
         router_session_count = m_router_sessions.size();
       }
+
       if (router_session_count>0)
       {
         auto sp = std::make_shared<ev_outbound_publish>(src->uri(),

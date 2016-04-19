@@ -47,6 +47,9 @@ public:
     m_observers2[key]=cb;
   }
 
+
+  virtual jalson::json_value snapshot() const {}
+
 protected:
 
   void notify(const jalson::json_value& patch);
@@ -70,6 +73,9 @@ public:
 
   void update(const char* newstr);
 
+
+  jalson::json_value snapshot() const;
+
 private:
   std::string m_text;
 };
@@ -84,6 +90,7 @@ class Topic
 
   void add_subscriber(Session*);
 
+  jalson::json_value snapshot() const;
 
 protected:
 

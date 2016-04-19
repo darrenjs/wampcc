@@ -124,4 +124,12 @@ void text_topic::update(const char* newstr)
   notify( patch );
 }
 
+
+jalson::json_value text_topic::snapshot() const
+{
+}
+
+
+
+
 } // namespace XXX
