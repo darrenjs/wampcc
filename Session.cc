@@ -156,18 +156,12 @@ void Session::on_read(char* src, size_t len)
 
 void Session::on_read_impl(char* src, size_t len)
 {
-  int msgid = 0;
-  std::cout << "orig_len:" << len << "\n";
-
-
   while (len > 0)
   {
     size_t buf_space_avail = INBOUND_BUFFER_SIZE - m_bytes_avail;
-    std::cout << "buf_space_avail:" << buf_space_avail << "\n";
     if (buf_space_avail)
     {
       size_t bytes_to_consume = std::min(buf_space_avail, len);
-      std::cout << "mempcy__bytes_to_consume:" << bytes_to_consume << "\n";
       memcpy(m_buf + m_bytes_avail, src, bytes_to_consume);
       src += bytes_to_consume;
       len -= bytes_to_consume;
@@ -191,23 +185,17 @@ void Session::on_read_impl(char* src, size_t len)
         // quick protocol check.  TODO: ensure this exception (if it needs to
         // be), can cause the session to be immediately aborted
         // take a peek at the first byte, see if it looks like a start of a JSON message
-        char firstchar = *(ptr + HEADERLEN);
-        if (firstchar != '[')
+        if (m_bytes_avail > HEADERLEN)
         {
-          std::string preview(ptr,20);
-          std::cout << "preview >" << preview << "\n";
-          throw event_error::runtime_fatal("bad protocol, not json message");
+          char firstchar = *(ptr + HEADERLEN);
+          if (firstchar != '[')
+            throw event_error::runtime_fatal("bad protocol, not json message");
         }
 
         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
-
-        //_DEBUG_("msglen:" << msglen << ", m_bytes_avail:" << m_bytes_avail);
-
         if (m_bytes_avail < (HEADERLEN+msglen)) break; // body incomplete
 
         // we have enough bytes to decode
-        std::cout << "msgid:" << msgid++ << ", msglen: " << msglen << ", offset: "<< int((ptr+HEADERLEN)-m_buf) << "\n";
-        std::cout << "bytes_avail:"<<m_bytes_avail<<"\n";
         this->decode_and_process(ptr+HEADERLEN, msglen);
 
         // skip to start of next message
@@ -216,12 +204,7 @@ void Session::on_read_impl(char* src, size_t len)
       }
 
       /* move any left over bytes to the head of the buffer */
-      if (m_bytes_avail && (m_buf != ptr))
-      {
-        memmove(m_buf, ptr, m_bytes_avail);
-        memset(m_buf+m_bytes_avail,0,INBOUND_BUFFER_SIZE-m_bytes_avail);
-        std::cout << "movemove: " << m_bytes_avail << ">>...." << m_buf+4 << "<<\n";
-      }
+      if (m_bytes_avail && (m_buf != ptr)) memmove(m_buf, ptr, m_bytes_avail);
     }
     else
     {
@@ -243,9 +226,6 @@ void Session::decode_and_process(char* ptr, size_t msglen)
 
   try
   {
-    std::string temp(ptr,msglen);  // TODO: very bad!
-    _DEBUG_("recv n:" << msglen << " data: " /*<< temp */);
-    _DEBUG_("ptr >>" << ptr << "<<");
     jalson::json_value jv;
     jalson::decode(jv, ptr, msglen);
     this->process_message( jv );

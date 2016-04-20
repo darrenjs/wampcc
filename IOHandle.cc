@@ -14,31 +14,36 @@
 
 namespace XXX {
 
-  // {
-  //   data = 0x0,
-  //   type = UV_WRITE,
-  //   active_queue = { 0x61800000fca0, 0x61800000fca0},
-  //   reserved = {0x0, 0x0, 0x0, 0x0},
-  //   cb = 0x5b2cd0 <XXX::io_on_write(uv_write_s*, int)>,
-  //   send_handle = 0x0,
-  //   handle = 0x611000009dc0,
-  //   queue = {0x611000009e90, 0x611000009e90},
-  //   write_index = 2,
-  //   bufs = 0x0,
-  //   nbufs = 2,
-  //   error = 0,
-  //   bufsml =
-  //   {
-  //     {base = 0x60200000cd10 "\001", len = 4},
-  //     {base = 0x60700000a5f0 "\001", len = 76},
-  //     {base = 0x0, len = 0}, {
-  //     base = 0x0, len = 0}}}
+struct write_req
+{
+  uv_write_t req;
+  uv_buf_t * bufs;
+  size_t nbufs;
+
+  write_req(size_t n)
+  : bufs( new uv_buf_t[n] ),
+    nbufs(n)
+  {
+  }
+
+  ~write_req()
+  {
+    delete [] bufs;
+  }
+};
 
 
 static void __on_write_cb(uv_write_t * req, int status)
 {
   IOHandle * iohandle = (IOHandle *) req->data;
-  iohandle->on_write_cb(req, status);
+  try
+  {
+    iohandle->on_write_cb(req, status);
+  }
+  catch (...){}
+
+  write_req* wr = (write_req*) req;
+  delete wr;
 }
 
 
@@ -181,28 +186,28 @@ void IOHandle::write_async_cb()
     do_termination = !m_async_allowed;
   }
 
-  size_t total_bytes=0;
-  for (auto & item : copy) total_bytes += item.len;
-
   if (m_open)
   {
     if (!copy.empty())
     {
-      // TODO: poor memory management!
-      uv_write_t * req = new uv_write_t();
-      memset(req,0,sizeof(uv_write_t));
-      req->data = this;
+      write_req* wr = new write_req(copy.size());
+      wr->req.data = this;
+
+      size_t total_bytes=0;
+      for (size_t i = 0; i < copy.size(); i++)
+      {
+        wr->bufs[i] = copy[i];
+        total_bytes += wr->bufs[i].len;
+      }
 
       // TODO: need to handle these return types ... eg, if r indicates error,
       // we need to free req here. And probably close the connection,
       m_bytes_pending += total_bytes;
 
       std::cout << "PENDING: " << m_bytes_pending << "\n";
-      int r = uv_write(req, m_uv_handle, &copy[0], copy.size(), __on_write_cb);
-      if (r) delete req;
+      int r = uv_write((uv_write_t*)wr, m_uv_handle, wr->bufs, wr->nbufs, __on_write_cb);
+      if (r) delete wr; // TODO: also, close the connection?
 
-      // TODO: is this correcT? should we be freeing here?  NOOOO....
-      for (auto &i : copy)  delete [] i.base;
     }
   }
 
@@ -253,7 +258,6 @@ void IOHandle::on_passive_close()
 // TODO: need to use the close variable
 void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
 {
-  // TODO EASY: add DEBUG logging of the output data
   std::vector< uv_buf_t > bufs;
   bufs.reserve(count);
 
@@ -298,36 +302,26 @@ void IOHandle::active_close()
 
 void IOHandle::on_write_cb(uv_write_t * req, int status)
 {
-  try
+  // TODO: what should I be doing in here? Probably handling the status!=0
+  // situation, and making sure the socket & session is qclosed.
+
+  if (status == 0)
   {
-    if (status == 0)
+    size_t total = 0;
+    for (size_t i = 0; i < req->nbufs; i++)
     {
-      size_t total = 0;
-      for (size_t i = 0; i < req->nbufs; i++)
-      {
-        total += req->bufsml[i].len;
-      }
-      m_bytes_written += total;
-      if (m_bytes_pending > total)
-        m_bytes_pending -= total;
-      else
-        m_bytes_pending = 0;
+      total += req->bufsml[i].len;
     }
+    m_bytes_written += total;
+    if (m_bytes_pending > total)
+      m_bytes_pending -= total;
     else
-    {
-      std::cout << "ERROR: read status=" << status << "\n";
-    }
+      m_bytes_pending = 0;
   }
-  catch (...){}
-
-
-  // TODO: what should I be doing in here?
-
-//   char *buffer = (char*) req->data;
-// //  free(buffer);
-//   delete [] buffer;
-
-  delete req;
+  else
+  {
+    std::cout << "ERROR: read status=" << status << "\n";
+  }
 }
 
 } // namespace XXX
