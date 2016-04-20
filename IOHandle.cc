@@ -195,6 +195,9 @@ void IOHandle::write_async_cb()
 
       // TODO: need to handle these return types ... eg, if r indicates error,
       // we need to free req here. And probably close the connection,
+      m_bytes_pending += total_bytes;
+
+      std::cout << "PENDING: " << m_bytes_pending << "\n";
       int r = uv_write(req, m_uv_handle, &copy[0], copy.size(), __on_write_cb);
       if (r) delete req;
 
