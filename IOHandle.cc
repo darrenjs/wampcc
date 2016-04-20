@@ -144,7 +144,7 @@ void IOHandle::on_close()
 void IOHandle::on_read(char* buf, size_t len)
 {
   /* IO thread */
-
+  m_bytes_read += len;
   if (m_listener) m_listener->on_read(buf, len);
 }
 
@@ -309,6 +309,10 @@ void IOHandle::on_write_cb(uv_write_t * req, int status)
         m_bytes_pending -= total;
       else
         m_bytes_pending = 0;
+    }
+    else
+    {
+      std::cout << "ERROR: read status=" << status << "\n";
     }
   }
   catch (...){}

@@ -67,6 +67,7 @@ private:
   // TODO: make atomic
   size_t m_bytes_written = 0;
   size_t m_bytes_pending = 0; // pending written
+  size_t m_bytes_read = 0;
 };
 
 } // namespace XXX
