@@ -44,7 +44,7 @@ static void __on_write_cb(uv_write_t * req, int status)
 
 
 // TODO: who allocated buf? I think it is on a stack somewhere.
-static void io_on_read_cb(uv_stream_t*  uvh,
+static void __on_read_cb(uv_stream_t*  uvh,
                           ssize_t nread ,
                           const uv_buf_t* buf)
 {
@@ -103,7 +103,7 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop)
   m_write_async.data = this;
 
   // enable for reading
-   uv_read_start(h, iohandle_alloc_buffer, io_on_read_cb);
+   uv_read_start(h, iohandle_alloc_buffer, __on_read_cb);
 }
 
 /* Destructor */
@@ -181,6 +181,9 @@ void IOHandle::write_async_cb()
     do_termination = !m_async_allowed;
   }
 
+  size_t total_bytes=0;
+  for (auto & item : copy) total_bytes += item.len;
+
   if (m_open)
   {
     if (!copy.empty())
@@ -188,6 +191,7 @@ void IOHandle::write_async_cb()
       // TODO: poor memory management!
       uv_write_t * req = new uv_write_t();
       memset(req,0,sizeof(uv_write_t));
+      req->data = this;
 
       // TODO: need to handle these return types ... eg, if r indicates error,
       // we need to free req here. And probably close the connection,

@@ -119,7 +119,7 @@ void subscribe_cb(XXX::subscription_event_type evtype,
                   const jalson::json_value& args,
                   void* /*user*/)
 {
-  std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
+//  std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
 }
 int g_connect_status = 0;
 

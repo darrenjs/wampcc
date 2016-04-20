@@ -18,6 +18,7 @@
 
 
 #define HEADERLEN 4 /* size of uint32 */
+#define INBOUND_BUFFER_SIZE 2000 // TODO: increase
 
 
 namespace XXX {
@@ -71,7 +72,6 @@ struct PendingRegister : public PendingReq
   std::string procedure;
 };
 
-
 /* Constructor */
 Session::Session(SID s,
                  Logger* logptr,
@@ -90,7 +90,7 @@ Session::Session(SID s,
     m_opened(0),
     m_hb_last(0),
     m_request_id(0),
-    m_buf( new char[65536] ), // TODO: make into to constant, and check during mempcy
+    m_buf( new char[ INBOUND_BUFFER_SIZE ] ), // TODO: make into to constant, and check during mempcy
     m_bytes_avail(0),
     m_is_closing(false),
     m_evl(evl),
@@ -146,131 +146,169 @@ void Session::on_read(char* src, size_t len)
   {
     on_read_impl(src, len);
   }
-  catch ( event_error& ev )
+  catch ( std::exception& ev )
   {
-    _ERROR_("caught unexpection event error with Session");
+    _ERROR_("exception during inbound message read : " << ev.what());
+    std::cout << "ABORT\n";
+    exit(1);
   }
 }
 
 void Session::on_read_impl(char* src, size_t len)
 {
-  // TODO: improve efficiency!
+  int msgid = 0;
+  std::cout << "orig_len:" << len << "\n";
 
-  _DEBUG_("recv n:" << len);
 
-  memcpy(m_buf + m_bytes_avail, src, len); // TODO: check length!
-  m_bytes_avail += len;
-  m_buf[m_bytes_avail] = '\0';  // TODO: need this while jalson cannot take data len
+  while (len > 0)
+  {
+    size_t buf_space_avail = INBOUND_BUFFER_SIZE - m_bytes_avail;
+    std::cout << "buf_space_avail:" << buf_space_avail << "\n";
+    if (buf_space_avail)
+    {
+      size_t bytes_to_consume = std::min(buf_space_avail, len);
+      std::cout << "mempcy__bytes_to_consume:" << bytes_to_consume << "\n";
+      memcpy(m_buf + m_bytes_avail, src, bytes_to_consume);
+      src += bytes_to_consume;
+      len -= bytes_to_consume;
+      m_bytes_avail += bytes_to_consume;
 
-  char* ptr = m_buf;
 
-  /* TODO: a problem that might occur here is that a bad message will be
-   * recieved, like 'XXXX' for the length, and we will need to then wait until
-   * we get that many bytes until we can move onto processing the message and
-   * discovering it is a bad protocol. So need to beable to switch on some kind
-   * of logging here. */
+      /* TODO: a problem that might occur here is that a bad message will be
+       * recieved, like 'XXXX' for the length, and we will need to then wait until
+       * we get that many bytes until we can move onto processing the message and
+       * discovering it is a bad protocol. So need to beable to switch on some kind
+       * of logging here. */
 
-  bool had_error;
+
+      /* process the data in the working buffer */
+
+      char* ptr = m_buf;
+      while (m_bytes_avail)
+      {
+        if (m_bytes_avail < HEADERLEN) break; // header incomplete
+
+        // quick protocol check.  TODO: ensure this exception (if it needs to
+        // be), can cause the session to be immediately aborted
+        // take a peek at the first byte, see if it looks like a start of a JSON message
+        char firstchar = *(ptr + HEADERLEN);
+        if (firstchar != '[')
+        {
+          std::string preview(ptr,20);
+          std::cout << "preview >" << preview << "\n";
+          throw event_error::runtime_fatal("bad protocol, not json message");
+        }
+
+        uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
+
+        //_DEBUG_("msglen:" << msglen << ", m_bytes_avail:" << m_bytes_avail);
+
+        if (m_bytes_avail < (HEADERLEN+msglen)) break; // body incomplete
+
+        // we have enough bytes to decode
+        std::cout << "msgid:" << msgid++ << ", msglen: " << msglen << ", offset: "<< int((ptr+HEADERLEN)-m_buf) << "\n";
+        std::cout << "bytes_avail:"<<m_bytes_avail<<"\n";
+        this->decode_and_process(ptr+HEADERLEN, msglen);
+
+        // skip to start of next message
+        ptr           += (HEADERLEN+msglen);
+        m_bytes_avail -= (HEADERLEN + msglen);
+      }
+
+      /* move any left over bytes to the head of the buffer */
+      if (m_bytes_avail && (m_buf != ptr))
+      {
+        memmove(m_buf, ptr, m_bytes_avail);
+        memset(m_buf+m_bytes_avail,0,INBOUND_BUFFER_SIZE-m_bytes_avail);
+        std::cout << "movemove: " << m_bytes_avail << ">>...." << m_buf+4 << "<<\n";
+      }
+    }
+    else
+    {
+      // oh dear, no space left to consume messages, hard failure
+      // TODO: how to close this session?
+      std::cout << "TODO: need to close the session\n";
+      throw std::runtime_error("no room in buffer ... need to close the session");
+    }
+  }
+}
+//----------------------------------------------------------------------
+
+void Session::decode_and_process(char* ptr, size_t msglen)
+{
+  bool had_error = true;
   bool must_close_session = false;
   std::string error_uri;
   std::string error_text;
 
-  while (m_bytes_avail)
+  try
   {
-    had_error = true;
+    std::string temp(ptr,msglen);  // TODO: very bad!
+    _DEBUG_("recv n:" << msglen << " data: " /*<< temp */);
+    _DEBUG_("ptr >>" << ptr << "<<");
+    jalson::json_value jv;
+    jalson::decode(jv, ptr, msglen);
+    this->process_message( jv );
+    had_error = false;
+  }
+  catch (const XXX::event_error& e)
+  {
+    _DEBUG_( "Session::on_read_impl  event_error" );
+    error_uri  = e.error_uri;
+    must_close_session = e.is_fatal;
+    error_text = e.what();
+  }
+  catch (const XXX::protocol_error& e)
+  {
+    _DEBUG_( "Session::on_read_impl protocol_error" );
+    error_uri = e.error_uri;
+    must_close_session = e.close_session;
+    error_text = e.what();
+  }
+  catch( const std::exception & e)
+  {
+    error_uri = WAMP_RUNTIME_ERROR;
+    must_close_session = true;
+    error_text = e.what();
 
-    if (m_bytes_avail < HEADERLEN) break;
-    uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
-    //_DEBUG_("msglen:" << msglen << ", m_bytes_avail:" << m_bytes_avail);
-
-    try
-    {
-      if (m_bytes_avail < (HEADERLEN+msglen))
-      {
-        if (m_bytes_avail > HEADERLEN )
-        {
-          // take a peek at the first byte, see if it looks like a start of a JSON message
-          char firstchar = *(ptr + HEADERLEN);
-          if (firstchar != '[') throw event_error::runtime_fatal("bad protocol");
-        }
-        break;
-      }
-
-      /* we have enough bytes to decode */
-      ptr += HEADERLEN;
-
-      std::string temp(ptr,msglen);
-      _DEBUG_("recv n:" << msglen << " data: " << temp);
-      jalson::json_value jv = jalson::decode(ptr);
-
-      this->process_message( jv );
-      had_error = false;
-    }
-    catch (const XXX::event_error& e)
-    {
-      _DEBUG_( "Session::on_read_impl  event_error" );
-      error_uri  = e.error_uri;
-      must_close_session = e.is_fatal;
-      error_text = e.what();
-    }
-    catch (const XXX::protocol_error& e)
-    {
-      _DEBUG_( "Session::on_read_impl protocol_error" );
-      error_uri = e.error_uri;
-      must_close_session = e.close_session;
-      error_text = e.what();
-    }
-    catch( const std::exception & e)
-    {
-      error_uri = WAMP_RUNTIME_ERROR;
-      must_close_session = true;
-      error_text = e.what();
-
-      _ERROR_( "caught exception during message !!!! "<< e.what() );
-    }
-    catch( ... )
-    {
-      error_uri = WAMP_RUNTIME_ERROR;
-      error_text = "unknown exception";
-      must_close_session = true;
-    }
-
-    if (had_error)
-    {
-      jalson::json_array err;
-      jalson::json_object error_dict;
-      if ( !error_text.empty() ) error_dict[ "text" ] = error_text;
-      err.push_back( ERROR );
-      err.push_back( error_uri );
-      err.push_back( error_dict );
-      this->send_msg( err, true );
-    }
-    if (must_close_session)
-    {
-      _ERROR_( "TODO: need to figure out how to close thei session" );
-      // TODO: how to gracefully close the session;
-      // ALSO: now that we are closing, dont process next bytes
-
-      m_is_closing = true;
-      return;
-    }
-
-    // TODO: only terminate the seesion for protocol error or unknow wrror
-
-    // TODO: if caught any kind of error, then want to terminate the session here.
-    // TODO: how to we send a message, and, then enable it for closing?
-
-
-    ptr += msglen;
-    m_bytes_avail -= (HEADERLEN + msglen);
+    _ERROR_( "caught exception during message !!!! "<< e.what() );
+    std::cout << "ABORT\n";
+    exit(1);
+  }
+  catch( ... )
+  {
+    error_uri = WAMP_RUNTIME_ERROR;
+    error_text = "unknown exception";
+    must_close_session = true;
   }
 
-
-  if (m_bytes_avail && (m_buf != ptr))
+  if (had_error)
   {
-    memmove(m_buf, ptr, m_bytes_avail);
-    m_buf[m_bytes_avail] = '\0';  // TODO: need this while jalson cannot take data len
+    jalson::json_array err;
+    jalson::json_object error_dict;
+    if ( !error_text.empty() ) error_dict[ "text" ] = error_text;
+    err.push_back( ERROR );
+    err.push_back( error_uri );
+    err.push_back( error_dict );
+    this->send_msg( err, true );
   }
+
+  if (must_close_session)
+  {
+    _ERROR_( "TODO: need to figure out how to close thei session" );
+    // TODO: how to gracefully close the session;
+    // ALSO: now that we are closing, dont process next bytes
+
+    m_is_closing = true;
+    return;
+  }
+
+      // TODO: only terminate the seesion for protocol error or unknow wrror
+
+      // TODO: if caught any kind of error, then want to terminate the session here.
+      // TODO: how to we send a message, and, then enable it for closing?
+
+
 
 }
 
@@ -366,7 +404,7 @@ void Session::change_state(SessionState expected, SessionState next)
 
 void Session::process_message(jalson::json_value&jv)
 {
-  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
+//  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
   // TODO: need basic WAMP checking here
 

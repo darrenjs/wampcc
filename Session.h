@@ -107,7 +107,9 @@ namespace XXX {
     void on_close(int) override;
     void on_read(char*, size_t) override;
     void on_read_impl(char*, size_t);
+    void decode_and_process(char*, size_t len);
     void process_message(jalson::json_value&);
+
 
     void update_state_for_outbound(const jalson::json_array& msg);
 
