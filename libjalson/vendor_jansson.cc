@@ -221,14 +221,14 @@ std::string encode_any(const json_value& src)
 }
 
 // TODO: need to handle the error cases in here
-void decode(json_value& dest, const char* text)
+void decode(json_value& dest, const char* buffer)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
 
   json_error_t error;
 
-  json_t* root = json_loads(text, 0, &error);
+  json_t* root = json_loads(buffer, 0, &error);
 
   if (root == NULL)
   {
@@ -258,10 +258,55 @@ void decode(json_value& dest, const char* text)
 }
 
 
-json_value decode(const char* text)
+
+json_value decode(const char* buffer)
 {
   json_value dest;
-  decode(dest, text);
+  decode(dest, buffer);
+  return dest;
+}
+
+// TODO: need to handle the error cases in here
+void decode(json_value& dest, const char* buffer, size_t buflen)
+{
+  malloc_guard setflag_at_exit;
+  if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
+
+  json_error_t error;
+
+  json_t* root = json_loadb(buffer, buflen, 0, &error);
+
+  if (root == NULL)
+  {
+    std::ostringstream os;
+    os << "error=" << error.text << " "
+       << "line=" << error.line << " "
+       << "column=" << error.column << " "
+       << "position=" << error.position;
+
+    jalson::parse_error perr( os.str() );
+    perr.error = error.text;
+    perr.source = error.source;
+    perr.line = error.line;
+    perr.position = error.position;
+    perr.column = error.column;
+    throw perr;
+  }
+  else
+  {
+    // TODO: this is not efficient; would be better to pass 'dest' into the
+    // decode function.
+    dest = decode_jansson_ptr3(root);
+  }
+
+  // clean up the json device
+  if (root) json_decref( root );
+}
+
+json_value decode(const char* buffer, size_t buflen)
+{
+  json_value dest;
+  decode(dest, buffer, buflen);
   return dest;
 }
 

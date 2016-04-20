@@ -422,8 +422,10 @@ std::string encode_any(const json_value& src);
 /* Decode into 'dest' out parameters, which on legacy C++ reduces the amount of
  * memory being copied.
  */
+void decode(json_value& dest, const char*, size_t);
 void decode(json_value& dest, const char*);
 
+json_value decode(const char*, size_t);
 json_value decode(const char*);
 
 // implementation of inline methods
