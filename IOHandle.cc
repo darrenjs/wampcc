@@ -91,14 +91,14 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 }
 
 /* Constructor */
-IOHandle::IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop)
+IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
   : __logptr(logger),
-    m_uv_handle(h),
+    m_uv_handle(hdl),
     m_loop(loop),
     m_open(true),
     m_listener( nullptr )
 {
-  h->data = this;
+  m_uv_handle->data = this;
 
   // set up the async handler
   uv_async_init(loop->uv_loop(), &m_write_async, [](uv_async_t* uvh){
@@ -108,7 +108,7 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop)
   m_write_async.data = this;
 
   // enable for reading
-   uv_read_start(h, iohandle_alloc_buffer, __on_read_cb);
+   uv_read_start(m_uv_handle, iohandle_alloc_buffer, __on_read_cb);
 }
 
 /* Destructor */
@@ -152,8 +152,6 @@ void IOHandle::on_read(char* buf, size_t len)
   m_bytes_read += len;
   if (m_listener) m_listener->on_read(buf, len);
 }
-
-
 
 void IOHandle::write_async_cb()
 {

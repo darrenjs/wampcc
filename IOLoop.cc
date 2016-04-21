@@ -16,7 +16,7 @@ namespace XXX {
 
 
 /* Called on the IO thread when a ioreq attempt has completed */
-static void __on_connect(uv_connect_t* __req, int status )
+static void __on_tcp_connect_cb(uv_connect_t* __req, int status )
 {
   std::unique_ptr<uv_connect_t> connect_req(__req);
 
@@ -231,7 +231,7 @@ void IOLoop::on_async()
       int r = uv_tcp_connect(connect_req,
                              req->tcp_handle,
                              (const struct sockaddr*) &dest,
-                             __on_connect);
+                             __on_tcp_connect_cb);
       if (r == 0)
       {
         req.release(); // owner transfered to UV callback
