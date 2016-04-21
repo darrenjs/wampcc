@@ -59,7 +59,7 @@ static void __on_read_cb(uv_stream_t*  uvh,
   {
     if ((nread == UV_EOF) ||  (nread < 0))
     {
-      iohandle->on_passive_close();
+      iohandle->close_async();
     }
     else if (nread > 0)
     {
@@ -235,24 +235,6 @@ uv_buf_t uv_buf_init(char* base, unsigned int len) {
  */
 
 
-void IOHandle::on_passive_close()
-{
-  /* IO thread */
-
-  // indicate we are closed at earliest oppurtunity
-  m_open = false;
-
-  // instruct listener never to call us again
-  if (m_listener) m_listener->on_close(0);
-  m_listener = nullptr;
-
-  /* Raise an async request to close the socket.  This will be the last async
-   * operation requested.  I.e., there will no more requests coming from the
-   * Session object which owns this handle. */
-  m_do_async_close = true;
-  uv_async_send( &m_write_async );
-}
-
 // TODO: need to use the close variable
 void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
 {
@@ -279,7 +261,7 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
   }
 }
 
-void IOHandle::active_close()
+void IOHandle::close_async()
 {
   /* IO thread */
 

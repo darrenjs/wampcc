@@ -36,8 +36,8 @@ public:
   void on_close();
   void on_read(char*, size_t);
 
-  void on_passive_close();
-  void active_close();
+  // close socket via a callback from IO thread
+  void close_async();
 
   bool can_be_deleted() const { return m_ready_for_delete; }
 
