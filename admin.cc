@@ -119,7 +119,7 @@ void subscribe_cb(XXX::subscription_event_type evtype,
                   const jalson::json_value& args,
                   void* /*user*/)
 {
-//  std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
+  std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
 }
 int g_connect_status = 0;
 
@@ -127,10 +127,10 @@ void router_connection_cb(XXX::router_conn* /*router_session*/,
                           int status,
                           bool /*is_open*/)
 {
+  std::cout << "HERE, " << status << "\n";
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
   g_connect_status = status;
-
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
 }

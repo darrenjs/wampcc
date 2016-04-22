@@ -21,13 +21,13 @@ namespace XXX {
 
   class event_loop;
   class Logger;
-  struct session_state_event;
+  struct ev_session_state_event;
   struct Request_CB_Data;
 
   typedef std::function<jalson::json_array (int) > build_message_cb;
 
 
-  typedef std::function<void(session_state_event*) > session_state_cb;
+  typedef std::function<void(ev_session_state_event*) > session_state_cb;
 
 
 class SessionMan : public SessionListener
@@ -62,7 +62,7 @@ public:
                     unsigned int internal_req_id,
                     build_message_cb_v2);
 
-  void handle_event( session_state_event* );
+  void handle_event( ev_session_state_event* );
   void handle_housekeeping_event( void );
 
   bool session_is_open(session_handle sh) const;

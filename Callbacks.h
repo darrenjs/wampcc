@@ -17,6 +17,15 @@
 
 namespace XXX {
 
+
+enum session_error_code
+{
+  err_no_error = 0,
+  err_msgbuf_full = -1,
+  err_bad_protocol = -2,
+  err_unknown = -3
+};
+
 class router_conn;
 
 typedef uint64_t t_connection_id;

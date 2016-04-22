@@ -142,16 +142,31 @@ void Session::on_close(int)
 
 void Session::on_read(char* src, size_t len)
 {
+  /* IO thread */
+
+  std::cout << "recv: bytes " << len << "\n";
+  session_error_code e = err_no_error;;
   try
   {
     on_read_impl(src, len);
   }
   catch ( std::exception& ev )
   {
+    e = err_unknown;
     _ERROR_("exception during inbound message read : " << ev.what());
-    std::cout << "ABORT\n";
-    exit(1);
   }
+  catch ( session_error_code& err_caught )
+  {
+    e = err_caught;
+  }
+
+  if (e != err_no_error)
+  {
+    m_session_err = e;
+    m_is_closing = true;
+    m_handle->close_async();
+  }
+
 }
 
 void Session::on_read_impl(char* src, size_t len)
@@ -182,14 +197,15 @@ void Session::on_read_impl(char* src, size_t len)
       {
         if (m_bytes_avail < HEADERLEN) break; // header incomplete
 
-        // quick protocol check.  TODO: ensure this exception (if it needs to
-        // be), can cause the session to be immediately aborted
-        // take a peek at the first byte, see if it looks like a start of a JSON message
+        // quick protocol check
         if (m_bytes_avail > HEADERLEN)
         {
           char firstchar = *(ptr + HEADERLEN);
           if (firstchar != '[')
-            throw event_error::runtime_fatal("bad protocol, not json message");
+          {
+            _ERROR_("malformed json message");
+            throw err_bad_protocol;
+          }
         }
 
         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
@@ -208,10 +224,8 @@ void Session::on_read_impl(char* src, size_t len)
     }
     else
     {
-      // oh dear, no space left to consume messages, hard failure
-      // TODO: how to close this session?
-      std::cout << "TODO: need to close the session\n";
-      throw std::runtime_error("no room in buffer ... need to close the session");
+      _ERROR_("inbound message buffer full");
+      throw err_msgbuf_full;
     }
   }
 }
@@ -223,6 +237,7 @@ void Session::decode_and_process(char* ptr, size_t msglen)
   bool must_close_session = false;
   std::string error_uri;
   std::string error_text;
+  session_error_code my_session_error = err_unknown;
 
   try
   {
@@ -244,6 +259,7 @@ void Session::decode_and_process(char* ptr, size_t msglen)
     error_uri = e.error_uri;
     must_close_session = e.close_session;
     error_text = e.what();
+    my_session_error = err_bad_protocol;
   }
   catch( const std::exception & e)
   {
@@ -273,23 +289,7 @@ void Session::decode_and_process(char* ptr, size_t msglen)
     this->send_msg( err, true );
   }
 
-  if (must_close_session)
-  {
-    _ERROR_( "TODO: need to figure out how to close thei session" );
-    // TODO: how to gracefully close the session;
-    // ALSO: now that we are closing, dont process next bytes
-
-    m_is_closing = true;
-    return;
-  }
-
-      // TODO: only terminate the seesion for protocol error or unknow wrror
-
-      // TODO: if caught any kind of error, then want to terminate the session here.
-      // TODO: how to we send a message, and, then enable it for closing?
-
-
-
+  if (must_close_session) throw my_session_error;
 }
 
 //----------------------------------------------------------------------
@@ -423,7 +423,6 @@ void Session::process_message(jalson::json_value&jv)
     }
     else
     {
-      /* TODO: check state is open */
       if (m_state != eOpen)
       {
         _ERROR_("session is not open to receive messages ... TODO: close the session here");
@@ -455,7 +454,6 @@ void Session::process_message(jalson::json_value&jv)
     }
     else
     {
-      /* TODO: check state is open */
       if (m_state != eOpen)
       {
         _ERROR_("session is not open to receive messages ... TODO: close the session here");
@@ -962,7 +960,7 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
  */
 void Session::notify_session_state_change(bool is_open)
 {
-  session_state_event * e = new session_state_event(is_open);
+  ev_session_state_event * e = new ev_session_state_event(is_open, m_session_err);
   e->src  = handle();
   e->user_conn_id = m_user_conn_id;
   m_evl.push( e );

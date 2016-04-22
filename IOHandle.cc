@@ -263,7 +263,9 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
 
 void IOHandle::close_async()
 {
-  /* IO thread */
+  /* IO thread  --- and maybe EV ???? */
+
+  if (!m_open) return;
 
   // indicate we are closed at earliest oppurtunity
   m_open = false;

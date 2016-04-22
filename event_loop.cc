@@ -273,7 +273,7 @@ void event_loop::process_event(event * ev)
     }
     case event::session_state_event :
     {
-      session_state_event * ev2 = dynamic_cast<session_state_event *>(ev);
+      ev_session_state_event * ev2 = dynamic_cast<ev_session_state_event *>(ev);
       if (m_sesman) m_sesman->handle_event( ev2 );
       if (m_pubsubman) m_pubsubman->handle_event( ev2 );
       break;

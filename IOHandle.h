@@ -50,6 +50,8 @@ private:
   // TODO: in destructor, need to close each of these handles.
   uv_stream_t* m_uv_handle;
   IOLoop* m_loop;
+
+  // TODO: make atomic
   bool m_open = true;
 
   uv_async_t   m_write_async;

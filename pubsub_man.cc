@@ -108,7 +108,7 @@ static bool compare_session(const session_handle& p1, const session_handle& p2)
   return ( !p1.owner_before(p2) && !p2.owner_before(p1) );
 }
 
-void pubsub_man::handle_event(session_state_event* ev)
+void pubsub_man::handle_event(ev_session_state_event* ev)
 {
   /* EV loop */
 

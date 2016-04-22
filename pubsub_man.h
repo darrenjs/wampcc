@@ -14,7 +14,7 @@ class ev_inbound_publish;
 class event_loop;
 class managed_topic;
 class SessionMan;
-class session_state_event;
+class ev_session_state_event;
 class ev_inbound_message;
 
 class pubsub_man
@@ -25,7 +25,7 @@ public:
 
   void handle_event(ev_inbound_publish*);
   void handle_subscribe(ev_inbound_message* ev);
-  void handle_event( session_state_event* );
+  void handle_event( ev_session_state_event* );
   void handle_inbound_publish(ev_inbound_message*);
 
 private:

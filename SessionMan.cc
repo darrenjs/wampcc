@@ -262,7 +262,7 @@ void SessionMan::send_request(session_handle handle_weak,
 
 //----------------------------------------------------------------------
 
-void SessionMan::handle_event(session_state_event* ev)
+void SessionMan::handle_event(ev_session_state_event* ev)
 {
   Session* sptr = NULL;
 

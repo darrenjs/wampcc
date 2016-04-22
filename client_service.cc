@@ -68,7 +68,7 @@ client_service::client_service(Logger * logptr,
 
   // TODO: remove this, and instead all the client_service directly from the event_loop
   m_sesman->set_session_event_listener(
-    [this](session_state_event* ev){this->handle_session_state_change(ev);});
+    [this](ev_session_state_event* ev){this->handle_session_state_change(ev);});
 
   // m_evl.set_handler(CHALLENGE,
   //                   [this](class event* ev){ this->handle_CHALLENGE(ev); } );
@@ -117,7 +117,7 @@ client_service::~client_service()
 
 //----------------------------------------------------------------------
 
-void client_service::handle_session_state_change(session_state_event* ev)
+void client_service::handle_session_state_change(ev_session_state_event* ev)
 {
   /* EV thread */
 
@@ -136,6 +136,19 @@ void client_service::handle_session_state_change(session_state_event* ev)
       else ++it;
     }
 
+    // raise user callback to indicate session termination
+    {
+      std::unique_lock< std::mutex > guard(m_router_sessions_lock);
+      auto iter = m_router_sessions.find( ev->user_conn_id );
+      if (iter != m_router_sessions.end())
+      {
+        router_conn* rs = iter->second;
+        if (rs->m_connection_cb)
+          try {
+            rs->m_connection_cb(rs, ev->err, false);
+          } catch(...){}
+      }
+    }
     return;
   }
 

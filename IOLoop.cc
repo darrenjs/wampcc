@@ -251,9 +251,11 @@ void IOLoop::on_async()
 
 }
 
-/* Any thread may enter here */
+
 void IOLoop::async_send()
 {
+  /* ANY thread */
+
   // cause the IO thread to wake up
   uv_async_send( m_async.get() );
 }
@@ -314,23 +316,6 @@ void IOLoop::add_server(int port, socket_accept_cb cb)
   this->async_send();
 }
 
-// void IOLoop::add_connection(std::string addr,
-//                             int port,
-//                             tcp_connect_attempt_cb user_cb,
-//                             void* user_data)
-// {
-//   {
-//     std::lock_guard< std::mutex > guard (m_pending_requests_lock  );
-//     io_request r( __logptr );
-//     r.addr = addr;
-//     r.port = port;
-//     r.user_cb = user_cb;
-//     r.user_data = user_data;
-//     m_pending_requests.push_back( r );
-//   }
-
-//   this->async_send();
-// }
 
 void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 {
@@ -342,7 +327,6 @@ void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 
 /* Here we have completed a tcp connect attempt (either successfully or
  * unsuccessfully).  Next we shall escalate the result upto the handler.
- *
  */
 void IOLoop::add_active_handle(IOHandle * iohandle, int status, io_request * req)
 {
@@ -362,7 +346,7 @@ void IOLoop::add_connection(std::string addr,
                             t_connection_id user_conn_id)
 {
   {
-    std::lock_guard< std::mutex > guard (m_pending_requests_lock  );
+    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     io_request r( __logptr );
     r.addr = addr;
     r.port = port;
