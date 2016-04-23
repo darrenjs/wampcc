@@ -119,17 +119,16 @@ void Session::close(int)
 {
   // TODO: is this correct approach?
   //std::lock_guard<std::mutex> guard(m_handle_lock);
-  //m_handle->active_close();
+  //if (m_handle) m_handle->active_close();
 }
 
 //----------------------------------------------------------------------
 
-// TODO: try to make sure this gets called for all session close events
-void Session::on_close(int)
+void Session::on_close()
 {
   /* IO thread */
 
-  // follow call of this callback, we must not call the IO handle again
+  // following the call of this callback, we must not call the IO handle again
   {
     std::lock_guard<std::mutex> guard(m_handle_lock);
     m_handle = nullptr;
@@ -144,8 +143,8 @@ void Session::on_read(char* src, size_t len)
 {
   /* IO thread */
 
-  std::string temp(src,len);
-  std::cout << "recv: bytes " << len << ": " << temp << "\n";
+  //std::string temp(src,len);
+  //std::cout << "recv: bytes " << len << ": " << temp << "\n";
   session_error se ( "", session_error::err_no_error );
   try
   {
@@ -184,7 +183,11 @@ void Session::on_read(char* src, size_t len)
 
 
     m_is_closing = true;
-    m_handle->close_async();
+
+    {
+      std::lock_guard<std::mutex> guard(m_handle_lock);
+      if (m_handle) m_handle->close_async();
+    }
   }
 
 }
@@ -308,11 +311,10 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      /* TODO: the session should be open for all other message types */
-
       if (m_state != eOpen)
       {
-        _ERROR_("session is not open to send messages ... TODO: close the session here");
+        std::lock_guard<std::mutex> guard(m_handle_lock);
+        if (m_handle) m_handle->close_async();
       }
     }
   }
@@ -328,11 +330,12 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      /* TODO: the session should be open for all other message types */
       if (m_state != eOpen)
       {
-        _ERROR_("session is not open to send messages ... TODO: close the session here");
+        std::lock_guard<std::mutex> guard(m_handle_lock);
+        if (m_handle) m_handle->close_async();
       }
+
     }
   }
 
@@ -377,7 +380,7 @@ void Session::process_message(jalson::json_value&jv)
     throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol);
 
   int const message_type = jv.as_array()[0].as_int();
- 
+
   /*  TODO: remove this
   static int c = 0;
   c++;

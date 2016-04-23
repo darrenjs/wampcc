@@ -104,7 +104,7 @@ namespace XXX {
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
 
-    void on_close(int) override;
+    void on_close() override;
     void on_read(char*, size_t) override;
     void on_read_impl(char*, size_t);
     void decode_and_process(char*, size_t len);

@@ -25,50 +25,42 @@ public:
   IOHandle(const IOHandle&) = delete;
   IOHandle& operator=(const IOHandle&) = delete;
 
-
   void set_listener(io_listener* l ) { m_listener = l; }
 
   /* Enqueue bytes to be sent */
   void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool close);
 
-  void write_async_cb();
-
-  // IO callbacks -- these get invoked on the IO thread
-  void on_close();
-  void on_read(char*, size_t);
-
   // close socket via a callback from IO thread
   void close_async();
 
-  bool can_be_deleted() const { return m_ready_for_delete; }
+  bool can_be_deleted() const;
+
+private:
+  void write_async();
 
   void on_write_cb(uv_write_t * req, int status);
+  void on_close_cb();
+  void on_read_cb(uv_stream_t*, ssize_t, const uv_buf_t*);
+
 private:
-
-
   Logger * __logptr;
 
-  // TODO: in destructor, need to close each of these handles.
   uv_stream_t* m_uv_handle;
-  IOLoop* m_loop;
-
-  std::atomic<bool> m_open;
-
   uv_async_t   m_write_async;
 
-  bool m_async_allowed = true;
-  bool m_ready_for_delete = false;
-
-  std::vector< uv_buf_t > m_pending_write;
-  std::mutex              m_pending_write_lock;
-  bool m_do_async_close = false;
-  int m_close_count = 0;
-
+  IOLoop* m_loop;
   io_listener * m_listener;
+
+  std::atomic<bool> m_open;
+  int m_closed_handles_count;
 
   std::atomic<size_t> m_bytes_pending; // pending written
   size_t m_bytes_written = 0;
   size_t m_bytes_read = 0;
+
+  std::vector< uv_buf_t > m_pending_write;
+  std::mutex              m_pending_write_lock;
+  bool m_do_async_close = false;
 };
 
 } // namespace XXX

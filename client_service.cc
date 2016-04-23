@@ -145,7 +145,7 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
         router_conn* rs = iter->second;
         if (rs->m_connection_cb)
           try {
-            rs->m_connection_cb(rs, -ev->err, false);
+            rs->m_connection_cb(rs, -ev->err, false); // TODO: core dump seen here
           } catch(...){}
       }
     }

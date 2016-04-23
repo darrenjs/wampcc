@@ -24,6 +24,7 @@ class session_error : public std::runtime_error
 public:
   enum error_code
   {
+    // TODO EASY :remove the err_ prefixes
     err_no_error = 0,
     msgbuf_full,
     bad_protocol,
