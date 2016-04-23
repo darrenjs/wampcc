@@ -936,8 +936,9 @@ void client_service::handle_EVENT(ev_inbound_message* ev)
        Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentKw|dict]
 */
   session_handle src = ev->src;
-  size_t subscrid =  ev->ja[1].as_uint();
 
+  // TODO: need policy on throwing errors during message parsing.
+  size_t subscrid =  ev->ja[1].as_uint();
   jalson::json_value& args = ev->ja[4];
 
   if (auto sp = src.lock())
@@ -951,7 +952,7 @@ void client_service::handle_EVENT(ev_inbound_message* ev)
       return;
     }
 
-    auto iter2 = iter->second.find( 1 );
+    auto iter2 = iter->second.find( subscrid );
     if (iter2 == iter->second.end())
     {
       _WARN_("ignoring topic event, subscription not found, subscription id " << subscrid);
