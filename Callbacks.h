@@ -18,13 +18,41 @@
 namespace XXX {
 
 
-enum session_error_code
+
+class session_error : public std::runtime_error
 {
-  err_no_error = 0,
-  err_msgbuf_full = -1,
-  err_bad_protocol = -2,
-  err_unknown = -3
+public:
+  enum error_code
+  {
+    err_no_error = 0,
+    msgbuf_full,
+    bad_protocol,
+    err_unknown,
+    err_bad_json,
+  };
+
+
+  std::string uri;
+  error_code err;
+
+  session_error(const std::string& __uri,
+                error_code __e = err_unknown)
+  : std::runtime_error( __uri ),
+    uri( __uri ),
+    err( __e )
+  {
+  }
+
+  session_error(const std::string& __uri,
+                const std::string& __text,
+                error_code __e = err_unknown)
+  : std::runtime_error( __text ),
+    uri( __uri ),
+    err( __e )
+  {
+  }
 };
+
 
 class router_conn;
 

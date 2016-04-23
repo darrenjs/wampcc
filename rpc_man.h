@@ -20,39 +20,6 @@ class client_service;
 class Logger;
 class ev_inbound_message;
 
-/* TODO: this is a duplcate definition. In fact, is this even needed now? I.e.,
- this structure is that a CALLEE-program will register with CALLEE-api
- (client_service).
-
- */
-
-
-// TODO: need to decrecate this class
-class  protocol_error : public std::runtime_error
-{
-public:
-
-  static protocol_error runtime_error(const std::string __text)
-  {
-    return protocol_error(WAMP_RUNTIME_ERROR, __text, true);
-  }
-
-  protocol_error(const std::string __error_uri,
-                 const std::string __text,
-                 bool __close_session)
-    : std::runtime_error( __text ),
-      error_uri( __error_uri ),
-      close_session( __close_session )
-  {
-  }
-
-  virtual ~protocol_error()  {}
-
-  std::string error_uri;
-  bool close_session;
-
-};
-
 
 struct rpc_details
 {

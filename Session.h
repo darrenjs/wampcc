@@ -185,7 +185,7 @@ namespace XXX {
 
     t_connection_id m_user_conn_id;
 
-    session_error_code m_session_err = err_no_error;
+    session_error::error_code m_session_err = session_error::err_no_error;
   };
 
 } // namespace XXX

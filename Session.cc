@@ -144,30 +144,51 @@ void Session::on_read(char* src, size_t len)
 {
   /* IO thread */
 
-  std::cout << "recv: bytes " << len << "\n";
-  session_error_code e = err_no_error;;
+  std::string temp(src,len);
+  std::cout << "recv: bytes " << len << ": " << temp << "\n";
+  session_error se ( "", session_error::err_no_error );
   try
   {
     on_read_impl(src, len);
   }
-  catch ( std::exception& ev )
+  catch ( const session_error& e )
   {
-    e = err_unknown;
-    _ERROR_("exception during inbound message read : " << ev.what());
+    se = e;
+    _ERROR_("session_error exception : " << e.what());
   }
-  catch ( session_error_code& err_caught )
+  catch ( const std::exception& ev )
   {
-    e = err_caught;
+    se.err = session_error::err_unknown;
+    _ERROR_("exception : " << ev.what());
+  }
+  catch (...)
+  {
+    se.err = session_error::err_unknown;
   }
 
-  if (e != err_no_error)
+  if (se.err != session_error::err_no_error)
   {
-    m_session_err = e;
+    m_session_err = se.err;
+
+    try
+    {
+      // TODO: this does not seem to get sent.  Probably the socket is getting
+      // closed before the message is written.
+      jalson::json_array msg;
+      jalson::json_object error_dict;
+      msg.push_back( GOODBYE );
+      msg.push_back( jalson::json_object() );
+      msg.push_back( se.uri );
+      this->send_msg( msg );
+    } catch (...){}
+
+
     m_is_closing = true;
     m_handle->close_async();
   }
 
 }
+
 
 void Session::on_read_impl(char* src, size_t len)
 {
@@ -202,10 +223,7 @@ void Session::on_read_impl(char* src, size_t len)
         {
           char firstchar = *(ptr + HEADERLEN);
           if (firstchar != '[')
-          {
-            _ERROR_("malformed json message");
-            throw err_bad_protocol;
-          }
+            throw session_error(WAMP_RUNTIME_ERROR, "bad json message", session_error::bad_protocol);
         }
 
         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
@@ -224,8 +242,7 @@ void Session::on_read_impl(char* src, size_t len)
     }
     else
     {
-      _ERROR_("inbound message buffer full");
-      throw err_msgbuf_full;
+      throw session_error(WAMP_RUNTIME_ERROR, "msg buffer full", session_error::msgbuf_full);
     }
   }
 }
@@ -233,60 +250,28 @@ void Session::on_read_impl(char* src, size_t len)
 
 void Session::decode_and_process(char* ptr, size_t msglen)
 {
-  bool had_error = true;
   bool must_close_session = false;
   std::string error_uri;
   std::string error_text;
-  session_error_code my_session_error = err_unknown;
+  session_error::error_code my_session_error = session_error::err_unknown;
 
   try
   {
     jalson::json_value jv;
     jalson::decode(jv, ptr, msglen);
     this->process_message( jv );
-    had_error = false;
   }
   catch (const XXX::event_error& e)
   {
+    // TODO: need to review handling of event_errors
     _DEBUG_( "Session::on_read_impl  event_error" );
     error_uri  = e.error_uri;
     must_close_session = e.is_fatal;
     error_text = e.what();
   }
-  catch (const XXX::protocol_error& e)
+  catch( const jalson::json_error& e)
   {
-    _DEBUG_( "Session::on_read_impl protocol_error" );
-    error_uri = e.error_uri;
-    must_close_session = e.close_session;
-    error_text = e.what();
-    my_session_error = err_bad_protocol;
-  }
-  catch( const std::exception & e)
-  {
-    error_uri = WAMP_RUNTIME_ERROR;
-    must_close_session = true;
-    error_text = e.what();
-
-    _ERROR_( "caught exception during message !!!! "<< e.what() );
-    std::cout << "ABORT\n";
-    exit(1);
-  }
-  catch( ... )
-  {
-    error_uri = WAMP_RUNTIME_ERROR;
-    error_text = "unknown exception";
-    must_close_session = true;
-  }
-
-  if (had_error)
-  {
-    jalson::json_array err;
-    jalson::json_object error_dict;
-    if ( !error_text.empty() ) error_dict[ "text" ] = error_text;
-    err.push_back( ERROR );
-    err.push_back( error_uri );
-    err.push_back( error_dict );
-    this->send_msg( err, true );
+    throw session_error(WAMP_RUNTIME_ERROR, e.what(), session_error::err_bad_json);
   }
 
   if (must_close_session) throw my_session_error;
@@ -386,14 +371,22 @@ void Session::process_message(jalson::json_value&jv)
 {
 //  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
-  // TODO: need basic WAMP checking here
+  jalson::json_array & ja = jv.as_array();
 
-  jalson::json_array ja = jv.as_array();  // TODO: raise a protocol error if fails
-
-  if (!jv.as_array()[0].is_number()) return; // TODO: add better error handling
+  if (ja.size() == 0)
+    throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol);
 
   int const message_type = jv.as_array()[0].as_int();
+ 
+  /*  TODO: remove this
+  static int c = 0;
+  c++;
 
+  if (c > 10)
+  {
+    c = jv.as_array()[0].as_real();
+  }
+  */
 
   /* session state validation */
 
