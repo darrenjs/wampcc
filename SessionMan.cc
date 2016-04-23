@@ -219,7 +219,7 @@ void SessionMan::send_to_session(const std::vector<session_handle>& handles,
     }
     catch (const std::exception& e)
     {
-      _ERROR_("caught exception during broadcast: " << e.what());
+      _ERROR_("exception during msg send: " << e.what());
     }
   }
 }
