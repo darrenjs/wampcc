@@ -96,7 +96,10 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
     m_uv_handle(hdl),
     m_loop(loop),
     m_open(true),
-    m_listener( nullptr )
+    m_listener( nullptr ),
+    m_bytes_pending(0),
+    m_bytes_written(0),
+    m_bytes_read(0)
 {
   m_uv_handle->data = this;
 
@@ -202,7 +205,7 @@ void IOHandle::write_async_cb()
       // we need to free req here. And probably close the connection,
       m_bytes_pending += total_bytes;
 
-      std::cout << "PENDING: " << m_bytes_pending << "\n";
+//      std::cout << "PENDING: " << m_bytes_pending << "\n";
       int r = uv_write((uv_write_t*)wr, m_uv_handle, wr->bufs, wr->nbufs, __on_write_cb);
       if (r) delete wr; // TODO: also, close the connection?
 
@@ -265,7 +268,7 @@ void IOHandle::close_async()
 {
   /* IO thread  --- and maybe EV ???? */
 
-  if (!m_open) return;
+  if ( !m_open ) return;
 
   // indicate we are closed at earliest oppurtunity
   m_open = false;

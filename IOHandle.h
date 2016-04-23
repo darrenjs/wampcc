@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <mutex>
+#include <atomic>
 
 namespace XXX {
 
@@ -51,8 +52,7 @@ private:
   uv_stream_t* m_uv_handle;
   IOLoop* m_loop;
 
-  // TODO: make atomic
-  bool m_open = true;
+  std::atomic<bool> m_open;
 
   uv_async_t   m_write_async;
 
@@ -66,9 +66,8 @@ private:
 
   io_listener * m_listener;
 
-  // TODO: make atomic
+  std::atomic<size_t> m_bytes_pending; // pending written
   size_t m_bytes_written = 0;
-  size_t m_bytes_pending = 0; // pending written
   size_t m_bytes_read = 0;
 };
 
