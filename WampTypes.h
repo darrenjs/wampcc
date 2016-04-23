@@ -14,7 +14,6 @@ namespace XXX
 #define WAMP_ERROR_NOT_AUTHORIZED "wamp.error.not_authorized"
 #define WAMP_ERROR_NO_ELIGIBLE_CALLEE "wamp.error.no_eligible_callee"
 #define WAMP_ERROR_NO_SUCH_REALM "wamp.error.no_such_realm"
-#define WAMP_ERROR_NO_SUCH_REALM "wamp.error.no_such_realm"
 #define WAMP_ERROR_NO_SUCH_ROLE "wamp.error.no_such_role"
 #define WAMP_ERROR_NO_SUCH_SUBSCRIPTION "wamp.error.no_such_subscription"
 #define WAMP_ERROR_OPTION_NOT_ALLOWED "wamp.error.option_not_allowed"
