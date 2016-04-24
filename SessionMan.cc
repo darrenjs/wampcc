@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-#define MAX_PENDING_OPEN_SECS 2
+#define MAX_PENDING_OPEN_SECS 3
 
 namespace XXX
 {
@@ -53,7 +53,6 @@ Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
   sptr = new Session( sid,
                       __logptr,
                       iohandle,
-                      this,
                       m_evl,
                       is_passive,
                       user_conn_id,
@@ -113,31 +112,6 @@ void SessionMan::close_all()
   {
     i.second->close();
   }
-}
-
-
-void SessionMan::session_closed(Session& s)
-{
-  /* IO thread */
-
-  _INFO_("SessionMan::session_closed");
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-  // TODO tryong to do an immediate delete
-  m_sessions.closed.push_back( & s );
-
-  for (auto it = m_sessions.active.begin(); it != m_sessions.active.end(); )
-  {
-    if (it->second == &s)
-      m_sessions.active.erase( it++ );
-    else
-      it++;
-  }
-
-  s.remove_listener();
-
-
-  // TODO: here, could push an event
 }
 
 
@@ -214,11 +188,7 @@ void SessionMan::send_to_session_impl(session_handle handle,
   }
   else
   {
-    // TODO: needs to throw?  Because causes problem for when we are looping of
-    // a list of sessions to send on.
-    std::ostringstream os;
-    os << "session send failed; cannot find session with id " << dest;
-    throw std::runtime_error( os.str() );
+    _WARN_("session send failed; cannot find session with id " << dest);
   }
 }
 
@@ -323,17 +293,15 @@ void SessionMan::handle_housekeeping_event()
 {
   this->heartbeat_all();
 
+
+  std::vector<Session*> to_delete;
+
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-    // TODO: I can move the deletion to outside of the critical section.
-//    _INFO_("deleting expired sessions: " << m_sessions.closed.size());
-    for (auto & i : m_sessions.closed)
-    {
-      delete i;
-    }
-    m_sessions.closed.clear();
+    to_delete.swap( m_sessions.closed );
   }
+
+  for (auto & i : to_delete) delete i;
 }
 
 //----------------------------------------------------------------------

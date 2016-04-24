@@ -27,7 +27,6 @@ namespace XXX {
 
   class event_loop;
   class IOHandle;
-  class SessionListener;
   class SessionMan;
 
 
@@ -62,7 +61,7 @@ namespace XXX {
   {
   public:
     Session(SID, Logger*, IOHandle *,
-            SessionListener*, event_loop&, bool is_passive,
+            event_loop&, bool is_passive,
             t_connection_id user_conn_id,
             std::string realm = "" /* should be empty for passive session */);
     ~Session();
@@ -150,7 +149,6 @@ namespace XXX {
 
 
     Logger *__logptr; /* name chosen for log macros */
-    SessionListener * m_listener;
 
     std::mutex m_handle_lock;
     IOHandle* m_handle;

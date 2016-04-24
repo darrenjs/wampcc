@@ -4,7 +4,6 @@
 
 #include "Callbacks.h"
 
-#include "SessionListener.h"
 #include "Session.h"
 
 #include <jalson/jalson.h>
@@ -30,7 +29,7 @@ namespace XXX {
   typedef std::function<void(ev_session_state_event*) > session_state_cb;
 
 
-class SessionMan : public SessionListener
+class SessionMan
 {
 public:
   SessionMan(Logger*, event_loop&);
@@ -41,8 +40,6 @@ public:
                           std::string realm);
 
   void close_all();
-
-  void session_closed(Session&) override;
 
   void set_session_event_listener(session_state_cb);
 

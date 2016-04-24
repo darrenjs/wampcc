@@ -1,7 +1,6 @@
 #include "Session.h"
 
 #include "IOHandle.h"
-#include "SessionListener.h"
 #include "rpc_man.h"
 #include "WampTypes.h"
 #include "event_loop.h"
@@ -76,14 +75,12 @@ struct PendingRegister : public PendingReq
 Session::Session(SID s,
                  Logger* logptr,
                  IOHandle* h,
-                 SessionListener * listener,
                  event_loop & evl,
                  bool is_passive,
                  t_connection_id __user_conn_id,
                  std::string __realm)
   : m_state( eInit ),
     __logptr(logptr),
-    m_listener( listener ),
     m_handle( h ),
     m_hb_intvl(2),
     m_time_create(time(NULL)),
@@ -580,11 +577,6 @@ void Session::process_message(jalson::json_value&jv)
 }
 
 //----------------------------------------------------------------------
-
-void Session::remove_listener()
-{
-  m_listener = nullptr;
-}
 
 
 void Session::call( const std::string& procedure )
