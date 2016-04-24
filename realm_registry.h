@@ -8,6 +8,7 @@
 
 #include <map>
 #include <mutex>
+#include <atomic>
 
 namespace XXX {
 
@@ -34,7 +35,7 @@ private:
   std::string m_null_realm;
 
   mutable std::mutex m_lock;
-  t_realm_id m_next_id;
+  std::atomic<t_realm_id> m_next_id;
   std::map< std::string, t_realm_id > m_realm_to_id;
   std::map< t_realm_id, std::string > m_id_to_realm;
 };
