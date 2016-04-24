@@ -30,13 +30,13 @@ public:
   /* Enqueue bytes to be sent */
   void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool close);
 
-  // close socket via a callback from IO thread
-  void close_async();
+  void request_close();
 
   bool can_be_deleted() const;
 
 private:
   void write_async();
+  void init_close();
 
   void on_write_cb(uv_write_t * req, int status);
   void on_close_cb();
@@ -51,16 +51,17 @@ private:
   IOLoop* m_loop;
   io_listener * m_listener;
 
-  std::atomic<bool> m_open;
+  std::atomic<bool> m_is_closing;
   int m_closed_handles_count;
 
   std::atomic<size_t> m_bytes_pending; // pending written
   size_t m_bytes_written = 0;
   size_t m_bytes_read = 0;
 
-  std::vector< uv_buf_t > m_pending_write;
   std::mutex              m_pending_write_lock;
-  bool m_do_async_close = false;
+  std::vector< uv_buf_t > m_pending_write;
+  bool                    m_pending_close_handles;
+  std::atomic<bool>       m_pending_call_close;
 };
 
 } // namespace XXX

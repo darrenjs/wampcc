@@ -1,6 +1,5 @@
 #include "IOHandle.h"
 
-
 #include "IOLoop.h"
 #include "Session.h"
 #include "io_listener.h"
@@ -48,11 +47,13 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
     m_uv_handle(hdl),
     m_loop(loop),
     m_listener( nullptr ),
-    m_open(true),
+    m_is_closing(false),
     m_closed_handles_count(0),
     m_bytes_pending(0),
     m_bytes_written(0),
-    m_bytes_read(0)
+    m_bytes_read(0),
+    m_pending_close_handles(false),
+    m_pending_call_close(false)
 {
   m_uv_handle->data = this;
 
@@ -107,7 +108,8 @@ void IOHandle::write_async()
 {
   /* IO thread */
 
-  if (m_do_async_close)
+  // Handling of close_handles signals needs to be checked first
+  if (m_pending_close_handles)
   {
     // request closure of our UV handles
 
@@ -125,6 +127,14 @@ void IOHandle::write_async()
     return;
   }
 
+
+  // handle user request to close
+  if (m_pending_call_close)
+  {
+    init_close();
+    return;
+  }
+
   std::vector< uv_buf_t >  copy;
   {
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
@@ -136,13 +146,13 @@ void IOHandle::write_async()
 
   static size_t PENDING_MAX = 1 * 1000000;
 
-  if (m_open && !copy.empty())
+  if (!m_is_closing && !copy.empty())
   {
     if (bytes_to_send > (PENDING_MAX - m_bytes_pending))
     {
       // oh dear, we have to now close this connection
       _WARN_("pending bytes limit reached; closing connection");
-      close_async();
+      init_close();
       return;
     }
 
@@ -194,24 +204,39 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
 }
 
 
-void IOHandle::close_async()
+void IOHandle::request_close()
 {
-  /* IO thread  --- and maybe EV ???? */
+  /* ANY thread */
 
-  if ( !m_open ) return;
+  {
+    std::lock_guard<std::mutex> guard(m_pending_write_lock);
+    m_pending_call_close = true;
+  }
+
+  uv_async_send( &m_write_async );
+}
+
+void IOHandle::init_close()
+{
+  /* IO 
+
+	   Note: this must not be called from the Session, because deadlock will happen.
+  */
+
+  if ( m_is_closing ) return;
 
   // indicate we are closed at earliest oppurtunity
-  m_open = false;
+  m_is_closing = true;
 
-  // instruct listener/owner never to call us again, to prevent it sending new
-  // output requests after the close request
+  // Instruct listener/owner never to call us again, to prevent it sending new
+  // output requests after the close request.
   if (m_listener) m_listener->on_close();
   m_listener = nullptr;
 
   /* Raise an async request to close the socket.  This will be the last async
    * operation requested.  I.e., there will no more requests coming from the
    * Session object which owns this handle. */
-  m_do_async_close = true;
+  m_pending_close_handles = true;
   uv_async_send( &m_write_async );
 }
 
@@ -226,10 +251,7 @@ void IOHandle::on_write_cb(uv_write_t * req, int status)
     if (status == 0)
     {
       size_t total = 0;
-      for (size_t i = 0; i < req->nbufs; i++)
-      {
-        total += req->bufsml[i].len;
-      }
+      for (size_t i = 0; i < req->nbufs; i++) total += req->bufsml[i].len;
       m_bytes_written += total;
       if (m_bytes_pending > total)
         m_bytes_pending -= total;
@@ -241,7 +263,7 @@ void IOHandle::on_write_cb(uv_write_t * req, int status)
       // write failed - this can happen if we actively terminated the socket while
       // there were still a long queue of bytes awaiting output (eg inthe case of
       // a slow consumer)
-      close_async();
+      init_close();
     }
   }
   catch (...){}
@@ -251,7 +273,7 @@ void IOHandle::on_write_cb(uv_write_t * req, int status)
 }
 
 
-void IOHandle::on_read_cb(uv_stream_t*  uvh,
+void IOHandle::on_read_cb(uv_stream_t*  /*uvh*/,
                           ssize_t nread ,
                           const uv_buf_t* buf)
 {
@@ -261,7 +283,7 @@ void IOHandle::on_read_cb(uv_stream_t*  uvh,
   {
     if ((nread == UV_EOF) ||  (nread < 0))
     {
-      close_async();
+      init_close();
     }
     else if (nread > 0)
     {
@@ -275,11 +297,14 @@ void IOHandle::on_read_cb(uv_stream_t*  uvh,
   }
   catch (...)
   {
-    close_async();
+    init_close();
   }
 
   delete [] buf->base;
 }
+
+
+
 
 
 } // namespace XXX

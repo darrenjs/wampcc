@@ -192,7 +192,7 @@ void IOLoop::on_async()
   if (pending_flags & eFinal)
   {
     for (auto & i : m_handles)
-      i->close_async();
+      i->request_close();
 
     for (auto & i : m_server_handles)
       uv_close((uv_handle_t*)i.get(), 0);

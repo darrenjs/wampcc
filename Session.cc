@@ -85,10 +85,10 @@ Session::Session(SID s,
     __logptr(logptr),
     m_listener( listener ),
     m_handle( h ),
-    m_hb_intvl(30),
+    m_hb_intvl(2),
     m_time_create(time(NULL)),
     m_opened(0),
-    m_hb_last(0),
+    m_time_last_msg(time(NULL)),
     m_request_id(0),
     m_buf( new char[ INBOUND_BUFFER_SIZE ] ), // TODO: make into to constant, and check during mempcy
     m_bytes_avail(0),
@@ -115,11 +115,11 @@ Session::~Session()
 
 //----------------------------------------------------------------------
 
-void Session::close(int)
+void Session::close()
 {
-  // TODO: is this correct approach?
-  //std::lock_guard<std::mutex> guard(m_handle_lock);
-  //if (m_handle) m_handle->active_close();
+  // TODO: BUG: deadlock!
+  std::lock_guard<std::mutex> guard(m_handle_lock);
+  if (m_handle) m_handle->request_close();
 }
 
 //----------------------------------------------------------------------
@@ -186,7 +186,7 @@ void Session::on_read(char* src, size_t len)
 
     {
       std::lock_guard<std::mutex> guard(m_handle_lock);
-      if (m_handle) m_handle->close_async();
+      if (m_handle) m_handle->request_close();
     }
   }
 
@@ -237,7 +237,7 @@ void Session::on_read_impl(char* src, size_t len)
 
         // skip to start of next message
         ptr           += (HEADERLEN+msglen);
-        m_bytes_avail -= (HEADERLEN + msglen);
+        m_bytes_avail -= (HEADERLEN+msglen);
       }
 
       /* move any left over bytes to the head of the buffer */
@@ -314,7 +314,7 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
       if (m_state != eOpen)
       {
         std::lock_guard<std::mutex> guard(m_handle_lock);
-        if (m_handle) m_handle->close_async();
+        if (m_handle) m_handle->request_close();
       }
     }
   }
@@ -333,7 +333,7 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
       if (m_state != eOpen)
       {
         std::lock_guard<std::mutex> guard(m_handle_lock);
-        if (m_handle) m_handle->close_async();
+        if (m_handle) m_handle->request_close();
       }
 
     }
@@ -390,6 +390,8 @@ void Session::process_message(jalson::json_value&jv)
     c = jv.as_array()[0].as_real();
   }
   */
+
+  m_time_last_msg = time(NULL);
 
   /* session state validation */
 
@@ -986,12 +988,17 @@ void Session::initiate_handshake()
 }
 
 
+int Session::duration_since_last() const
+{
+  return (time(NULL) - m_time_last_msg);
+}
+
 int Session::duration_pending_open() const
 {
   if (is_open())
     return 0;
   else
-    return (time(NULL) - m_time_create)*1000;
+    return (time(NULL) - m_time_create);
 }
 
 std::string  Session::realm() const
