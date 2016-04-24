@@ -84,10 +84,9 @@ Session::Session(SID s,
     m_handle( h ),
     m_hb_intvl(2),
     m_time_create(time(NULL)),
-    m_opened(0),
     m_time_last_msg(time(NULL)),
     m_request_id(0),
-    m_buf( new char[ INBOUND_BUFFER_SIZE ] ), // TODO: make into to constant, and check during mempcy
+    m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
     m_bytes_avail(0),
     m_is_closing(false),
     m_evl(evl),
@@ -114,7 +113,6 @@ Session::~Session()
 
 void Session::close()
 {
-  // TODO: BUG: deadlock!
   std::lock_guard<std::mutex> guard(m_handle_lock);
   if (m_handle) m_handle->request_close();
 }
@@ -181,10 +179,7 @@ void Session::on_read(char* src, size_t len)
 
     m_is_closing = true;
 
-    {
-      std::lock_guard<std::mutex> guard(m_handle_lock);
-      if (m_handle) m_handle->request_close();
-    }
+    this->close();
   }
 
 }
@@ -308,11 +303,7 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen)
-      {
-        std::lock_guard<std::mutex> guard(m_handle_lock);
-        if (m_handle) m_handle->request_close();
-      }
+      if (m_state != eOpen) this->close();
     }
   }
   else
@@ -327,12 +318,7 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen)
-      {
-        std::lock_guard<std::mutex> guard(m_handle_lock);
-        if (m_handle) m_handle->request_close();
-      }
-
+      if (m_state != eOpen) this->close();
     }
   }
 
@@ -418,10 +404,7 @@ void Session::process_message(jalson::json_value&jv)
     }
     else
     {
-      if (m_state != eOpen)
-      {
-        _ERROR_("session is not open to receive messages ... TODO: close the session here");
-      }
+      if (m_state != eOpen) this->close();
     }
   }
   else
@@ -449,10 +432,7 @@ void Session::process_message(jalson::json_value&jv)
     }
     else
     {
-      if (m_state != eOpen)
-      {
-        _ERROR_("session is not open to receive messages ... TODO: close the session here");
-      }
+      if (m_state != eOpen) this->close();
     }
   }
 
@@ -581,11 +561,11 @@ void Session::process_message(jalson::json_value&jv)
 
 void Session::call( const std::string& procedure )
 {
-  // NOTE: this needs to be locked, so that obaining an ID, and the send, are
+  // TODO NOTE: this needs to be locked, so that obaining an ID, and the send, are
   // the same atomic operation ... or, can we be sure it will only by the event
   // loop thread coming in here?
 
-  uint64_t request_id = ++m_request_id; // TODO: needs to be atomic
+  uint64_t request_id = ++m_request_id;
 
   PendingCall * pending = new PendingCall() ;
   pending->message_type = CALL;
@@ -596,7 +576,6 @@ void Session::call( const std::string& procedure )
     m_pend_req[request_id] = pending;
   }
 
-  // [CALL, Request|id, Options|dict, Procedure|uri, Arguments|list, ArgumentsKw|dict]
   jalson::json_array json;
   json.push_back(CALL);
   json.push_back(request_id);
@@ -608,8 +587,6 @@ void Session::call( const std::string& procedure )
   pending->request = json;
 
   this->send_msg( json );
-
-  // TODO: set up a response handle
 }
 
 
@@ -617,7 +594,7 @@ void Session::send_request( int request_type,
                             unsigned int internal_req_id,
                             build_message_cb_v2 msg_builder )
 {
-  uint64_t request_id = ++m_request_id; // TODO: needs to be atomic
+  uint64_t request_id = ++m_request_id;
 
   // TODO: here I am using the PendingRegister struct ... but question is, do I
   // need a request-specific structure, or, can I have something generic?

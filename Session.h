@@ -158,7 +158,6 @@ namespace XXX {
         around a 20 second precision. */
     int m_hb_intvl;
     time_t m_time_create;
-    time_t m_opened;
 
     time_t m_time_last_msg;
 

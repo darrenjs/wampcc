@@ -112,9 +112,6 @@ void IOHandle::write_async()
   if (m_pending_close_handles)
   {
     // request closure of our UV handles
-
-    // TODO: not sure I need these ... added when looking for a memory leak.  I
-    // think I do need this, becuase without, I do get a lot of core dumps.
     uv_close((uv_handle_t*)&m_write_async, [](uv_handle_t* uvh){
         IOHandle * h = (IOHandle *) uvh->data;
         h->on_close_cb();
@@ -218,7 +215,7 @@ void IOHandle::request_close()
 
 void IOHandle::init_close()
 {
-  /* IO 
+  /* IO
 
 	   Note: this must not be called from the Session, because deadlock will happen.
   */
