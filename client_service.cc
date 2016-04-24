@@ -737,6 +737,8 @@ void client_service::invoke_direct(session_handle& sh,
 
 void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercase
 {
+  /* EV thread */
+
   int reqid=ev->ja[1].as_int();
   _INFO_("Got RESULT for reqid " << reqid << "," << ev->internal_req_id);
 

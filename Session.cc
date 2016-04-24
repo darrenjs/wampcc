@@ -971,6 +971,11 @@ bool Session::is_open() const
   return m_state == eOpen;
 }
 
+bool Session::is_pending_open() const
+{
+  return (m_state != eOpen && m_state != eClosed);
+}
+
 //----------------------------------------------------------------------
 
 void Session::initiate_handshake()

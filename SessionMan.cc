@@ -9,120 +9,136 @@
 
 #include <string.h>
 
-#define PENDING_DURATION_KILL_SECS 3
+#define MAX_PENDING_OPEN_SECS 2
 
 namespace XXX
 {
 
-  SessionMan::SessionMan(Logger* logptr, event_loop& evl)
-    : __logptr(logptr),
-      m_evl(evl)
+SessionMan::SessionMan(Logger* logptr, event_loop& evl)
+  : __logptr(logptr),
+    m_evl(evl)
+{
+  m_evl.set_session_man( this );
+  m_sessions.m_next = 1;
+}
+
+
+SessionMan::~SessionMan()
+{
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+
+  for (auto & item  : m_sessions.active)
+    delete item.second;
+  for (auto & item : m_sessions.closed)
+    delete item;
+}
+
+
+Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
+                                    t_connection_id user_conn_id,
+                                    std::string realm)
+{
+  /* IO thread */
+
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+  SID sid (m_sessions.m_next++);  // TODO find a unqiue numner, dont use 0,
+  // and chekc is not altready in the map.
+  // Need to handle case where we wrap around
+  // and have to skip zero ... actuall, to handle this, set start number to minus 1
+
+  // TODO: its not the place here to configure the newly created session .
+  // That should be done by the caller of this function.
+  Session * sptr;
+  sptr = new Session( sid,
+                      __logptr,
+                      iohandle,
+                      this,
+                      m_evl,
+                      is_passive,
+                      user_conn_id,
+                      realm);
+
+  m_sessions.active[ sid ] = sptr;
+
+  _INFO_( "session created, id:" << sid );
+  if (!is_passive) sptr->initiate_handshake();
+
+  return sptr;
+}
+
+
+void SessionMan::heartbeat_all()
+{
+  jalson::json_array msg;
+
+  msg.push_back(HEARTBEAT);
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+  for (auto i : m_sessions.active)
   {
-    m_evl.set_session_man( this );
-    m_sessions.m_next = 1;
-  }
-
-
-  SessionMan::~SessionMan()
-  {
-    std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-
-    for (auto & item  : m_sessions.active)
-      delete item.second;
-    for (auto & item : m_sessions.closed)
-      delete item;
-  }
-
-
-  Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
-                                      t_connection_id user_conn_id,
-                                      std::string realm)
-  {
-    /* IO thread */
-
-    std::lock_guard<std::mutex> guard(m_sessions.lock);
-    SID sid (m_sessions.m_next++);  // TODO find a unqiue numner, dont use 0,
-                                    // and chekc is not altready in the map.
-                                    // Need to handle case where we wrap around
-                                    // and have to skip zero ... actuall, to handle this, set start number to minus 1
-
-    // TODO: its not the place here to configure the newly created session .
-    // That should be done by the caller of this function.
-    Session * sptr;
-    sptr = new Session( sid,
-                        __logptr,
-                        iohandle,
-                        this,
-                        m_evl,
-                        is_passive,
-                        user_conn_id,
-                        realm);
-
-    m_sessions.active[ sid ] = sptr;
-
-    _INFO_( "session created, id:" << sid );
-    if (!is_passive) sptr->initiate_handshake();
-
-    return sptr;
-  }
-
-
-  void SessionMan::heartbeat_all()
-  {
-    jalson::json_array msg;
-
-    msg.push_back(HEARTBEAT);
-    std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-    for (auto i : m_sessions.active)
+    if ( i.second->is_open() && i.second->hb_interval_secs())
     {
-      if (i.second->is_open())
-        i.second->send_msg(msg);
-      else if (i.second->duration_pending_open() > PENDING_DURATION_KILL_SECS * 1000 )
+      // do heartbeat check on an open session
+      if (i.second->duration_since_last() > i.second->hb_interval_secs()*3)
       {
-        _INFO_("TODO: need to kill this session");
+        // expire sessions which appear inactive
+          _WARN_("closing session due to inactivity " << i.second->hb_interval_secs() << ", " << i.second->duration_since_last());
+          i.second->close();
+      }
+      else
+      {
+        i.second->send_msg(msg);
       }
     }
 
-  }
-
-
-  void SessionMan::close_all()
-  {
-    std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-    // TODO: test who is still open, and close them
-    // for (auto i : m_sessions.active)
-    // {
-    //     i.second->close(1);
-    // }
-  }
-
-
-  void SessionMan::session_closed(Session& s)
-  {
-    /* IO thread */
-
-    _INFO_("SessionMan::session_closed");
-    std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-    // TODO tryong to do an immediate delete
-    m_sessions.closed.push_back( & s );
-
-    for (auto it = m_sessions.active.begin(); it != m_sessions.active.end(); )
+    if (i.second->is_pending_open())
     {
-      if (it->second == &s)
-        m_sessions.active.erase( it++ );
-      else
-        it++;
+      if (i.second->duration_pending_open() >= MAX_PENDING_OPEN_SECS )
+      {
+        // expire sessions which have spent too long in pending-open
+        _WARN_("closing session due to incomplete handshake");
+        i.second->close();
+      }
     }
-
-    s.remove_listener();
-
-
-    // TODO: here, could push an event
   }
+}
+
+
+void SessionMan::close_all()
+{
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+  for (auto i : m_sessions.active)
+  {
+    i.second->close();
+  }
+}
+
+
+void SessionMan::session_closed(Session& s)
+{
+  /* IO thread */
+
+  _INFO_("SessionMan::session_closed");
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+
+  // TODO tryong to do an immediate delete
+  m_sessions.closed.push_back( & s );
+
+  for (auto it = m_sessions.active.begin(); it != m_sessions.active.end(); )
+  {
+    if (it->second == &s)
+      m_sessions.active.erase( it++ );
+    else
+      it++;
+  }
+
+  s.remove_listener();
+
+
+  // TODO: here, could push an event
+}
 
 
 //----------------------------------------------------------------------

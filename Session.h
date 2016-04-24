@@ -82,13 +82,14 @@ namespace XXX {
     void send_msg(jalson::json_array&, bool final=false);
     void send_msg(build_message_cb_v4 builder);
 
-    void close(int);
+    void close();
 
     void remove_listener();
 
     session_handle handle() { return m_session_handle; }
 
     bool is_open() const;
+    bool is_pending_open() const;
 
     void initiate_handshake();
 
@@ -96,9 +97,14 @@ namespace XXX {
      * creation.  Else return 0/  */
     int duration_pending_open() const;
 
+    /* Time since last message */
+    int duration_since_last() const;
+
     /* return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a passive session */
     std::string realm() const;
+
+    int hb_interval_secs() const { return m_hb_intvl; }
 
   private:
     Session(const Session&) = delete;
@@ -156,7 +162,7 @@ namespace XXX {
     time_t m_time_create;
     time_t m_opened;
 
-    time_t m_hb_last;
+    time_t m_time_last_msg;
 
     uint64_t m_request_id;
 
