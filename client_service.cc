@@ -611,6 +611,7 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
   {
     return 0;
   }
+  // TODO: review this; the requst ID should be generateed on a peer session basis?
 
   // TODO: this ID needs to be atomic, because there could be multiple USER threads coming in here.
   t_client_request_id int_req_id = m_next_client_request_id++;
@@ -1041,6 +1042,14 @@ void router_conn::subscribe(const std::string& uri,
 }
 
 
+void router_conn::publish(const std::string& uri,
+                          const jalson::json_object& opts,
+                          const jalson::json_array& args_list,
+                          const jalson::json_object& args_dict)
+{
+  m_svc->publish(this, uri, opts, args_list, args_dict);
+}
+
 void client_service::publish_all(bool include_internal,
                                  const std::string& uri,
                                  const jalson::json_object& opts,
@@ -1079,6 +1088,32 @@ void client_service::publish_all(bool include_internal,
     //       m_evl->push( ev );
   }
 
+}
+
+void client_service::publish(router_conn* rs,
+                             const std::string& uri,
+                             const jalson::json_object& opts,
+                             const jalson::json_array& args_list,
+                             const jalson::json_object& args_dict)
+{
+
+  session_handle sh = rs->m_internal_session_handle;
+  if (m_sesman->session_is_open(sh ) == false)
+  {
+    return;
+  }
+
+  // publish to all connected router
+  auto sp = std::make_shared<ev_outbound_publish>(
+    uri,
+    opts,
+    args_list,
+    args_dict,
+    1);
+
+  sp->targets.push_back( sh );
+
+  m_evl->push( sp );
 }
 
 } // namespace XXX

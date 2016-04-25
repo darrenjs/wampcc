@@ -197,7 +197,7 @@ void pubsub_man::update_topic(const std::string& topic,
       }
       else
       {
-        // TODO: handle bad wamp
+        _WARN_("ignoring malformed publish message");
       }
     }
     if ((jvptr = jalson::get_ptr(publish_msg, 5)))
@@ -208,7 +208,7 @@ void pubsub_man::update_topic(const std::string& topic,
       }
       else
       {
-        // TODO: handle bad wamp
+        _WARN_("ignoring malformed publish message");
       }
     }
 

@@ -61,8 +61,10 @@ public:
   /* Register a topic */
   void add_topic(topic*);
 
+  /* Publish data onto a topic. The publish message will be sent to all
+   * connected sessions, and optionally to the internal dealer session. */
   void publish_all(bool include_internal,
-                   const std::string& uri,
+                   const std::string& topic,
                    const jalson::json_object& opts,
                    const jalson::json_array& args_list,
                    const jalson::json_object& args_dict);
@@ -105,6 +107,8 @@ private:
                               subscription_cb cb,
                               void * user);
 
+
+
   t_connection_id register_session(router_conn&);
 
   void handle_REGISTERED(ev_inbound_message*);
@@ -120,6 +124,12 @@ private:
   void new_client(IOHandle *hndl,
                   int  status,
                   t_connection_id router_session_id);
+
+  void publish(router_conn*,
+               const std::string& uri,
+               const jalson::json_object& opts,
+               const jalson::json_array& args_list,
+               const jalson::json_object& args_dict);
 
   Logger *__logptr; /* name chosen for log macros */
 
@@ -211,8 +221,7 @@ public:
               router_session_connect_cb,
               void * __user = nullptr);
 
-  int connect(const std::string & addr,
-              int port);
+  int connect(const std::string & addr, int port);
 
   t_client_request_id call(std::string rpc,
                            rpc_args,
@@ -222,6 +231,11 @@ public:
   void subscribe(const std::string& uri,
                  subscription_cb cb,
                  void * user);
+
+  void publish(const std::string& uri,
+               const jalson::json_object& opts,
+               const jalson::json_array& args_list,
+               const jalson::json_object& args_dict);
 
   int router_session_id() const { return m_router_session_id;}
 
