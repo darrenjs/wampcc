@@ -132,7 +132,16 @@ enum subscription_event_type
 
 typedef std::function<void(subscription_event_type evtype,
                            const std::string& uri,
-                           const jalson::json_value& args,
+                           const jalson::json_object& details,
+                           const jalson::json_array& args_list,
+                           const jalson::json_object& args_dict,
+                           void* user) > subscription_status_cb;
+
+typedef std::function<void(subscription_event_type evtype,
+                           const std::string& uri,
+                           const jalson::json_object& details,
+                           const jalson::json_array& args_list,
+                           const jalson::json_object& args_dict,
                            void* user) > subscription_cb;
 
 

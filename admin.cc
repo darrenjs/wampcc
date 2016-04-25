@@ -115,19 +115,22 @@ void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
 
 /* called upon subscribed and update events */
 void subscribe_cb(XXX::subscription_event_type evtype,
-                  const std::string&,
-                  const jalson::json_value& args,
+                  const std::string& uri,
+                  const jalson::json_object& details,
+                  const jalson::json_array& args_list,
+                  const jalson::json_object& args_dict,
                   void* /*user*/)
 {
-  std::cout << "received topic update!!! evtype: " << evtype << ", args: " << args << "\n";
+  std::cout << "received topic update!!! evtype: " << evtype << ", args_list: " << args_list
+            << ", args_dict:" << args_dict << "\n";
 }
 int g_connect_status = 0;
+
 
 void router_connection_cb(XXX::router_conn* /*router_session*/,
                           int status,
                           bool /*is_open*/)
 {
-  std::cout << "HERE, " << status << "\n";
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
   g_connect_status = status;

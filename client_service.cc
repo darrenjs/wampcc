@@ -925,7 +925,12 @@ void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
 
   // user callback
   try {
-  temp.user_cb(XXX::e_sub_start, temp.uri,jalson::json_value::make_null(), temp.user_data);
+    temp.user_cb(XXX::e_sub_start,
+                 temp.uri,
+                 jalson::json_object(),
+                 jalson::json_array(),
+                 jalson::json_object(),
+                 temp.user_data);
   } catch (...) {}
 }
 
@@ -934,16 +939,16 @@ void client_service::handle_EVENT(ev_inbound_message* ev)
 {
   /* EV thread */
 
-/*
-       [EVENT, SUBSCRIBED.Subscription|id, PUBLISHED.Publication|id,
-       Details|dict, PUBLISH.Arguments|list, PUBLISH.ArgumentKw|dict]
-*/
+  size_t subscrid  = ev->ja.at(1).as_uint();
+  size_t publishid = ev->ja.at(2).as_uint();
+  jalson::json_object & details = ev->ja.at(3).as_object();
+  jalson::json_value * ptr_args_list = jalson::get_ptr(ev->ja, 4); // optional
+  jalson::json_value * ptr_args_dict = jalson::get_ptr(ev->ja, 5); // optional
+
+  const jalson::json_array  & args_list = ptr_args_list? ptr_args_list->as_array()  : jalson::json_array();
+  const jalson::json_object & args_dict = ptr_args_dict? ptr_args_dict->as_object() : jalson::json_object();
+
   session_handle src = ev->src;
-
-  // TODO: need policy on throwing errors during message parsing.
-  size_t subscrid =  ev->ja[1].as_uint();
-  jalson::json_value& args = ev->ja[4];
-
   if (auto sp = src.lock())
   {
     t_sid sid = *sp;
@@ -967,7 +972,9 @@ void client_service::handle_EVENT(ev_inbound_message* ev)
     try {
       my_subscription.user_cb(e_sub_update,
                               my_subscription.uri,
-                              args,
+                              details,
+                              args_list,
+                              args_dict,
                               my_subscription.user_data);
     } catch (...){}
 
