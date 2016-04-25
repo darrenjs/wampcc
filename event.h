@@ -19,7 +19,7 @@ struct event
     outbound_call_event,
     outbound_response_event,
     outbound_message,
-    inbound_publish,
+    internal_publish,
     outbound_subscribe,
     inbound_subscribed,
     router_session_connect_fail,
@@ -164,19 +164,14 @@ struct ev_outbound_publish : public event
 
 };
 
-struct ev_inbound_publish : public event
+struct ev_internal_publish : public event
 {
-  // 'is_internal' indicates the source of the publish is internal to the
-  // program, rather than coming from an external client
-  bool is_internal;
   std::string uri;
   jalson::json_value patch;  // TODO: maybe change to array?
 
-  ev_inbound_publish(bool __is_internal,
-                     const std::string & __topic_uri,
-                     const jalson::json_value& __patch)
-    : event( event::inbound_publish ),
-      is_internal( __is_internal ),
+  ev_internal_publish( const std::string & __topic_uri,
+                       const jalson::json_value& __patch)
+    : event( event::internal_publish ),
       uri( __topic_uri ),
       patch( __patch )
   {}

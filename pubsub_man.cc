@@ -59,7 +59,7 @@ pubsub_man::~pubsub_man()
 }
 
 /* Handle arrival of an internl PUBLISH event, targeted at a topic. */
-void pubsub_man::handle_event(ev_inbound_publish* ev)
+void pubsub_man::handle_event(ev_internal_publish* ev)
 {
   /* EV thread */
 

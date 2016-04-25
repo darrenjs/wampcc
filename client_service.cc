@@ -581,8 +581,7 @@ void client_service::add_topic(topic* topic)
       // router
       if (m_embed_router != nullptr)
       {
-        ev_inbound_publish* ev = new ev_inbound_publish(true,
-                                                        src->uri(),
+        ev_internal_publish* ev = new ev_internal_publish(src->uri(),
                                                         patch);
         ev->realm = m_config.realm;
         m_evl->push( ev );
@@ -1073,7 +1072,7 @@ void client_service::publish_all(bool include_internal,
   // publish to internal router
   if (include_internal && m_embed_router != nullptr)
   {
-    //       ev_inbound_publish* ev = new ev_inbound_publish(true,
+    //       ev_internal_publish* ev = new ev_internal_publish(true,
     //                                                       src->uri(),
     //                                                       patch);
     //       ev->realm = m_config.realm;
