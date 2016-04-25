@@ -537,11 +537,12 @@ void client_service::post_error(t_invoke_id callid,
 
 void client_service::add_topic(topic* topic)
 {
-  _INFO_("adding a topic: " << topic->uri() );
   // TODO: check that it is uniqyue
   std::unique_lock<std::mutex> guard(m_topics_lock);
   m_topics[ topic->uri() ] = topic;
 
+  // observer the topic for changes, so that changes can be converted into to
+  // publish messages sent to peer
   topic->add_observer(
     this,
     [this](const XXX::topic* src,
@@ -1041,5 +1042,44 @@ void router_conn::subscribe(const std::string& uri,
 }
 
 
+void client_service::publish_all(bool include_internal,
+                                 const std::string& uri,
+                                 const jalson::json_object& opts,
+                                 const jalson::json_array& args_list,
+                                 const jalson::json_object& args_dict)
+{
+  _INFO_("publish called for topic [" << uri << "]");
+
+
+  // publish to all connected router
+  {
+    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+    if (m_router_sessions.size()>0)
+    {
+      auto sp = std::make_shared<ev_outbound_publish>(
+        uri,
+        opts,
+        args_list,
+        args_dict,
+        m_router_sessions.size()) ;
+
+      for (auto & item : m_router_sessions)
+        sp->targets.push_back( item.second->handle() );
+
+      m_evl->push( sp );
+    }
+  }
+
+  // publish to internal router
+  if (include_internal && m_embed_router != nullptr)
+  {
+    //       ev_inbound_publish* ev = new ev_inbound_publish(true,
+    //                                                       src->uri(),
+    //                                                       patch);
+    //       ev->realm = m_config.realm;
+    //       m_evl->push( ev );
+  }
+
+}
 
 } // namespace XXX

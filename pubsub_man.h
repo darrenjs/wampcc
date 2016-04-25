@@ -39,7 +39,7 @@ private:
 
   void update_topic(const std::string& topic,
                     const std::string& realm,
-                    jalson::json_array& patch);
+                    jalson::json_array& publish_msg);
 
   Logger *__logptr; /* name chosen for log macros */
   event_loop& m_evl;

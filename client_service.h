@@ -61,6 +61,12 @@ public:
   /* Register a topic */
   void add_topic(topic*);
 
+  void publish_all(bool include_internal,
+                   const std::string& uri,
+                   const jalson::json_object& opts,
+                   const jalson::json_array& args_list,
+                   const jalson::json_object& args_dict);
+
   /* Used by the CALLEE to respond to a procedure call */
   void post_reply(t_invoke_id,
                   rpc_args& the_args);

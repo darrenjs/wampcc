@@ -246,12 +246,12 @@ int main(int argc, char** argv)
   config.realm = "default_realm";
   g_client.reset( new XXX::client_service(logger, config) );
 
-  std::unique_ptr<XXX::text_topic> topic;
+  //std::unique_ptr<XXX::text_topic> topic;
 
-  if (!uopts.publish_topic.empty())
-    topic.reset( new XXX::text_topic( uopts.publish_topic ) );
+  // if (!uopts.publish_topic.empty())
+  //   topic.reset( new XXX::text_topic( uopts.publish_topic ) );
 
-  if (topic) g_client->add_topic( topic.get() );
+  // if (topic) g_client->add_topic( topic.get() );
 
   g_client->start();
 
@@ -329,8 +329,18 @@ int main(int argc, char** argv)
   }
 
 
-  // topic publication
-  if (topic) topic->update( uopts.publish_message.c_str() );
+  // topic publication - basic WAMP style publish
+  if (!uopts.publish_topic.empty())
+  {
+    jalson::json_array args_list;
+    args_list.push_back(uopts.publish_message);
+    g_client->publish_all(true,
+                          uopts.publish_topic,
+                          jalson::json_object(),
+                          args_list,
+                          jalson::json_object());
+  }
+  //if (topic) topic->update( uopts.publish_message.c_str() );
 
 
   while (1) sleep(1);

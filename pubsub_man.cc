@@ -27,6 +27,10 @@ struct managed_topic
   // current upto date image of the value
   jalson::json_value image;
 
+
+  std::pair<bool,jalson::json_array>  image_list;
+  std::pair<bool,jalson::json_object> image_dict;
+
   // Note, we are tieing the subscription ID direct to the topic.  WAMP does
   // allow this, and it has the benefit that we can perform a single message
   // serialisation for all subscribers.  Might have to change later if more
@@ -164,7 +168,7 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 
 void pubsub_man::update_topic(const std::string& topic,
                               const std::string& realm,
-                              jalson::json_array& patch)
+                              jalson::json_array& publish_msg)
 {
   /* EVENT thread */
 
@@ -178,37 +182,93 @@ void pubsub_man::update_topic(const std::string& topic,
 
 
   // apply the patch
-  try
+  bool is_patch = false;  // TODO: add support for patch
+  if (!is_patch)
   {
-    mt->image.patch(patch);
+    jalson::json_array  * args_list = nullptr;
+    jalson::json_object * args_dict = nullptr;
 
-    /*
-      [ EVENT,
+    jalson::json_value* jvptr;
+    if ((jvptr = jalson::get_ptr(publish_msg, 4)))
+    {
+      if (jvptr->is_array())
+      {
+        args_list = &(jvptr->as_array());
+      }
+      else
+      {
+        // TODO: handle bad wamp
+      }
+    }
+    if ((jvptr = jalson::get_ptr(publish_msg, 5)))
+    {
+      if (jvptr->is_object())
+      {
+        args_dict = &(jvptr->as_object());
+      }
+      else
+      {
+        // TODO: handle bad wamp
+      }
+    }
+
+    // apply the new value
+    if (args_list)
+    {
+      mt->image_list.first  = true;
+      mt->image_list.second = *args_list;
+    }
+    if (args_dict)
+    {
+      mt->image_dict.first  = true;
+      mt->image_dict.second = *args_dict;
+    }
+
+    // broadcast event to subscribers
+    jalson::json_array msg;
+    msg.push_back( EVENT );
+    msg.push_back( mt->subscription_id );
+    msg.push_back( 2 ); // TODO: generate publication ID
+    msg.push_back( jalson::json_value::make_object() );
+    if (args_list) msg.push_back( *args_list );
+    if (args_list && args_dict) msg.push_back( *args_dict );
+    m_sesman.send_to_session(mt->m_subscribers, msg);
+
+  }
+  else
+  {
+    try
+    {
+      jalson::json_array& patch = publish_msg;
+      mt->image.patch(patch);
+
+      /*
+        [ EVENT,
         SUBSCRIBED.Subscription|id,
         PUBLISHED.Publication|id,
         Details|dict,
         PUBLISH.Arguments|list,
         PUBLISH.ArgumentKw|dict
-      ]
-    */
+        ]
+      */
 
-    jalson::json_array msg;
-    msg.push_back( EVENT );
-    msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
-    msg.push_back( 2 ); // TODO: generate publication ID
-    msg.push_back( jalson::json_value::make_object() );
-    jalson::json_array& args = jalson::append_array(msg);
-    msg.push_back( jalson::json_value::make_object() );
-    args.push_back(patch);
+      jalson::json_array msg;
+      msg.push_back( EVENT );
+      msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
+      msg.push_back( 2 ); // TODO: generate publication ID
+      msg.push_back( jalson::json_value::make_object() );
+      jalson::json_array& args = jalson::append_array(msg);
+      msg.push_back( jalson::json_value::make_object() );
+      args.push_back(patch);
 
-    m_sesman.send_to_session(mt->m_subscribers,
-                             msg);
+      m_sesman.send_to_session(mt->m_subscribers,
+                               msg);
+    }
+    catch (const std::exception& e)
+    {
+      _ERROR_("patch failed: " << e.what());
+    }
   }
-  catch (const std::exception& e)
-  {
-    _ERROR_("patch failed: " << e.what());
-  }
-
 }
 
 /* Handle arrival of the a PUBLISH event, targeted at a topic. */
@@ -216,13 +276,25 @@ void pubsub_man::handle_inbound_publish(ev_inbound_message* ev)
 {
   /* EV thread */
 
-  // parse message
-  std::string & topic = ev->ja[ 3 ].as_string();
-  jalson::json_array & patch = ev->ja[ 4 ].as_array();
+  bool is_patch = false;
 
-  // update
-  update_topic(topic, ev->realm, patch);
+  if ( is_patch )
+  {
+    // parse message
+    std::string & topic = ev->ja[ 3 ].as_string();
+    jalson::json_array & patch = ev->ja[ 4 ].as_array();
+
+    // update
+    update_topic(topic, ev->realm, patch);
+  }
+  else
+  {
+    // parse message
+    std::string & topic = ev->ja[ 3 ].as_string();
+    update_topic(topic, ev->realm, ev->ja);
+  }
 }
+
 
 
 } // namespace XXX

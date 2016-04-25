@@ -354,7 +354,6 @@ void event_loop::process_event(event * ev)
         }
         case PUBLISH :
         {
-          std::cout << "here\n";
           if (m_pubsubman)
             m_pubsubman->handle_inbound_publish(ev2);
           else
@@ -724,9 +723,20 @@ void event_loop::process_outbound_publish(ev_outbound_publish* ev)
   jalson::json_array msg;
   msg.push_back( PUBLISH );
   msg.push_back( 0 ); // set in the callback, below
-  msg.push_back( jalson::json_object() );
-  msg.push_back( ev->uri );
-  msg.push_back( ev->patch );
+
+  if (ev->use_patch)
+  {
+    msg.push_back( jalson::json_object() );
+    msg.push_back( ev->uri );
+    msg.push_back( ev->patch );
+  }
+  else
+  {
+    msg.push_back( ev->opts );
+    msg.push_back( ev->uri );
+    msg.push_back( ev->args_list );
+    msg.push_back( ev->args_dict );
+  }
 
   build_message_cb_v2 msg_builder2 = [&msg](int request_id)
     {
