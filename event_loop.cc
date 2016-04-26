@@ -488,7 +488,7 @@ struct Request_INVOCATION_CB_Data : public Request_CB_Data
 
   //       call_info info; // TODO: dfill in
   //       // TODO: should use an error callback
-  //       rpc_args args;
+  //       wamp_args args;
   //       origev->cb(info, args, origev->cb_user_data);  /* TODO: take from network message */
   //     }
   //     catch(...)
@@ -548,7 +548,7 @@ void event_loop::process_inbound_yield(ev_inbound_message* e)
   //       info.reqid = e->ja[1].as_uint();
   //       info.procedure = origev->rpc_name;
 
-  //       rpc_args args;
+  //       wamp_args args;
   //       args.args    = e->ja[3]; // dont care about the type
   //       args.options = e->ja[2].as_object();  // TODO: need to pre-verify the message
 
@@ -596,9 +596,9 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
       msg.push_back(YIELD);
       msg.push_back(ev->reqid);
       msg.push_back(ev->options);
-      if (ev->args.args.is_null() == false)
+      if (ev->args.args_list.is_null() == false)
       {
-        msg.push_back(ev->args.args);
+        msg.push_back(ev->args.args_list);
       }
       return msg;
     };
@@ -610,9 +610,9 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
       msg.push_back(SUBSCRIBED);
       msg.push_back(ev->reqid);
       msg.push_back(ev->subscription_id);
-      if (ev->args.args.is_null() == false)
+      if (ev->args.args_list.is_null() == false)
       {
-        msg.push_back(ev->args.args);
+        msg.push_back(ev->args.args_list);
       }
       return msg;
     };
@@ -636,9 +636,9 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
       msg.push_back(RESULT);
       msg.push_back(ev->reqid);
       msg.push_back(ev->options);
-      if (ev->args.args.is_null() == false)
+      if (ev->args.args_list.is_null() == false)
       {
-        msg.push_back(ev->args.args);
+        msg.push_back(ev->args.args_list);
       }
       return msg;
     };
@@ -681,9 +681,9 @@ void event_loop::process_outbound_call(outbound_call_event* ev)
       msg.push_back( request_id );
       msg.push_back( jalson::json_object() );
       msg.push_back( ev->rpc_name );
-      if (ev->args.args != nullptr)   // TODO: how the hell does this compile? Fix Jalson, and remove check.
+      if (ev->args.args_list.is_null() == false)
       {
-        msg.push_back( ev->args.args );
+        msg.push_back( ev->args.args_list );
       }
 
       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,

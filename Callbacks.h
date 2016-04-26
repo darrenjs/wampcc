@@ -109,10 +109,10 @@ std::ostream& operator<<(std::ostream& os, const SID & s);
 
 class client_service;
 
-struct rpc_args
+struct wamp_args
 {
-  jalson::json_value  args;
-  jalson::json_object options;
+  jalson::json_value  args_list;
+  jalson::json_value  args_dict;
 };
 
 // TODO: no need to have this, can be expanded in places where it is
@@ -132,9 +132,6 @@ enum subscription_event_type
 
 typedef std::function<void(subscription_event_type evtype,
                            const std::string& uri,
-                           const jalson::json_object& details,
-                           const jalson::json_array& args_list,
-                           const jalson::json_object& args_dict,
                            void* user) > subscription_status_cb;
 
 typedef std::function<void(subscription_event_type evtype,
@@ -147,11 +144,12 @@ typedef std::function<void(subscription_event_type evtype,
 
 typedef std::function<void(t_invoke_id,
                            const std::string&,
-                           rpc_args&,
+                           jalson::json_object&,
+                           wamp_args&,
                            session_handle&,
                            void* user) > rpc_cb;
 
-typedef std::function<  void (call_info&, rpc_args&, void*) > call_user_cb; // TODO: rename me
+typedef std::function<  void (call_info&, jalson::json_object&, wamp_args&, void*) > call_user_cb; // TODO: rename me
 
 typedef std::function<void(router_conn*,
                            int status, /* 0 is no error */
@@ -160,7 +158,7 @@ typedef std::function<void(router_conn*,
 typedef std::function<void(session_handle&,
                            t_request_id,
                            int,
-                           rpc_args&) > internal_invoke_cb;
+                           wamp_args&) > internal_invoke_cb;
 
 } // namespace XXX
 

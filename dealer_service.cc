@@ -98,7 +98,7 @@ void dealer_service::start()
 //  */
 // unsigned int dealer_service::call_rpc(std::string rpc,
 //                                       call_user_cb cb,
-//                                       rpc_args args,
+//                                       wamp_args args,
 //                                       void* cb_user_data)
 // {
 //   /* USER-THREAD */
@@ -161,14 +161,15 @@ void dealer_service::handle_YIELD(event* ev)
     info.reqid = ev2->ja[1].as_uint();
     info.procedure = pend.procedure;
 
-    rpc_args args;
-    args.args    = ev2->ja[3]; // dont care about the type
-    args.options = ev2->ja[2].as_object();  // TODO: need to pre-verify the message
+
+    jalson::json_object details = ev2->ja[2].as_object();
+    wamp_args args;
+    args.args_list = ev2->ja[3]; // dont care about the type
 
     if ( pend.cb )
     {
       try {
-        pend.cb(info, args, pend.user_cb_data);
+        pend.cb(info, details, args, pend.user_cb_data);
       }
       catch (...) { }
     }

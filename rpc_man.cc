@@ -216,12 +216,13 @@ void rpc_man::handle_inbound_CALL(ev_inbound_message* ev)
       if (m_internal_invoke_cb)
       {
         t_request_id reqid = ev->ja[1].as_int();
-        rpc_args my_rpc_args;
-        if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
+        wamp_args my_wamp_args;
+
+        if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
         m_internal_invoke_cb( ev->src,
                               reqid,
                               rpc.registration_id,
-                              my_rpc_args);
+                              my_wamp_args);
       }
     }
     else

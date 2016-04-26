@@ -99,7 +99,7 @@ struct outbound_response_event : public event
   std::string error_uri;  // used only for ERROR
   jalson::json_value subscription_id;
 
-  rpc_args args;
+  wamp_args args;
 
   outbound_response_event()
     : event( event::outbound_response_event )
@@ -114,7 +114,7 @@ struct outbound_call_event : public event
   std::string rpc_name;
   call_user_cb cb;
   void * cb_user_data;
-  rpc_args args;
+  wamp_args args;
   unsigned int internal_req_id;
 
   outbound_call_event()

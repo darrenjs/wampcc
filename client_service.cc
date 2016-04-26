@@ -92,7 +92,7 @@ client_service::client_service(Logger * logptr,
   auto fun = [this](session_handle& h,
                     t_request_id req_id,
                     int reg_id,
-                    rpc_args& args){this->invoke_direct(h, req_id, reg_id, args);};
+                    wamp_args& args){this->invoke_direct(h, req_id, reg_id, args);};
 
   if (config.enable_embed_router)
   {
@@ -413,8 +413,9 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
 
   _INFO_( "invoke lookup success, key " << rkey.router_session_id <<":"<<rkey.id  << " -> " << procname );
 
-  rpc_args my_rpc_args;
-  if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
+  jalson::json_object & details  = ev->ja[3].as_object();
+  wamp_args my_wamp_args;
+  if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ];
 
   t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
 
@@ -434,7 +435,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname,  my_rpc_args, ev->src, rpc_actual.second);
+      rpc_actual.first(mycallid, procname,  details, my_wamp_args, ev->src, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -460,7 +461,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
 //----------------------------------------------------------------------
 
 void client_service::post_reply(t_invoke_id callid,
-                                rpc_args& the_args)
+                                wamp_args& the_args)
 {
   /* user thread or EV thread */
 
@@ -600,7 +601,7 @@ void client_service::add_topic(topic* topic)
  */
 t_client_request_id client_service::call_rpc(router_conn* rs,
                                              std::string proc_uri,
-                                             rpc_args args,
+                                             wamp_args args,
                                              call_user_cb cb,
                                              void* cb_user_data)
 {
@@ -656,7 +657,7 @@ int client_service::connect_session(router_conn& rs,
 void client_service::invoke_direct(session_handle& sh,
                                    t_request_id req_id,
                                    int reg_id,
-                                   rpc_args& args)
+                                   wamp_args& args)
 
 
 {
@@ -682,7 +683,7 @@ void client_service::invoke_direct(session_handle& sh,
     }
     procname = it->second;
   }
-  std::pair< rpc_cb,void*> rpc_actual;
+  std::pair<rpc_cb,void*> rpc_actual;
   {
     std::unique_lock<std::mutex> guard(m_procedures_lock);
     auto it = m_procedures.find( procname );
@@ -712,7 +713,8 @@ void client_service::invoke_direct(session_handle& sh,
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname, args, sh, rpc_actual.second);
+      jalson::json_object details;
+      rpc_actual.first(mycallid, procname, details, args, sh, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -754,14 +756,14 @@ void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercas
     call_info ci;
     ci.reqid = ev->internal_req_id;
     ci.procedure = pendingreq.rpc;
-    rpc_args args;
+    wamp_args args;
 
     // TODO: need parse error checking here
-    args.args    = ev->ja[3];
-    args.options = ev->ja[2].as_object();
+    args.args_list  = ev->ja[3];
+    jalson::json_object& details = ev->ja[2].as_object();
 
     try {
-      pendingreq.user_cb(ci, args, pendingreq.user_data);
+      pendingreq.user_cb(ci, details, args, pendingreq.user_data);
     }
     catch(...){}
   }
@@ -809,8 +811,8 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
 
   _INFO_( "invoke lookup success, key " << rkey.router_session_id <<":"<<rkey.id  << " -> " << procname );
 
-  rpc_args my_rpc_args;
-  if ( ev->ja.size() > 4 ) my_rpc_args.args = ev->ja[ 4 ];
+  wamp_args my_wamp_args;
+  if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ];
 
   t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
 
@@ -830,7 +832,8 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname, my_rpc_args, ev->src, rpc_actual.second);
+      jalson::json_object details;
+      rpc_actual.first(mycallid, procname, details, my_wamp_args, ev->src, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -1034,7 +1037,7 @@ int router_conn::connect(const std::string & addr, int port)
 
 
 t_client_request_id router_conn::call(std::string uri,
-                                      rpc_args args,
+                                      wamp_args args,
                                       call_user_cb user_cb,
                                       void* user_data)
 {

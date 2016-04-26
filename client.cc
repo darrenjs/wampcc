@@ -33,7 +33,8 @@ XXX::text_topic topic("topic1");
 
 void procedure_cb(XXX::t_invoke_id invokeid,
                   const std::string& procedure,
-                  XXX::rpc_args& the_args,
+                  jalson::json_object& options,
+                  XXX::wamp_args& the_args,
                   XXX::session_handle&,
                   void*  user  )
 {
@@ -41,14 +42,14 @@ void procedure_cb(XXX::t_invoke_id invokeid,
 
   /* called when a procedure within a CALLEE is triggered */
   auto __logptr = logger;
-  _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args
+  _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args_list
           << ", user:" << cbdata->request );
 
 //  throw std::runtime_error("bad alloc");
   auto my_args = the_args;
 
-  my_args.args = jalson::json_array();
-  jalson::json_array & arr = my_args.args.as_array();
+  my_args.args_list = jalson::json_array();
+  jalson::json_array & arr = my_args.args_list.as_array();
   arr.push_back("hello");
   arr.push_back("back");
   cbdata->svc->post_reply(invokeid, my_args);

@@ -97,13 +97,13 @@ std::condition_variable event_queue_condition;
 std::queue< AdminEvent > event_queue;
 
 
-void call_cb(XXX::call_info& info, XXX::rpc_args& args, void* cb_user_data)
+void call_cb(XXX::call_info& info, jalson::json_object& details, XXX::wamp_args& args, void* cb_user_data)
 {
   auto __logptr = logger;
   const char* msg = ( const char* ) cb_user_data;
 
   _INFO_( "CALLER received reply in main, args="
-          << args.args << ", cb_user_data: " << msg
+          << args.args_list << ", cb_user_data: " << msg
           << ", reqid: " << info.reqid
           << ", proc:" << info.procedure );
 
@@ -283,17 +283,18 @@ int main(int argc, char** argv)
 
 
   // TODO: take CALL parameters from command line
-  XXX::rpc_args args;
+  XXX::wamp_args args;
   jalson::json_array ja;
   ja.push_back( "hello" );
   ja.push_back( "world" );
-  args.args = ja ;
+  args.args_list = ja ;
 
   rconn.call("stop", args,
              [](XXX::call_info& reqdet,
-                XXX::rpc_args& args,
+                jalson::json_object options,
+                XXX::wamp_args& args,
                 void* cb_data)
-             { call_cb(reqdet, args, cb_data);},
+             { call_cb(reqdet, options, args, cb_data);},
              (void*)"I_called_stop");
 
   bool keep_waiting = true;

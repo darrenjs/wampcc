@@ -71,7 +71,7 @@ public:
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_reply(t_invoke_id,
-                  rpc_args& the_args);
+                  wamp_args& the_args);
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_error(t_invoke_id,
@@ -80,7 +80,7 @@ public:
   void invoke_direct(session_handle&,
                      t_request_id,
                      int,
-                     rpc_args&);
+                     wamp_args&);
 
 private:
 
@@ -96,7 +96,7 @@ private:
   /* Call an RPC on the peer router */
   t_client_request_id call_rpc(router_conn*,
                                std::string rpc,
-                               rpc_args,
+                               wamp_args,
                                call_user_cb,
                                void* cb_user_data);
 
@@ -224,7 +224,7 @@ public:
   int connect(const std::string & addr, int port);
 
   t_client_request_id call(std::string rpc,
-                           rpc_args,
+                           wamp_args,
                            call_user_cb,
                            void* cb_user_data);
 
