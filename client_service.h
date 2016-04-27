@@ -96,6 +96,7 @@ private:
   /* Call an RPC on the peer router */
   t_client_request_id call_rpc(router_conn*,
                                std::string rpc,
+                               const jalson::json_object& options,
                                wamp_args,
                                call_user_cb,
                                void* cb_user_data);
@@ -224,6 +225,7 @@ public:
   int connect(const std::string & addr, int port);
 
   t_client_request_id call(std::string rpc,
+                           const jalson::json_object& options,
                            wamp_args,
                            call_user_cb,
                            void* cb_user_data);

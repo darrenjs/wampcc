@@ -601,6 +601,7 @@ void client_service::add_topic(topic* topic)
  */
 t_client_request_id client_service::call_rpc(router_conn* rs,
                                              std::string proc_uri,
+                                             const jalson::json_object& options,
                                              wamp_args args,
                                              call_user_cb cb,
                                              void* cb_user_data)
@@ -632,6 +633,7 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
   ev->rpc_name= proc_uri;
   ev->cb = cb;  // memleak?
   ev->args = args; // memleak?
+  ev->options = options;
   ev->cb_user_data = cb_user_data;
   ev->internal_req_id=int_req_id;
 
@@ -1037,11 +1039,12 @@ int router_conn::connect(const std::string & addr, int port)
 
 
 t_client_request_id router_conn::call(std::string uri,
+                                      const jalson::json_object& options,
                                       wamp_args args,
                                       call_user_cb user_cb,
                                       void* user_data)
 {
-  return m_svc->call_rpc(this, uri, args, user_cb, user_data);
+  return m_svc->call_rpc(this, uri, options, args, user_cb, user_data);
 }
 
 void router_conn::subscribe(const std::string& uri,

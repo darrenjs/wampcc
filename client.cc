@@ -33,10 +33,10 @@ XXX::text_topic topic("topic1");
 
 void procedure_cb(XXX::t_invoke_id invokeid,
                   const std::string& procedure,
-                  jalson::json_object& options,
+                  jalson::json_object& /* options */,
                   XXX::wamp_args& the_args,
                   XXX::session_handle&,
-                  void*  user  )
+                  void* user)
 {
   const callback_t* cbdata = (callback_t*) user;
 

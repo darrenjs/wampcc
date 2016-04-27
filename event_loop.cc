@@ -679,7 +679,7 @@ void event_loop::process_outbound_call(outbound_call_event* ev)
       jalson::json_array msg;
       msg.push_back( CALL );
       msg.push_back( request_id );
-      msg.push_back( jalson::json_object() );
+      msg.push_back( ev->options );
       msg.push_back( ev->rpc_name );
       if (ev->args.args_list.is_null() == false)
       {

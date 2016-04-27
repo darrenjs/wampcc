@@ -289,7 +289,7 @@ int main(int argc, char** argv)
   ja.push_back( "world" );
   args.args_list = ja ;
 
-  rconn.call("stop", args,
+  rconn.call("stop", jalson::json_object(), args,
              [](XXX::call_info& reqdet,
                 jalson::json_object options,
                 XXX::wamp_args& args,

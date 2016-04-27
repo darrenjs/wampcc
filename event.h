@@ -114,6 +114,7 @@ struct outbound_call_event : public event
   std::string rpc_name;
   call_user_cb cb;
   void * cb_user_data;
+  jalson::json_object options;
   wamp_args args;
   unsigned int internal_req_id;
 
