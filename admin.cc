@@ -315,7 +315,7 @@ int main(int argc, char** argv)
     }
 
     for (auto & topic : uopts.subscribe_topics)
-      rconn.subscribe(topic, subscribe_cb, nullptr);
+      rconn.subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
 
     while (!event_queue.empty())
     {

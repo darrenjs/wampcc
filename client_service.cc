@@ -313,6 +313,7 @@ void client_service::start()
 //----------------------------------------------------------------------
 
 bool client_service::add_procedure(const std::string& uri,
+                                   const jalson::json_object& options,
                                    rpc_cb cb,
                                    void * user)
 {
@@ -862,6 +863,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
 
 void client_service::subscribe_remote_topic(router_conn* rs,
                                             const std::string& uri,
+                                            const jalson::json_object& options,
                                             subscription_cb cb,
                                             void * user)
 {
@@ -889,7 +891,7 @@ void client_service::subscribe_remote_topic(router_conn* rs,
   }
 
 
-  ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri);
+  ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri, options);
   ev->internal_req_id = int_req_id;
   ev->dest = sh;
   m_evl->push( ev );
@@ -1048,10 +1050,11 @@ t_client_request_id router_conn::call(std::string uri,
 }
 
 void router_conn::subscribe(const std::string& uri,
+                            const jalson::json_object& options,
                             subscription_cb user_cb,
                             void * user_data)
 {
-  m_svc->subscribe_remote_topic(this, uri, user_cb, user_data);
+  m_svc->subscribe_remote_topic(this, uri, options, user_cb, user_data);
 }
 
 

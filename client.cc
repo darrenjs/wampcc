@@ -122,9 +122,9 @@ int main(int /* argc */, char** /* argv */)
   std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_start") );
   std::unique_ptr<callback_t> cb3( new callback_t(mycs.get(),"my_stop") );
 
-  mycs->add_procedure("hello", procedure_cb, (void*) cb1.get());
-  mycs->add_procedure("start", procedure_cb, (void*) cb2.get());
-  mycs->add_procedure("stop",  procedure_cb, (void*) cb3.get());
+  mycs->add_procedure("hello", jalson::json_object(), procedure_cb, (void*) cb1.get());
+  mycs->add_procedure("start", jalson::json_object(), procedure_cb, (void*) cb2.get());
+  mycs->add_procedure("stop",  jalson::json_object(), procedure_cb, (void*) cb3.get());
 
   mycs->add_topic( &topic );
 

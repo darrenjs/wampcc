@@ -55,6 +55,7 @@ public:
   /* Register a procedure.  Returns true if was added, or false if name already
    * existed. */
   bool add_procedure(const std::string& uri,
+                     const jalson::json_object& options,
                      rpc_cb cb,
                      void * data);
 
@@ -105,6 +106,7 @@ private:
   // sessions, then, which session has the topic we want?
   void subscribe_remote_topic(router_conn*,
                               const std::string& uri,
+                              const jalson::json_object& options,
                               subscription_cb cb,
                               void * user);
 
@@ -224,6 +226,12 @@ public:
 
   int connect(const std::string & addr, int port);
 
+
+  // Will register this procedure with the only remote peer.
+  // Will not register it internally.
+  void register_procedure();
+
+
   t_client_request_id call(std::string rpc,
                            const jalson::json_object& options,
                            wamp_args,
@@ -231,6 +239,7 @@ public:
                            void* cb_user_data);
 
   void subscribe(const std::string& uri,
+                 const jalson::json_object& options,
                  subscription_cb cb,
                  void * user);
 
@@ -238,6 +247,8 @@ public:
                const jalson::json_object& opts,
                const jalson::json_array& args_list,
                const jalson::json_object& args_dict);
+
+
 
   int router_session_id() const { return m_router_session_id;}
 
