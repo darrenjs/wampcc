@@ -457,16 +457,6 @@ void event_loop::process_event_error(event* ev, event_error& er)
 }
 
 
-struct Request_INVOCATION_CB_Data : public Request_CB_Data
-{
-  Request_INVOCATION_CB_Data()
-    : cb_data( nullptr )
-  {
-  }
-  std::string procedure;
-  void * cb_data;  // TODO: just change to a outbound_request_type
-};
-
 //----------------------------------------------------------------------
 
   void event_loop::process_inbound_error(event* /*e*/)
