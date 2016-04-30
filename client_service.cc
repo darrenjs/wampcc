@@ -473,7 +473,6 @@ void client_service::post_reply(t_invoke_id callid,
     ev->reqid         = context.requestid;
     ev->args          = the_args;
 
-    _INFO_("pushed");
     m_evl->push( ev );
   }
   else

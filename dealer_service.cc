@@ -25,8 +25,9 @@ dealer_service::dealer_service(Logger *logptr,
     m_own_io(ext_ioloop == nullptr),
     m_own_ev(ext_event_loop == nullptr),
     m_sesman( new SessionMan(logptr, *m_evl) ),
-    m_rpcman( new rpc_man(logptr, *m_evl, m_sesman.get(), [this](const rpc_details*r){this->rpc_registered_cb(r); }, internal_rpc_cb)),
+    m_rpcman( new rpc_man(logptr, *m_evl, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
     m_pubsub(new pubsub_man(logptr, *m_evl, *m_sesman)),
+    m_internal_invoke_cb(internal_rpc_cb),
     m_listener( l ),
     m_next_internal_request_id(1)
 {
@@ -133,9 +134,9 @@ void dealer_service::start()
 
 //----------------------------------------------------------------------
 
-void dealer_service::rpc_registered_cb(const rpc_details* ev)
+void dealer_service::rpc_registered_cb(const rpc_details& r)
 {
-  if (m_listener) m_listener->rpc_registered( ev->uri );
+  if (m_listener) m_listener->rpc_registered( r.uri );
 }
 
 //----------------------------------------------------------------------
@@ -245,25 +246,21 @@ void dealer_service::handle_CALL(ev_inbound_message* ev)
   {
     if (rpc.type == rpc_details::eInternal)
     {
-      _INFO_("TODO: have an internal rpc to handle " << rpc.uri);
 
-      // //  m_internal_rpc_invocation(src, registrationid, args, reqid);
-      // if (m_internal_invoke_cb)
-      // {
-      //   t_request_id reqid = ev->ja[1].as_int();
-      //   wamp_args my_wamp_args;
+      if (m_internal_invoke_cb)
+      {
+        t_request_id reqid = ev->ja[1].as_int();
+        wamp_args my_wamp_args;
 
-      //   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
-      //   m_internal_invoke_cb( ev->src,
-      //                         reqid,
-      //                         rpc.registration_id,
-      //                         my_wamp_args);
-      // }
+        if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
+        m_internal_invoke_cb( ev->src,
+                              reqid,
+                              rpc.registration_id,
+                              my_wamp_args);
+      }
     }
     else
     {
-
-
       unsigned int internal_req_id = m_next_internal_request_id++;
       {
         std::lock_guard<std::mutex> guard( m_pending_requests_lock );

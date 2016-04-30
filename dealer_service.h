@@ -53,7 +53,7 @@ private:
   dealer_service(const dealer_service&) = delete;
   dealer_service& operator=(const dealer_service&) = delete;
 
-  void rpc_registered_cb(const rpc_details*);
+  void rpc_registered_cb(const rpc_details&);
   void handle_YIELD(event* ev);
   void handle_SUBSCRIBE(event* ev);
   void handle_CALL(ev_inbound_message*);
@@ -69,6 +69,8 @@ private:
   std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;
   std::unique_ptr<pubsub_man> m_pubsub;
+
+  internal_invoke_cb m_internal_invoke_cb;
 
   dealer_listener* m_listener;
 
