@@ -28,11 +28,6 @@ struct Request_Register_CD_Data : public Request_CB_Data
 };
 
 
-bool client_service::RegistrationKey::operator<(const RegistrationKey& rhs) const
-{
-  return ( (this->router_session_id < rhs.router_session_id) or
-           ((this->router_session_id == rhs.router_session_id) and (this->id < rhs.id) ) );
-}
 
 //----------------------------------------------------------------------
 
@@ -201,7 +196,7 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
     for (auto & i : m_topics)
     {
       const std::string & uri = i.first;
-      topic* topic = i.second;
+//      topic* topic = i.second;
 
       build_message_cb_v2 msg_builder2 = [&uri](int request_id)
         {
@@ -313,7 +308,7 @@ void client_service::start()
 //----------------------------------------------------------------------
 
 bool client_service::add_procedure(const std::string& uri,
-                                   const jalson::json_object& options,
+                                   const jalson::json_object& /* options */,
                                    rpc_cb cb,
                                    void * user)
 {
@@ -347,20 +342,23 @@ void client_service::handle_REGISTERED(ev_inbound_message* ev)
     // TODO: check, what type does WAMP allow here?
     int registration_id = ev->ja[2].as_int();
 
-    RegistrationKey key;
-    key.router_session_id  = ev->user_conn_id;
-    key.id = registration_id;
-
-    // OKAY: when I sent a REGISTER request, I did not store the REQUEST ID
-    // anywhere, did I ? So I need to find that request, and store it.  Wheere is
-    // the best place to store it?
     {
-      std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
-      m_registrationid_map[ key ] = cb_data->procedure;
-    }
-    _INFO_("procedure '" << cb_data->procedure << "' registered with key "
-           << key.router_session_id << ":" << key.id);
+      std::unique_lock<std::mutex> guard(m_procedures_lock);
+      procedure_map& pmap = m_procedures_new[ ev->user_conn_id ];
 
+      auto iter = pmap.by_uri.find( cb_data->procedure );
+      if (iter == pmap.by_uri.end())
+      {
+        _WARN_("cannot register procedure");
+        // TODO: throw an error response
+        return;
+      }
+      iter->second->registration_id = registration_id;
+      pmap.by_id[registration_id] = iter->second;
+    }
+
+    _INFO_("procedure '" << cb_data->procedure << "' registered with id "
+           << registration_id );
   }
   else
   {
@@ -379,49 +377,31 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
     return;
   }
 
-  // TODO: need to parse the INVOCATION message here, eg, check it is valid
-  RegistrationKey rkey;
-  rkey.router_session_id  = ev->user_conn_id;
-  rkey.id = ev->ja[2].as_int();
+  // TODO: check, what type does WAMP allow here?
 
-  std::string procname;
-  {
-    std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
-    auto it = m_registrationid_map.find(rkey);
+  t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
+  int registration_id = ev->ja[2].as_int();
+  jalson::json_object & details = ev->ja[3].as_object();
 
-    if (it == m_registrationid_map.end())
-    {
-      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
-                                       INVOCATION,
-                                       ev->ja[1].as_int());
-    }
-    procname = it->second;
-  }
-
-  std::pair< rpc_cb,void*> rpc_actual;
-  {
-    std::unique_lock<std::mutex> guard(m_procedures_lock);
-    auto it = m_procedures.find( procname );
-
-    if (it == m_procedures.end())
-    {
-      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
-                                       INVOCATION,
-                                       ev->ja[1].as_int());
-    }
-    rpc_actual = it->second;
-  }
-
-  _INFO_( "invoke lookup success, key " << rkey.router_session_id <<":"<<rkey.id  << " -> " << procname );
-
-  jalson::json_object & details  = ev->ja[3].as_object();
   wamp_args my_wamp_args;
   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ];
 
-  t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
+  int router_session_id = ev->user_conn_id;
 
-  if (rpc_actual.first)
   {
+    std::unique_lock<std::mutex> guard(m_procedures_lock);
+    procedure_map& pmap = m_procedures_new[router_session_id];
+    auto iter = pmap.by_id.find(registration_id);
+
+    if (iter == pmap.by_id.end())
+    {
+      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
+                                       INVOCATION,
+                                       ev->ja[1].as_int());
+    }
+
+    auto & proc = iter->second;
+
     size_t mycallid = 0;
     bool had_exception = true;
     {
@@ -436,17 +416,17 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
     // TODO: during exception, could log more details.
     try
     {
-      rpc_actual.first(mycallid, procname,  details, my_wamp_args, ev->src, rpc_actual.second);
+      proc->user_cb(mycallid, proc->uri,  details, my_wamp_args, ev->src, proc->user_data);
       had_exception = false;
     }
     catch (const std::exception& e)
     {
       const char* what = e.what();
-      _WARN_("exception thrown by procedure '"<< procname << "': " << (what?e.what():""));
+      _WARN_("exception thrown by procedure '"<< proc->uri << "': " << (what?e.what():""));
     }
     catch (...)
     {
-      _WARN_("unknown exception thrown by user procedure '"<<procname << "'");
+      _WARN_("unknown exception thrown by user procedure '"<< proc->uri << "'");
     }
 
     if (had_exception)
@@ -456,7 +436,6 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
     }
   }
 
-  return;
 }
 
 //----------------------------------------------------------------------
@@ -466,12 +445,12 @@ void client_service::post_reply(t_invoke_id callid,
 {
   /* user thread or EV thread */
 
-  _INFO_("post_reply");
-
   call_context context;
   {
+
     std::unique_lock<std::mutex> guard(m_calls_lock);
     auto it = m_calls.find( callid );
+
     if (it != m_calls.end())
     {
       context = it->second;
@@ -494,9 +473,23 @@ void client_service::post_reply(t_invoke_id callid,
     ev->reqid         = context.requestid;
     ev->args          = the_args;
 
+    _INFO_("pushed");
     m_evl->push( ev );
   }
-
+  else
+  {
+    build_message_cb_v4 msgbuilder;
+    msgbuilder = [&context,&the_args](){
+      jalson::json_array msg;
+      msg.push_back(YIELD);
+      msg.push_back(context.requestid);
+      msg.push_back(jalson::json_object());
+      if (!the_args.args_list.is_null()) msg.push_back(the_args.args_list);
+      if (!the_args.args_dict.is_null()) msg.push_back(the_args.args_dict);
+      return msg;
+    };
+    m_sesman->send_to_session(context.seshandle, msgbuilder);
+  }
 }
 
 //----------------------------------------------------------------------
@@ -779,84 +772,84 @@ void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercas
 
 void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
 {
-  // TODO: need to parse the INVOCATION message here, eg, check it is valid
-  RegistrationKey rkey;
-  rkey.router_session_id = ev->user_conn_id;
-  rkey.id = ev->ja[2].as_int();
+//   // TODO: need to parse the INVOCATION message here, eg, check it is valid
+//   RegistrationKey rkey;
+//   rkey.router_session_id = ev->user_conn_id;
+//   rkey.id = ev->ja[2].as_int();
 
-  std::string procname;
-  {
-    std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
-    auto it = m_registrationid_map.find(rkey);
+//   std::string procname;
+//   {
+//     std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
+//     auto it = m_registrationid_map.find(rkey);
 
-    if (it == m_registrationid_map.end())
-    {
-      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
-                                       INVOCATION,
-                                       ev->ja[1].as_int());
-    }
-    procname = it->second;
-  }
+//     if (it == m_registrationid_map.end())
+//     {
+//       throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
+//                                        INVOCATION,
+//                                        ev->ja[1].as_int());
+//     }
+//     procname = it->second;
+//   }
 
-  std::pair< rpc_cb,void*> rpc_actual;
-  {
-    std::unique_lock<std::mutex> guard(m_procedures_lock);
-    auto it = m_procedures.find( procname );
+//   std::pair< rpc_cb,void*> rpc_actual;
+//   {
+//     std::unique_lock<std::mutex> guard(m_procedures_lock);
+//     auto it = m_procedures.find( procname );
 
-    if (it == m_procedures.end())
-    {
-      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
-                                       INVOCATION,
-                                       ev->ja[1].as_int());
-    }
-    rpc_actual = it->second;
-  }
+//     if (it == m_procedures.end())
+//     {
+//       throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
+//                                        INVOCATION,
+//                                        ev->ja[1].as_int());
+//     }
+//     rpc_actual = it->second;
+//   }
 
-  _INFO_( "invoke lookup success, key " << rkey.router_session_id <<":"<<rkey.id  << " -> " << procname );
+//   _INFO_( "invoke lookup success, key " << rkey.router_session_id <<":"<<rkey.id  << " -> " << procname );
 
-  wamp_args my_wamp_args;
-  if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ];
+//   wamp_args my_wamp_args;
+//   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ];
 
-  t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
+//   t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
 
-  if (rpc_actual.first)
-  {
-    size_t mycallid = 0;
-    bool had_exception = true;
-    {
-      // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
-      std::unique_lock<std::mutex> guard(m_calls_lock);
-      mycallid = ++m_callid;
-//      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
-      m_calls[ mycallid ] . seshandle = ev->src;
-      m_calls[ mycallid ] . requestid = reqid;
-      m_calls[ mycallid ] . internal = false;
-    }
-    // TODO: during exception, could log more details.
-    try
-    {
-      jalson::json_object details;
-      rpc_actual.first(mycallid, procname, details, my_wamp_args, ev->src, rpc_actual.second);
-      had_exception = false;
-    }
-    catch (const std::exception& e)
-    {
-      const char* what = e.what();
-      _WARN_("exception thrown by procedure '"<< procname << "': " << (what?e.what():""));
-    }
-    catch (...)
-    {
-      _WARN_("unknown exception thrown by user procedure '"<<procname << "'");
-    }
+//   if (rpc_actual.first)
+//   {
+//     size_t mycallid = 0;
+//     bool had_exception = true;
+//     {
+//       // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
+//       std::unique_lock<std::mutex> guard(m_calls_lock);
+//       mycallid = ++m_callid;
+// //      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
+//       m_calls[ mycallid ] . seshandle = ev->src;
+//       m_calls[ mycallid ] . requestid = reqid;
+//       m_calls[ mycallid ] . internal = false;
+//     }
+//     // TODO: during exception, could log more details.
+//     try
+//     {
+//       jalson::json_object details;
+//       rpc_actual.first(mycallid, procname, details, my_wamp_args, ev->src, rpc_actual.second);
+//       had_exception = false;
+//     }
+//     catch (const std::exception& e)
+//     {
+//       const char* what = e.what();
+//       _WARN_("exception thrown by procedure '"<< procname << "': " << (what?e.what():""));
+//     }
+//     catch (...)
+//     {
+//       _WARN_("unknown exception thrown by user procedure '"<<procname << "'");
+//     }
 
-    if (had_exception)
-    {
-      std::unique_lock<std::mutex> guard(m_calls_lock);
-      m_calls.erase( mycallid );
-    }
-  }
+//     if (had_exception)
+//     {
+//       std::unique_lock<std::mutex> guard(m_calls_lock);
+//       m_calls.erase( mycallid );
+//     }
+//   }
 
-  return;
+//   return;
 }
 
 //----------------------------------------------------------------------
@@ -947,7 +940,7 @@ void client_service::handle_EVENT(ev_inbound_message* ev)
   /* EV thread */
 
   size_t subscrid  = ev->ja.at(1).as_uint();
-  size_t publishid = ev->ja.at(2).as_uint();
+//  size_t publishid = ev->ja.at(2).as_uint();
   jalson::json_object & details = ev->ja.at(3).as_object();
   jalson::json_value * ptr_args_list = jalson::get_ptr(ev->ja, 4); // optional
   jalson::json_value * ptr_args_dict = jalson::get_ptr(ev->ja, 5); // optional
@@ -1024,6 +1017,50 @@ t_connection_id client_service::register_session(router_conn& rs)
   return id;
 }
 
+void client_service::register_procedure_impl(router_conn* rconn,
+                                             const std::string& uri,
+                                             const jalson::json_object& options,
+                                             rpc_cb user_cb,
+                                             void * user_data)
+{
+
+  // TODO: need to check for duplicates
+
+  std::cout << "TODO: need to register this RPC\n";
+
+
+  {
+    // TODO: if possible, remove this, and only do the locking on the inbound
+    // thread, to avoid deadlock situbation if user calls register during current an invocation callback
+    std::unique_lock<std::mutex> guard(m_procedures_lock);
+
+    auto sp = std::make_shared<user_procedure>(uri, user_cb, user_data);
+    procedure_map& pmap = m_procedures_new[ rconn->m_router_session_id ];
+    pmap.by_uri[ uri ] = sp;
+  }
+
+
+  // TODO: example of direct-to-IO request, rather than going via the event loop
+  build_message_cb_v2 msg_builder2 = [&uri,&options](int request_id)
+    {
+      jalson::json_array msg;
+      msg.push_back( REGISTER );
+      msg.push_back( request_id );
+      msg.push_back( options );
+      msg.push_back( uri );
+
+      Request_Register_CD_Data * cb_data = new Request_Register_CD_Data(); // TODO: memleak?
+      cb_data->procedure = uri;
+
+      // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
+      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+                                                                cb_data );
+    };
+
+  // TODO: instead of 0, need to have a valie intenral request id
+  m_sesman->send_request(rconn->handle(), REGISTER, 0, msg_builder2);
+}
+
 router_conn::router_conn(client_service * __svc,
                          router_session_connect_cb __cb,
                          void * __user)
@@ -1064,6 +1101,14 @@ void router_conn::publish(const std::string& uri,
                           const jalson::json_object& args_dict)
 {
   m_svc->publish(this, uri, opts, args_list, args_dict);
+}
+
+void router_conn::register_procedure(const std::string& uri,
+                          const jalson::json_object& options,
+                          rpc_cb cb,
+                          void * data)
+{
+  m_svc->register_procedure_impl(this, uri, options, cb, data);
 }
 
 void client_service::publish_all(bool include_internal,

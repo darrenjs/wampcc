@@ -42,6 +42,9 @@ struct user_options
   std::string publish_topic;
   std::string publish_message;
 
+  std::string register_procedure;
+  std::string call_procedure;
+
   int verbose;
 
   user_options()
@@ -96,6 +99,65 @@ std::mutex              event_queue_mutex;
 std::condition_variable event_queue_condition;
 std::queue< AdminEvent > event_queue;
 
+
+struct callback_t
+{
+  callback_t(XXX::client_service* s, const char* d)
+    : svc(s),
+      request(d)
+  {
+  }
+  XXX::client_service* svc;
+  const char* request;
+};
+void procedure_cb(XXX::t_invoke_id invokeid,
+                  const std::string& procedure,
+                  jalson::json_object& /* options */,
+                  XXX::wamp_args& the_args,
+                  XXX::session_handle&,
+                  void* user)
+{
+  const callback_t* cbdata = (callback_t*) user;
+
+  /* called when a procedure within a CALLEE is triggered */
+  auto __logptr = logger;
+  _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args_list
+          << ", user:" << cbdata->request );
+
+//  throw std::runtime_error("bad alloc");
+  auto my_args = the_args;
+
+  my_args.args_list = jalson::json_array();
+  jalson::json_array & arr = my_args.args_list.as_array();
+  arr.push_back("hello");
+  arr.push_back("back");
+  cbdata->svc->post_reply(invokeid, my_args);
+
+
+
+/*
+  // TODO: I have commented out this message, because presently I dont have a way to signify, on the first message, that there are more replies to come!
+  std::string uri = "mine.error.system_not_ready";
+  clsvc.post_error(src, req_id, uri);
+*/
+
+
+  /* TODO: how do I respond with an ERROR or a RESULT?
+
+     - need to make a call back into client service
+     -> can happen during call, or later on any other thread
+
+
+     - probably need to cache the ID's, inside the client_service? ie, have some
+     kind of state to rememeber the callback is being made?
+
+     - do we need to go via the EVL ? might be easier to do that initially.
+     Also see if I can unify the approaches taken for YIELD and ERROR and
+     REGISTERED.
+
+  */
+
+}
 
 void call_cb(XXX::call_info& info, jalson::json_object& details, XXX::wamp_args& args, void* cb_user_data)
 {
@@ -174,10 +236,12 @@ static void process_options(int argc, char** argv)
     {"version",   no_argument, 0, 'v'},
     {"subscribe", required_argument, 0, 's'},
     {"publish",   required_argument, 0, 'p'},
+    {"register",  required_argument, 0, 'r'},
+    {"call",      required_argument, 0, 'c'},
     {"msg",       required_argument, 0, 'm'},
     {NULL, 0, NULL, 0}
   };
-  const char* optstr="hvds:p:m:";
+  const char* optstr="hvds:p:m:r:c:";
 
   ::opterr=1;
 
@@ -206,6 +270,8 @@ static void process_options(int argc, char** argv)
       case 's' : uopts.subscribe_topics.push_back(optarg); break;
       case 'p' : uopts.publish_topic = optarg; break;
       case 'm' : uopts.publish_message = optarg; break;
+      case 'r' : uopts.register_procedure = optarg; break;
+      case 'c' : uopts.call_procedure = optarg; break;
       case '?' : exit(1); // invalid option
       default:
       {
@@ -289,13 +355,13 @@ int main(int argc, char** argv)
   ja.push_back( "world" );
   args.args_list = ja ;
 
-  rconn.call("stop", jalson::json_object(), args,
-             [](XXX::call_info& reqdet,
-                jalson::json_object options,
-                XXX::wamp_args& args,
-                void* cb_data)
-             { call_cb(reqdet, options, args, cb_data);},
-             (void*)"I_called_stop");
+  // rconn.call("stop", jalson::json_object(), args,
+  //            [](XXX::call_info& reqdet,
+  //               jalson::json_object options,
+  //               XXX::wamp_args& args,
+  //               void* cb_data)
+  //            { call_cb(reqdet, options, args, cb_data);},
+  //            (void*)"I_called_stop");
 
   bool keep_waiting = true;
   while (keep_waiting)
@@ -311,7 +377,7 @@ int main(int argc, char** argv)
       // connection, no rpc, no rpc reply etc
       std::cout << "timeout ... did not find the admin\n";
 
-      return 1;
+      break;
     }
 
     for (auto & topic : uopts.subscribe_topics)
@@ -344,7 +410,33 @@ int main(int argc, char** argv)
                           args_list,
                           jalson::json_object());
   }
+
   //if (topic) topic->update( uopts.publish_message.c_str() );
+
+  // test of procedure registration
+
+  std::unique_ptr<callback_t> cb1( new callback_t(g_client.get(),"my_hello") );
+  if (!uopts.register_procedure.empty())
+  {
+    std::cout << "trying the rconn register\n";
+    rconn.register_procedure(uopts.register_procedure,
+                             jalson::json_object(),
+                             procedure_cb,
+                             (void*) cb1.get());
+  }
+
+  if (!uopts.call_procedure.empty())
+  {
+    rconn.call(uopts.call_procedure,
+               jalson::json_object(),
+               args,
+               [](XXX::call_info& reqdet,
+                  jalson::json_object options,
+                  XXX::wamp_args& args,
+                  void* cb_data)
+               { call_cb(reqdet, options, args, cb_data);},
+               (void*)"I_called_the_proc");
+  }
 
 
   while (1) sleep(1);

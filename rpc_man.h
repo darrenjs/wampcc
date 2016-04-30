@@ -16,6 +16,7 @@
 namespace XXX {
 
 class event_loop;
+class SessionMan;
 class client_service;
 class Logger;
 class ev_inbound_message;
@@ -41,15 +42,14 @@ typedef std::function< void(const rpc_details*) > rpc_added_cb;
 class rpc_man
 {
 public:
-  rpc_man(Logger *, event_loop&, rpc_added_cb, internal_invoke_cb);
+  rpc_man(Logger *, event_loop&,  SessionMan*, rpc_added_cb, internal_invoke_cb);
   ~rpc_man();
 
   // handle an inbound CALL event
-  void handle_inbound_CALL(ev_inbound_message*);
+//  void handle_inbound_CALL(ev_inbound_message*);
 
   // return the registion id
-  int  handle_register_event(session_handle& sh,
-                             jalson::json_array&);
+  int  handle_inbound_REGISTER(ev_inbound_message*);
 
   // TODO: what is this for?
   void invoke_rpc(jalson::json_array& jv);
@@ -72,6 +72,8 @@ private:
 
   Logger *__logptr; /* name chosen for log macros */
   event_loop& m_evl;
+  SessionMan* m_sesman;
+
 
   typedef  std::map< std::string, rpc_details* > rpc_registry;
   typedef  std::map< std::string, rpc_registry > realm_to_rpc_registry;
@@ -80,6 +82,8 @@ private:
   realm_to_rpc_registry m_realm_to_registry;
   std::map< std::string, rpc_details* > m_rpc_map2;
   int m_next_regid;
+
+
   rpc_added_cb     m_rpc_added_cb;
   internal_invoke_cb m_internal_invoke_cb;
 };

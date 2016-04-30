@@ -52,6 +52,8 @@ public:
 
   void start();
 
+
+  // TODO: so this is kind of legacy now then?
   /* Register a procedure.  Returns true if was added, or false if name already
    * existed. */
   bool add_procedure(const std::string& uri,
@@ -59,6 +61,12 @@ public:
                      rpc_cb cb,
                      void * data);
 
+  // Register a procedure with a remote dealer
+  void register_procedure_impl(router_conn*,
+                               const std::string& uri,
+                               const jalson::json_object& options,
+                               rpc_cb cb,
+                               void * data);
   /* Register a topic */
   void add_topic(topic*);
 
@@ -138,13 +146,43 @@ private:
 
   config m_config;
 
+  // NEW approach
+
+  struct user_procedure
+  {
+    std::string uri;
+    rpc_cb      user_cb;
+    void*       user_data;
+    int         registration_id;
+
+    user_procedure(std::string __uri,
+                   rpc_cb      __user_cb,
+                   void*       __user_data)
+      : uri(__uri),
+        user_cb(__user_cb),
+        user_data(__user_data),
+        registration_id(0)
+    {
+    }
+
+  };
+
+  struct procedure_map
+  {
+    std::map<std::string, std::shared_ptr<user_procedure> > by_uri;
+    std::map<int,         std::shared_ptr<user_procedure> > by_id;
+  };
+
+  std::map<t_connection_id, procedure_map > m_procedures_new;
+
+  std::map<t_connection_id, void* > m_registered_procedures;
   std::map< std::string, std::pair< rpc_cb,void*> > m_procedures;
   std::mutex                                        m_procedures_lock;
 
   struct RegistrationKey
   {
     t_connection_id router_session_id;
-    int id;
+    int id; // TODO: this must be the Registration id?
     bool operator<(const RegistrationKey& k) const;
   };
   std::map <RegistrationKey, std::string>           m_registrationid_map;
@@ -154,6 +192,9 @@ private:
   // procedure is being invokd internally or from remote.
   std::map <int, std::string>                       m_registrationid_map2;
   std::mutex                                        m_registrationid_map_lock2;
+
+
+
 
   std::map<std::string, topic*> m_topics;
   std::mutex                    m_topics_lock;
@@ -211,6 +252,8 @@ private:
   t_client_request_id m_subscription_req_id = 1;
   std::mutex m_subscriptions_lock;
 
+
+
   friend class router_conn;
 };
 
@@ -226,11 +269,11 @@ public:
 
   int connect(const std::string & addr, int port);
 
-
-  // Will register this procedure with the only remote peer.
-  // Will not register it internally.
-  void register_procedure();
-
+  // Register a procedure with a remote dealer
+  void register_procedure(const std::string& uri,
+                          const jalson::json_object& options,
+                          rpc_cb cb,
+                          void * data);
 
   t_client_request_id call(std::string rpc,
                            const jalson::json_object& options,

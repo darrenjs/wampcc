@@ -10,7 +10,7 @@
 namespace XXX {
 
 // TODO: set to 1000; for testing, set to 1 ms
-#define SYSTEM_HEARTBEAT_MS 1000
+#define SYSTEM_HEARTBEAT_MS 100000
 
 /* Constructor */
 event_loop::event_loop(Logger *logptr)
@@ -161,7 +161,7 @@ void event_loop::eventloop()
       }
       catch ( const std::exception& ex)
       {
-        _ERROR_( "caught exception during process_event: " << ex.what() ); // DJS
+        _WARN_( "caught exception during process_event: " << ex.what() );
         /* only basic code in here, to remove risk of a throw while an exception
          * is already active. */
       }
@@ -311,7 +311,6 @@ void event_loop::process_event(event * ev)
           break;
         }
         case ERROR : {  process_inbound_error( ev ); break; }
-        case CALL :  {  m_rpcman->handle_inbound_CALL(ev2); break; }
         case REGISTER :
         {
           if (!m_rpcman) throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
@@ -320,7 +319,7 @@ void event_loop::process_event(event * ev)
           // expect that requests can be sent immediately, so its important that
           // we immediately sent the registration ID to the peer, before requests
           // arrive.
-          int registration_id = m_rpcman->handle_register_event(ev2->src, ev2->ja);
+          int registration_id = m_rpcman->handle_inbound_REGISTER(ev2);
 
           jalson::json_array msg;
           msg.push_back( REGISTERED );
@@ -341,6 +340,7 @@ void event_loop::process_event(event * ev)
         case INVOCATION :
         case CHALLENGE :
         case AUTHENTICATE :
+        case CALL :
         {
           event_cb2& cb = m_handlers2[ ev2->msg_type ];
           if (cb) cb( ev2 );
@@ -422,7 +422,7 @@ void event_loop::process_event_error(event* ev, event_error& er)
         jalson::json_array msg;
         msg.push_back( ERROR );
         msg.push_back( CALL );
-//      msg.push_back( ev->ja[1]);   // TODO: put this back only when we check for its exsitence
+        msg.push_back( jalson::get_copy(ev2->ja,1,jalson::json_value::make_int(0)));
         msg.push_back( jalson::json_object() );
         msg.push_back( er.error_uri );
         msg.push_back( jalson::json_array() );
@@ -436,7 +436,7 @@ void event_loop::process_event_error(event* ev, event_error& er)
         jalson::json_array msg;
         msg.push_back( ERROR );
         msg.push_back( REGISTER );
-        msg.push_back( ev2->ja[1]);
+        msg.push_back( jalson::get_copy(ev2->ja,1,jalson::json_value::make_int(0)));
         msg.push_back( jalson::json_object() );
         msg.push_back( er.error_uri );
         msg.push_back( jalson::json_array() );

@@ -22,7 +22,7 @@ namespace XXX {
   class IOLoop;
   class IOHandle;
   class event_loop;
-
+  class ev_inbound_message;
 
 struct dealer_listener
 {
@@ -56,6 +56,7 @@ private:
   void rpc_registered_cb(const rpc_details*);
   void handle_YIELD(event* ev);
   void handle_SUBSCRIBE(event* ev);
+  void handle_CALL(ev_inbound_message*);
 
 
   // essential components
@@ -82,7 +83,11 @@ private:
     std::string procedure;
     void* user_cb_data;
 
-    pending_request() : user_cb_data( nullptr ) { }
+    session_handle call_source;
+    int call_request_id;
+    bool is_external;
+
+    pending_request() : user_cb_data( nullptr ),is_external(false) { }
   };
 
   std::map<int, pending_request> m_pending_requests;

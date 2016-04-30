@@ -1,6 +1,7 @@
 #include "rpc_man.h"
 
 #include "event_loop.h"
+#include "SessionMan.h"
 #include "Logger.h"
 
 #include <memory>
@@ -10,10 +11,11 @@ namespace XXX {
 
 
 /* Constructor */
-rpc_man::rpc_man(Logger * logptr, event_loop&evl, rpc_added_cb cb,
+rpc_man::rpc_man(Logger * logptr, event_loop&evl, SessionMan* sm, rpc_added_cb cb,
                  internal_invoke_cb internal_rpc_cb)
   : __logptr(logptr),
     m_evl(evl),
+    m_sesman(sm),
     m_next_regid(1),
     m_rpc_added_cb( cb ),
     m_internal_invoke_cb( internal_rpc_cb )
@@ -40,15 +42,46 @@ int rpc_man::register_internal_rpc(const std::string& procedure_uri,
   r->uri = procedure_uri;
   r->type = rpc_details::eInternal;
 
+  // {
+  //   std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+
+  //   auto & rpcreg = m_realm_to_registry [ realm ];
+  //   // TODO: handle duplicates
+  //   r->registration_id = m_next_regid++;
+  //   rpcreg[ procedure_uri ] = r;
+  // }
+  // if (m_rpc_added_cb) m_rpc_added_cb( r );
+  // return r->registration_id;
+
+  // ---
+
+
   {
     std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+    auto realm_iter = m_realm_to_registry.find( realm );
 
-    auto & rpcreg = m_realm_to_registry [ realm ];
-    // TODO: handle duplicates
+    if (realm_iter == m_realm_to_registry.end())
+    {
+      // insert realm
+
+    }
+
+    auto rpc_iter = realm_iter->second.find(procedure_uri);
+    if (rpc_iter != realm_iter->second.end())
+    {
+      _WARN_("Ignoring duplicate rpc registration for " << realm << ":" << procedure_uri);
+      throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
+    }
+
+    // create registration record
+
     r->registration_id = m_next_regid++;
-    rpcreg[ procedure_uri ] = r;
+    realm_iter->second[ procedure_uri ] = r;
+
   }
+
   _INFO_( "Internal  "<< realm << "::'" << procedure_uri <<"' registered with id " << r->registration_id );
+
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r->registration_id;
@@ -136,43 +169,63 @@ void rpc_man::invoke_rpc(jalson::json_array& /*jv*/)
   // cb(requestid, arg_list, arg_dict, it->second.second);
 }
 
-int rpc_man::handle_register_event(session_handle& sh,
-                                   jalson::json_array& ja)
+int rpc_man::handle_inbound_REGISTER(ev_inbound_message* ev)
 {
   //int size = ja.size();
-  const std::string& procedure_uri = ja[3].as_string();
+  const std::string& procedure_uri = jalson::get_ref(ev->ja, 3).as_string();
 
   rpc_details* r = new rpc_details();
   r->registration_id = 0;
   r->uri = procedure_uri;
-  r->sesionh = sh;
+  r->sesionh = ev->src;
   r->type = rpc_details::eRemote;
 
+
   {
-    // TODO: handle duplicates
-    r->registration_id = m_next_regid++;
     std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-    m_rpc_map2[ procedure_uri ] = r;
+    auto realm_iter = m_realm_to_registry.find( ev->realm );
+
+    if (realm_iter == m_realm_to_registry.end())
+    {
+      // insert realm
+      auto p = m_realm_to_registry.insert(std::make_pair(ev->realm, rpc_registry()));
+      realm_iter = std::move(p.first);
+    }
+
+    auto rpc_iter = realm_iter->second.find(procedure_uri);
+    if (rpc_iter != realm_iter->second.end())
+    {
+      _WARN_("Ignore duplicate procedure register for " << ev->realm << ":" << procedure_uri);
+      throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
+    }
+
+    // create registration record
+
+    r->registration_id = m_next_regid++;
+    realm_iter->second[ procedure_uri ] = r;
+
   }
 
-  _INFO_( "RPC '" << procedure_uri <<"' registered with id " << r->registration_id );
+  _INFO_( "Procedure "<< ev->realm << "::'" << procedure_uri <<"' registered with id " << r->registration_id );
+
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r->registration_id;
-
 }
 
 // Start a CALL sequence to an RPC
 void rpc_man::call_rpc(std::string rpcname)
 {
-  rpc_details r;
-  {
-    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-    auto it = m_rpc_map2.find( rpcname );
-    if (it == m_rpc_map2.end())
-      throw std::runtime_error("dont have that RPC");
-    r = *(it->second);
-  }
+
+  _ERROR_("TODO: delete this function");
+  // rpc_details r;
+  // {
+  //   std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+  //   auto it = m_rpc_map2.find( rpcname );
+  //   if (it == m_rpc_map2.end())
+  //     throw std::runtime_error("dont have that RPC");
+  //   r = *(it->second);
+  // }
 
   /*
   HERE: I am trying to figure out have to route a USER request to CALL an RPC into a sequence of calls
@@ -196,48 +249,65 @@ void rpc_man::call_rpc(std::string rpcname)
 
 }
 
-void rpc_man::handle_inbound_CALL(ev_inbound_message* ev)
-{
-  // TODO: improve json parsing
-  std::string uri = ev->ja[3].as_string();
+// void rpc_man::handle_inbound_CALL(ev_inbound_message* ev)
+// {
+//   // TODO: improve json parsing
+//   std::string uri = ev->ja[3].as_string();
 
-  /* lookup the RPC */
+//   /* lookup the RPC */
 
-  // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
-  rpc_details rpc = this->get_rpc_details(uri, ev->realm);
+//   // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
+//   rpc_details rpc = this->get_rpc_details(uri, ev->realm);
 
-  if (rpc.registration_id)
-  {
-    if (rpc.type == rpc_details::eInternal)
-    {
-      _INFO_("TODO: have an internal rpc to handle " << uri);
+//   if (rpc.registration_id)
+//   {
+//     if (rpc.type == rpc_details::eInternal)
+//     {
+//       _INFO_("TODO: have an internal rpc to handle " << uri);
 
-      //  m_internal_rpc_invocation(src, registrationid, args, reqid);
-      if (m_internal_invoke_cb)
-      {
-        t_request_id reqid = ev->ja[1].as_int();
-        wamp_args my_wamp_args;
+//       //  m_internal_rpc_invocation(src, registrationid, args, reqid);
+//       if (m_internal_invoke_cb)
+//       {
+//         t_request_id reqid = ev->ja[1].as_int();
+//         wamp_args my_wamp_args;
 
-        if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
-        m_internal_invoke_cb( ev->src,
-                              reqid,
-                              rpc.registration_id,
-                              my_wamp_args);
-      }
-    }
-    else
-    {
-      _INFO_("TODO: have an outbound rpc to handle " << uri);
-    }
-  }
-  else
-  {
-    _WARN_("Failed to find RPC for CALL request: " << uri);
-     // TODO : test this path; should reulst in a ERROR going back to the
-     // client process, and that it can successfully handle it.
-    throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
-  }
+//         if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
+//         m_internal_invoke_cb( ev->src,
+//                               reqid,
+//                               rpc.registration_id,
+//                               my_wamp_args);
+//       }
+//     }
+//     else
+//     {
+//       // TODO:need to create INVPOKE?
+//       _INFO_("TODO: have an outbound rpc to handle " << uri);
 
-}
+//       build_message_cb_v2 msg_builder2 = [&](int request_id)
+//         {
+//           jalson::json_array msg;
+//           msg.push_back( INVOCATION );
+//           msg.push_back( request_id );
+//           msg.push_back( rpc.registration_id );
+//           msg.push_back( jalson::json_object() );
+//           msg.push_back( jalson::json_array() );
+//           msg.push_back( jalson::json_object() );
+
+//           return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                     nullptr );
+//         };
+
+//       m_sesman->send_request( rpc.sesionh, INVOCATION, ev->internal_req_id, msg_builder2);
+//     }
+//   }
+//   else
+//   {
+//     _WARN_("Failed to find RPC for CALL request: " << uri);
+//      // TODO : test this path; should reulst in a ERROR going back to the
+//      // client process, and that it can successfully handle it.
+//     throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
+//   }
+
+// }
 
 } // namespace XXX
