@@ -44,23 +44,6 @@ dealer_service::dealer_service(Logger *logptr,
   m_evl->set_handler2(CALL,
                     [this](ev_inbound_message* ev){ this->handle_CALL(ev); } );
 
-
-
-  // m_io_loop->m_new_client_cb = [this](IOHandle *h,
-  //                                     int  status,
-  //                                     tcp_connect_attempt_cb user_cb,
-  //                                     void* user_data)
-  //   {
-
-  //     /* === Called on IO thread === */
-  //     tcp_connect_event * ev = new tcp_connect_event(user_cb, user_data, status);
-  //     if (h)
-  //     {
-  //       Session* sptr = m_sesman -> create_session(h, true);
-  //       ev->src = sptr->handle();
-  //     }
-  //     m_evl->push( ev );
-  //   };
 }
 
 dealer_service::~dealer_service()
@@ -81,58 +64,6 @@ void dealer_service::start()
   if (m_own_io) m_io_loop->start();
 }
 
-
-// // TODO: the whole connector business should be in a separate object
-// void dealer_service::connect(const std::string & addr,
-//                              int port,
-//                              tcp_connect_attempt_cb user_cb,
-//                              void* user_data)
-// {
-//   m_io_loop->add_connection(addr,
-//                            port,
-//                            user_cb,
-//                            user_data);
-// }
-
-
-// /* This is the special interface on the dealer_service API which allows CALL
-//  * sequences to be triggered by the API client, rather than a traditiona WAMP
-//  * client (ie, TCP based).  The callback is the entry point into the user code
-//  * when a YIELD or ERROR is received.
-//  */
-// unsigned int dealer_service::call_rpc(std::string rpc,
-//                                       call_user_cb cb,
-//                                       wamp_args args,
-//                                       void* cb_user_data)
-// {
-//   /* USER-THREAD */
-
-//   unsigned int int_req_id = m_next_internal_request_id++;
-
-//   {
-//     std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-//     auto & pending = m_pending_requests[int_req_id];
-//     pending.cb = cb;
-//     pending.user_cb_data = cb_user_data;
-//   }
-
-//   outbound_call_event * ev = new outbound_call_event();
-
-//   ev->mode = event::eOutbound;
-//   ev->msg_type = CALL;
-//   ev->rpc_name= rpc;
-//   ev->cb = cb;  // memleak?
-//   ev->args = args; // memleak?
-//   ev->cb_user_data = cb_user_data;
-//   ev->internal_req_id=int_req_id;
-
-//   m_evl->push( ev );
-
-
-//   return int_req_id;
-// }
-
-//----------------------------------------------------------------------
 
 void dealer_service::rpc_registered_cb(const rpc_details& r)
 {

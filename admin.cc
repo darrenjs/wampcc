@@ -363,43 +363,31 @@ int main(int argc, char** argv)
   //            { call_cb(reqdet, options, args, cb_data);},
   //            (void*)"I_called_stop");
 
-  bool keep_waiting = true;
-  while (keep_waiting)
+
+  bool long_wait = false;
+  bool wait_reply = false;
+
+
+  // now that we are connected, make our requests
+
+
+  // subscribe
+  if (! uopts.subscribe_topics.empty()) long_wait = true;
+  for (auto & topic : uopts.subscribe_topics)
+    rconn.subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
+
+  // register
+  std::unique_ptr<callback_t> cb1( new callback_t(g_client.get(),"my_hello") );
+  if (!uopts.register_procedure.empty())
   {
-    std::unique_lock< std::mutex > guard( event_queue_mutex );
-
-    /*bool hasevent =*/ event_queue_condition.wait_for(guard, wait_interval,
-                                                       [](){ return !event_queue.empty(); });
-
-    if (event_queue.empty())
-    {
-      // TODO: eventually want to suppor tall kinds of errors, ie, no
-      // connection, no rpc, no rpc reply etc
-      std::cout << "timeout ... did not find the admin\n";
-
-      break;
-    }
-
-    for (auto & topic : uopts.subscribe_topics)
-      rconn.subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
-
-    while (!event_queue.empty())
-    {
-      AdminEvent aev = event_queue.front();
-      event_queue.pop();
-
-      switch (aev)
-      {
-        case eNone : break;
-        case eRPCSent : break;  /* resets the timer */
-        case eReplyReceived : keep_waiting = false; break;
-      }
-    }
-
+    rconn.register_procedure(uopts.register_procedure,
+                             jalson::json_object(),
+                             procedure_cb,
+                             (void*) cb1.get());
+    long_wait = true;
   }
 
-
-  // topic publication - basic WAMP style publish
+  // publish
   if (!uopts.publish_topic.empty())
   {
     jalson::json_array args_list;
@@ -411,20 +399,7 @@ int main(int argc, char** argv)
                           jalson::json_object());
   }
 
-  //if (topic) topic->update( uopts.publish_message.c_str() );
-
-  // test of procedure registration
-
-  std::unique_ptr<callback_t> cb1( new callback_t(g_client.get(),"my_hello") );
-  if (!uopts.register_procedure.empty())
-  {
-    std::cout << "trying the rconn register\n";
-    rconn.register_procedure(uopts.register_procedure,
-                             jalson::json_object(),
-                             procedure_cb,
-                             (void*) cb1.get());
-  }
-
+  // call
   if (!uopts.call_procedure.empty())
   {
     rconn.call(uopts.call_procedure,
@@ -436,11 +411,43 @@ int main(int argc, char** argv)
                   void* cb_data)
                { call_cb(reqdet, options, args, cb_data);},
                (void*)"I_called_the_proc");
+    wait_reply = true;
   }
 
 
-  while (1) sleep(1);
 
+  while (long_wait || wait_reply)
+  {
+    std::unique_lock< std::mutex > guard( event_queue_mutex );
+
+    /*bool hasevent =*/ event_queue_condition.wait_for(guard, wait_interval,
+                                                       [](){ return !event_queue.empty(); });
+
+    // if (event_queue.empty())
+    // {
+    //   // TODO: eventually want to suppor tall kinds of errors, ie, no
+    //   // connection, no rpc, no rpc reply etc
+    //   std::cout << "timeout ... did not find the admin\n";
+
+    //   break;
+    // }
+
+    while (!event_queue.empty())
+    {
+      AdminEvent aev = event_queue.front();
+      event_queue.pop();
+
+      switch (aev)
+      {
+        case eNone : break;
+        case eRPCSent : break;  /* resets the timer */
+        case eReplyReceived : wait_reply = false; ;break;
+      }
+    }
+
+  }
+
+  sleep(1); // TODO: think I need this, to give publish time to complete
   g_client.reset();
   delete logger;
   return 0;

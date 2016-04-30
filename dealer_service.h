@@ -38,12 +38,6 @@ public:
 
   void start();
 
-  // // TODO: the whole connector business shoudl be in a separate object
-  // void connect(const std::string & addr,
-  //              int port,
-  //              tcp_connect_attempt_cb user_cb,
-  //              void* user_data);
-
   void listen(int port);
 
   int register_internal_procedure(std::string procedure,
