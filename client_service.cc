@@ -416,7 +416,9 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
     // TODO: during exception, could log more details.
     try
     {
-      proc->user_cb(mycallid, proc->uri,  details, my_wamp_args, ev->src, proc->user_data);
+      invoke_details invoke(mycallid);
+      invoke.svc = this;
+      proc->user_cb(mycallid, invoke, proc->uri,  details, my_wamp_args, ev->src, proc->user_data);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -709,7 +711,10 @@ void client_service::invoke_direct(session_handle& sh,
     try
     {
       jalson::json_object details;
-      rpc_actual.first(mycallid, procname, details, args, sh, rpc_actual.second);
+
+      invoke_details invoke(mycallid);
+      invoke.svc = this;
+      rpc_actual.first(mycallid, invoke, procname, details, args, sh, rpc_actual.second);
       had_exception = false;
     }
     catch (const std::exception& e)
@@ -769,7 +774,7 @@ void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercas
   }
 }
 
-void client_service::handle_ERROR(ev_inbound_message* ev) // change to lowercase
+void client_service::handle_ERROR(ev_inbound_message* /* ev */) // change to lowercase
 {
 //   // TODO: need to parse the INVOCATION message here, eg, check it is valid
 //   RegistrationKey rkey;

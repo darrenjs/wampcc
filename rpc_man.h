@@ -33,6 +33,8 @@ struct rpc_details
   std::string uri;
   SID sid;
   session_handle sesionh;
+  rpc_cb user_cb; // applies only for eInternal
+  void*  user_data; // applies only for eInternal
   rpc_details() : registration_id( 0 ) {}
 };
 
@@ -49,6 +51,15 @@ public:
   // Register and RPC that is handled by the internal session
   int register_internal_rpc(const std::string& rpc_uri,
                             const std::string& realm);
+
+  // Register and RPC that is handled by the internal session
+  int register_internal_rpc_2(const std::string& realm,
+                              const std::string& uri,
+                              const jalson::json_object& options,
+                              rpc_cb cb,
+                              void * data);
+
+
 
   rpc_details get_rpc_details( const std::string& rpcname,
                                const std::string& realm);

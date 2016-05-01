@@ -43,6 +43,19 @@ public:
   int register_internal_procedure(std::string procedure,
                                   const std::string& realm);
 
+  void register_procedure(const std::string& realm,
+                          const std::string& uri,
+                          const jalson::json_object& options,
+                          rpc_cb cb,
+                          void * data);
+
+
+  bool reply(t_invoke_id,
+             bool is_error,
+             wamp_args& the_args);
+
+  // TODO: have a register proc interface
+
 private:
   dealer_service(const dealer_service&) = delete;
   dealer_service& operator=(const dealer_service&) = delete;
@@ -52,6 +65,8 @@ private:
   void handle_SUBSCRIBE(event* ev);
   void handle_CALL(ev_inbound_message*);
 
+  void invoke_procedure(rpc_details&,
+                        ev_inbound_message*);
 
   // essential components
   Logger *__logptr; /* name chosen for log macros */
@@ -88,6 +103,18 @@ private:
 
   std::map<int, pending_request> m_pending_requests;
   std::mutex m_pending_requests_lock;
+
+
+
+  struct proc_invoke_context
+  {
+    session_handle seshandle;
+    int requestid;
+  };
+  size_t m_next_call_id = 1001;
+  std::map <size_t, proc_invoke_context>  m_calls;
+  std::mutex                              m_calls_lock;
+
 };
 
 } // namespace

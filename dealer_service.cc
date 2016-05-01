@@ -177,18 +177,18 @@ void dealer_service::handle_CALL(ev_inbound_message* ev)
   {
     if (rpc.type == rpc_details::eInternal)
     {
-
-      if (m_internal_invoke_cb)
-      {
-        t_request_id reqid = ev->ja[1].as_int();
-        wamp_args my_wamp_args;
-
-        if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
-        m_internal_invoke_cb( ev->src,
-                              reqid,
-                              rpc.registration_id,
-                              my_wamp_args);
-      }
+      invoke_procedure(rpc, ev);
+      return;
+    }
+    else if (m_internal_invoke_cb)
+    {
+      wamp_args my_wamp_args;
+      if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
+      t_request_id reqid = ev->ja[1].as_int();
+      m_internal_invoke_cb( ev->src,
+                            reqid,
+                            rpc.registration_id,
+                            my_wamp_args);
     }
     else
     {
@@ -227,6 +227,101 @@ void dealer_service::handle_CALL(ev_inbound_message* ev)
   }
 }
 
+
+
+void dealer_service::register_procedure(const std::string& realm,
+                                        const std::string& uri,
+                                        const jalson::json_object& options,
+                                        rpc_cb user_cb,
+                                        void * user_data)
+{
+
+
+  m_rpcman->register_internal_rpc_2(realm, uri, options, user_cb, user_data);
+}
+
+
+void dealer_service::invoke_procedure(rpc_details& rpc,
+                                      ev_inbound_message* ev)
+{
+  t_request_id request_id = ev->ja[1].as_int();
+  wamp_args my_wamp_args;
+  if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
+  _INFO_("got internal RPC call request");
+
+  size_t mycallid = 0;
+  bool had_exception = true;
+
+  {
+    std::unique_lock<std::mutex> guard(m_calls_lock);
+    mycallid = m_next_call_id++;
+    m_calls[ mycallid ].seshandle = ev->src;
+    m_calls[ mycallid ].requestid = request_id;
+  }
+
+
+  // TODO: note this is the new style of intenral RPC callback
+  if (rpc.user_cb)
+  {
+    invoke_details invoke(mycallid);
+    invoke.dealer = this;
+    invoke.reply_func = [this](t_invoke_id tid, bool is_error, wamp_args& args){
+      this->reply(tid, is_error, args);
+    };
+    _INFO_("attempting new direct invocation");
+    jalson::json_object details;
+
+
+    rpc.user_cb(mycallid, invoke, rpc.uri, details, my_wamp_args, ev->src, rpc.user_data);
+  }
+}
+
+
+bool dealer_service::reply(t_invoke_id callid,
+                           bool is_error,
+                           wamp_args& the_args)
+{
+  proc_invoke_context context;
+  {
+    std::unique_lock<std::mutex> guard(m_calls_lock);
+    auto it = m_calls.find( callid );
+
+    if (it != m_calls.end())
+    {
+      context = it->second;
+      m_calls.erase( it );
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+  build_message_cb_v4 msgbuilder;
+  msgbuilder = [&context,&the_args, is_error](){
+    jalson::json_array msg;
+
+    if (is_error)
+    {
+      msg.push_back(ERROR);
+      msg.push_back(CALL);
+      msg.push_back(context.requestid);
+      msg.push_back(jalson::json_object());
+      msg.push_back("");
+    }
+    else
+    {
+      msg.push_back(RESULT);
+      msg.push_back(context.requestid);
+      msg.push_back(jalson::json_object());
+    }
+    if (!the_args.args_list.is_null()) msg.push_back(the_args.args_list);
+    if (!the_args.args_dict.is_null()) msg.push_back(the_args.args_dict);
+    return msg;
+  };
+  m_sesman->send_to_session(context.seshandle, msgbuilder);
+  return true;
+}
 
 
 } // namespace

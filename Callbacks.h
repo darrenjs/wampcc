@@ -18,6 +18,8 @@
 namespace XXX {
 
 
+  class client_service;
+  class dealer_service;
 
 class session_error : public std::runtime_error
 {
@@ -54,6 +56,11 @@ public:
   }
 };
 
+struct wamp_args
+{
+  jalson::json_value  args_list;
+  jalson::json_value  args_dict;
+};
 
 class router_conn;
 
@@ -65,6 +72,21 @@ typedef uint64_t t_client_request_id;
 typedef uint64_t t_sid;
 
 typedef std::weak_ptr<t_sid> session_handle;
+
+
+struct invoke_details
+{
+  t_invoke_id id;
+  client_service* svc;
+  dealer_service*  dealer;
+
+  std::function<void(t_invoke_id, bool is_error, wamp_args&)> reply_func;
+
+  invoke_details(t_invoke_id _id)
+  : id(_id),
+    svc(nullptr),
+    dealer(nullptr){}
+};
 
 /* Information about a session that once set, will never change, and is used to
  * uniquely identify it. */
@@ -109,11 +131,6 @@ std::ostream& operator<<(std::ostream& os, const SID & s);
 
 class client_service;
 
-struct wamp_args
-{
-  jalson::json_value  args_list;
-  jalson::json_value  args_dict;
-};
 
 // TODO: no need to have this, can be expanded in places where it is
 struct call_info
@@ -143,6 +160,7 @@ typedef std::function<void(subscription_event_type evtype,
 
 
 typedef std::function<void(t_invoke_id,
+                           invoke_details&,
                            const std::string&,
                            jalson::json_object&,
                            wamp_args&,

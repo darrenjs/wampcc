@@ -111,6 +111,7 @@ struct callback_t
   const char* request;
 };
 void procedure_cb(XXX::t_invoke_id invokeid,
+                  XXX::invoke_details&,
                   const std::string& procedure,
                   jalson::json_object& /* options */,
                   XXX::wamp_args& the_args,

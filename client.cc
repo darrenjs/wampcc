@@ -2,6 +2,7 @@
 
 #include <Topic.h>
 #include <client_service.h>
+#include <dealer_service.h>
 #include <Logger.h>
 
 #include <condition_variable>
@@ -32,6 +33,7 @@ struct callback_t
 XXX::text_topic topic("topic1");
 
 void procedure_cb(XXX::t_invoke_id invokeid,
+                  XXX::invoke_details& invocation,
                   const std::string& procedure,
                   jalson::json_object& /* options */,
                   XXX::wamp_args& the_args,
@@ -52,31 +54,17 @@ void procedure_cb(XXX::t_invoke_id invokeid,
   jalson::json_array & arr = my_args.args_list.as_array();
   arr.push_back("hello");
   arr.push_back("back");
-  cbdata->svc->post_reply(invokeid, my_args);
 
-
-
-/*
-  // TODO: I have commented out this message, because presently I dont have a way to signify, on the first message, that there are more replies to come!
-  std::string uri = "mine.error.system_not_ready";
-  clsvc.post_error(src, req_id, uri);
-*/
-
-
-  /* TODO: how do I respond with an ERROR or a RESULT?
-
-     - need to make a call back into client service
-     -> can happen during call, or later on any other thread
-
-
-     - probably need to cache the ID's, inside the client_service? ie, have some
-     kind of state to rememeber the callback is being made?
-
-     - do we need to go via the EVL ? might be easier to do that initially.
-     Also see if I can unify the approaches taken for YIELD and ERROR and
-     REGISTERED.
-
-  */
+  if (invocation.reply_func)
+  {
+    invocation.reply_func(invokeid,
+                          false,
+                          my_args);
+  }
+  else
+  {
+    cbdata->svc->post_reply(invokeid, my_args);
+  }
 
 }
 
@@ -131,6 +119,12 @@ int main(int /* argc */, char** /* argv */)
   mycs->start();
 
   std::thread publisher( publisher_tep );
+
+  XXX::dealer_service* dealer = mycs->get_dealer();
+  dealer->register_procedure("default_realm",
+                             "run",
+                             jalson::json_object(),
+                             procedure_cb, (void*) cb3.get());
 
   while(1) sleep(10);
 

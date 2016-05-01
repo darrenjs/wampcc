@@ -91,6 +91,8 @@ public:
                      int,
                      wamp_args&);
 
+  dealer_service * get_dealer() { return m_embed_router; }
+
 private:
 
   client_service(const client_service&) = delete;
@@ -251,8 +253,6 @@ private:
   std::map<t_sid, std::map<size_t, subscription> > m_subscriptions;
   t_client_request_id m_subscription_req_id = 1;
   std::mutex m_subscriptions_lock;
-
-
 
   friend class router_conn;
 };
