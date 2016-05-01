@@ -131,7 +131,7 @@ private:
   void handle_event(ev_router_session_connect_fail*);
   void handle_SUBSCRIBED(ev_inbound_subscribed*);
   void handle_EVENT(ev_inbound_message*);
-  void register_procedures();
+  // void register_procedures();
 
   void new_client(IOHandle *hndl,
                   int  status,

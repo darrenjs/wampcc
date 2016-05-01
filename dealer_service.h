@@ -40,8 +40,8 @@ public:
 
   void listen(int port);
 
-  // int register_internal_procedure(std::string procedure,
-  //                                 const std::string& realm);
+  int register_internal_procedure(std::string procedure,
+                                  const std::string& realm);
 
   void register_procedure(const std::string& realm,
                           const std::string& uri,
