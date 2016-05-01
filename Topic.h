@@ -48,7 +48,7 @@ public:
   }
 
 
-  virtual jalson::json_value snapshot() const {}
+  virtual jalson::json_value snapshot() const = 0;
 
 protected:
 

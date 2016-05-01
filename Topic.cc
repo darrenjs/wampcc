@@ -127,6 +127,7 @@ void text_topic::update(const char* newstr)
 
 jalson::json_value text_topic::snapshot() const
 {
+  return jalson::json_value::make_string("TODO");
 }
 
 
