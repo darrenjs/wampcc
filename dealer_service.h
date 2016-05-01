@@ -33,15 +33,15 @@ class dealer_service
 {
 public:
 
-  dealer_service(Logger*, dealer_listener*, IOLoop* io, event_loop* ev, internal_invoke_cb internal_rpc_cb);
+  dealer_service(Logger*, dealer_listener*, IOLoop* io, event_loop* ev /*, internal_invoke_cb internal_rpc_cb */);
   ~dealer_service();
 
   void start();
 
   void listen(int port);
 
-  int register_internal_procedure(std::string procedure,
-                                  const std::string& realm);
+  // int register_internal_procedure(std::string procedure,
+  //                                 const std::string& realm);
 
   void register_procedure(const std::string& realm,
                           const std::string& uri,
@@ -79,7 +79,7 @@ private:
   std::unique_ptr<rpc_man> m_rpcman;
   std::unique_ptr<pubsub_man> m_pubsub;
 
-  internal_invoke_cb m_internal_invoke_cb;
+//  internal_invoke_cb m_internal_invoke_cb;
 
   dealer_listener* m_listener;
 

@@ -48,9 +48,9 @@ public:
   // return the registion id
   int handle_inbound_REGISTER(ev_inbound_message*);
 
-  // Register and RPC that is handled by the internal session
-  int register_internal_rpc(const std::string& rpc_uri,
-                            const std::string& realm);
+  // // Register and RPC that is handled by the internal session
+  // int register_internal_rpc(const std::string& rpc_uri,
+  //                           const std::string& realm);
 
   // Register and RPC that is handled by the internal session
   int register_internal_rpc_2(const std::string& realm,

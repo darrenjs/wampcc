@@ -53,13 +53,12 @@ public:
   void start();
 
 
-  // TODO: so this is kind of legacy now then?
-  /* Register a procedure.  Returns true if was added, or false if name already
-   * existed. */
-  bool add_procedure(const std::string& uri,
-                     const jalson::json_object& options,
-                     rpc_cb cb,
-                     void * data);
+  // /* Register a procedure.  Returns true if was added, or false if name already
+  //  * existed. */
+  // bool add_procedure(const std::string& uri,
+  //                    const jalson::json_object& options,
+  //                    rpc_cb cb,
+  //                    void * data);
 
   // Register a procedure with a remote dealer
   void register_procedure_impl(router_conn*,
@@ -86,10 +85,10 @@ public:
   void post_error(t_invoke_id,
                   std::string& error);
 
-  void invoke_direct(session_handle&,
-                     t_request_id,
-                     int,
-                     wamp_args&);
+  // void invoke_direct(session_handle&,
+  //                    t_request_id,
+  //                    int,
+  //                    wamp_args&);
 
   dealer_service * get_dealer() { return m_embed_router; }
 
@@ -177,23 +176,23 @@ private:
 
   std::map<t_connection_id, procedure_map > m_procedures_new;
 
-  std::map<t_connection_id, void* > m_registered_procedures;
-  std::map< std::string, std::pair< rpc_cb,void*> > m_procedures;
+  // std::map<t_connection_id, void* > m_registered_procedures;
+  // std::map< std::string, std::pair< rpc_cb,void*> > m_procedures;
   std::mutex                                        m_procedures_lock;
 
-  struct RegistrationKey
-  {
-    t_connection_id router_session_id;
-    int id; // TODO: this must be the Registration id?
-    bool operator<(const RegistrationKey& k) const;
-  };
-  std::map <RegistrationKey, std::string>           m_registrationid_map;
-  std::mutex                                        m_registrationid_map_lock;
+  // struct RegistrationKey
+  // {
+  //   t_connection_id router_session_id;
+  //   int id; // TODO: this must be the Registration id?
+  //   bool operator<(const RegistrationKey& k) const;
+  // };
+  //std::map <RegistrationKey, std::string>           m_registrationid_map;
+  // std::mutex                                        m_registrationid_map_lock;
 
   // TODO: maybe later try to combine these maps, if it is obvious to tell is a
   // procedure is being invokd internally or from remote.
-  std::map <int, std::string>                       m_registrationid_map2;
-  std::mutex                                        m_registrationid_map_lock2;
+  //std::map <int, std::string>                       m_registrationid_map2;
+  //std::mutex                                        m_registrationid_map_lock2;
 
 
 
@@ -206,11 +205,12 @@ private:
   std::unique_ptr<SessionMan> m_sesman;
 
 
+  // TODO: rename to invocation
   struct call_context
   {
     session_handle seshandle;
     int requestid;
-    bool internal;
+    // bool internal;
   };
   size_t m_callid = 0;
   std::map <size_t, call_context>  m_calls;

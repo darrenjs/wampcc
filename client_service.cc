@@ -84,14 +84,14 @@ client_service::client_service(Logger * logptr,
   /* TODO: remove legacy interaction between IO thread and user space */
   m_io_loop->m_new_client_cb = [this](IOHandle* h, int status, int rid ){this->new_client(h, status, rid);};
 
-  auto fun = [this](session_handle& h,
-                    t_request_id req_id,
-                    int reg_id,
-                    wamp_args& args){this->invoke_direct(h, req_id, reg_id, args);};
+  // auto fun = [this](session_handle& h ,
+  //                   t_request_id  req_id ,
+  //                   int reg_id ,
+  //                   wamp_args& args ){ this->invoke_direct(h, req_id, reg_id, args); };
 
   if (config.enable_embed_router)
   {
-    m_embed_router = new dealer_service(logptr, nullptr, m_io_loop.get(), m_evl.get(), fun );
+    m_embed_router = new dealer_service(logptr, nullptr, m_io_loop.get(), m_evl.get() /*, fun */);
   }
 }
 
@@ -120,16 +120,16 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
 
   if (! ev->is_open)
   {
-    // remove the RPC registrations that are associated with the connection
-    std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
-    for (auto it = m_registrationid_map.begin(); it!=m_registrationid_map.end();)
-    {
-      if (it->first.router_session_id == ev->user_conn_id)
-      {
-        m_registrationid_map.erase( it++ );
-      }
-      else ++it;
-    }
+    // // remove the RPC registrations that are associated with the connection
+    // std::unique_lock<std::mutex> guard(m_registrationid_map_lock);
+    // for (auto it = m_registrationid_map.begin(); it!=m_registrationid_map.end();)
+    // {
+    //   if (it->first.router_session_id == ev->user_conn_id)
+    //   {
+    //     m_registrationid_map.erase( it++ );
+    //   }
+    //   else ++it;
+    // }
 
     // raise user callback to indicate session termination
     {
@@ -150,45 +150,45 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
   _INFO_("session is now ready #" << ev->user_conn_id << " ... registering procedures");
 
   // register our procedures
-  {
-    std::lock_guard< std::mutex > guard ( m_procedures_lock );
+  // {
+  //   std::lock_guard< std::mutex > guard ( m_procedures_lock );
 
-    for (auto i : m_procedures)
-    {
-      const std::string & procedure = i.first;
+  //   for (auto i : m_procedures)
+  //   {
+  //     const std::string & procedure = i.first;
 
-      build_message_cb_v2 msg_builder2 = [&procedure](int request_id)
-        {
-          /* WAMP spec.
-             [
-             INVOCATION,
-             Request|id,
-             REGISTERED.Registration|id,
-             Details|dict
-             CALL.Arguments|list,
-             CALL.ArgumentsKw|dict
-             ]
-          */
+  //     build_message_cb_v2 msg_builder2 = [&procedure](int request_id)
+  //       {
+  //         /* WAMP spec.
+  //            [
+  //            INVOCATION,
+  //            Request|id,
+  //            REGISTERED.Registration|id,
+  //            Details|dict
+  //            CALL.Arguments|list,
+  //            CALL.ArgumentsKw|dict
+  //            ]
+  //         */
 
-          jalson::json_array msg;
-          msg.push_back( REGISTER );
-          msg.push_back( request_id );
-          msg.push_back( jalson::json_object() );
-          msg.push_back( procedure );
+  //         jalson::json_array msg;
+  //         msg.push_back( REGISTER );
+  //         msg.push_back( request_id );
+  //         msg.push_back( jalson::json_object() );
+  //         msg.push_back( procedure );
 
-          Request_Register_CD_Data * cb_data = new Request_Register_CD_Data(); // TODO: memleak?
-          cb_data->procedure = procedure;
+  //         Request_Register_CD_Data * cb_data = new Request_Register_CD_Data(); // TODO: memleak?
+  //         cb_data->procedure = procedure;
 
-          // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
-          return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                    cb_data );
+  //         // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
+  //         return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+  //                                                                   cb_data );
 
-        };
+  //       };
 
-      // TODO: instead of 0, need to have a valie intenral request id
-      m_sesman->send_request(sh, REGISTER, 0, msg_builder2);
-    }
-  }
+  //     // TODO: instead of 0, need to have a valie intenral request id
+  //     m_sesman->send_request(sh, REGISTER, 0, msg_builder2);
+  //   }
+  // }
 
   // publish our topics
   {
@@ -278,26 +278,26 @@ void client_service::start()
 
   if (m_config.enable_embed_router)
   {
-    // TODO: here, I need to register my procedure with the internal router
-    std::map< std::string, int > regid;
-    {
-      std::lock_guard< std::mutex > guard ( m_procedures_lock );
-      for (auto i : m_procedures)
-      {
-        const std::string & uri = i.first;
-        int registrationid = m_embed_router->register_internal_procedure(uri,
-                                                                         m_config.realm);
-        regid[ uri ] = registrationid;
-      }
-    }
+    // // TODO: here, I need to register my procedure with the internal router
+    // std::map< std::string, int > regid;
+    // {
+    //   std::lock_guard< std::mutex > guard ( m_procedures_lock );
+    //   for (auto i : m_procedures)
+    //   {
+    //     const std::string & uri = i.first;
+    //     int registrationid = m_embed_router->register_internal_procedure(uri,
+    //                                                                      m_config.realm);
+    //     regid[ uri ] = registrationid;
+    //   }
+    // }
 
-    {
-      std::unique_lock<std::mutex> guard(m_registrationid_map_lock2);
-      for (auto i : regid)
-      {
-        m_registrationid_map2[ i.second ] = i.first;
-      }
-    }
+    // {
+    //   std::unique_lock<std::mutex> guard(m_registrationid_map_lock2);
+    //   for (auto i : regid)
+    //   {
+    //     m_registrationid_map2[ i.second ] = i.first;
+    //   }
+    // }
 
     m_embed_router->start();
     m_embed_router->listen(m_config.server_port);
@@ -307,24 +307,24 @@ void client_service::start()
 
 //----------------------------------------------------------------------
 
-bool client_service::add_procedure(const std::string& uri,
-                                   const jalson::json_object& /* options */,
-                                   rpc_cb cb,
-                                   void * user)
-{
-  auto mypair = std::make_pair(cb, user);
+// bool client_service::add_procedure(const std::string& uri,
+//                                    const jalson::json_object& /* options */,
+//                                    rpc_cb cb,
+//                                    void * user)
+// {
+//   auto mypair = std::make_pair(cb, user);
 
-  std::lock_guard< std::mutex > guard ( m_procedures_lock );
-  auto it = m_procedures.find( uri );
+//   std::lock_guard< std::mutex > guard ( m_procedures_lock );
+//   auto it = m_procedures.find( uri );
 
-  if (it == m_procedures.end())
-  {
-    m_procedures.insert( std::make_pair(uri, mypair) );
-    return true;
-  }
-  else
-    return false;
-}
+//   if (it == m_procedures.end())
+//   {
+//     m_procedures.insert( std::make_pair(uri, mypair) );
+//     return true;
+//   }
+//   else
+//     return false;
+// }
 
 //----------------------------------------------------------------------
 
@@ -411,7 +411,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
 //      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
       m_calls[ mycallid ] . seshandle = ev->src;
       m_calls[ mycallid ] . requestid = reqid;
-      m_calls[ mycallid ] . internal = false;
+//      m_calls[ mycallid ] . internal = false;
     }
     // TODO: during exception, could log more details.
     try
@@ -465,20 +465,20 @@ void client_service::post_reply(t_invoke_id callid,
     }
   }
 
-  if ( context.internal )
-  {
-    outbound_response_event* ev = new outbound_response_event();
+  // if ( context.internal )
+  // {
+  //   outbound_response_event* ev = new outbound_response_event();
 
-    ev->destination   = context.seshandle;;
-    ev->response_type = RESULT;
-    ev->request_type  = CALL;
-    ev->reqid         = context.requestid;
-    ev->args          = the_args;
+  //   ev->destination   = context.seshandle;;
+  //   ev->response_type = RESULT;
+  //   ev->request_type  = CALL;
+  //   ev->reqid         = context.requestid;
+  //   ev->args          = the_args;
 
-    m_evl->push( ev );
-  }
-  else
-  {
+  //   m_evl->push( ev );
+  // }
+  // else
+  // {
     build_message_cb_v4 msgbuilder;
     msgbuilder = [&context,&the_args](){
       jalson::json_array msg;
@@ -490,7 +490,7 @@ void client_service::post_reply(t_invoke_id callid,
       return msg;
     };
     m_sesman->send_to_session(context.seshandle, msgbuilder);
-  }
+  // }
 }
 
 //----------------------------------------------------------------------
@@ -651,90 +651,90 @@ int client_service::connect_session(router_conn& rs,
 }
 
 
-void client_service::invoke_direct(session_handle& sh,
-                                   t_request_id req_id,
-                                   int reg_id,
-                                   wamp_args& args)
+// void client_service::invoke_direct(session_handle& sh,
+//                                    t_request_id req_id,
+//                                    int reg_id,
+//                                    wamp_args& args)
 
 
-{
-  _INFO_("direct invoke");
-  auto sp = sh.lock();
-  if (!sp)
-  {
-    // TODO: add handler for this situation
-    return;
-  }
+// {
+//   _INFO_("direct invoke");
+//   auto sp = sh.lock();
+//   if (!sp)
+//   {
+//     // TODO: add handler for this situation
+//     return;
+//   }
 
-  std::string procname;
-  {
-    std::unique_lock<std::mutex> guard(m_registrationid_map_lock2);
-    auto it = m_registrationid_map2.find(reg_id);
+//   std::string procname;
+//   {
+//     std::unique_lock<std::mutex> guard(m_registrationid_map_lock2);
+//     auto it = m_registrationid_map2.find(reg_id);
 
-    if (it == m_registrationid_map2.end())
-    {
-      // TODO: test this, ie, failure during direct CALL
-      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
-                                       INVOCATION, // or CALL?
-                                       req_id);
-    }
-    procname = it->second;
-  }
-  std::pair<rpc_cb,void*> rpc_actual;
-  {
-    std::unique_lock<std::mutex> guard(m_procedures_lock);
-    auto it = m_procedures.find( procname );
+//     if (it == m_registrationid_map2.end())
+//     {
+//       // TODO: test this, ie, failure during direct CALL
+//       throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
+//                                        INVOCATION, // or CALL?
+//                                        req_id);
+//     }
+//     procname = it->second;
+//   }
+//   std::pair<rpc_cb,void*> rpc_actual;
+//   {
+//     std::unique_lock<std::mutex> guard(m_procedures_lock);
+//     auto it = m_procedures.find( procname );
 
-    if (it == m_procedures.end())
-    {
-      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
-                                       INVOCATION,
-                                       req_id);
-    }
-    rpc_actual = it->second;
-  }
+//     if (it == m_procedures.end())
+//     {
+//       throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
+//                                        INVOCATION,
+//                                        req_id);
+//     }
+//     rpc_actual = it->second;
+//   }
 
-  if (rpc_actual.first)
-  {
-    size_t mycallid = 0;
-    bool had_exception = true;
-    {
-      // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
-      std::unique_lock<std::mutex> guard(m_calls_lock);
-      mycallid = ++m_callid;
-//      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
-      m_calls[ mycallid ] . seshandle = sh;
-      m_calls[ mycallid ] . requestid = req_id;
-      m_calls[ mycallid ] . internal  = true;
-    }
-    // TODO: during exception, could log more details.
-    try
-    {
-      jalson::json_object details;
+//   if (rpc_actual.first)
+//   {
+//     size_t mycallid = 0;
+//     bool had_exception = true;
+//     {
+//       // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
+//       std::unique_lock<std::mutex> guard(m_calls_lock);
+//       mycallid = ++m_callid;
+// //      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
+//       m_calls[ mycallid ] . seshandle = sh;
+//       m_calls[ mycallid ] . requestid = req_id;
+//       m_calls[ mycallid ] . internal  = true;
+//     }
+//     // TODO: during exception, could log more details.
+//     try
+//     {
+//       jalson::json_object details;
 
-      invoke_details invoke(mycallid);
-      invoke.svc = this;
-      rpc_actual.first(mycallid, invoke, procname, details, args, sh, rpc_actual.second);
-      had_exception = false;
-    }
-    catch (const std::exception& e)
-    {
-      const char* what = e.what();
-      _WARN_("exception thrown by procedure '"<< procname << "': " << (what?e.what():""));
-    }
-    catch (...)
-    {
-      _WARN_("unknown exception thrown by user procedure '"<<procname << "'");
-    }
+//       invoke_details invoke(mycallid);
+//       invoke.svc = this;
+//       rpc_actual.first(mycallid, invoke, procname, details, args, sh, rpc_actual.second);
+//       had_exception = false;
+//     }
+//     catch (const std::exception& e)
+//     {
+//       const char* what = e.what();
+//       _WARN_("exception thrown by procedure '"<< procname << "': " << (what?e.what():""));
+//     }
+//     catch (...)
+//     {
+//       _WARN_("unknown exception thrown by user procedure '"<<procname << "'");
+//     }
 
-    if (had_exception)
-    {
-      std::unique_lock<std::mutex> guard(m_calls_lock);
-      m_calls.erase( mycallid );
-    }
-  }
+//     if (had_exception)
+//     {
+//       std::unique_lock<std::mutex> guard(m_calls_lock);
+//       m_calls.erase( mycallid );
+//     }
+//   }
 
-}
+// }
 
 
 

@@ -160,7 +160,7 @@ void procedure_cb(XXX::t_invoke_id invokeid,
 
 }
 
-void call_cb(XXX::call_info& info, jalson::json_object& details, XXX::wamp_args& args, void* cb_user_data)
+void call_cb(XXX::call_info& info, jalson::json_object& /* details */, XXX::wamp_args& args, void* cb_user_data)
 {
   auto __logptr = logger;
   const char* msg = ( const char* ) cb_user_data;
@@ -178,8 +178,8 @@ void call_cb(XXX::call_info& info, jalson::json_object& details, XXX::wamp_args&
 
 /* called upon subscribed and update events */
 void subscribe_cb(XXX::subscription_event_type evtype,
-                  const std::string& uri,
-                  const jalson::json_object& details,
+                  const std::string& /* uri */,
+                  const jalson::json_object& /* details */,
                   const jalson::json_array& args_list,
                   const jalson::json_object& args_dict,
                   void* /*user*/)
