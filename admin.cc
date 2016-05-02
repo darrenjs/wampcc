@@ -165,11 +165,20 @@ void call_cb(XXX::wamp_call_result r)
   auto __logptr = logger;
   const char* msg = ( const char* ) r.user;
 
-  _INFO_( "CALLER received reply in main, args="
-          << r.args.args_list << ", cb_user_data: " << msg
-          << ", reqid: " << r.reqid
-          << ", proc:" << r.procedure );
-
+  if (r.was_error)
+  {
+    _INFO_( "received error, error=" << r.error_uri << ", args="
+            << r.args.args_list << ", cb_user_data: " << msg
+            << ", reqid: " << r.reqid
+            << ", proc:" << r.procedure );
+  }
+  else
+  {
+    _INFO_( "received result, args="
+            << r.args.args_list << ", cb_user_data: " << msg
+            << ", reqid: " << r.reqid
+            << ", proc:" << r.procedure );
+  }
   std::unique_lock< std::mutex > guard( event_queue_mutex );
   event_queue.push( eReplyReceived );
   event_queue_condition.notify_one();
@@ -380,10 +389,10 @@ int main(int argc, char** argv)
   std::unique_ptr<callback_t> cb1( new callback_t(g_client.get(),"my_hello") );
   if (!uopts.register_procedure.empty())
   {
-    rconn.register_procedure(uopts.register_procedure,
-                             jalson::json_object(),
-                             procedure_cb,
-                             (void*) cb1.get());
+    rconn.provide(uopts.register_procedure,
+                  jalson::json_object(),
+                  procedure_cb,
+                  (void*) cb1.get());
     long_wait = true;
   }
 
