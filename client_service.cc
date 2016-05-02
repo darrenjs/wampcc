@@ -1070,17 +1070,13 @@ t_connection_id client_service::register_session(router_conn& rs)
   return id;
 }
 
-void client_service::register_procedure_impl(router_conn* rconn,
-                                             const std::string& uri,
-                                             const jalson::json_object& options,
-                                             rpc_cb user_cb,
-                                             void * user_data)
+t_request_id client_service::register_procedure_impl(router_conn* rconn,
+                                                     const std::string& uri,
+                                                     const jalson::json_object& options,
+                                                     rpc_cb user_cb,
+                                                     void * user_data)
 {
-
   // TODO: need to check for duplicates
-
-  std::cout << "TODO: need to register this RPC\n";
-
 
   {
     // TODO: if possible, remove this, and only do the locking on the inbound
@@ -1092,10 +1088,12 @@ void client_service::register_procedure_impl(router_conn* rconn,
     pmap.by_uri[ uri ] = sp;
   }
 
+  t_request_id register_request_id = 0;
 
-  // TODO: example of direct-to-IO request, rather than going via the event loop
-  build_message_cb_v2 msg_builder2 = [&uri,&options](int request_id)
+  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
     {
+      register_request_id = request_id;
+
       jalson::json_array msg;
       msg.push_back( REGISTER );
       msg.push_back( request_id );
@@ -1112,6 +1110,8 @@ void client_service::register_procedure_impl(router_conn* rconn,
 
   // TODO: instead of 0, need to have a valie intenral request id
   m_sesman->send_request(rconn->handle(), REGISTER, 0, msg_builder2);
+
+  return register_request_id;
 }
 
 router_conn::router_conn(client_service * __svc,
@@ -1156,12 +1156,12 @@ void router_conn::publish(const std::string& uri,
   m_svc->publish(this, uri, opts, args_list, args_dict);
 }
 
-void router_conn::register_procedure(const std::string& uri,
-                          const jalson::json_object& options,
-                          rpc_cb cb,
-                          void * data)
+t_request_id router_conn::provide(const std::string& uri,
+                                  const jalson::json_object& options,
+                                  rpc_cb cb,
+                                  void * data)
 {
-  m_svc->register_procedure_impl(this, uri, options, cb, data);
+  return m_svc->register_procedure_impl(this, uri, options, cb, data);
 }
 
 void client_service::publish_all(bool include_internal,

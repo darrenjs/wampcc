@@ -61,11 +61,11 @@ public:
   //                    void * data);
 
   // Register a procedure with a remote dealer
-  void register_procedure_impl(router_conn*,
-                               const std::string& uri,
-                               const jalson::json_object& options,
-                               rpc_cb cb,
-                               void * data);
+  t_request_id register_procedure_impl(router_conn*,
+                                       const std::string& uri,
+                                       const jalson::json_object& options,
+                                       rpc_cb cb,
+                                       void * data);
   /* Register a topic */
   void add_topic(topic*);
 
@@ -270,10 +270,10 @@ public:
   int connect(const std::string & addr, int port);
 
   // Register a procedure with a remote dealer
-  void register_procedure(const std::string& uri,
-                          const jalson::json_object& options,
-                          rpc_cb cb,
-                          void * data);
+  t_request_id provide(const std::string& uri,
+                       const jalson::json_object& options,
+                       rpc_cb cb,
+                       void * data);
 
   t_request_id call(std::string rpc,
                     const jalson::json_object& options,
