@@ -66,10 +66,6 @@ namespace XXX {
             std::string realm = "" /* should be empty for passive session */);
     ~Session();
 
-    /* Build CALL and enque on socket. Currently used by client-code. Might not
-     * be the best place for it? */
-    void call( const std::string& procedure);
-
     void send_request( int request_type,
                        unsigned int internal_req_id,
                        build_message_cb_v2 msg_builder );

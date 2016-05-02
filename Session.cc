@@ -556,39 +556,6 @@ void Session::process_message(jalson::json_value&jv)
   delete pendreq;
 }
 
-//----------------------------------------------------------------------
-
-
-void Session::call( const std::string& procedure )
-{
-  // TODO NOTE: this needs to be locked, so that obaining an ID, and the send, are
-  // the same atomic operation ... or, can we be sure it will only by the event
-  // loop thread coming in here?
-
-  t_request_id request_id = m_next_request_id++;
-
-  PendingCall * pending = new PendingCall() ;
-  pending->message_type = CALL;
-  pending->procedure = procedure;
-
-  {
-    std::lock_guard<std::mutex> guard(m_pend_req_lock);
-    m_pend_req[request_id] = pending;
-  }
-
-  jalson::json_array json;
-  json.push_back(CALL);
-  json.push_back(request_id);
-  json.push_back( jalson::json_object() );
-  json.push_back( procedure );
-  json.push_back( jalson::json_array() );
-  json.push_back( jalson::json_object() );
-
-  pending->request = json;
-
-  this->send_msg( json );
-}
-
 
 void Session::send_request( int request_type,
                             unsigned int internal_req_id,
