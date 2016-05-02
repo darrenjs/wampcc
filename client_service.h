@@ -108,7 +108,7 @@ private:
                                std::string rpc,
                                const jalson::json_object& options,
                                wamp_args,
-                               call_user_cb,
+                               wamp_call_result_cb,
                                void* cb_user_data);
 
   // how do we find out the list of remote topics? and if we have multiple
@@ -223,7 +223,7 @@ private:
   struct pending_request
   {
     std::string rpc;
-    call_user_cb user_cb;
+    wamp_call_result_cb user_cb;
     void* user_data;
     pending_request() : user_data( nullptr ) { }
   };
@@ -278,7 +278,7 @@ public:
   t_client_request_id call(std::string rpc,
                            const jalson::json_object& options,
                            wamp_args,
-                           call_user_cb,
+                           wamp_call_result_cb,
                            void* cb_user_data);
 
   void subscribe(const std::string& uri,

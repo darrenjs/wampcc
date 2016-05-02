@@ -160,16 +160,15 @@ void procedure_cb(XXX::t_invoke_id invokeid,
 
 }
 
-void call_cb(XXX::call_info& info, jalson::json_object& /* details */, XXX::wamp_args& args, void* cb_user_data)
+void call_cb(XXX::wamp_call_result r)
 {
   auto __logptr = logger;
-  const char* msg = ( const char* ) cb_user_data;
+  const char* msg = ( const char* ) r.user;
 
   _INFO_( "CALLER received reply in main, args="
-          << args.args_list << ", cb_user_data: " << msg
-          << ", reqid: " << info.reqid
-          << ", proc:" << info.procedure );
-
+          << r.args.args_list << ", cb_user_data: " << msg
+          << ", reqid: " << r.reqid
+          << ", proc:" << r.procedure );
 
   std::unique_lock< std::mutex > guard( event_queue_mutex );
   event_queue.push( eReplyReceived );
@@ -406,11 +405,8 @@ int main(int argc, char** argv)
     rconn.call(uopts.call_procedure,
                jalson::json_object(),
                args,
-               [](XXX::call_info& reqdet,
-                  jalson::json_object options,
-                  XXX::wamp_args& args,
-                  void* cb_data)
-               { call_cb(reqdet, options, args, cb_data);},
+               [](XXX::wamp_call_result r)
+               { call_cb(r);},
                (void*)"I_called_the_proc");
     wait_reply = true;
   }

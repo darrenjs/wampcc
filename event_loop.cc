@@ -310,7 +310,6 @@ void event_loop::process_event(event * ev)
           if (cb) cb( ev );
           break;
         }
-        case ERROR : {  process_inbound_error( ev ); break; }
         case REGISTER :
         {
           if (!m_rpcman) throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
@@ -340,6 +339,7 @@ void event_loop::process_event(event * ev)
         case INVOCATION :
         case CHALLENGE :
         case AUTHENTICATE :
+        case ERROR :
         case CALL :
         {
           event_cb2& cb = m_handlers2[ ev2->msg_type ];
@@ -459,7 +459,7 @@ void event_loop::process_event_error(event* ev, event_error& er)
 
 //----------------------------------------------------------------------
 
-  void event_loop::process_inbound_error(event* /*e*/)
+void event_loop::process_inbound_error(event* /*e*/)
 {
 
   // Request_INVOCATION_CB_Data* request_cb_data

@@ -112,15 +112,12 @@ struct outbound_call_event : public event
 {
   session_handle dest;
   std::string rpc_name;
-  call_user_cb cb;
-  void * cb_user_data;
   jalson::json_object options;
   wamp_args args;
   unsigned int internal_req_id;
 
   outbound_call_event()
-    : event( event::outbound_call_event ),
-      cb_user_data( nullptr )
+    : event( event::outbound_call_event ) 
   {}
 };
 

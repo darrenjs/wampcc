@@ -32,6 +32,42 @@ struct callback_t
 
 XXX::text_topic topic("topic1");
 
+void procedure_error_cb(XXX::t_invoke_id invokeid,
+                        XXX::invoke_details& invocation,
+                        const std::string& procedure,
+                        jalson::json_object& /* options */,
+                        XXX::wamp_args& the_args,
+                        XXX::session_handle&,
+                        void* user)
+{
+  const callback_t* cbdata = (callback_t*) user;
+
+  /* called when a procedure within a CALLEE is triggered */
+  auto __logptr = logger;
+  _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args_list
+          << ", user:" << cbdata->request );
+
+//  throw std::runtime_error("bad alloc");
+  auto my_args = the_args;
+
+  my_args.args_list = jalson::json_array();
+  jalson::json_array & arr = my_args.args_list.as_array();
+  arr.push_back("value");
+  arr.push_back("missing");
+
+  if (invocation.reply_func)
+  {
+    invocation.reply_func(invokeid,
+                          my_args,
+                          "wamp.user.error");
+  }
+  else
+  {
+    cbdata->svc->post_reply(invokeid, my_args);
+  }
+
+}
+
 void procedure_cb(XXX::t_invoke_id invokeid,
                   XXX::invoke_details& invocation,
                   const std::string& procedure,
@@ -58,8 +94,8 @@ void procedure_cb(XXX::t_invoke_id invokeid,
   if (invocation.reply_func)
   {
     invocation.reply_func(invokeid,
-                          false,
-                          my_args);
+                          my_args,
+                          std::string());
   }
   else
   {
@@ -123,10 +159,17 @@ int main(int /* argc */, char** /* argv */)
   XXX::dealer_service* dealer = mycs->get_dealer();
 
   std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_run") );
+  std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_error") );
+
   dealer->register_procedure("default_realm",
                              "run",
                              jalson::json_object(),
                              procedure_cb, (void*) cb1.get());
+
+  dealer->register_procedure("default_realm",
+                             "erun",
+                             jalson::json_object(),
+                             procedure_error_cb, (void*) cb2.get());
 
   while(1) sleep(10);
 

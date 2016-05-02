@@ -598,7 +598,7 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
                                              std::string proc_uri,
                                              const jalson::json_object& options,
                                              wamp_args args,
-                                             call_user_cb cb,
+                                             wamp_call_result_cb cb,
                                              void* cb_user_data)
 {
   /* USER thread */
@@ -626,10 +626,8 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
   ev->dest = sh;
 //  ev->msg_type = CALL;
   ev->rpc_name= proc_uri;
-  ev->cb = cb;  // memleak?
   ev->args = args; // memleak?
   ev->options = options;
-  ev->cb_user_data = cb_user_data;
   ev->internal_req_id=int_req_id;
 
   m_evl->push( ev );
@@ -753,17 +751,17 @@ void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercas
 
   if ( pendingreq.user_cb )
   {
-    call_info ci;
-    ci.reqid = ev->internal_req_id;
-    ci.procedure = pendingreq.rpc;
-    wamp_args args;
-
+    wamp_call_result r;
+    r.reqid = ev->internal_req_id;
+    r.procedure = pendingreq.rpc;
+    r.user = pendingreq.user_data;
     // TODO: need parse error checking here
-    args.args_list  = ev->ja[3];
-    jalson::json_object& details = ev->ja[2].as_object();
+    r.args.args_list  = ev->ja[3];
+    r.details = ev->ja[2].as_object();
 
     try {
-      pendingreq.user_cb(ci, details, args, pendingreq.user_data);
+
+      pendingreq.user_cb(std::move(r));
     }
     catch(...){}
   }
@@ -774,8 +772,41 @@ void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercas
   }
 }
 
-void client_service::handle_ERROR(ev_inbound_message* /* ev */) // change to lowercase
+void client_service::handle_ERROR(ev_inbound_message* ev)
 {
+  int request_msg_type = jalson::get_ref(ev->ja, 1).as_int();
+
+  switch (request_msg_type)
+  {
+    case CALL :
+    {
+
+      auto & call_req = m_pending_requests[ev->internal_req_id];
+      if (call_req.user_cb)
+      {
+        wamp_call_result r;
+        r.was_error = true;
+        r.error_uri = ev->ja[4].as_string();
+        r.reqid = ev->internal_req_id;
+        r.procedure = call_req.rpc;
+        r.user = call_req.user_data;
+        r.details = ev->ja[3].as_object();
+        // TODO: need parse error checking here
+        r.args.args_list  = ev->ja[5];
+
+        try {
+          call_req.user_cb(std::move(r));
+        }
+        catch(...){}
+        return;
+      }
+    }
+    default:
+    {
+      _WARN_("ignoring unexpection ERROR, request_msg_type=" << request_msg_type);
+      return;
+    }
+  }
 //   // TODO: need to parse the INVOCATION message here, eg, check it is valid
 //   RegistrationKey rkey;
 //   rkey.router_session_id = ev->user_conn_id;
@@ -1084,7 +1115,7 @@ int router_conn::connect(const std::string & addr, int port)
 t_client_request_id router_conn::call(std::string uri,
                                       const jalson::json_object& options,
                                       wamp_args args,
-                                      call_user_cb user_cb,
+                                      wamp_call_result_cb user_cb,
                                       void* user_data)
 {
   return m_svc->call_rpc(this, uri, options, args, user_cb, user_data);

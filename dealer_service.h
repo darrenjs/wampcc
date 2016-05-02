@@ -51,8 +51,8 @@ public:
 
 
   bool reply(t_invoke_id,
-             bool is_error,
-             wamp_args& the_args);
+             wamp_args& the_args,
+             std::string error_uri);
 
   // TODO: have a register proc interface
 
@@ -90,7 +90,7 @@ private:
   // TODO: move to impl
   struct pending_request
   {
-    call_user_cb cb;
+    wamp_call_result_cb cb;
     std::string procedure;
     void* user_cb_data;
 

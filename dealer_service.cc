@@ -112,18 +112,19 @@ void dealer_service::handle_YIELD(event* ev)
     }
     else
     {
-      call_info info;
-      info.reqid = ev2->ja[1].as_uint();
-      info.procedure = pend.procedure;
-
-      jalson::json_object details = ev2->ja[2].as_object();
-      wamp_args args;
-      args.args_list = ev2->ja[3]; // dont care about the type
 
       if ( pend.cb )
       {
+        wamp_call_result r;
+
+        //    call_info info;
+        r.reqid = ev2->ja[1].as_uint();
+        r.procedure = pend.procedure;
+        r.details = ev2->ja[2].as_object();
+        r.args.args_list = ev2->ja[3]; // dont care about the type
+        r.user = pend.user_cb_data;
         try {
-          pend.cb(info, details, args, pend.user_cb_data);
+          pend.cb(std::move(r));
         }
         catch (...) { }
       }
@@ -266,8 +267,8 @@ void dealer_service::invoke_procedure(rpc_details& rpc,
   {
     invoke_details invoke(mycallid);
     invoke.dealer = this;
-    invoke.reply_func = [this](t_invoke_id tid, bool is_error, wamp_args& args){
-      this->reply(tid, is_error, args);
+    invoke.reply_func = [this](t_invoke_id tid, wamp_args& args, std::string error_uri){
+      this->reply(tid, args, std::move(error_uri));
     };
     _INFO_("attempting new direct invocation");
     jalson::json_object details;
@@ -279,8 +280,8 @@ void dealer_service::invoke_procedure(rpc_details& rpc,
 
 
 bool dealer_service::reply(t_invoke_id callid,
-                           bool is_error,
-                           wamp_args& the_args)
+                           wamp_args& the_args,
+                           std::string error_uri)
 {
   proc_invoke_context context;
   {
@@ -299,16 +300,16 @@ bool dealer_service::reply(t_invoke_id callid,
   }
 
   build_message_cb_v4 msgbuilder;
-  msgbuilder = [&context,&the_args, is_error](){
+  msgbuilder = [&context,&the_args,&error_uri](){
     jalson::json_array msg;
 
-    if (is_error)
+    if (!error_uri.empty())
     {
       msg.push_back(ERROR);
       msg.push_back(CALL);
       msg.push_back(context.requestid);
       msg.push_back(jalson::json_object());
-      msg.push_back("");
+      msg.push_back(std::move(error_uri));
     }
     else
     {

@@ -78,9 +78,9 @@ struct invoke_details
 {
   t_invoke_id id;
   client_service* svc;
-  dealer_service*  dealer;
+  dealer_service* dealer;
 
-  std::function<void(t_invoke_id, bool is_error, wamp_args&)> reply_func;
+  std::function<void(t_invoke_id, wamp_args&, std::string error)> reply_func;
 
   invoke_details(t_invoke_id _id)
   : id(_id),
@@ -132,13 +132,6 @@ std::ostream& operator<<(std::ostream& os, const SID & s);
 class client_service;
 
 
-// TODO: no need to have this, can be expanded in places where it is
-struct call_info
-{
-  t_request_id reqid;     /* protocol ID that was used */
-  std::string  procedure; /* rpc target */  // TODO: standardise the varname for rpc name
-};
-
 enum subscription_event_type
 {
   e_sub_failed,
@@ -167,7 +160,23 @@ typedef std::function<void(t_invoke_id,
                            session_handle&,
                            void* user) > rpc_cb;
 
-typedef std::function<  void (call_info&, jalson::json_object&, wamp_args&, void*) > call_user_cb; // TODO: rename me
+struct wamp_call_result
+{
+  t_request_id reqid;    /* protocol ID that was used */
+  std::string procedure;
+  bool was_error;
+  std::string error_uri; // if was_error == true
+  jalson::json_object details;
+  wamp_args args;
+  void * user;
+
+  wamp_call_result()
+    : reqid(0),
+      was_error(false),
+      user(0){}
+};
+
+typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
 
 typedef std::function<void(router_conn*,
                            int status, /* 0 is no error */
