@@ -241,13 +241,13 @@ void event_loop::process_event(event * ev)
       }
       break;
     }
-    case event::outbound_subscribe :
-    {
-      // TODO: create a template for this, which will throw etc.
-      ev_outbound_subscribe* ev2 = dynamic_cast<ev_outbound_subscribe*>(ev);
-      process_outbound_subscribe(ev2);
-      break;
-    }
+    // case event::outbound_subscribe :
+    // {
+    //   // TODO: create a template for this, which will throw etc.
+    //   ev_outbound_subscribe* ev2 = dynamic_cast<ev_outbound_subscribe*>(ev);
+    //   process_outbound_subscribe(ev2);
+    //   break;
+    // }
     // case event::outbound_call_event :
     // {
     //   // TODO: create a template for this, which will throw etc.
@@ -686,23 +686,23 @@ void event_loop::process_outbound_message(outbound_message* ev)
 
 //----------------------------------------------------------------------
 
-void event_loop::process_outbound_subscribe(ev_outbound_subscribe* ev)
-{
-  build_message_cb_v2 msg_builder2 = [&](int request_id)
-    {
-      jalson::json_array msg;
-      msg.push_back( SUBSCRIBE );
-      msg.push_back( request_id );
-      msg.push_back( jalson::json_object() );
-      msg.push_back( ev->uri );
+// void event_loop::process_outbound_subscribe(ev_outbound_subscribe* ev)
+// {
+//   build_message_cb_v2 msg_builder2 = [&](int request_id)
+//     {
+//       jalson::json_array msg;
+//       msg.push_back( SUBSCRIBE );
+//       msg.push_back( request_id );
+//       msg.push_back( jalson::json_object() );
+//       msg.push_back( ev->uri );
 
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                nullptr );
+//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                 nullptr );
 
-    };
+//     };
 
-  m_sesman->send_request( ev->dest,SUBSCRIBE , ev->internal_req_id, msg_builder2);
-}
+//   m_sesman->send_request( ev->dest,SUBSCRIBE , ev->internal_req_id, msg_builder2);
+// }
 
 //----------------------------------------------------------------------
 

@@ -133,7 +133,7 @@ public:
     void process_outbound_message(outbound_message *);
     void process_inbound_error(event* e);
     void process_inbound_yield(ev_inbound_message* e);
-    void process_outbound_subscribe(ev_outbound_subscribe* e);
+    // void process_outbound_subscribe(ev_outbound_subscribe* e);
     void process_outbound_publish(ev_outbound_publish* e);
 
     void hb_check();

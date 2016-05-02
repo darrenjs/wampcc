@@ -113,11 +113,11 @@ private:
 
   // how do we find out the list of remote topics? and if we have multiple
   // sessions, then, which session has the topic we want?
-  void subscribe_remote_topic(router_conn*,
-                              const std::string& uri,
-                              const jalson::json_object& options,
-                              subscription_cb cb,
-                              void * user);
+  t_request_id subscribe_remote_topic(router_conn*,
+                                      const std::string& uri,
+                                      const jalson::json_object& options,
+                                      subscription_cb cb,
+                                      void * user);
 
 
 
@@ -137,11 +137,10 @@ private:
                   int  status,
                   t_connection_id router_session_id);
 
-  void publish(router_conn*,
-               const std::string& uri,
-               const jalson::json_object& opts,
-               const jalson::json_array& args_list,
-               const jalson::json_object& args_dict);
+  t_request_id publish(router_conn*,
+                       const std::string& uri,
+                       const jalson::json_object& options,
+                       wamp_args wargs);
 
   Logger *__logptr; /* name chosen for log macros */
 
@@ -281,17 +280,14 @@ public:
                     wamp_call_result_cb,
                     void* user);
 
-  void subscribe(const std::string& uri,
-                 const jalson::json_object& options,
-                 subscription_cb cb,
-                 void * user);
+  t_request_id subscribe(const std::string& uri,
+                         const jalson::json_object& options,
+                         subscription_cb cb,
+                         void * user);
 
-  void publish(const std::string& uri,
-               const jalson::json_object& opts,
-               const jalson::json_array& args_list,
-               const jalson::json_object& args_dict);
-
-
+  t_request_id publish(const std::string& uri,
+                       const jalson::json_object& options,
+                       wamp_args);
 
   int router_session_id() const { return m_router_session_id;}
 

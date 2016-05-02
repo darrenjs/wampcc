@@ -554,6 +554,8 @@ void client_service::add_topic(topic* topic)
 
       if (router_session_count>0)
       {
+        // TODO: legacy approach of publication, using the EV thread. Review 
+		    // this once topic implementation has been reviewed.
         auto sp = std::make_shared<ev_outbound_publish>(src->uri(),
                                                         patch,
                                                         router_session_count);
@@ -907,16 +909,16 @@ void client_service::handle_ERROR(ev_inbound_message* ev)
 
 //----------------------------------------------------------------------
 
-void client_service::subscribe_remote_topic(router_conn* rs,
-                                            const std::string& uri,
-                                            const jalson::json_object& options,
-                                            subscription_cb cb,
-                                            void * user)
+t_request_id client_service::subscribe_remote_topic(router_conn* rs,
+                                                    const std::string& uri,
+                                                    const jalson::json_object& options,
+                                                    subscription_cb cb,
+                                                    void * user)
 {
   session_handle sh = rs->m_internal_session_handle;
   if (m_sesman->session_is_open(sh ) == false)
   {
-    return ;  // TODO: how to convery this immedaite failyre back to caller?  Smae for RPC too
+    return 0;  // TODO: how to convery this immedaite failyre back to caller?  Smae for RPC too
   }
 
   t_client_request_id int_req_id = 0;
@@ -936,11 +938,28 @@ void client_service::subscribe_remote_topic(router_conn* rs,
     m_pending_subscription[int_req_id] = subs;
   }
 
+  // ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri, options);
+  // ev->internal_req_id = int_req_id;
+  // ev->dest = sh;
+  // m_evl->push( ev );
 
-  ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri, options);
-  ev->internal_req_id = int_req_id;
-  ev->dest = sh;
-  m_evl->push( ev );
+  t_request_id subscribe_request_id = 0;
+  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
+    {
+      subscribe_request_id = request_id;
+      jalson::json_array msg;
+      msg.push_back( SUBSCRIBE );
+      msg.push_back( request_id );
+      msg.push_back( options );
+      msg.push_back( uri );
+
+      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+                                                                nullptr );
+    };
+
+  m_sesman->send_request(sh, SUBSCRIBE, int_req_id, msg_builder2);
+
+  return subscribe_request_id;
 }
 
 void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
@@ -1139,21 +1158,20 @@ t_request_id router_conn::call(std::string uri,
   return m_svc->call_rpc(this, uri, options, args, user_cb, user_data);
 }
 
-void router_conn::subscribe(const std::string& uri,
-                            const jalson::json_object& options,
-                            subscription_cb user_cb,
-                            void * user_data)
+t_request_id router_conn::subscribe(const std::string& uri,
+                                    const jalson::json_object& options,
+                                    subscription_cb user_cb,
+                                    void * user_data)
 {
-  m_svc->subscribe_remote_topic(this, uri, options, user_cb, user_data);
+  return m_svc->subscribe_remote_topic(this, uri, options, user_cb, user_data);
 }
 
 
-void router_conn::publish(const std::string& uri,
-                          const jalson::json_object& opts,
-                          const jalson::json_array& args_list,
-                          const jalson::json_object& args_dict)
+t_request_id router_conn::publish(const std::string& uri,
+                                  const jalson::json_object& opts,
+                                  wamp_args wargs)
 {
-  m_svc->publish(this, uri, opts, args_list, args_dict);
+  return m_svc->publish(this, uri, opts, wargs);
 }
 
 t_request_id router_conn::provide(const std::string& uri,
@@ -1170,9 +1188,6 @@ void client_service::publish_all(bool include_internal,
                                  const jalson::json_array& args_list,
                                  const jalson::json_object& args_dict)
 {
-  _INFO_("publish called for topic [" << uri << "]");
-
-
   // publish to all connected router
   {
     std::unique_lock<std::mutex> guard(m_router_sessions_lock);
@@ -1204,30 +1219,54 @@ void client_service::publish_all(bool include_internal,
 
 }
 
-void client_service::publish(router_conn* rs,
-                             const std::string& uri,
-                             const jalson::json_object& opts,
-                             const jalson::json_array& args_list,
-                             const jalson::json_object& args_dict)
+
+t_request_id client_service::publish(router_conn* rs,
+                                     const std::string& uri,
+                                     const jalson::json_object& options,
+                                     wamp_args wargs)
 {
 
   session_handle sh = rs->m_internal_session_handle;
   if (m_sesman->session_is_open(sh ) == false)
   {
-    return;
+    return 0;
   }
 
-  // publish to all connected router
-  auto sp = std::make_shared<ev_outbound_publish>(
-    uri,
-    opts,
-    args_list,
-    args_dict,
-    1);
+  // // publish to all connected router
+  // auto sp = std::make_shared<ev_outbound_publish>(
+  //   uri,
+  //   opts,
+  //   args_list,
+  //   args_dict,
+  //   1);
 
-  sp->targets.push_back( sh );
+  // sp->targets.push_back( sh );
 
-  m_evl->push( sp );
+  // m_evl->push( sp );
+
+  t_client_request_id int_req_id = m_next_client_request_id++;
+  t_request_id publish_request_id = 0;
+
+  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
+    {
+      publish_request_id = request_id;
+      jalson::json_array msg;
+      msg.push_back( PUBLISH );
+      msg.push_back( request_id );
+      msg.push_back( options );
+      msg.push_back( uri );
+      if (!wargs.args_list.is_null()) msg.push_back( wargs.args_list );
+      if (!wargs.args_dict.is_null()) msg.push_back( wargs.args_dict );
+
+      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+                                                                nullptr );
+    };
+
+  m_sesman->send_request(sh, PUBLISH, int_req_id, msg_builder2);
+
+  return publish_request_id;
+
+
 }
 
 } // namespace XXX

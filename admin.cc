@@ -399,13 +399,12 @@ int main(int argc, char** argv)
   // publish
   if (!uopts.publish_topic.empty())
   {
-    jalson::json_array args_list;
-    args_list.push_back(uopts.publish_message);
-    g_client->publish_all(true,
-                          uopts.publish_topic,
-                          jalson::json_object(),
-                          args_list,
-                          jalson::json_object());
+    XXX::wamp_args pub_args;
+    pub_args.args_list = jalson::json_value::make_array();
+    pub_args.args_list.as_array().push_back(uopts.publish_message);
+    rconn.publish(uopts.publish_topic,
+                  jalson::json_object(),
+                  pub_args);
   }
 
   // call

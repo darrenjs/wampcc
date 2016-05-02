@@ -20,7 +20,7 @@ struct event
     outbound_response_event,
     outbound_message,
     internal_publish,
-    outbound_subscribe,
+    // outbound_subscribe,
     inbound_subscribed,
     router_session_connect_fail,
     inbound_message,
@@ -193,20 +193,20 @@ struct ev_internal_publish : public event
 // };
 
 
-struct ev_outbound_subscribe : public event
-{
-  session_handle dest;
-  jalson::json_object options;
-  std::string uri;
-  int internal_req_id;
+// struct ev_outbound_subscribe : public event
+// {
+//   session_handle dest;
+//   jalson::json_object options;
+//   std::string uri;
+//   int internal_req_id;
 
-  ev_outbound_subscribe(const std::string & __topic_uri,
-                        const jalson::json_object& __options)
-  :  event( event::outbound_subscribe ),
-     options( __options ),
-     uri( __topic_uri )
-  {}
-};
+//   ev_outbound_subscribe(const std::string & __topic_uri,
+//                         const jalson::json_object& __options)
+//   :  event( event::outbound_subscribe ),
+//      options( __options ),
+//      uri( __topic_uri )
+//   {}
+// };
 
 
 struct ev_inbound_subscribed : public event
