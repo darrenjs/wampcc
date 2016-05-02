@@ -104,12 +104,12 @@ private:
   bool is_open(const router_conn*) const;
 
   /* Call an RPC on the peer router */
-  t_client_request_id call_rpc(router_conn*,
-                               std::string rpc,
-                               const jalson::json_object& options,
-                               wamp_args,
-                               wamp_call_result_cb,
-                               void* cb_user_data);
+  t_request_id call_rpc(router_conn*,
+                        std::string rpc,
+                        const jalson::json_object& options,
+                        wamp_args,
+                        wamp_call_result_cb,
+                        void* cb_user_data);
 
   // how do we find out the list of remote topics? and if we have multiple
   // sessions, then, which session has the topic we want?
@@ -275,11 +275,11 @@ public:
                           rpc_cb cb,
                           void * data);
 
-  t_client_request_id call(std::string rpc,
-                           const jalson::json_object& options,
-                           wamp_args,
-                           wamp_call_result_cb,
-                           void* user);
+  t_request_id call(std::string rpc,
+                    const jalson::json_object& options,
+                    wamp_args,
+                    wamp_call_result_cb,
+                    void* user);
 
   void subscribe(const std::string& uri,
                  const jalson::json_object& options,

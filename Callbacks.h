@@ -66,7 +66,7 @@ class router_conn;
 
 typedef uint64_t t_connection_id;
 
-typedef int t_request_id;
+typedef uint64_t t_request_id;
 typedef uint64_t t_invoke_id;
 typedef uint64_t t_client_request_id;
 typedef uint64_t t_sid;

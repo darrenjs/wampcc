@@ -594,12 +594,12 @@ void client_service::add_topic(topic* topic)
  * client (ie, TCP based).  The callback is the entry point into the user code
  * when a YIELD or ERROR is received.
  */
-t_client_request_id client_service::call_rpc(router_conn* rs,
-                                             std::string proc_uri,
-                                             const jalson::json_object& options,
-                                             wamp_args args,
-                                             wamp_call_result_cb cb,
-                                             void* cb_user_data)
+t_request_id client_service::call_rpc(router_conn* rs,
+                                      std::string proc_uri,
+                                      const jalson::json_object& options,
+                                      wamp_args args,
+                                      wamp_call_result_cb cb,
+                                      void* cb_user_data)
 {
   /* USER thread */
 
@@ -631,9 +631,9 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
 //   ev->internal_req_id=int_req_id;
 
 //   m_evl->push( ev );
-  int call_request_id = 0;
+  t_request_id call_request_id = 0;
 
-  build_message_cb_v2 msg_builder2 = [&](int request_id)
+  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
     {
       call_request_id = request_id;
       jalson::json_array msg;
@@ -1130,11 +1130,11 @@ int router_conn::connect(const std::string & addr, int port)
 }
 
 
-t_client_request_id router_conn::call(std::string uri,
-                                      const jalson::json_object& options,
-                                      wamp_args args,
-                                      wamp_call_result_cb user_cb,
-                                      void* user_data)
+t_request_id router_conn::call(std::string uri,
+                               const jalson::json_object& options,
+                               wamp_args args,
+                               wamp_call_result_cb user_cb,
+                               void* user_data)
 {
   return m_svc->call_rpc(this, uri, options, args, user_cb, user_data);
 }

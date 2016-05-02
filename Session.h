@@ -161,7 +161,7 @@ namespace XXX {
 
     time_t m_time_last_msg;
 
-    uint64_t m_request_id;
+    t_request_id m_next_request_id;
 
     char *  m_buf;
     size_t  m_bytes_avail;

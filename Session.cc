@@ -85,7 +85,7 @@ Session::Session(SID s,
     m_hb_intvl(2),
     m_time_create(time(NULL)),
     m_time_last_msg(time(NULL)),
-    m_request_id(0),
+    m_next_request_id(1),
     m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
     m_bytes_avail(0),
     m_is_closing(false),
@@ -565,7 +565,7 @@ void Session::call( const std::string& procedure )
   // the same atomic operation ... or, can we be sure it will only by the event
   // loop thread coming in here?
 
-  uint64_t request_id = ++m_request_id;
+  t_request_id request_id = m_next_request_id++;
 
   PendingCall * pending = new PendingCall() ;
   pending->message_type = CALL;
@@ -594,7 +594,7 @@ void Session::send_request( int request_type,
                             unsigned int internal_req_id,
                             build_message_cb_v2 msg_builder )
 {
-  uint64_t request_id = ++m_request_id;
+  t_request_id request_id = m_next_request_id++;
 
   // TODO: here I am using the PendingRegister struct ... but question is, do I
   // need a request-specific structure, or, can I have something generic?
