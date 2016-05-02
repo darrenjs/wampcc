@@ -621,18 +621,36 @@ t_client_request_id client_service::call_rpc(router_conn* rs,
     pending.rpc= proc_uri;
   }
 
-  outbound_call_event * ev = new outbound_call_event();
+//   outbound_call_event * ev = new outbound_call_event();
 
-  ev->dest = sh;
-//  ev->msg_type = CALL;
-  ev->rpc_name= proc_uri;
-  ev->args = args; // memleak?
-  ev->options = options;
-  ev->internal_req_id=int_req_id;
+//   ev->dest = sh;
+// //  ev->msg_type = CALL;
+//   ev->rpc_name= proc_uri;
+//   ev->args = args; // memleak?
+//   ev->options = options;
+//   ev->internal_req_id=int_req_id;
 
-  m_evl->push( ev );
+//   m_evl->push( ev );
+  int call_request_id = 0;
 
-  return int_req_id;
+  build_message_cb_v2 msg_builder2 = [&](int request_id)
+    {
+      call_request_id = request_id;
+      jalson::json_array msg;
+      msg.push_back( CALL );
+      msg.push_back( request_id );
+      msg.push_back( options );
+      msg.push_back( proc_uri );
+      if (!args.args_list.is_null()) msg.push_back( args.args_list );
+      if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+
+      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+                                                                nullptr );
+    };
+
+  m_sesman->send_request(sh, CALL, int_req_id, msg_builder2);
+
+  return call_request_id;
 }
 
 

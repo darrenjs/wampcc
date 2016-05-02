@@ -279,7 +279,7 @@ public:
                            const jalson::json_object& options,
                            wamp_args,
                            wamp_call_result_cb,
-                           void* cb_user_data);
+                           void* user);
 
   void subscribe(const std::string& uri,
                  const jalson::json_object& options,

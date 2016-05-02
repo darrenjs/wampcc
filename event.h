@@ -16,7 +16,7 @@ struct event
   enum Type
   {
     session_state_event = 0,
-    outbound_call_event,
+//    outbound_call_event,
     outbound_response_event,
     outbound_message,
     internal_publish,
@@ -108,18 +108,18 @@ struct outbound_response_event : public event
 
 
 
-struct outbound_call_event : public event
-{
-  session_handle dest;
-  std::string rpc_name;
-  jalson::json_object options;
-  wamp_args args;
-  unsigned int internal_req_id;
+// struct outbound_call_event : public event
+// {
+//   session_handle dest;
+//   std::string rpc_name;
+//   jalson::json_object options;
+//   wamp_args args;
+//   unsigned int internal_req_id;
 
-  outbound_call_event()
-    : event( event::outbound_call_event ) 
-  {}
-};
+//   outbound_call_event()
+//     : event( event::outbound_call_event )
+//   {}
+// };
 
 
 struct ev_outbound_publish : public event

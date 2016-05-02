@@ -248,13 +248,13 @@ void event_loop::process_event(event * ev)
       process_outbound_subscribe(ev2);
       break;
     }
-    case event::outbound_call_event :
-    {
-      // TODO: create a template for this, which will throw etc.
-      outbound_call_event* ev2 = dynamic_cast<outbound_call_event*>(ev);
-      process_outbound_call(ev2);
-      break;
-    }
+    // case event::outbound_call_event :
+    // {
+    //   // TODO: create a template for this, which will throw etc.
+    //   outbound_call_event* ev2 = dynamic_cast<outbound_call_event*>(ev);
+    //   process_outbound_call(ev2);
+    //   break;
+    // }
     case event::outbound_response_event :
     {
       // TODO: create a template for this, which will throw etc. Will be a
@@ -651,38 +651,38 @@ void event_loop::process_outbound_message(outbound_message* ev)
 
 //----------------------------------------------------------------------
 
-void event_loop::process_outbound_call(outbound_call_event* ev)
-{
-  // not good... we need a to a copy of the event for the later arrival of the
-  // YIELD/ERROR respons.  Eventually I need to try to just steal the source
-  // event.
-  //outbound_call_event * copy = new outbound_call_event( *ev );
+// void event_loop::process_outbound_call(outbound_call_event* ev)
+// {
+//   // not good... we need a to a copy of the event for the later arrival of the
+//   // YIELD/ERROR respons.  Eventually I need to try to just steal the source
+//   // event.
+//   //outbound_call_event * copy = new outbound_call_event( *ev );
 
-  // also not good ... need to create the request content data.  Is there way to
-  // just use the source event object directly?
-  //Request_INVOCATION_CB_Data* cb_data = new Request_INVOCATION_CB_Data(); // TODO: memleak?
-  //cb_data->cb_data = copy;
+//   // also not good ... need to create the request content data.  Is there way to
+//   // just use the source event object directly?
+//   //Request_INVOCATION_CB_Data* cb_data = new Request_INVOCATION_CB_Data(); // TODO: memleak?
+//   //cb_data->cb_data = copy;
 
-  build_message_cb_v2 msg_builder2 = [&](int request_id)
-    {
+//   build_message_cb_v2 msg_builder2 = [&](int request_id)
+//     {
 
-      jalson::json_array msg;
-      msg.push_back( CALL );
-      msg.push_back( request_id );
-      msg.push_back( ev->options );
-      msg.push_back( ev->rpc_name );
-      if (ev->args.args_list.is_null() == false)
-      {
-        msg.push_back( ev->args.args_list );
-      }
+//       jalson::json_array msg;
+//       msg.push_back( CALL );
+//       msg.push_back( request_id );
+//       msg.push_back( ev->options );
+//       msg.push_back( ev->rpc_name );
+//       if (ev->args.args_list.is_null() == false)
+//       {
+//         msg.push_back( ev->args.args_list );
+//       }
 
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                nullptr );
+//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                 nullptr );
 
-    };
+//     };
 
-  m_sesman->send_request( ev->dest, CALL, ev->internal_req_id, msg_builder2);
-}
+//   m_sesman->send_request( ev->dest, CALL, ev->internal_req_id, msg_builder2);
+// }
 
 //----------------------------------------------------------------------
 
