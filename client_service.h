@@ -173,7 +173,7 @@ private:
     std::map<int,         std::shared_ptr<user_procedure> > by_id;
   };
 
-  std::map<t_connection_id, procedure_map > m_procedures_new;
+  std::map<t_connection_id, procedure_map > m_procedures;
 
   // std::map<t_connection_id, void* > m_registered_procedures;
   // std::map< std::string, std::pair< rpc_cb,void*> > m_procedures;
@@ -219,16 +219,16 @@ private:
   t_client_request_id  m_next_client_request_id;
 
   /* outbound rpc call requests */
-  struct pending_request
+  struct pending_wamp_call
   {
     std::string rpc;
     wamp_call_result_cb user_cb;
     void* user_data;
-    pending_request() : user_data( nullptr ) { }
+    pending_wamp_call() : user_data( nullptr ) { }
   };
 
-  std::map<int, pending_request> m_pending_requests;
-  std::mutex m_pending_requests_lock;
+  std::map<int, pending_wamp_call> m_pending_wamp_call;
+  std::mutex m_pending_wamp_call_lock;
 
   /* Sessions to remote routers */
   std::map<t_connection_id, router_conn*> m_router_sessions;
@@ -248,7 +248,7 @@ private:
     subscription_cb user_cb;
     void * user_data;
   };
-  std::map<t_client_request_id, subscription> m_pending_subscription;
+  std::map<t_client_request_id, subscription> m_pending_wamp_subscribe;
   std::map<t_sid, std::map<size_t, subscription> > m_subscriptions;
   t_client_request_id m_subscription_req_id = 1;
   std::mutex m_subscriptions_lock;

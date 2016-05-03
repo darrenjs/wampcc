@@ -344,7 +344,7 @@ void client_service::handle_REGISTERED(ev_inbound_message* ev)
 
     {
       std::unique_lock<std::mutex> guard(m_procedures_lock);
-      procedure_map& pmap = m_procedures_new[ ev->user_conn_id ];
+      procedure_map& pmap = m_procedures[ ev->user_conn_id ];
 
       auto iter = pmap.by_uri.find( cb_data->procedure );
       if (iter == pmap.by_uri.end())
@@ -390,7 +390,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
 
   {
     std::unique_lock<std::mutex> guard(m_procedures_lock);
-    procedure_map& pmap = m_procedures_new[router_session_id];
+    procedure_map& pmap = m_procedures[router_session_id];
     auto iter = pmap.by_id.find(registration_id);
 
     if (iter == pmap.by_id.end())
@@ -554,7 +554,7 @@ void client_service::add_topic(topic* topic)
 
       if (router_session_count>0)
       {
-        // TODO: legacy approach of publication, using the EV thread. Review 
+        // TODO: legacy approach of publication, using the EV thread. Review
 		    // this once topic implementation has been reviewed.
         auto sp = std::make_shared<ev_outbound_publish>(src->uri(),
                                                         patch,
@@ -616,8 +616,8 @@ t_request_id client_service::call_rpc(router_conn* rs,
   t_client_request_id int_req_id = m_next_client_request_id++;
 
   {
-    std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-    auto & pending = m_pending_requests[int_req_id];
+    std::lock_guard<std::mutex> guard( m_pending_wamp_call_lock );
+    auto & pending = m_pending_wamp_call[int_req_id];
     pending.user_cb = cb;
     pending.user_data = cb_user_data;
     pending.rpc= proc_uri;
@@ -763,10 +763,10 @@ void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercas
   int reqid=ev->ja[1].as_int();
   _INFO_("Got RESULT for reqid " << reqid << "," << ev->internal_req_id);
 
-  pending_request pendingreq;
+  pending_wamp_call pendingreq;
   {
-    std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-    pendingreq = m_pending_requests[ev->internal_req_id]; // TODO: need to erase after this
+    std::lock_guard<std::mutex> guard( m_pending_wamp_call_lock );
+    pendingreq = m_pending_wamp_call[ev->internal_req_id]; // TODO: need to erase after this
   }
 
   if ( pendingreq.user_cb )
@@ -801,7 +801,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev)
     case CALL :
     {
 
-      auto & call_req = m_pending_requests[ev->internal_req_id];
+      auto & call_req = m_pending_wamp_call[ev->internal_req_id];
       if (call_req.user_cb)
       {
         wamp_call_result r;
@@ -935,7 +935,7 @@ t_request_id client_service::subscribe_remote_topic(router_conn* rs,
     subs.router_session_idxx = rs->router_session_id(); // TODO: what is this used for?
 
     int_req_id = m_subscription_req_id++;
-    m_pending_subscription[int_req_id] = subs;
+    m_pending_wamp_subscribe[int_req_id] = subs;
   }
 
   // ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri, options);
@@ -981,15 +981,15 @@ void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
   {
     std::unique_lock<std::mutex> guard(m_subscriptions_lock);
 
-    auto pendit = m_pending_subscription.find(ev->internal_req_id);
-    if (pendit == m_pending_subscription.end())
+    auto pendit = m_pending_wamp_subscribe.find(ev->internal_req_id);
+    if (pendit == m_pending_wamp_subscribe.end())
     {
       _WARN_("Ingoring SUBSCRIBED event; cannot find original request");
       return;
     }
 
     temp = pendit->second;
-    m_pending_subscription.erase(pendit);
+    m_pending_wamp_subscribe.erase(pendit);
 
     auto & subs_for_session = m_subscriptions[ sid ];
     subs_for_session[ subscrid ] = temp;
@@ -1103,7 +1103,7 @@ t_request_id client_service::register_procedure_impl(router_conn* rconn,
     std::unique_lock<std::mutex> guard(m_procedures_lock);
 
     auto sp = std::make_shared<user_procedure>(uri, user_cb, user_data);
-    procedure_map& pmap = m_procedures_new[ rconn->m_router_session_id ];
+    procedure_map& pmap = m_procedures[ rconn->m_router_session_id ];
     pmap.by_uri[ uri ] = sp;
   }
 
