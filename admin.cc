@@ -320,7 +320,7 @@ int main(int argc, char** argv)
 
 
   XXX::client_service::config config;
-  config.server_port = 0;
+  // config.server_port = 0;
   config.realm = "default_realm";
   g_client.reset( new XXX::client_service(logger, config) );
 

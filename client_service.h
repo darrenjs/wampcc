@@ -42,8 +42,8 @@ public:
 
   struct config
   {
-    int server_port = 0;
-    bool enable_embed_router = false;
+    // int server_port = 0;
+    // bool enable_embed_router = false;
     std::string realm = "default_realm";
   };
 
@@ -71,7 +71,7 @@ public:
 
   /* Publish data onto a topic. The publish message will be sent to all
    * connected sessions, and optionally to the internal dealer session. */
-  void publish_all(bool include_internal,
+  void publish_all(//bool include_internal,
                    const std::string& topic,
                    const jalson::json_object& opts,
                    const jalson::json_array& args_list,
@@ -90,7 +90,7 @@ public:
   //                    int,
   //                    wamp_args&);
 
-  dealer_service * get_dealer() { return m_embed_router; }
+  // dealer_service * get_dealer() { return m_embed_router; }
 
 private:
 
@@ -195,6 +195,10 @@ private:
 
 
 
+  Logger * get_logger();
+  IOLoop* get_ioloop();
+  event_loop* get_event_loop();
+  SessionMan* get_session_man();
 
   std::map<std::string, topic*> m_topics;
   std::mutex                    m_topics_lock;
@@ -214,7 +218,7 @@ private:
   size_t m_callid = 0;
   std::map <size_t, call_context>  m_calls;
   std::mutex                       m_calls_lock;
-  dealer_service *                 m_embed_router = nullptr;
+  // dealer_service *                 m_embed_router = nullptr;
 
   t_client_request_id  m_next_client_request_id;
 
@@ -254,6 +258,7 @@ private:
   std::mutex m_subscriptions_lock;
 
   friend class router_conn;
+  friend class dealer_service;
 };
 
 

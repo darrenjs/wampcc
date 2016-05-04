@@ -8,28 +8,25 @@
 #include "IOLoop.h"
 #include "event_loop.h"
 #include "SessionMan.h"
+#include "client_service.h"
 
 #include <unistd.h>
 #include <string.h>
 
 namespace XXX {
 
-dealer_service::dealer_service(Logger *logptr,
-                               dealer_listener* l,
-                               IOLoop* ext_ioloop,
-                               event_loop* ext_event_loop /*,
-                                                           internal_invoke_cb internal_rpc_cb*/)
-  : __logptr( logptr ),
-    m_io_loop( ext_ioloop? ext_ioloop : new IOLoop( logptr)),
-    m_evl( ext_event_loop? ext_event_loop : new event_loop( logptr ) ),
-    m_own_io(ext_ioloop == nullptr),
-    m_own_ev(ext_event_loop == nullptr),
-    m_sesman( new SessionMan(logptr, *m_evl) ),
-    m_rpcman( new rpc_man(logptr, *m_evl, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
-    m_pubsub(new pubsub_man(logptr, *m_evl, *m_sesman)),
+dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
+  :__logptr(__svc->get_logger()),
+   m_io_loop(__svc->get_ioloop()),
+   m_evl(__svc->get_event_loop()),
+   m_own_io(false),
+   m_own_ev(false),
+   m_sesman( new SessionMan(__logptr, *m_evl) ),
+   m_rpcman( new rpc_man(__logptr, *m_evl, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
+   m_pubsub(new pubsub_man(__logptr, *m_evl, *m_sesman)),
 //    m_internal_invoke_cb(internal_rpc_cb),
-    m_listener( l ),
-    m_next_internal_request_id(1)
+   m_listener( l ),
+   m_next_internal_request_id(1)
 {
   m_evl->set_session_man( m_sesman.get() );
   m_evl->set_rpc_man( m_rpcman.get() );
@@ -43,8 +40,39 @@ dealer_service::dealer_service(Logger *logptr,
 
   m_evl->set_handler2(CALL,
                     [this](ev_inbound_message* ev){ this->handle_CALL(ev); } );
+};
 
-}
+// dealer_service::dealer_service(Logger *logptr,
+//                                dealer_listener* l,
+//                                IOLoop* ext_ioloop,
+//                                event_loop* ext_event_loop /*,
+//                                                            internal_invoke_cb internal_rpc_cb*/)
+//   : __logptr( logptr ),
+//     m_io_loop( ext_ioloop? ext_ioloop : new IOLoop( logptr)),
+//     m_evl( ext_event_loop? ext_event_loop : new event_loop( logptr ) ),
+//     m_own_io(ext_ioloop == nullptr),
+//     m_own_ev(ext_event_loop == nullptr),
+//     m_sesman( new SessionMan(logptr, *m_evl) ),
+//     m_rpcman( new rpc_man(logptr, *m_evl, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
+//     m_pubsub(new pubsub_man(logptr, *m_evl, *m_sesman)),
+// //    m_internal_invoke_cb(internal_rpc_cb),
+//     m_listener( l ),
+//     m_next_internal_request_id(1)
+// {
+//   m_evl->set_session_man( m_sesman.get() );
+//   m_evl->set_rpc_man( m_rpcman.get() );
+//   m_evl->set_pubsub_man( m_pubsub.get() );
+
+//   m_evl->set_handler(YIELD,
+//                     [this](class event* ev){ this->handle_YIELD(ev); } );
+
+//   m_evl->set_handler(SUBSCRIBE,
+//                     [this](class event* ev){ this->handle_SUBSCRIBE(ev); } );
+
+//   m_evl->set_handler2(CALL,
+//                     [this](ev_inbound_message* ev){ this->handle_CALL(ev); } );
+
+// }
 
 dealer_service::~dealer_service()
 {
@@ -58,11 +86,11 @@ dealer_service::~dealer_service()
 //----------------------------------------------------------------------
 
 
-void dealer_service::start()
-{
-  // returns immediately
-  if (m_own_io) m_io_loop->start();
-}
+// void dealer_service::start()
+// {
+//   // returns immediately
+//   if (m_own_io) m_io_loop->start();
+// }
 
 
 void dealer_service::rpc_registered_cb(const rpc_details& r)

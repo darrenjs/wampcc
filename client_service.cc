@@ -89,10 +89,10 @@ client_service::client_service(Logger * logptr,
   //                   int reg_id ,
   //                   wamp_args& args ){ this->invoke_direct(h, req_id, reg_id, args); };
 
-  if (config.enable_embed_router)
-  {
-    m_embed_router = new dealer_service(logptr, nullptr, m_io_loop.get(), m_evl.get() /*, fun */);
-  }
+  // if (config.enable_embed_router)
+  // {
+  //   m_embed_router = new dealer_service(logptr, nullptr, m_io_loop.get(), m_evl.get() /*, fun */);
+  // }
 }
 
 //----------------------------------------------------------------------
@@ -105,7 +105,7 @@ client_service::~client_service()
   m_io_loop->stop();
   m_evl->stop();
 
-  if (m_embed_router) delete m_embed_router;
+  // if (m_embed_router) delete m_embed_router;
 
   m_evl.reset();
 }
@@ -276,8 +276,8 @@ void client_service::start()
 
   m_io_loop->start(); // returns immediately
 
-  if (m_config.enable_embed_router)
-  {
+  // if (m_config.enable_embed_router)
+  // {
     // // TODO: here, I need to register my procedure with the internal router
     // std::map< std::string, int > regid;
     // {
@@ -299,9 +299,9 @@ void client_service::start()
     //   }
     // }
 
-    m_embed_router->start();
-    m_embed_router->listen(m_config.server_port);
-  }
+    // m_embed_router->start();
+    // m_embed_router->listen(m_config.server_port);
+  // }
 
 }
 
@@ -577,13 +577,13 @@ void client_service::add_topic(topic* topic)
 
       // generate an internal event destined for the embedded
       // router
-      if (m_embed_router != nullptr)
-      {
-        ev_internal_publish* ev = new ev_internal_publish(src->uri(),
-                                                        patch);
-        ev->realm = m_config.realm;
-        m_evl->push( ev );
-      }
+      // if (m_embed_router != nullptr)
+      // {
+      //   ev_internal_publish* ev = new ev_internal_publish(src->uri(),
+      //                                                   patch);
+      //   ev->realm = m_config.realm;
+      //   m_evl->push( ev );
+      // }
     });
 }
 
@@ -1182,7 +1182,7 @@ t_request_id router_conn::provide(const std::string& uri,
   return m_svc->register_procedure_impl(this, uri, options, cb, data);
 }
 
-void client_service::publish_all(bool include_internal,
+void client_service::publish_all(//bool include_internal,
                                  const std::string& uri,
                                  const jalson::json_object& opts,
                                  const jalson::json_array& args_list,
@@ -1207,15 +1207,15 @@ void client_service::publish_all(bool include_internal,
     }
   }
 
-  // publish to internal router
-  if (include_internal && m_embed_router != nullptr)
-  {
-    //       ev_internal_publish* ev = new ev_internal_publish(true,
-    //                                                       src->uri(),
-    //                                                       patch);
-    //       ev->realm = m_config.realm;
-    //       m_evl->push( ev );
-  }
+  // // publish to internal router
+  // if (include_internal && m_embed_router != nullptr)
+  // {
+  //   //       ev_internal_publish* ev = new ev_internal_publish(true,
+  //   //                                                       src->uri(),
+  //   //                                                       patch);
+  //   //       ev->realm = m_config.realm;
+  //   //       m_evl->push( ev );
+  // }
 
 }
 
@@ -1268,5 +1268,12 @@ t_request_id client_service::publish(router_conn* rs,
 
 
 }
+
+  Logger * client_service::get_logger() { return __logptr; }
+  IOLoop* client_service::get_ioloop() { return m_io_loop.get(); }
+  event_loop* client_service::get_event_loop() { return m_evl.get(); }
+  SessionMan* client_service::get_session_man() { return m_sesman.get(); }
+
+
 
 } // namespace XXX

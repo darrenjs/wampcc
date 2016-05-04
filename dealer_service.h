@@ -32,11 +32,11 @@ struct dealer_listener
 class dealer_service
 {
 public:
-
-  dealer_service(Logger*, dealer_listener*, IOLoop* io, event_loop* ev /*, internal_invoke_cb internal_rpc_cb */);
+  dealer_service(client_service * __svc, dealer_listener*);
+  // dealer_service(Logger*, dealer_listener*, IOLoop* io, event_loop* ev /*, internal_invoke_cb internal_rpc_cb */);
   ~dealer_service();
 
-  void start();
+  // void start();
 
   void listen(int port);
 
