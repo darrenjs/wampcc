@@ -1182,42 +1182,42 @@ t_request_id router_conn::provide(const std::string& uri,
   return m_svc->register_procedure_impl(this, uri, options, cb, data);
 }
 
-void client_service::publish_all(//bool include_internal,
-                                 const std::string& uri,
-                                 const jalson::json_object& opts,
-                                 const jalson::json_array& args_list,
-                                 const jalson::json_object& args_dict)
-{
-  // publish to all connected router
-  {
-    std::unique_lock<std::mutex> guard(m_router_sessions_lock);
-    if (m_router_sessions.size()>0)
-    {
-      auto sp = std::make_shared<ev_outbound_publish>(
-        uri,
-        opts,
-        args_list,
-        args_dict,
-        m_router_sessions.size()) ;
+// void client_service::publish_all(//bool include_internal,
+//                                  const std::string& uri,
+//                                  const jalson::json_object& opts,
+//                                  const jalson::json_array& args_list,
+//                                  const jalson::json_object& args_dict)
+// {
+//   // publish to all connected router
+//   {
+//     std::unique_lock<std::mutex> guard(m_router_sessions_lock);
+//     if (m_router_sessions.size()>0)
+//     {
+//       auto sp = std::make_shared<ev_outbound_publish>(
+//         uri,
+//         opts,
+//         args_list,
+//         args_dict,
+//         m_router_sessions.size()) ;
 
-      for (auto & item : m_router_sessions)
-        sp->targets.push_back( item.second->handle() );
+//       for (auto & item : m_router_sessions)
+//         sp->targets.push_back( item.second->handle() );
 
-      m_evl->push( sp );
-    }
-  }
+//       m_evl->push( sp );
+//     }
+//   }
 
-  // // publish to internal router
-  // if (include_internal && m_embed_router != nullptr)
-  // {
-  //   //       ev_internal_publish* ev = new ev_internal_publish(true,
-  //   //                                                       src->uri(),
-  //   //                                                       patch);
-  //   //       ev->realm = m_config.realm;
-  //   //       m_evl->push( ev );
-  // }
+//   // // publish to internal router
+//   // if (include_internal && m_embed_router != nullptr)
+//   // {
+//   //   //       ev_internal_publish* ev = new ev_internal_publish(true,
+//   //   //                                                       src->uri(),
+//   //   //                                                       patch);
+//   //   //       ev->realm = m_config.realm;
+//   //   //       m_evl->push( ev );
+//   // }
 
-}
+// }
 
 
 t_request_id client_service::publish(router_conn* rs,

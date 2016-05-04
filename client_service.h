@@ -69,13 +69,13 @@ public:
   /* Register a topic */
   void add_topic(topic*);
 
-  /* Publish data onto a topic. The publish message will be sent to all
-   * connected sessions, and optionally to the internal dealer session. */
-  void publish_all(//bool include_internal,
-                   const std::string& topic,
-                   const jalson::json_object& opts,
-                   const jalson::json_array& args_list,
-                   const jalson::json_object& args_dict);
+  // /* Publish data onto a topic. The publish message will be sent to all
+  //  * connected sessions, and optionally to the internal dealer session. */
+  // void publish_all(//bool include_internal,
+  //                  const std::string& topic,
+  //                  const jalson::json_object& opts,
+  //                  const jalson::json_array& args_list,
+  //                  const jalson::json_object& args_dict);
 
   /* Used by the CALLEE to respond to a procedure call */
   void post_reply(t_invoke_id,
