@@ -288,12 +288,12 @@ void event_loop::process_event(event * ev)
       }
       break;
     }
-    case event::internal_publish :
-    {
-      if (m_pubsubman)
-        m_pubsubman->handle_event(dynamic_cast<ev_internal_publish *>(ev));
-      break;
-    }
+    // case event::internal_publish :
+    // {
+    //   if (m_pubsubman)
+    //     m_pubsubman->handle_event(dynamic_cast<ev_internal_publish *>(ev));
+    //   break;
+    // }
     case event::inbound_message :
     {
       ev_inbound_message * ev2 =

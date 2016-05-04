@@ -16,10 +16,10 @@ struct event
   enum Type
   {
     session_state_event = 0,
-//    outbound_call_event,
+    // outbound_call_event,
     outbound_response_event,
     outbound_message,
-    internal_publish,
+    // internal_publish,
     // outbound_subscribe,
     inbound_subscribed,
     router_session_connect_fail,
@@ -162,18 +162,18 @@ struct ev_outbound_publish : public event
 
 };
 
-struct ev_internal_publish : public event
-{
-  std::string uri;
-  jalson::json_value patch;  // TODO: maybe change to array?
+// struct ev_internal_publish : public event
+// {
+//   std::string uri;
+//   jalson::json_value patch;  // TODO: maybe change to array?
 
-  ev_internal_publish( const std::string & __topic_uri,
-                       const jalson::json_value& __patch)
-    : event( event::internal_publish ),
-      uri( __topic_uri ),
-      patch( __patch )
-  {}
-};
+//   ev_internal_publish( const std::string & __topic_uri,
+//                        const jalson::json_value& __patch)
+//     : event( event::internal_publish ),
+//       uri( __topic_uri ),
+//       patch( __patch )
+//   {}
+// };
 
 // struct ev_outbound_event : public event
 // {

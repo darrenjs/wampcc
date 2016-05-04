@@ -1,6 +1,8 @@
 #ifndef XXX_PUBSUB_MAN_H
 #define XXX_PUBSUB_MAN_H
 
+#include "Callbacks.h"
+
 #include "jalson/jalson.h"
 
 #include <map>
@@ -10,7 +12,7 @@ namespace XXX {
 
 class Logger;
 class client_service;
-class ev_internal_publish;
+// class ev_internal_publish;
 class event_loop;
 class managed_topic;
 class SessionMan;
@@ -23,10 +25,15 @@ public:
   pubsub_man(Logger *, event_loop&, SessionMan&);
   ~pubsub_man();
 
-  void handle_event(ev_internal_publish*);
+  // void handle_event(ev_internal_publish*);
   void handle_subscribe(ev_inbound_message* ev);
   void handle_event( ev_session_state_event* );
   void handle_inbound_publish(ev_inbound_message*);
+
+  t_request_id publish(const std::string& topic,
+                       const std::string& realm,
+                       const jalson::json_object& options,
+                       wamp_args);
 
 private:
   pubsub_man(const pubsub_man&); // no copy

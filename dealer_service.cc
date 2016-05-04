@@ -354,4 +354,13 @@ bool dealer_service::reply(t_invoke_id callid,
 }
 
 
+t_request_id dealer_service::publish(const std::string& topic,
+                                     const std::string& realm,
+                                     const jalson::json_object& options,
+                                     wamp_args args)
+{
+  /* USER thread */
+  return m_pubsub->publish(topic, realm, options, std::move(args));
+}
+
 } // namespace

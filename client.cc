@@ -122,14 +122,26 @@ std::string get_timestamp()
   return os.str();
 }
 
+XXX::dealer_service * g_dealer = nullptr;
+
 void publisher_tep()
 {
   while(true)
   {
-    usleep(250);
+    usleep(1000000*5);
     std::string newvalue = "0000____" + get_timestamp();
-    topic.update( newvalue.c_str() );
+    topic.update( newvalue.c_str() ); // Legacy ... currently not functional
+
+    XXX::wamp_args wargs;
+    wargs.args_list = jalson::json_value::make_array();
+    wargs.args_list.as_array().push_back( newvalue );
+
+    if (g_dealer) g_dealer->publish("USERHB",
+                                    "default_realm",
+                                    jalson::json_object(),
+                                    wargs);
   }
+
 }
 
 
@@ -143,6 +155,7 @@ int main(int /* argc */, char** /* argv */)
   std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger, cfg) );
 
   XXX::dealer_service * dealer = new XXX::dealer_service(mycs.get(), nullptr);
+  g_dealer = dealer;
   dealer->listen(55555);
 
   // std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_hello") );

@@ -58,15 +58,15 @@ pubsub_man::~pubsub_man()
   // managed_topic
 }
 
-/* Handle arrival of an internl PUBLISH event, targeted at a topic. */
-void pubsub_man::handle_event(ev_internal_publish* ev)
-{
-  /* EV thread */
+// /* Handle arrival of an internl PUBLISH event, targeted at a topic. */
+// void pubsub_man::handle_event(ev_internal_publish* ev)
+// {
+//   /* EV thread */
 
-  // TODO: lock me?  Or will only be the event thread?
+//   // TODO: lock me?  Or will only be the event thread?
 
-  update_topic(ev->uri, ev->realm, ev->patch.as_array());
-}
+//   update_topic(ev->uri, ev->realm, ev->patch.as_array());
+// }
 
 
 void pubsub_man::handle_subscribe(ev_inbound_message* ev)
@@ -163,6 +163,36 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
   }
 
   return topic_iter->second.get();
+}
+
+
+t_request_id pubsub_man::publish(const std::string& topic,
+                                 const std::string& realm,
+                                 const jalson::json_object& /* options */,
+                                 wamp_args wamps)
+{
+  /* USER thread */
+
+  managed_topic* mt = find_topic(topic, realm, true);
+
+  // TODO: do we want to reply to the originating client, if we reject the
+  // publish? Also, we can have other exceptions (below), e.g., patch
+  // exceptions. Also, dont want to throw, if it is an internal update
+  if (!mt) return 0;
+
+  t_request_id publish_request_id = 717171; // TODO: generate publication ID
+
+  // broadcast event to subscribers
+  jalson::json_array msg;
+  msg.push_back( EVENT );
+  msg.push_back( mt->subscription_id );
+  msg.push_back( publish_request_id );
+  msg.push_back( jalson::json_value::make_object() );
+  if (!wamps.args_list.is_null()) msg.push_back( std::move(wamps.args_list) );
+  if (!wamps.args_list.is_null() && !wamps.args_dict.is_null()) msg.push_back( std::move(wamps.args_dict) );
+  m_sesman.send_to_session(mt->m_subscribers, msg);
+
+  return publish_request_id;
 }
 
 
