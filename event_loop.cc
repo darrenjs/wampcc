@@ -263,14 +263,14 @@ void event_loop::process_event(event * ev)
       process_outbound_response( ev2 );
       break;
     }
-    case event::outbound_message :
-    {
-      // TODO: create a template for this, which will throw etc. Will be a
-      // series error if the cast failes.
-      outbound_message * ev2 = dynamic_cast<outbound_message *>(ev);
-      process_outbound_message( ev2 );
-      break;
-    }
+    // case event::outbound_message :
+    // {
+    //   // TODO: create a template for this, which will throw etc. Will be a
+    //   // series error if the cast failes.
+    //   outbound_message * ev2 = dynamic_cast<outbound_message *>(ev);
+    //   process_outbound_message( ev2 );
+    //   break;
+    // }
     case event::session_state_event :
     {
       ev_session_state_event * ev2 = dynamic_cast<ev_session_state_event *>(ev);
@@ -644,10 +644,10 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
 
 //----------------------------------------------------------------------
 
-void event_loop::process_outbound_message(outbound_message* ev)
-{
-  m_sesman->send_to_session(ev->destination, ev->ja);
-}
+// void event_loop::process_outbound_message(outbound_message* ev)
+// {
+//   m_sesman->send_to_session(ev->destination, ev->ja);
+// }
 
 //----------------------------------------------------------------------
 

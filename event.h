@@ -18,7 +18,7 @@ struct event
     session_state_event = 0,
     // outbound_call_event,
     outbound_response_event,
-    outbound_message,
+    // outbound_message,
     // internal_publish,
     // outbound_subscribe,
     inbound_subscribed,
@@ -77,15 +77,15 @@ struct ev_session_state_event : public event
 };
 
 
-struct outbound_message : public event
-{
-  session_handle destination;
-  jalson::json_array ja;
+// struct outbound_message : public event
+// {
+//   session_handle destination;
+//   jalson::json_array ja;
 
-  outbound_message()
-  : event( event::outbound_message )
-  {}
-};
+//   outbound_message()
+//   : event( event::outbound_message )
+//   {}
+// };
 
 
 struct outbound_response_event : public event

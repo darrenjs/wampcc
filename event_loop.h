@@ -130,7 +130,7 @@ public:
     void process_event_InboundCall(event* e);
 //    void process_outbound_call(outbound_call_event*);
     void process_outbound_response(outbound_response_event *);
-    void process_outbound_message(outbound_message *);
+    // void process_outbound_message(outbound_message *);
     void process_inbound_error(event* e);
     void process_inbound_yield(ev_inbound_message* e);
     // void process_outbound_subscribe(ev_outbound_subscribe* e);
