@@ -212,7 +212,7 @@ private:
   struct call_context
   {
     session_handle seshandle;
-    int requestid;
+    t_request_id request_id;
     // bool internal;
   };
   size_t m_callid = 0;

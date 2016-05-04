@@ -197,7 +197,7 @@ void dealer_service::handle_SUBSCRIBE(event* ev)
 void dealer_service::handle_CALL(ev_inbound_message* ev)
 {
   // TODO: improve json parsing
-  int call_request_id = ev->ja[1].as_int();
+  t_request_id call_request_id = ev->ja[1].as_int();
   std::string uri = ev->ja[3].as_string();
 
   // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated

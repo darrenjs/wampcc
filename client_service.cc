@@ -410,7 +410,7 @@ void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowe
       mycallid = ++m_callid;
 //      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
       m_calls[ mycallid ] . seshandle = ev->src;
-      m_calls[ mycallid ] . requestid = reqid;
+      m_calls[ mycallid ] . request_id = reqid;
 //      m_calls[ mycallid ] . internal = false;
     }
     // TODO: during exception, could log more details.
@@ -483,10 +483,10 @@ void client_service::post_reply(t_invoke_id callid,
     msgbuilder = [&context,&the_args](){
       jalson::json_array msg;
       msg.push_back(YIELD);
-      msg.push_back(context.requestid);
+      msg.push_back(context.request_id);
       msg.push_back(jalson::json_object());
       if (!the_args.args_list.is_null()) msg.push_back(the_args.args_list);
-      if (!the_args.args_dict.is_null()) msg.push_back(the_args.args_dict);
+      if (!the_args.args_list.is_null() && !the_args.args_dict.is_null()) msg.push_back(the_args.args_dict);
       return msg;
     };
     m_sesman->send_to_session(context.seshandle, msgbuilder);
@@ -521,7 +521,7 @@ void client_service::post_error(t_invoke_id callid,
   ev->destination   = context.seshandle;
   ev->response_type = ERROR;
   ev->request_type  = INVOCATION;
-  ev->reqid         = context.requestid;
+  ev->reqid         = context.request_id;
   ev->error_uri     = error_uri;
 
   m_evl->push( ev );

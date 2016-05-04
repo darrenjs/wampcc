@@ -46,8 +46,8 @@ public:
 
   void listen(int port);
 
-  int register_internal_procedure(std::string procedure,
-                                  const std::string& realm);
+  // int register_internal_procedure(std::string procedure,
+  //                                 const std::string& realm);
 
   void register_procedure(const std::string& realm,
                           const std::string& uri,
@@ -101,7 +101,7 @@ private:
     void* user_cb_data;
 
     session_handle call_source;
-    int call_request_id;
+    t_request_id call_request_id;
     bool is_external;
 
     pending_request() : user_cb_data( nullptr ),is_external(false) { }
@@ -115,7 +115,7 @@ private:
   struct proc_invoke_context
   {
     session_handle seshandle;
-    int requestid;
+    t_request_id requestid;
   };
   size_t m_next_call_id = 1001;
   std::map <size_t, proc_invoke_context>  m_calls;
