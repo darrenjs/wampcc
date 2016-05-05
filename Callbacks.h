@@ -20,6 +20,7 @@ namespace XXX {
 
   class client_service;
   class dealer_service;
+  class ev_inbound_message;
 
 class session_error : public std::runtime_error
 {
@@ -72,7 +73,6 @@ typedef uint64_t t_client_request_id;
 typedef uint64_t t_sid;
 
 typedef std::weak_ptr<t_sid> session_handle;
-
 
 struct invoke_details
 {

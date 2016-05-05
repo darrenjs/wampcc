@@ -10,12 +10,11 @@ namespace XXX {
 
 
 /* Constructor */
-rpc_man::rpc_man(Logger * logptr, event_loop&evl, rpc_added_cb cb)
+rpc_man::rpc_man(Logger * logptr, rpc_added_cb cb)
   : __logptr(logptr),
     m_rpc_added_cb(cb),
     m_next_regid(1)
 {
-  evl.set_rpc_man( this );
 }
 
 

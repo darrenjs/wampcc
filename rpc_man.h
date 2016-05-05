@@ -43,7 +43,7 @@ typedef std::function< void(const rpc_details&) > rpc_added_cb;
 class rpc_man
 {
 public:
-  rpc_man(Logger *, event_loop&, rpc_added_cb);
+  rpc_man(Logger *, rpc_added_cb);
 
   // return the registion id
   int handle_inbound_REGISTER(ev_inbound_message*);

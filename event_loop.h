@@ -15,17 +15,24 @@
 
 namespace XXX {
 
-  class rpc_man;
+
   class pubsub_man;
   class SessionMan;
   class Logger;
 
-
-class client_event_handler
+struct server_event_handler
 {
-public:
+  std::function<void(ev_inbound_message*)> handle_inbound_CALL;
+  std::function<void(ev_inbound_message*)> handle_inbound_PUBLISH;
+  std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
+  std::function<void(ev_inbound_message*)> handle_inbound_SUSCRIBE;
+  std::function<void(ev_inbound_message*)> handle_inbound_YIELD;
+};
 
-  std::function<void(ev_inbound_subscribed*)> handle_inbound_subscribed;
+
+struct client_event_handler
+{
+  std::function<void(ev_inbound_subscribed*)> handle_inbound_SUBSCRIBED;
   std::function<void(ev_inbound_message*)> handle_inbound_event;
   std::function<void(ev_router_session_connect_fail*)> handle_router_session_connect_fail;
 };
@@ -108,13 +115,14 @@ public:
 
     void request_stop() { m_continue=false; }
 
-    void set_rpc_man(rpc_man*);
+
     void set_pubsub_man(pubsub_man*);
     void set_session_man(SessionMan*);
 
     void set_handler(unsigned int eventid, event_cb handler);
     void set_handler2(unsigned int eventid, event_cb2 handler);
-    void set_handler(client_event_handler& h) { m_client_handler=h; }
+    void set_handler(client_event_handler h)  { m_client_handler=h; }
+    void set_handler(server_event_handler h ) { m_server_handler=h;  }
 
   private:
     event_loop(const event_loop&); // no copy
@@ -147,16 +155,18 @@ public:
     std::condition_variable m_condvar;
     std::thread m_thread;
 
-    rpc_man* m_rpcman;
+
     pubsub_man* m_pubsubman;
     SessionMan* m_sesman;
 
     std::vector<event_cb> m_handlers;
     std::vector<event_cb2> m_handlers2;
 
+    server_event_handler m_server_handler;
+    client_event_handler m_client_handler;
+
     std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
 
-    client_event_handler m_client_handler;
 
 };
 

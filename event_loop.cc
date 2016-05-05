@@ -17,7 +17,6 @@ event_loop::event_loop(Logger *logptr)
   : __logptr(logptr),
     m_continue(true),
     m_thread(&event_loop::eventmain, this),
-    m_rpcman(nullptr),
     m_pubsubman(nullptr),
     m_sesman(nullptr),
     m_handlers( WAMP_MSGID_MAX ), /* initial handles are empty */
@@ -38,10 +37,6 @@ void event_loop::stop()
   if (m_thread.joinable()) m_thread.join();
 }
 
-void event_loop::set_rpc_man(rpc_man* r)
-{
-  m_rpcman = r;
-}
 void event_loop::set_pubsub_man(pubsub_man* p)
 {
   m_pubsubman = p;
@@ -234,10 +229,10 @@ void event_loop::process_event(event * ev)
     case event::inbound_subscribed:
     {
       // TODO: create a template for this, which will throw etc.
-      if (m_client_handler.handle_inbound_subscribed)
+      if (m_client_handler.handle_inbound_SUBSCRIBED)
       {
         ev_inbound_subscribed* ev2 = dynamic_cast<ev_inbound_subscribed*>(ev);
-        if (ev2) m_client_handler.handle_inbound_subscribed( ev2 );
+        if (ev2) m_client_handler.handle_inbound_SUBSCRIBED( ev2 );
       }
       break;
     }
@@ -302,30 +297,29 @@ void event_loop::process_event(event * ev)
 
       switch ( ev2->msg_type )
       {
-        case YIELD : { process_inbound_yield( ev2 ); break; }
+        case PUBLISH :
+        {
+          m_server_handler.handle_inbound_PUBLISH(ev2);
+          break;
+        }
+        case YIELD :
+        {
+          m_server_handler.handle_inbound_YIELD(ev2);
+          break;
+        }
         case SUBSCRIBE:
         {
-          // TODO: improve this
-          event_cb& cb = m_handlers[ ev2->msg_type ];
-          if (cb) cb( ev );
+          m_server_handler.handle_inbound_SUSCRIBE(ev2);
+          break;
+        }
+        case CALL :
+        {
+          m_server_handler.handle_inbound_CALL(ev2);
           break;
         }
         case REGISTER :
         {
-          if (!m_rpcman) throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
-
-          // Register the RPC. Once this function has been called, we should
-          // expect that requests can be sent immediately, so its important that
-          // we immediately sent the registration ID to the peer, before requests
-          // arrive.
-          int registration_id = m_rpcman->handle_inbound_REGISTER(ev2);
-
-          jalson::json_array msg;
-          msg.push_back( REGISTERED );
-          msg.push_back( ev2->ja[1] );
-          msg.push_back( registration_id );
-          m_sesman->send_to_session( ev2->src, msg );
-
+          m_server_handler.handle_inbound_REGISTER(ev2);
           break;
         }
         case EVENT :
@@ -340,7 +334,6 @@ void event_loop::process_event(event * ev)
         case CHALLENGE :
         case AUTHENTICATE :
         case ERROR :
-        case CALL :
         {
           event_cb2& cb = m_handlers2[ ev2->msg_type ];
           if (cb) cb( ev2 );
@@ -350,14 +343,14 @@ void event_loop::process_event(event * ev)
           }
           break;
         }
-        case PUBLISH :
-        {
-          if (m_pubsubman)
-            m_pubsubman->handle_inbound_publish(ev2);
-          else
-            _WARN_("unable to handle inbound PUBLISH message");
-          break;
-        }
+        // case PUBLISH :
+        // {
+        //   if (m_pubsubman)
+        //     m_pubsubman->handle_inbound_publish(ev2);
+        //   else
+        //     _WARN_("unable to handle inbound PUBLISH message");
+        //   break;
+        // }
         default:
         {
           // TODO: probably should reply here

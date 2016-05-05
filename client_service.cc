@@ -48,7 +48,7 @@ client_service::client_service(Logger * logptr,
   // TODO: make this a member
   client_event_handler local_handler;
 
-  local_handler.handle_inbound_subscribed=
+  local_handler.handle_inbound_SUBSCRIBED=
     [this](ev_inbound_subscribed* ev) { handle_SUBSCRIBED(ev); };
 
   local_handler.handle_inbound_event=
