@@ -56,9 +56,9 @@ public:
                           void * data);
 
 
-  bool reply(t_invoke_id,
-             wamp_args& the_args,
-             std::string error_uri);
+  // bool reply(t_invoke_id,
+  //            wamp_args& the_args,
+  //            std::string error_uri);
 
   // TODO: have a register proc interface
 
@@ -74,6 +74,11 @@ private:
 
   void invoke_procedure(rpc_details&,
                         ev_inbound_message*);
+
+  bool reply(t_invoke_id,
+             wamp_args& the_args,
+             bool is_error,
+             std::string error_uri);
 
   // essential components
   Logger *__logptr; /* name chosen for log macros */

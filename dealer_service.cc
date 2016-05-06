@@ -300,21 +300,37 @@ void dealer_service::invoke_procedure(rpc_details& rpc,
   if (rpc.user_cb)
   {
     invoke_details invoke(mycallid);
-    invoke.dealer = this;
-    invoke.reply_func = [this](t_invoke_id tid, wamp_args& args, std::string error_uri){
-      this->reply(tid, args, std::move(error_uri));
+    invoke.reply_fn = [this](t_request_id tid, wamp_args& args){
+      this->reply(tid, args, false, "");
     };
-    _INFO_("attempting new direct invocation");
     jalson::json_object details;
 
-
-    rpc.user_cb(mycallid, invoke, rpc.uri, details, my_wamp_args, ev->src, rpc.user_data);
+    // TODO: handle exception (raises an ERROR)
+    try
+    {
+      rpc.user_cb(mycallid, invoke, rpc.uri, details, my_wamp_args, ev->src, rpc.user_data);
+    }
+    catch (XXX::invocation_exception& ex)
+    {
+      this->reply(mycallid, ex.args(), true, ex.what());
+    }
+    catch (std::exception& ex)
+    {
+      wamp_args temp;
+      this->reply(mycallid, temp, true, ex.what());
+    }
+    catch (...)
+    {
+      wamp_args temp;
+      this->reply(mycallid, temp, true, WAMP_RUNTIME_ERROR);
+    }
   }
 }
 
 
 bool dealer_service::reply(t_invoke_id callid,
                            wamp_args& the_args,
+                           bool is_error,
                            std::string error_uri)
 {
   proc_invoke_context context;
@@ -334,10 +350,10 @@ bool dealer_service::reply(t_invoke_id callid,
   }
 
   build_message_cb_v4 msgbuilder;
-  msgbuilder = [&context,&the_args,&error_uri](){
+  msgbuilder = [&](){
     jalson::json_array msg;
 
-    if (!error_uri.empty())
+    if (is_error)
     {
       msg.push_back(ERROR);
       msg.push_back(CALL);

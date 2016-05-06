@@ -74,18 +74,41 @@ typedef uint64_t t_sid;
 
 typedef std::weak_ptr<t_sid> session_handle;
 
-struct invoke_details
-{
-  t_invoke_id id;
-  client_service* svc;
-  dealer_service* dealer;
 
-  std::function<void(t_invoke_id, wamp_args&, std::string error)> reply_func;
+class invocation_exception : public std::runtime_error
+{
+public:
+
+  invocation_exception(const char* error)
+  : std::runtime_error(error)
+  {  }
+
+  invocation_exception(const char* error, wamp_args wa)
+    : std::runtime_error(error),
+      m_args(wa)
+  {  }
+
+  wamp_args& args() { return m_args; }
+  const wamp_args& args() const { return m_args; }
+
+private:
+  wamp_args m_args;
+};
+
+struct invoke_details // TODO: rename
+{
+  t_request_id request_id;
+  std::string  uri;
+  wamp_args args;
+  void * user;
+  t_invoke_id id;
+  client_service* svc;  // TODO: try to remove
+
+  std::function<void(t_request_id, wamp_args&)> reply_fn;
 
   invoke_details(t_invoke_id _id)
   : id(_id),
-    svc(nullptr),
-    dealer(nullptr){}
+    svc(nullptr) {}
 };
 
 /* Information about a session that once set, will never change, and is used to

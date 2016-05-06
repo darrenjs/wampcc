@@ -47,24 +47,7 @@ void procedure_error_cb(XXX::t_invoke_id invokeid,
   _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args_list
           << ", user:" << cbdata->request );
 
-//  throw std::runtime_error("bad alloc");
-  auto my_args = the_args;
-
-  my_args.args_list = jalson::json_array();
-  jalson::json_array & arr = my_args.args_list.as_array();
-  arr.push_back("value");
-  arr.push_back("missing");
-
-  if (invocation.reply_func)
-  {
-    invocation.reply_func(invokeid,
-                          my_args,
-                          "wamp.user.error");
-  }
-  else
-  {
-    cbdata->svc->post_reply(invokeid, my_args);
-  }
+  throw XXX::invocation_exception("opps, cannot fulfill RPC");
 
 }
 
@@ -91,16 +74,9 @@ void procedure_cb(XXX::t_invoke_id invokeid,
   arr.push_back("hello");
   arr.push_back("back");
 
-  if (invocation.reply_func)
-  {
-    invocation.reply_func(invokeid,
-                          my_args,
-                          std::string());
-  }
-  else
-  {
-    cbdata->svc->post_reply(invokeid, my_args);
-  }
+  invocation.reply_fn(invokeid,
+                      my_args);
+
 
 }
 
