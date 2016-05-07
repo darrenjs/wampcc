@@ -27,12 +27,11 @@ class session_error : public std::runtime_error
 public:
   enum error_code
   {
-    // TODO EASY :remove the err_ prefixes
-    err_no_error = 0,
+    no_error = 0,
     msgbuf_full,
     bad_protocol,
-    err_unknown,
-    err_bad_json,
+    unknown,
+    bad_json,
   };
 
 
@@ -40,7 +39,7 @@ public:
   error_code err;
 
   session_error(const std::string& __uri,
-                error_code __e = err_unknown)
+                error_code __e = unknown)
   : std::runtime_error( __uri ),
     uri( __uri ),
     err( __e )
@@ -49,7 +48,7 @@ public:
 
   session_error(const std::string& __uri,
                 const std::string& __text,
-                error_code __e = err_unknown)
+                error_code __e = session_error::unknown)
   : std::runtime_error( __text ),
     uri( __uri ),
     err( __e )

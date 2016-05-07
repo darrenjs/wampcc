@@ -140,7 +140,7 @@ void Session::on_read(char* src, size_t len)
 
   //std::string temp(src,len);
   //std::cout << "recv: bytes " << len << ": " << temp << "\n";
-  session_error se ( "", session_error::err_no_error );
+  session_error se ( "", session_error::no_error );
   try
   {
     on_read_impl(src, len);
@@ -152,15 +152,15 @@ void Session::on_read(char* src, size_t len)
   }
   catch ( const std::exception& ev )
   {
-    se.err = session_error::err_unknown;
+    se.err = session_error::unknown;
     _ERROR_("exception : " << ev.what());
   }
   catch (...)
   {
-    se.err = session_error::err_unknown;
+    se.err = session_error::unknown;
   }
 
-  if (se.err != session_error::err_no_error)
+  if (se.err != session_error::no_error)
   {
     m_session_err = se.err;
 
@@ -248,7 +248,7 @@ void Session::decode_and_process(char* ptr, size_t msglen)
   bool must_close_session = false;
   std::string error_uri;
   std::string error_text;
-  session_error::error_code my_session_error = session_error::err_unknown;
+  session_error::error_code my_session_error = session_error::unknown;
 
   try
   {
@@ -266,7 +266,7 @@ void Session::decode_and_process(char* ptr, size_t msglen)
   }
   catch( const jalson::json_error& e)
   {
-    throw session_error(WAMP_RUNTIME_ERROR, e.what(), session_error::err_bad_json);
+    throw session_error(WAMP_RUNTIME_ERROR, e.what(), session_error::bad_json);
   }
 
   if (must_close_session) throw my_session_error;
