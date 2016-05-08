@@ -22,6 +22,7 @@ namespace XXX {
   class dealer_service;
   class ev_inbound_message;
 
+
 class session_error : public std::runtime_error
 {
 public:
@@ -70,6 +71,7 @@ typedef uint64_t t_request_id;
 typedef uint64_t t_invoke_id;
 typedef uint64_t t_client_request_id;
 typedef uint64_t t_sid;
+typedef uint64_t t_subscription_id;
 
 typedef std::weak_ptr<t_sid> session_handle;
 
@@ -101,13 +103,13 @@ struct invoke_details // TODO: rename
   wamp_args args;
   void * user;
   t_invoke_id id;
-  client_service* svc;  // TODO: try to remove
+  //client_service* svc;  // TODO: try to remove
 
   std::function<void(t_request_id, wamp_args&)> reply_fn;
 
   invoke_details(t_invoke_id _id)
-  : id(_id),
-    svc(nullptr) {}
+  : id(_id)
+  {}
 };
 
 /* Information about a session that once set, will never change, and is used to

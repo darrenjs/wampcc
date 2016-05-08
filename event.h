@@ -21,10 +21,11 @@ struct event
     // outbound_message,
     // internal_publish,
     // outbound_subscribe,
-    inbound_subscribed,
+    // inbound_subscribed,
     router_session_connect_fail,
     inbound_message,
-    outbound_publish
+    outbound_publish,
+    function_dispatch
   } type;
 
   session_handle src;
@@ -39,6 +40,7 @@ struct event
 
   virtual ~event(){}
 };
+
 
 
 struct ev_inbound_message : public event
@@ -209,17 +211,17 @@ struct ev_outbound_publish : public event
 // };
 
 
-struct ev_inbound_subscribed : public event
-{
-  session_handle src;
-  unsigned int internal_req_id;
-  jalson::json_array ja;
+// struct ev_inbound_subscribed : public event
+// {
+//   session_handle src;
+//   unsigned int internal_req_id;
+//   jalson::json_array ja;
 
-  ev_inbound_subscribed()
-    : event( event::inbound_subscribed )
-  {}
+//   ev_inbound_subscribed()
+//     : event( event::inbound_subscribed )
+//   {}
 
-};
+// };
 
 
 struct ev_router_session_connect_fail : public event

@@ -9,6 +9,16 @@
 
 namespace XXX {
 
+struct ev_function_dispatch : event
+{
+  ev_function_dispatch(std::function<void()> __fn) :
+    event(event::function_dispatch),
+    fn(__fn)
+  {}
+
+  std::function<void()> fn;
+};
+
 // TODO: set to 1000; for testing, set to 1 ms
 #define SYSTEM_HEARTBEAT_MS 100000
 
@@ -98,6 +108,12 @@ void event_loop::push(std::shared_ptr<event> sp)
   m_queue.push_back( sp );
   m_condvar.notify_one();
 }
+
+void event_loop::push(std::function<void()> fn)
+{
+  push( new ev_function_dispatch(std::move(fn)) );
+}
+
 
 
 void event_loop::hb_check()
@@ -226,16 +242,16 @@ void event_loop::process_event(event * ev)
       process_outbound_publish(ev2);
       break;
     }
-    case event::inbound_subscribed:
-    {
-      // TODO: create a template for this, which will throw etc.
-      if (m_client_handler.handle_inbound_SUBSCRIBED)
-      {
-        ev_inbound_subscribed* ev2 = dynamic_cast<ev_inbound_subscribed*>(ev);
-        if (ev2) m_client_handler.handle_inbound_SUBSCRIBED( ev2 );
-      }
-      break;
-    }
+    // case event::inbound_subscribed:
+    // {
+    //   // TODO: create a template for this, which will throw etc.
+    //   if (m_client_handler.handle_inbound_SUBSCRIBED)
+    //   {
+    //     ev_inbound_subscribed* ev2 = dynamic_cast<ev_inbound_subscribed*>(ev);
+    //     if (ev2) m_client_handler.handle_inbound_SUBSCRIBED( ev2 );
+    //   }
+    //   break;
+    // }
     // case event::outbound_subscribe :
     // {
     //   // TODO: create a template for this, which will throw etc.
@@ -329,8 +345,8 @@ void event_loop::process_event(event * ev)
         case HEARTBEAT: break;
         case HELLO :
         case RESULT :
-        case REGISTERED :
-        case INVOCATION :
+        // case REGISTERED :
+        // case INVOCATION :
         case CHALLENGE :
         case AUTHENTICATE :
         case ERROR :
@@ -362,6 +378,14 @@ void event_loop::process_event(event * ev)
       }
       break;
     }
+    case event::function_dispatch :
+    {
+      ev_function_dispatch * ev2 =  dynamic_cast<ev_function_dispatch*>(ev);
+      ev2->fn();
+      break;
+    }
+
+
     default:
     {
       _ERROR_( "unsupported event type " << ev->type );

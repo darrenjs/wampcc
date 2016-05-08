@@ -170,7 +170,7 @@ run: ${BIN1}
 
 .PHONY : clean
 clean :
-	rm -rf ${RUBBISH}
+	rm -rf ${RUBBISH} core.admin.* client.client.*
 
 ##
 ## Automatically generate dependencies. Whenever #include directives are

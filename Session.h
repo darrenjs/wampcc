@@ -101,7 +101,19 @@ namespace XXX {
 
     int hb_interval_secs() const { return m_hb_intvl; }
 
+
+    t_request_id provide(std::string uri,
+                         const jalson::json_object& options,
+                         rpc_cb cb,
+                         void * data);
+
+    t_request_id subscribe(const std::string& uri,
+                           const jalson::json_object& options,
+                           subscription_cb cb,
+                           void * user);
+
   private:
+
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
 
@@ -157,6 +169,7 @@ namespace XXX {
 
     time_t m_time_last_msg;
 
+    mutable std::mutex m_request_lock;
     t_request_id m_next_request_id;
 
     char *  m_buf;
@@ -175,6 +188,17 @@ namespace XXX {
     mutable std::mutex m_realm_lock;
 
   private:
+
+    void process_registered(jalson::json_array &);
+    void process_invocation(jalson::json_array &);
+    void process_subscribed(jalson::json_array &);
+    void process_event(jalson::json_array &);
+
+    bool reply(int callid,
+               wamp_args& the_args,
+               bool is_error,
+               std::string error_uri);
+  private:
     // TODO: why two?
     std::map<int, PendingReq* > m_pend_req;
     std::map<int, PendingReq2 > m_pend_req_2;
@@ -185,6 +209,31 @@ namespace XXX {
     t_connection_id m_user_conn_id;
 
     session_error::error_code m_session_err = session_error::no_error;
+
+
+    struct procedure
+    {
+      std::string uri;
+      rpc_cb user_cb;
+      void * user_data;
+    };
+
+    struct subscription
+    {
+      std::string uri;
+      subscription_cb user_cb;
+      void * user_data;
+    };
+
+    mutable std::mutex m_pending_lock;
+
+    std::map<t_request_id, subscription> m_pending_subscribe;
+    std::map<t_request_id, procedure>    m_pending_register;
+
+    // procedures -- not currently locked, however, need to add locking once
+    // unprovide() is added
+    std::map<t_request_id, procedure> m_procedures;
+    std::map<t_subscription_id, subscription> m_subscriptions;
   };
 
 } // namespace XXX

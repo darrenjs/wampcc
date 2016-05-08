@@ -25,7 +25,7 @@ class client_service;
 class event_loop;
 class ev_inbound_message;
 class topic;
-class dealer_service;
+// class dealer_service;
 class ev_inbound_subscribed;
 class ev_session_state_event;
 class ev_router_session_connect_fail;
@@ -60,12 +60,12 @@ public:
   //                    rpc_cb cb,
   //                    void * data);
 
-  // Register a procedure with a remote dealer
-  t_request_id register_procedure_impl(router_conn*,
-                                       const std::string& uri,
-                                       const jalson::json_object& options,
-                                       rpc_cb cb,
-                                       void * data);
+  // // Register a procedure with a remote dealer
+  // t_request_id register_procedure_impl(router_conn*,
+  //                                      const std::string& uri,
+  //                                      const jalson::json_object& options,
+  //                                      rpc_cb cb,
+  //                                      void * data);
   /* Register a topic */
   void add_topic(topic*);
 
@@ -78,12 +78,12 @@ public:
   //                  const jalson::json_object& args_dict);
 
   /* Used by the CALLEE to respond to a procedure call */
-  void post_reply(t_invoke_id,
-                  wamp_args& the_args);
+  // void post_reply(t_invoke_id,
+  //                 wamp_args& the_args);
 
-  /* Used by the CALLEE to respond to a procedure call */
-  void post_error(t_invoke_id,
-                  std::string& error);
+  // /* Used by the CALLEE to respond to a procedure call */
+  // void post_error(t_invoke_id,
+  //                 std::string& error);
 
   // void invoke_direct(session_handle&,
   //                    t_request_id,
@@ -111,26 +111,26 @@ private:
                         wamp_call_result_cb,
                         void* cb_user_data);
 
-  // how do we find out the list of remote topics? and if we have multiple
-  // sessions, then, which session has the topic we want?
-  t_request_id subscribe_remote_topic(router_conn*,
-                                      const std::string& uri,
-                                      const jalson::json_object& options,
-                                      subscription_cb cb,
-                                      void * user);
+  // // how do we find out the list of remote topics? and if we have multiple
+  // // sessions, then, which session has the topic we want?
+  // t_request_id subscribe_remote_topic(router_conn*,
+  //                                     const std::string& uri,
+  //                                     const jalson::json_object& options,
+  //                                     subscription_cb cb,
+  //                                     void * user);
 
 
 
   t_connection_id register_session(router_conn&);
 
-  void handle_REGISTERED(ev_inbound_message*);
-  void handle_INVOCATION(ev_inbound_message*);
+  // void handle_REGISTERED(ev_inbound_message*);
+  // void handle_INVOCATION(ev_inbound_message*);
   void handle_RESULT(ev_inbound_message*);
   void handle_ERROR(ev_inbound_message*);
   void handle_session_state_change(ev_session_state_event*);
   void handle_event(ev_router_session_connect_fail*);
-  void handle_SUBSCRIBED(ev_inbound_subscribed*);
-  void handle_EVENT(ev_inbound_message*);
+  // void handle_SUBSCRIBED(ev_inbound_subscribed*);
+  // void handle_EVENT(ev_inbound_message*);
   // void register_procedures();
 
   void new_client(IOHandle *hndl,
@@ -148,36 +148,36 @@ private:
 
   // NEW approach
 
-  struct user_procedure
-  {
-    std::string uri;
-    rpc_cb      user_cb;
-    void*       user_data;
-    int         registration_id;
+  // struct user_procedure
+  // {
+  //   std::string uri;
+  //   rpc_cb      user_cb;
+  //   void*       user_data;
+  //   int         registration_id;
 
-    user_procedure(std::string __uri,
-                   rpc_cb      __user_cb,
-                   void*       __user_data)
-      : uri(__uri),
-        user_cb(__user_cb),
-        user_data(__user_data),
-        registration_id(0)
-    {
-    }
+  //   user_procedure(std::string __uri,
+  //                  rpc_cb      __user_cb,
+  //                  void*       __user_data)
+  //     : uri(__uri),
+  //       user_cb(__user_cb),
+  //       user_data(__user_data),
+  //       registration_id(0)
+  //   {
+  //   }
 
-  };
+  // };
 
-  struct procedure_map
-  {
-    std::map<std::string, std::shared_ptr<user_procedure> > by_uri;
-    std::map<int,         std::shared_ptr<user_procedure> > by_id;
-  };
+  // struct procedure_map
+  // {
+  //   std::map<std::string, std::shared_ptr<user_procedure> > by_uri;
+  //   std::map<int,         std::shared_ptr<user_procedure> > by_id;
+  // };
 
-  std::map<t_connection_id, procedure_map > m_procedures;
+  // std::map<t_connection_id, procedure_map > m_procedures;
 
   // std::map<t_connection_id, void* > m_registered_procedures;
   // std::map< std::string, std::pair< rpc_cb,void*> > m_procedures;
-  std::mutex                                        m_procedures_lock;
+  // std::mutex                                        m_procedures_lock;
 
   // struct RegistrationKey
   // {
@@ -194,7 +194,7 @@ private:
   //std::mutex                                        m_registrationid_map_lock2;
 
 
-
+public:
   Logger * get_logger();
   IOLoop* get_ioloop();
   event_loop* get_event_loop();
@@ -208,16 +208,16 @@ private:
   std::unique_ptr<SessionMan> m_sesman;
 
 
-  // TODO: rename to invocation
-  struct call_context
-  {
-    session_handle seshandle;
-    t_request_id request_id;
-    // bool internal;
-  };
-  size_t m_callid = 0;
-  std::map <size_t, call_context>  m_calls;
-  std::mutex                       m_calls_lock;
+  // // TODO: rename to invocation
+  // struct call_context
+  // {
+  //   session_handle seshandle;
+  //   t_request_id request_id;
+  //   // bool internal;
+  // };
+  // size_t m_callid = 0;
+  // std::map <size_t, call_context>  m_calls;
+  // std::mutex                       m_calls_lock;
   // dealer_service *                 m_embed_router = nullptr;
 
   t_client_request_id  m_next_client_request_id;
@@ -244,21 +244,21 @@ private:
     this, but to do that,I need the Session class to allow an arbitraty object
     to be passed in, as the callback data.
    */
-  struct subscription
-  {
-    session_handle sh;
-    t_connection_id router_session_idxx;
-    std::string uri;
-    subscription_cb user_cb;
-    void * user_data;
-  };
-  std::map<t_client_request_id, subscription> m_pending_wamp_subscribe;
-  std::map<t_sid, std::map<size_t, subscription> > m_subscriptions;
-  t_client_request_id m_subscription_req_id = 1;
-  std::mutex m_subscriptions_lock;
+  // struct subscription
+  // {
+  //   session_handle sh;
+  //   t_connection_id router_session_idxx;
+  //   std::string uri;
+  //   subscription_cb user_cb;
+  //   void * user_data;
+  // };
+  // // std::map<t_client_request_id, subscription> m_pending_wamp_subscribe;
+  // std::map<t_sid, std::map<size_t, subscription> > m_subscriptions;
+  // t_client_request_id m_subscription_req_id = 1;
+  // std::mutex m_subscriptions_lock;
 
   friend class router_conn;
-  friend class dealer_service;
+  // friend class dealer_service;
 };
 
 
@@ -301,11 +301,38 @@ public:
   session_handle handle() { return m_internal_session_handle; }
 
 private:
+
   client_service * m_svc;
   router_session_connect_cb m_connection_cb;
   t_connection_id m_router_session_id;
 
   session_handle m_internal_session_handle;
+  Session* m_session = nullptr;
+  // struct user_procedure
+  // {
+  //   std::string uri;
+  //   rpc_cb      user_cb;
+  //   void*       user_data;
+  //   int         registration_id;
+
+  //   user_procedure(std::string __uri,
+  //                  rpc_cb      __user_cb,
+  //                  void*       __user_data)
+  //     : uri(__uri),
+  //       user_cb(__user_cb),
+  //       user_data(__user_data),
+  //       registration_id(0)
+  //   {
+  //   }
+
+  // };
+
+  // struct procedure_map
+  // {
+  //   std::map<std::string, std::shared_ptr<user_procedure> > by_uri;
+  //   std::map<int,         std::shared_ptr<user_procedure> > by_id;
+  // }  m_procedures;
+  // std::mutex                                m_procedures_lock;
 
   friend client_service;
 };

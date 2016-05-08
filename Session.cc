@@ -129,11 +129,13 @@ void Session::on_close()
     m_handle = nullptr;
   }
 
-  change_state(eClosed,eClosed);
+  // perform all other notification on the event thread
+  m_evl.push( [this]() {
+      this->change_state(eClosed,eClosed);
+    } );
 }
 
 //----------------------------------------------------------------------
-
 void Session::on_read(char* src, size_t len)
 {
   /* IO thread */
@@ -245,6 +247,8 @@ void Session::on_read_impl(char* src, size_t len)
 
 void Session::decode_and_process(char* ptr, size_t msglen)
 {
+  /* IO thread */
+
   bool must_close_session = false;
   std::string error_uri;
   std::string error_text;
@@ -254,7 +258,15 @@ void Session::decode_and_process(char* ptr, size_t msglen)
   {
     jalson::json_value jv;
     jalson::decode(jv, ptr, msglen);
-    this->process_message( jv );
+
+    // process on the EV thread
+    std::function<void()> fn = [this,jv]() mutable
+      {
+        // TODO: need to handle exceptions from process_message
+        this->process_message( jv );
+      };
+    m_evl.push(std::move(fn));
+
   }
   catch (const XXX::event_error& e)
   {
@@ -434,7 +446,29 @@ void Session::process_message(jalson::json_value&jv)
     {
       if (m_state != eOpen) this->close();
     }
+
+    // New style
+    switch (message_type)
+    {
+      case REGISTERED :
+        process_registered(ja);
+        return;
+
+      case INVOCATION :
+        process_invocation(ja);
+        return;
+
+      case SUBSCRIBED :
+        process_subscribed(ja);
+        return;
+
+      case EVENT :
+        process_event(ja);
+        return;
+
+    }
   }
+
 
 
   if (fail_session)
@@ -464,18 +498,18 @@ void Session::process_message(jalson::json_value&jv)
       }
       break;
     }
-    case REGISTERED :
-    {
-      int const request_id = jv.as_array()[1].as_uint();
-      {
-        // TODO: need to delete from the map
-        std::lock_guard<std::mutex> guard(m_pend_req_lock);
-        pendreq = m_pend_req[request_id];
-        m_pend_req[request_id] = 0;
-        pend2 = m_pend_req_2[request_id]; // TODO: and remove?
-      }
-      break;
-    }
+    // case REGISTERED :
+    // {
+    //   int const request_id = jv.as_array()[1].as_uint();
+    //   {
+    //     // TODO: need to delete from the map
+    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
+    //     pendreq = m_pend_req[request_id];
+    //     m_pend_req[request_id] = 0;
+    //     pend2 = m_pend_req_2[request_id]; // TODO: and remove?
+    //   }
+    //   break;
+    // }
     case ERROR :
     {
       int const request_id = jv.as_array()[2].as_uint();
@@ -503,27 +537,27 @@ void Session::process_message(jalson::json_value&jv)
       break;
     }
 
-    case SUBSCRIBED:
-    {
-      int const request_id = jv.as_array()[1].as_uint();
-      {
-        // TODO: need to delete from the map
-        std::lock_guard<std::mutex> guard(m_pend_req_lock);
-        pendreq = m_pend_req[request_id];
-        m_pend_req[request_id] = 0;
-        pend2 = m_pend_req_2[request_id];  // TODO: and remove?
-      }
+    // case SUBSCRIBED:
+    // {
+    //   int const request_id = jv.as_array()[1].as_uint();
+    //   {
+    //     // TODO: need to delete from the map
+    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
+    //     pendreq = m_pend_req[request_id];
+    //     m_pend_req[request_id] = 0;
+    //     pend2 = m_pend_req_2[request_id];  // TODO: and remove?
+    //   }
 
-      ev_inbound_subscribed* ev = new ev_inbound_subscribed();
-      ev->src = handle();
-      ev->realm = m_realm;
-      ev->user_conn_id = m_user_conn_id;
-      ev->ja = ja;
-      ev->internal_req_id  = pend2.internal_req_id;
-      m_evl.push( ev );
-      delete pendreq;
-      return;
-    }
+    //   ev_inbound_subscribed* ev = new ev_inbound_subscribed();
+    //   ev->src = handle();
+    //   ev->realm = m_realm;
+    //   ev->user_conn_id = m_user_conn_id;
+    //   ev->ja = ja;
+    //   ev->internal_req_id  = pend2.internal_req_id;
+    //   m_evl.push( ev );
+    //   delete pendreq;
+    //   return;
+    // }
 
   }
 
@@ -947,6 +981,273 @@ std::string  Session::realm() const
   // need this lock, because realm might be updated from IO thread during logon
   std::unique_lock<std::mutex> guard(m_realm_lock);
   return m_realm;
+}
+
+
+t_request_id Session::provide(std::string uri,
+                              const jalson::json_object& options,
+                              rpc_cb cb,
+                              void * data)
+{
+  jalson::json_array msg;
+  msg.push_back( REGISTER );
+  msg.push_back( 0 );
+  msg.push_back( options );
+  msg.push_back( uri );
+
+
+  procedure p;
+  p.uri = uri;
+  p.user_cb = cb;
+  p.user_data = data;
+
+  t_request_id request_id;
+  {
+    std::unique_lock<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    {
+      std::unique_lock<std::mutex> guard(m_pending_lock);
+      m_pending_register[request_id] = p;
+    }
+
+    send_msg( msg );
+  }
+
+  _INFO_("Sending REGISTER request for proc '" << uri << "', request_id " << request_id);
+  return request_id;
+
+}
+
+void Session::process_registered(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  // TODO: add more messsage checking here
+  t_request_id request_id  = msg[1].as_uint();
+  uint64_t registration_id = msg[2].as_uint();
+
+  std::unique_lock<std::mutex> guard(m_pending_lock);
+  auto iter = m_pending_register.find( request_id );
+
+  if (iter != m_pending_register.end())
+  {
+    m_procedures[registration_id] = iter->second;
+    m_pending_register.erase(iter);
+
+    _INFO_("procedure '"<< m_procedures[registration_id].uri <<"' registered"
+           << " with registration_id " << registration_id);
+  }
+
+}
+
+void Session::process_invocation(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  // TODO: move this off the IO thread
+
+  t_request_id request_id = msg[1].as_uint();
+  uint64_t registration_id = msg[2].as_uint();
+
+
+  // find the procedure
+  auto iter = m_procedures.find(registration_id);
+  if (iter != m_procedures.end())
+  {
+    wamp_args my_wamp_args;
+    jalson::json_object & details = msg[3].as_object();
+    if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
+    if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
+
+    std::string uri = iter->second.uri;
+
+    invoke_details invoke(request_id);
+    session_handle src = handle();
+
+    invoke.reply_fn = [this,request_id](t_request_id /*tid*/, wamp_args& args)
+      {
+        this->reply(request_id, args, false, "");
+      };
+
+    try
+    {
+      iter->second.user_cb(request_id,
+                           invoke,
+                           iter->second.uri,
+                           details,
+                           my_wamp_args,
+                           src,
+                           iter->second.user_data);
+    }
+    catch (XXX::invocation_exception& ex)
+    {
+      this->reply(request_id, ex.args(), true, ex.what());
+    }
+    catch (std::exception& ex)
+    {
+      wamp_args temp;
+      this->reply(request_id, temp, true, ex.what());
+    }
+    catch (...)
+    {
+      wamp_args temp;
+      this->reply(request_id, temp, true, WAMP_RUNTIME_ERROR);
+    }
+  }
+  else
+  {
+    _INFO_("TODO: reply with WAMP_ERROR_URI_NO_SUCH_REGISTRATION");
+  }
+}
+
+
+bool Session::reply(int request_id,
+                    wamp_args& the_args,
+                    bool is_error,
+                    std::string error_uri)
+{
+  jalson::json_array msg;
+
+  if (is_error)
+  {
+    msg.push_back(ERROR);
+    msg.push_back(INVOCATION);
+    msg.push_back(request_id);
+    msg.push_back(jalson::json_object());
+    msg.push_back(error_uri);
+  }
+  else
+  {
+    msg.push_back(YIELD);
+    msg.push_back(request_id);
+    msg.push_back(jalson::json_object());
+  }
+
+  if (!the_args.args_list.is_null()) msg.push_back(the_args.args_list);
+  if (!the_args.args_dict.is_null()) msg.push_back(the_args.args_dict);
+
+  send_msg(msg);
+  return true;
+}
+
+
+
+t_request_id Session::subscribe(const std::string& uri,
+                                const jalson::json_object& options,
+                                subscription_cb cb,
+                                void * user)
+{
+  jalson::json_array msg;
+  msg.push_back( SUBSCRIBE );
+  msg.push_back( 0 );
+  msg.push_back( options );
+  msg.push_back( uri );
+
+  subscription sub;
+  sub.uri = uri;
+  sub.user_cb = cb;
+  sub.user_data = user;
+
+  t_request_id request_id;
+  {
+    std::unique_lock<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    {
+      std::unique_lock<std::mutex> guard(m_pending_lock);
+      m_pending_subscribe[request_id] = std::move(sub);
+    }
+    send_msg( msg );
+  }
+
+  _INFO_("Sending SUBSCRIBE request for topic '" << uri << "', request_id " << request_id);
+  return request_id;
+}
+
+
+void Session::process_subscribed(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  // TODO: add more messsage checking here
+  t_request_id request_id  = msg[1].as_uint();
+  t_subscription_id subscription_id = msg[2].as_uint();
+
+  subscription temp;
+  bool found = false;
+  {
+    std::unique_lock<std::mutex> guard(m_pending_lock);
+    auto iter = m_pending_subscribe.find( request_id );
+
+    if (iter != m_pending_subscribe.end())
+    {
+      found = true;
+      temp = iter->second;
+
+      m_subscriptions[subscription_id] = std::move(iter->second);
+      m_pending_subscribe.erase(iter);
+    }
+  }
+
+
+  if (found)
+  {
+    _INFO_("Subscribed to topic '"<< temp.uri <<"'"
+           << " with  subscription_id " << subscription_id);
+
+    // user callback
+    if (temp.user_cb)
+      try
+      {
+        temp.user_cb(XXX::e_sub_start,
+                     temp.uri,
+                     jalson::json_object(),
+                     jalson::json_array(),
+                     jalson::json_object(),
+                     temp.user_data);
+      } catch(...){}
+
+  }
+}
+
+
+void Session::process_event(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  t_subscription_id subscription_id = msg[1].as_uint();
+  jalson::json_object & details = msg.at(3).as_object();
+  jalson::json_value * ptr_args_list = jalson::get_ptr(msg, 4); // optional
+  jalson::json_value * ptr_args_dict = jalson::get_ptr(msg, 5); // optional
+
+  const jalson::json_array  & args_list = ptr_args_list? ptr_args_list->as_array()  : jalson::json_array();
+  const jalson::json_object & args_dict = ptr_args_dict? ptr_args_dict->as_object() : jalson::json_object();
+
+
+
+  auto iter = m_subscriptions.find(subscription_id);
+  if (iter !=m_subscriptions.end())
+  {
+    try {
+      iter->second.user_cb(e_sub_update,
+                           iter->second.uri,
+                           details,
+                           args_list,
+                           args_dict,
+                           iter->second.user_data);
+    } catch (...){}
+
+  }
+  else
+  {
+    _WARN_("Topic event ignored because subscription_id "
+           << subscription_id << " not found");
+  }
 }
 
 } // namespace XXX

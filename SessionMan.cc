@@ -213,6 +213,19 @@ void SessionMan::send_to_session(const std::vector<session_handle>& handles,
 
 //----------------------------------------------------------------------
 
+Session* SessionMan::get_session(session_handle sh)
+{
+  auto sp = sh.lock();
+  if (!sp) return nullptr;
+
+  SID dest( *sp );
+  auto it = m_sessions.active.find( dest );
+  if (it != m_sessions.active.end())
+    return it->second;
+  else
+    return nullptr;
+}
+
 void SessionMan::send_request(session_handle handle_weak,
                               int request_type,
                               unsigned int internal_req_id,

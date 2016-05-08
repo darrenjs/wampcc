@@ -10,7 +10,7 @@
 #include "event_loop.h"
 #include "SessionMan.h"
 #include "Topic.h"
-#include "dealer_service.h"
+// #include "dealer_service.h"
 
 #include <iostream>
 
@@ -48,11 +48,11 @@ client_service::client_service(Logger * logptr,
   // TODO: make this a member
   client_event_handler local_handler;
 
-  local_handler.handle_inbound_SUBSCRIBED=
-    [this](ev_inbound_subscribed* ev) { handle_SUBSCRIBED(ev); };
+  // local_handler.handle_inbound_SUBSCRIBED=
+  //   [this](ev_inbound_subscribed* ev) { handle_SUBSCRIBED(ev); };
 
-  local_handler.handle_inbound_event=
-    [this](ev_inbound_message* ev) { handle_EVENT(ev); };
+  // local_handler.handle_inbound_event=
+  //   [this](ev_inbound_message* ev) { handle_EVENT(ev); };
 
   local_handler.handle_router_session_connect_fail=
     [this](ev_router_session_connect_fail* ev) { handle_event(ev); };
@@ -68,11 +68,11 @@ client_service::client_service(Logger * logptr,
   // m_evl.set_handler(CHALLENGE,
   //                   [this](class event* ev){ this->handle_CHALLENGE(ev); } );
 
-  m_evl->set_handler2(REGISTERED,
-                      [this](ev_inbound_message* ev){ this->handle_REGISTERED(ev); } );
+  // m_evl->set_handler2(REGISTERED,
+  //                     [this](ev_inbound_message* ev){ this->handle_REGISTERED(ev); } );
 
-  m_evl->set_handler2(INVOCATION,
-                      [this](ev_inbound_message* ev){ this->handle_INVOCATION(ev); } );
+  // m_evl->set_handler2(INVOCATION,
+  //                     [this](ev_inbound_message* ev){ this->handle_INVOCATION(ev); } );
 
   m_evl->set_handler2(RESULT,
                       [this](ev_inbound_message* ev){ this->handle_RESULT(ev); } );
@@ -237,6 +237,7 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
     {
       router_conn*  rs = iter->second;
       rs->m_internal_session_handle = sh;
+      rs->m_session = m_sesman->get_session(sh);
       if (rs->m_connection_cb)
         try {
           rs->m_connection_cb(rs, 0, true);
@@ -328,205 +329,205 @@ void client_service::start()
 
 //----------------------------------------------------------------------
 
-void client_service::handle_REGISTERED(ev_inbound_message* ev)
-{
-  Request_Register_CD_Data* cb_data = nullptr;
+// void client_service::handle_REGISTERED(ev_inbound_message* ev)
+// {
+//   Request_Register_CD_Data* cb_data = nullptr;
 
-  if (ev && ev->cb_data)
-  {
-    cb_data = dynamic_cast<Request_Register_CD_Data*>(ev->cb_data); // DJS, core here
-  }
+//   if (ev && ev->cb_data)
+//   {
+//     cb_data = dynamic_cast<Request_Register_CD_Data*>(ev->cb_data); // DJS, core here
+//   }
 
-  if (cb_data)
-  {
-    // TODO: check, what type does WAMP allow here?
-    int registration_id = ev->ja[2].as_int();
+//   if (cb_data)
+//   {
+//     // TODO: check, what type does WAMP allow here?
+//     int registration_id = ev->ja[2].as_int();
 
-    {
-      std::unique_lock<std::mutex> guard(m_procedures_lock);
-      procedure_map& pmap = m_procedures[ ev->user_conn_id ];
+//     {
+//       std::unique_lock<std::mutex> guard(m_procedures_lock);
+//       procedure_map& pmap = m_procedures[ ev->user_conn_id ];
 
-      auto iter = pmap.by_uri.find( cb_data->procedure );
-      if (iter == pmap.by_uri.end())
-      {
-        _WARN_("cannot register procedure");
-        // TODO: throw an error response
-        return;
-      }
-      iter->second->registration_id = registration_id;
-      pmap.by_id[registration_id] = iter->second;
-    }
+//       auto iter = pmap.by_uri.find( cb_data->procedure );
+//       if (iter == pmap.by_uri.end())
+//       {
+//         _WARN_("cannot register procedure");
+//         // TODO: throw an error response
+//         return;
+//       }
+//       iter->second->registration_id = registration_id;
+//       pmap.by_id[registration_id] = iter->second;
+//     }
 
-    _INFO_("procedure '" << cb_data->procedure << "' registered with id "
-           << registration_id );
-  }
-  else
-  {
-    _ERROR_( "ERROR: failed to process end-point registered message; no cb_data");
-  }
-}
-
-//----------------------------------------------------------------------
-
-void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowercase
-{
-  auto sp = ev->src.lock();
-  if (!sp)
-  {
-    // TODO: add handler for this situation
-    return;
-  }
-
-  // TODO: check, what type does WAMP allow here?
-
-  t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
-  int registration_id = ev->ja[2].as_int();
-  jalson::json_object & details = ev->ja[3].as_object();
-
-  wamp_args my_wamp_args;
-  if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ];
-
-  int router_session_id = ev->user_conn_id;
-
-  {
-    std::unique_lock<std::mutex> guard(m_procedures_lock);
-    procedure_map& pmap = m_procedures[router_session_id];
-    auto iter = pmap.by_id.find(registration_id);
-
-    if (iter == pmap.by_id.end())
-    {
-      throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
-                                       INVOCATION,
-                                       ev->ja[1].as_int());
-    }
-
-    auto & proc = iter->second;
-
-    size_t mycallid = 0;
-    bool had_exception = true;
-    {
-      // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
-      std::unique_lock<std::mutex> guard(m_calls_lock);
-      mycallid = ++m_callid;
-//      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
-      m_calls[ mycallid ] . seshandle = ev->src;
-      m_calls[ mycallid ] . request_id = reqid;
-//      m_calls[ mycallid ] . internal = false;
-    }
-    // TODO: during exception, could log more details.
-    try
-    {
-      invoke_details invoke(mycallid);
-      invoke.svc = this;
-      proc->user_cb(mycallid, invoke, proc->uri,  details, my_wamp_args, ev->src, proc->user_data);
-      had_exception = false;
-    }
-    catch (const std::exception& e)
-    {
-      const char* what = e.what();
-      _WARN_("exception thrown by procedure '"<< proc->uri << "': " << (what?e.what():""));
-    }
-    catch (...)
-    {
-      _WARN_("unknown exception thrown by user procedure '"<< proc->uri << "'");
-    }
-
-    if (had_exception)
-    {
-      std::unique_lock<std::mutex> guard(m_calls_lock);
-      m_calls.erase( mycallid );
-    }
-  }
-
-}
+//     _INFO_("procedure '" << cb_data->procedure << "' registered with id "
+//            << registration_id );
+//   }
+//   else
+//   {
+//     _ERROR_( "ERROR: failed to process end-point registered message; no cb_data");
+//   }
+// }
 
 //----------------------------------------------------------------------
 
-void client_service::post_reply(t_invoke_id callid,
-                                wamp_args& the_args)
-{
-  /* user thread or EV thread */
+// void client_service::handle_INVOCATION(ev_inbound_message* ev) // change to lowercase
+// {
+//   auto sp = ev->src.lock();
+//   if (!sp)
+//   {
+//     // TODO: add handler for this situation
+//     return;
+//   }
 
-  call_context context;
-  {
+//   // TODO: check, what type does WAMP allow here?
 
-    std::unique_lock<std::mutex> guard(m_calls_lock);
-    auto it = m_calls.find( callid );
+//   t_request_id reqid = ev->ja[1].as_int(); // TODO: make a helper for this, ie, json to t_requetst_id
+//   int registration_id = ev->ja[2].as_int();
+//   jalson::json_object & details = ev->ja[3].as_object();
 
-    if (it != m_calls.end())
-    {
-      context = it->second;
-      m_calls.erase( it );
-    }
-    else
-    {
-      _ERROR_("unknown callid");
-      return;
-    }
-  }
+//   wamp_args my_wamp_args;
+//   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ];
 
-  // if ( context.internal )
-  // {
-  //   outbound_response_event* ev = new outbound_response_event();
+//   int router_session_id = ev->user_conn_id;
 
-  //   ev->destination   = context.seshandle;;
-  //   ev->response_type = RESULT;
-  //   ev->request_type  = CALL;
-  //   ev->reqid         = context.requestid;
-  //   ev->args          = the_args;
+//   {
+//     std::unique_lock<std::mutex> guard(m_procedures_lock);
+//     procedure_map& pmap = m_procedures[router_session_id];
+//     auto iter = pmap.by_id.find(registration_id);
 
-  //   m_evl->push( ev );
-  // }
-  // else
-  // {
-    build_message_cb_v4 msgbuilder;
-    msgbuilder = [&context,&the_args](){
-      jalson::json_array msg;
-      msg.push_back(YIELD);
-      msg.push_back(context.request_id);
-      msg.push_back(jalson::json_object());
-      if (!the_args.args_list.is_null()) msg.push_back(the_args.args_list);
-      if (!the_args.args_list.is_null() && !the_args.args_dict.is_null()) msg.push_back(the_args.args_dict);
-      return msg;
-    };
-    m_sesman->send_to_session(context.seshandle, msgbuilder);
-  // }
-}
+//     if (iter == pmap.by_id.end())
+//     {
+//       throw event_error::request_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION,
+//                                        INVOCATION,
+//                                        ev->ja[1].as_int());
+//     }
+
+//     auto & proc = iter->second;
+
+//     size_t mycallid = 0;
+//     bool had_exception = true;
+//     {
+//       // TODO: need to ensure we cannt take the 0 value, and that our valid is avail
+//       std::unique_lock<std::mutex> guard(m_calls_lock);
+//       mycallid = ++m_callid;
+// //      m_calls[ mycallid ] . s = rkey.s;  --- looks like error?
+//       m_calls[ mycallid ] . seshandle = ev->src;
+//       m_calls[ mycallid ] . request_id = reqid;
+// //      m_calls[ mycallid ] . internal = false;
+//     }
+//     // TODO: during exception, could log more details.
+//     try
+//     {
+//       invoke_details invoke(mycallid);
+//       invoke.svc = this;
+//       proc->user_cb(mycallid, invoke, proc->uri,  details, my_wamp_args, ev->src, proc->user_data);
+//       had_exception = false;
+//     }
+//     catch (const std::exception& e)
+//     {
+//       const char* what = e.what();
+//       _WARN_("exception thrown by procedure '"<< proc->uri << "': " << (what?e.what():""));
+//     }
+//     catch (...)
+//     {
+//       _WARN_("unknown exception thrown by user procedure '"<< proc->uri << "'");
+//     }
+
+//     if (had_exception)
+//     {
+//       std::unique_lock<std::mutex> guard(m_calls_lock);
+//       m_calls.erase( mycallid );
+//     }
+//   }
+
+// }
 
 //----------------------------------------------------------------------
 
-void client_service::post_error(t_invoke_id callid,
-                                std::string& error_uri)
-{
-  /* user thread or EVL thread */
+// void client_service::post_reply(t_invoke_id callid,
+//                                 wamp_args& the_args)
+// {
+//   /* user thread or EV thread */
 
-  call_context context;
-  {
-    std::unique_lock<std::mutex> guard(m_calls_lock);
-    auto it = m_calls.find( callid );
-    if (it != m_calls.end())
-    {
-      context = it->second;
-      m_calls.erase( it );
-    }
-    else
-    {
-      _ERROR_("unknown callid");
-      return;
-    }
-  }
+//   call_context context;
+//   {
 
-  outbound_response_event* ev = new outbound_response_event();
+//     std::unique_lock<std::mutex> guard(m_calls_lock);
+//     auto it = m_calls.find( callid );
 
-  ev->destination   = context.seshandle;
-  ev->response_type = ERROR;
-  ev->request_type  = INVOCATION;
-  ev->reqid         = context.request_id;
-  ev->error_uri     = error_uri;
+//     if (it != m_calls.end())
+//     {
+//       context = it->second;
+//       m_calls.erase( it );
+//     }
+//     else
+//     {
+//       _ERROR_("unknown callid");
+//       return;
+//     }
+//   }
 
-  m_evl->push( ev );
+//   // if ( context.internal )
+//   // {
+//   //   outbound_response_event* ev = new outbound_response_event();
 
-}
+//   //   ev->destination   = context.seshandle;;
+//   //   ev->response_type = RESULT;
+//   //   ev->request_type  = CALL;
+//   //   ev->reqid         = context.requestid;
+//   //   ev->args          = the_args;
+
+//   //   m_evl->push( ev );
+//   // }
+//   // else
+//   // {
+//     build_message_cb_v4 msgbuilder;
+//     msgbuilder = [&context,&the_args](){
+//       jalson::json_array msg;
+//       msg.push_back(YIELD);
+//       msg.push_back(context.request_id);
+//       msg.push_back(jalson::json_object());
+//       if (!the_args.args_list.is_null()) msg.push_back(the_args.args_list);
+//       if (!the_args.args_list.is_null() && !the_args.args_dict.is_null()) msg.push_back(the_args.args_dict);
+//       return msg;
+//     };
+//     m_sesman->send_to_session(context.seshandle, msgbuilder);
+//   // }
+// }
+
+//----------------------------------------------------------------------
+
+// void client_service::post_error(t_invoke_id callid,
+//                                 std::string& error_uri)
+// {
+//   /* user thread or EVL thread */
+
+//   call_context context;
+//   {
+//     std::unique_lock<std::mutex> guard(m_calls_lock);
+//     auto it = m_calls.find( callid );
+//     if (it != m_calls.end())
+//     {
+//       context = it->second;
+//       m_calls.erase( it );
+//     }
+//     else
+//     {
+//       _ERROR_("unknown callid");
+//       return;
+//     }
+//   }
+
+//   outbound_response_event* ev = new outbound_response_event();
+
+//   ev->destination   = context.seshandle;
+//   ev->response_type = ERROR;
+//   ev->request_type  = INVOCATION;
+//   ev->reqid         = context.request_id;
+//   ev->error_uri     = error_uri;
+
+//   m_evl->push( ev );
+
+// }
 
 
 //----------------------------------------------------------------------
@@ -909,149 +910,149 @@ void client_service::handle_ERROR(ev_inbound_message* ev)
 
 //----------------------------------------------------------------------
 
-t_request_id client_service::subscribe_remote_topic(router_conn* rs,
-                                                    const std::string& uri,
-                                                    const jalson::json_object& options,
-                                                    subscription_cb cb,
-                                                    void * user)
-{
-  session_handle sh = rs->m_internal_session_handle;
-  if (m_sesman->session_is_open(sh ) == false)
-  {
-    return 0;  // TODO: how to convery this immedaite failyre back to caller?  Smae for RPC too
-  }
+// t_request_id client_service::subscribe_remote_topic(router_conn* rs,
+//                                                     const std::string& uri,
+//                                                     const jalson::json_object& options,
+//                                                     subscription_cb cb,
+//                                                     void * user)
+// {
+//   session_handle sh = rs->m_internal_session_handle;
+//   if (m_sesman->session_is_open(sh ) == false)
+//   {
+//     return 0;  // TODO: how to convery this immedaite failyre back to caller?  Smae for RPC too
+//   }
 
-  t_client_request_id int_req_id = 0;
-  // TODO: maybe later, upgrade this to use an internal client request ID?
-  {
-    std::unique_lock<std::mutex> guard(m_subscriptions_lock);
+//   t_client_request_id int_req_id = 0;
+//   // TODO: maybe later, upgrade this to use an internal client request ID?
+//   {
+//     std::unique_lock<std::mutex> guard(m_subscriptions_lock);
 
-    // TODO: what is C++11 idiom for direct insertion, using perfect forwarding?
-    subscription subs;
-    subs.sh        = sh;
-    subs.uri       = uri;
-    subs.user_cb   = cb;
-    subs.user_data = user;
-    subs.router_session_idxx = rs->router_session_id(); // TODO: what is this used for?
+//     // TODO: what is C++11 idiom for direct insertion, using perfect forwarding?
+//     subscription subs;
+//     subs.sh        = sh;
+//     subs.uri       = uri;
+//     subs.user_cb   = cb;
+//     subs.user_data = user;
+//     subs.router_session_idxx = rs->router_session_id(); // TODO: what is this used for?
 
-    int_req_id = m_subscription_req_id++;
-    m_pending_wamp_subscribe[int_req_id] = subs;
-  }
+//     int_req_id = m_subscription_req_id++;
+//     m_pending_wamp_subscribe[int_req_id] = subs;
+//   }
 
-  // ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri, options);
-  // ev->internal_req_id = int_req_id;
-  // ev->dest = sh;
-  // m_evl->push( ev );
+//   // ev_outbound_subscribe* ev = new ev_outbound_subscribe(uri, options);
+//   // ev->internal_req_id = int_req_id;
+//   // ev->dest = sh;
+//   // m_evl->push( ev );
 
-  t_request_id subscribe_request_id = 0;
-  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
-    {
-      subscribe_request_id = request_id;
-      jalson::json_array msg;
-      msg.push_back( SUBSCRIBE );
-      msg.push_back( request_id );
-      msg.push_back( options );
-      msg.push_back( uri );
+//   t_request_id subscribe_request_id = 0;
+//   build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
+//     {
+//       subscribe_request_id = request_id;
+//       jalson::json_array msg;
+//       msg.push_back( SUBSCRIBE );
+//       msg.push_back( request_id );
+//       msg.push_back( options );
+//       msg.push_back( uri );
 
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                nullptr );
-    };
+//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                 nullptr );
+//     };
 
-  m_sesman->send_request(sh, SUBSCRIBE, int_req_id, msg_builder2);
+//   m_sesman->send_request(sh, SUBSCRIBE, int_req_id, msg_builder2);
 
-  return subscribe_request_id;
-}
+//   return subscribe_request_id;
+// }
 
-void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
-{
-  /* EV thread */
+// void client_service::handle_SUBSCRIBED(ev_inbound_subscribed* ev)
+// {
+//   /* EV thread */
 
-  // get session id
-  auto sp = ev->src.lock();
-  if (!sp) return;
-  t_sid sid = *sp;
+//   // get session id
+//   auto sp = ev->src.lock();
+//   if (!sp) return;
+//   t_sid sid = *sp;
 
-  // get subscription id
-  size_t subscrid =  ev->ja[2].as_uint();
-
-
-  subscription temp;
-  std::cout << "got subscribed event, " << ev->internal_req_id << ", subscription id " <<subscrid <<  "\n";
-
-  {
-    std::unique_lock<std::mutex> guard(m_subscriptions_lock);
-
-    auto pendit = m_pending_wamp_subscribe.find(ev->internal_req_id);
-    if (pendit == m_pending_wamp_subscribe.end())
-    {
-      _WARN_("Ingoring SUBSCRIBED event; cannot find original request");
-      return;
-    }
-
-    temp = pendit->second;
-    m_pending_wamp_subscribe.erase(pendit);
-
-    auto & subs_for_session = m_subscriptions[ sid ];
-    subs_for_session[ subscrid ] = temp;
-  }
-
-  // user callback
-  try {
-    temp.user_cb(XXX::e_sub_start,
-                 temp.uri,
-                 jalson::json_object(),
-                 jalson::json_array(),
-                 jalson::json_object(),
-                 temp.user_data);
-  } catch (...) {}
-}
+//   // get subscription id
+//   size_t subscrid =  ev->ja[2].as_uint();
 
 
-void client_service::handle_EVENT(ev_inbound_message* ev)
-{
-  /* EV thread */
+//   subscription temp;
+//   std::cout << "got subscribed event, " << ev->internal_req_id << ", subscription id " <<subscrid <<  "\n";
 
-  size_t subscrid  = ev->ja.at(1).as_uint();
-//  size_t publishid = ev->ja.at(2).as_uint();
-  jalson::json_object & details = ev->ja.at(3).as_object();
-  jalson::json_value * ptr_args_list = jalson::get_ptr(ev->ja, 4); // optional
-  jalson::json_value * ptr_args_dict = jalson::get_ptr(ev->ja, 5); // optional
+//   {
+//     std::unique_lock<std::mutex> guard(m_subscriptions_lock);
 
-  const jalson::json_array  & args_list = ptr_args_list? ptr_args_list->as_array()  : jalson::json_array();
-  const jalson::json_object & args_dict = ptr_args_dict? ptr_args_dict->as_object() : jalson::json_object();
+//     auto pendit = m_pending_wamp_subscribe.find(ev->internal_req_id);
+//     if (pendit == m_pending_wamp_subscribe.end())
+//     {
+//       _WARN_("Ingoring SUBSCRIBED event; cannot find original request");
+//       return;
+//     }
 
-  session_handle src = ev->src;
-  if (auto sp = src.lock())
-  {
-    t_sid sid = *sp;
+//     temp = pendit->second;
+//     m_pending_wamp_subscribe.erase(pendit);
 
-    auto iter = m_subscriptions.find( sid );
-    if (iter == m_subscriptions.end())
-    {
-      _WARN_("ignoring topic event, no subscriptions for session");
-      return;
-    }
+//     auto & subs_for_session = m_subscriptions[ sid ];
+//     subs_for_session[ subscrid ] = temp;
+//   }
 
-    auto iter2 = iter->second.find( subscrid );
-    if (iter2 == iter->second.end())
-    {
-      _WARN_("ignoring topic event, subscription not found, subscription id " << subscrid);
-      return;
-    }
+//   // user callback
+//   try {
+//     temp.user_cb(XXX::e_sub_start,
+//                  temp.uri,
+//                  jalson::json_object(),
+//                  jalson::json_array(),
+//                  jalson::json_object(),
+//                  temp.user_data);
+//   } catch (...) {}
+// }
 
-    subscription& my_subscription = iter2->second;
 
-    try {
-      my_subscription.user_cb(e_sub_update,
-                              my_subscription.uri,
-                              details,
-                              args_list,
-                              args_dict,
-                              my_subscription.user_data);
-    } catch (...){}
+// void client_service::handle_EVENT(ev_inbound_message* ev)
+// {
+//   /* EV thread */
 
-  }
-}
+//   size_t subscrid  = ev->ja.at(1).as_uint();
+// //  size_t publishid = ev->ja.at(2).as_uint();
+//   jalson::json_object & details = ev->ja.at(3).as_object();
+//   jalson::json_value * ptr_args_list = jalson::get_ptr(ev->ja, 4); // optional
+//   jalson::json_value * ptr_args_dict = jalson::get_ptr(ev->ja, 5); // optional
+
+//   const jalson::json_array  & args_list = ptr_args_list? ptr_args_list->as_array()  : jalson::json_array();
+//   const jalson::json_object & args_dict = ptr_args_dict? ptr_args_dict->as_object() : jalson::json_object();
+
+//   session_handle src = ev->src;
+//   if (auto sp = src.lock())
+//   {
+//     t_sid sid = *sp;
+
+//     auto iter = m_subscriptions.find( sid );
+//     if (iter == m_subscriptions.end())
+//     {
+//       _WARN_("ignoring topic event, no subscriptions for session");
+//       return;
+//     }
+
+//     auto iter2 = iter->second.find( subscrid );
+//     if (iter2 == iter->second.end())
+//     {
+//       _WARN_("ignoring topic event, subscription not found, subscription id " << subscrid);
+//       return;
+//     }
+
+//     subscription& my_subscription = iter2->second;
+
+//     try {
+//       my_subscription.user_cb(e_sub_update,
+//                               my_subscription.uri,
+//                               details,
+//                               args_list,
+//                               args_dict,
+//                               my_subscription.user_data);
+//     } catch (...){}
+
+//   }
+// }
 
 
 bool client_service::is_open(const router_conn* rs) const
@@ -1089,49 +1090,49 @@ t_connection_id client_service::register_session(router_conn& rs)
   return id;
 }
 
-t_request_id client_service::register_procedure_impl(router_conn* rconn,
-                                                     const std::string& uri,
-                                                     const jalson::json_object& options,
-                                                     rpc_cb user_cb,
-                                                     void * user_data)
-{
-  // TODO: need to check for duplicates
+// t_request_id client_service::register_procedure_impl(router_conn* rconn,
+//                                                      const std::string& uri,
+//                                                      const jalson::json_object& options,
+//                                                      rpc_cb user_cb,
+//                                                      void * user_data)
+// {
+//   // TODO: need to check for duplicates
 
-  {
-    // TODO: if possible, remove this, and only do the locking on the inbound
-    // thread, to avoid deadlock situbation if user calls register during current an invocation callback
-    std::unique_lock<std::mutex> guard(m_procedures_lock);
+//   {
+//     // TODO: if possible, remove this, and only do the locking on the inbound
+//     // thread, to avoid deadlock situbation if user calls register during current an invocation callback
+//     std::unique_lock<std::mutex> guard(m_procedures_lock);
 
-    auto sp = std::make_shared<user_procedure>(uri, user_cb, user_data);
-    procedure_map& pmap = m_procedures[ rconn->m_router_session_id ];
-    pmap.by_uri[ uri ] = sp;
-  }
+//     auto sp = std::make_shared<user_procedure>(uri, user_cb, user_data);
+//     procedure_map& pmap = m_procedures[ rconn->m_router_session_id ];
+//     pmap.by_uri[ uri ] = sp;
+//   }
 
-  t_request_id register_request_id = 0;
+//   t_request_id register_request_id = 0;
 
-  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
-    {
-      register_request_id = request_id;
+//   build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
+//     {
+//       register_request_id = request_id;
 
-      jalson::json_array msg;
-      msg.push_back( REGISTER );
-      msg.push_back( request_id );
-      msg.push_back( options );
-      msg.push_back( uri );
+//       jalson::json_array msg;
+//       msg.push_back( REGISTER );
+//       msg.push_back( request_id );
+//       msg.push_back( options );
+//       msg.push_back( uri );
 
-      Request_Register_CD_Data * cb_data = new Request_Register_CD_Data(); // TODO: memleak?
-      cb_data->procedure = uri;
+//       Request_Register_CD_Data * cb_data = new Request_Register_CD_Data(); // TODO: memleak?
+//       cb_data->procedure = uri;
 
-      // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                cb_data );
-    };
+//       // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
+//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                 cb_data );
+//     };
 
-  // TODO: instead of 0, need to have a valie intenral request id
-  m_sesman->send_request(rconn->handle(), REGISTER, 0, msg_builder2);
+//   // TODO: instead of 0, need to have a valie intenral request id
+//   m_sesman->send_request(rconn->handle(), REGISTER, 0, msg_builder2);
 
-  return register_request_id;
-}
+//   return register_request_id;
+// }
 
 router_conn::router_conn(client_service * __svc,
                          router_session_connect_cb __cb,
@@ -1163,7 +1164,10 @@ t_request_id router_conn::subscribe(const std::string& uri,
                                     subscription_cb user_cb,
                                     void * user_data)
 {
-  return m_svc->subscribe_remote_topic(this, uri, options, user_cb, user_data);
+  if (m_session)
+    return m_session->subscribe(uri, options, user_cb, user_data);
+  else
+    return 0;
 }
 
 
@@ -1174,13 +1178,50 @@ t_request_id router_conn::publish(const std::string& uri,
   return m_svc->publish(this, uri, opts, wargs);
 }
 
-t_request_id router_conn::provide(const std::string& uri,
-                                  const jalson::json_object& options,
-                                  rpc_cb cb,
-                                  void * data)
-{
-  return m_svc->register_procedure_impl(this, uri, options, cb, data);
-}
+// t_request_id router_conn::provide(const std::string& uri,
+//                                   const jalson::json_object& options,
+//                                   rpc_cb user_cb,
+//                                   void * user_data)
+// {
+
+//   // TODO: need to check for duplicates
+
+//   {
+//     // TODO: if possible, remove this, and only do the locking on the inbound
+//     // thread, to avoid deadlock situbation if user calls register during current an invocation callback
+//     std::unique_lock<std::mutex> guard(m_procedures_lock);
+
+//     auto sp = std::make_shared<user_procedure>(uri, user_cb, user_data);
+//     m_procedures.by_uri[ uri ] = sp;
+//   }
+
+//   t_request_id register_request_id = 0;
+
+//  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
+//     {
+//       register_request_id = request_id;
+
+//       jalson::json_array msg;
+//       msg.push_back( REGISTER );
+//       msg.push_back( request_id );
+//       msg.push_back( options );
+//       msg.push_back( uri );
+
+//       Request_Register_CD_Data * cb_data = new Request_Register_CD_Data(); // TODO: memleak?
+//       cb_data->procedure = uri;
+
+//       // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
+//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                 cb_data );
+//     };
+
+//   // TODO: instead of 0, need to have a valie intenral request id
+//   m_svc->get_session_man()->send_request(handle(), REGISTER, 0, msg_builder2);
+
+//   return register_request_id;
+
+// //  return m_svc->register_procedure_impl(this, uri, options, cb, data);
+// }
 
 // void client_service::publish_all(//bool include_internal,
 //                                  const std::string& uri,
@@ -1265,8 +1306,6 @@ t_request_id client_service::publish(router_conn* rs,
   m_sesman->send_request(sh, PUBLISH, int_req_id, msg_builder2);
 
   return publish_request_id;
-
-
 }
 
   Logger * client_service::get_logger() { return __logptr; }
@@ -1274,6 +1313,17 @@ t_request_id client_service::publish(router_conn* rs,
   event_loop* client_service::get_event_loop() { return m_evl.get(); }
   SessionMan* client_service::get_session_man() { return m_sesman.get(); }
 
+
+t_request_id router_conn::provide(const std::string& uri,
+                                  const jalson::json_object& options,
+                                  rpc_cb user_cb,
+                                  void * user_data)
+{
+  if (m_session)
+    return m_session->provide(uri, options, user_cb, user_data);
+  else
+    return 0;
+}
 
 
 } // namespace XXX

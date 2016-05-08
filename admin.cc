@@ -111,7 +111,7 @@ struct callback_t
   const char* request;
 };
 void procedure_cb(XXX::t_invoke_id invokeid,
-                  XXX::invoke_details&,
+                  XXX::invoke_details& invocation,
                   const std::string& procedure,
                   jalson::json_object& /* options */,
                   XXX::wamp_args& the_args,
@@ -132,8 +132,9 @@ void procedure_cb(XXX::t_invoke_id invokeid,
   jalson::json_array & arr = my_args.args_list.as_array();
   arr.push_back("hello");
   arr.push_back("back");
-  cbdata->svc->post_reply(invokeid, my_args);
 
+  invocation.reply_fn(invokeid,
+                      my_args);
 
 
 /*

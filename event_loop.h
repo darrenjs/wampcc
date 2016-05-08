@@ -32,7 +32,7 @@ struct server_event_handler
 
 struct client_event_handler
 {
-  std::function<void(ev_inbound_subscribed*)> handle_inbound_SUBSCRIBED;
+  // std::function<void(ev_inbound_subscribed*)> handle_inbound_SUBSCRIBED;
   std::function<void(ev_inbound_message*)> handle_inbound_event;
   std::function<void(ev_router_session_connect_fail*)> handle_router_session_connect_fail;
 };
@@ -112,6 +112,7 @@ public:
 
     void push(event* e);
     void push(std::shared_ptr<event> sp);
+    void push(std::function<void()> fn);
 
     void request_stop() { m_continue=false; }
 

@@ -286,7 +286,7 @@ void dealer_service::invoke_procedure(rpc_details& rpc,
   _INFO_("got internal RPC call request");
 
   size_t mycallid = 0;
-  bool had_exception = true;
+//  bool had_exception = true;
 
   {
     std::unique_lock<std::mutex> guard(m_calls_lock);

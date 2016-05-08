@@ -63,7 +63,7 @@ public:
   void handle_housekeeping_event( void );
 
   bool session_is_open(session_handle sh) const;
-
+  Session* get_session(session_handle sh);
 private:
 
   void send_to_session_impl(session_handle,
