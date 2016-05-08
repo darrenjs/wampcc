@@ -74,11 +74,11 @@ client_service::client_service(Logger * logptr,
   // m_evl->set_handler2(INVOCATION,
   //                     [this](ev_inbound_message* ev){ this->handle_INVOCATION(ev); } );
 
-  m_evl->set_handler2(RESULT,
-                      [this](ev_inbound_message* ev){ this->handle_RESULT(ev); } );
+  // m_evl->set_handler2(RESULT,
+  //                     [this](ev_inbound_message* ev){ this->handle_RESULT(ev); } );
 
-  m_evl->set_handler2(ERROR,
-                      [this](ev_inbound_message* ev){ this->handle_ERROR(ev); } );
+  // m_evl->set_handler2(ERROR,
+  //                     [this](ev_inbound_message* ev){ this->handle_ERROR(ev); } );
 
 
   /* TODO: remove legacy interaction between IO thread and user space */
@@ -597,64 +597,64 @@ void client_service::add_topic(topic* topic)
  * client (ie, TCP based).  The callback is the entry point into the user code
  * when a YIELD or ERROR is received.
  */
-t_request_id client_service::call_rpc(router_conn* rs,
-                                      std::string proc_uri,
-                                      const jalson::json_object& options,
-                                      wamp_args args,
-                                      wamp_call_result_cb cb,
-                                      void* cb_user_data)
-{
-  /* USER thread */
+// t_request_id client_service::call_rpc(router_conn* rs,
+//                                       std::string proc_uri,
+//                                       const jalson::json_object& options,
+//                                       wamp_args args,
+//                                       wamp_call_result_cb cb,
+//                                       void* cb_user_data)
+// {
+//   /* USER thread */
 
-  session_handle sh = rs->m_internal_session_handle;
-  if (m_sesman->session_is_open(sh ) == false)
-  {
-    return 0;
-  }
-  // TODO: review this; the requst ID should be generateed on a peer session basis?
+//   session_handle sh = rs->m_internal_session_handle;
+//   if (m_sesman->session_is_open(sh ) == false)
+//   {
+//     return 0;
+//   }
+//   // TODO: review this; the requst ID should be generateed on a peer session basis?
 
-  // TODO: this ID needs to be atomic, because there could be multiple USER threads coming in here.
-  t_client_request_id int_req_id = m_next_client_request_id++;
+//   // TODO: this ID needs to be atomic, because there could be multiple USER threads coming in here.
+//   t_client_request_id int_req_id = m_next_client_request_id++;
 
-  {
-    std::lock_guard<std::mutex> guard( m_pending_wamp_call_lock );
-    auto & pending = m_pending_wamp_call[int_req_id];
-    pending.user_cb = cb;
-    pending.user_data = cb_user_data;
-    pending.rpc= proc_uri;
-  }
+//   {
+//     std::lock_guard<std::mutex> guard( m_pending_wamp_call_lock );
+//     auto & pending = m_pending_wamp_call[int_req_id];
+//     pending.user_cb = cb;
+//     pending.user_data = cb_user_data;
+//     pending.rpc= proc_uri;
+//   }
 
-//   outbound_call_event * ev = new outbound_call_event();
+// //   outbound_call_event * ev = new outbound_call_event();
 
-//   ev->dest = sh;
-// //  ev->msg_type = CALL;
-//   ev->rpc_name= proc_uri;
-//   ev->args = args; // memleak?
-//   ev->options = options;
-//   ev->internal_req_id=int_req_id;
+// //   ev->dest = sh;
+// // //  ev->msg_type = CALL;
+// //   ev->rpc_name= proc_uri;
+// //   ev->args = args; // memleak?
+// //   ev->options = options;
+// //   ev->internal_req_id=int_req_id;
 
-//   m_evl->push( ev );
-  t_request_id call_request_id = 0;
+// //   m_evl->push( ev );
+//   t_request_id call_request_id = 0;
 
-  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
-    {
-      call_request_id = request_id;
-      jalson::json_array msg;
-      msg.push_back( CALL );
-      msg.push_back( request_id );
-      msg.push_back( options );
-      msg.push_back( proc_uri );
-      if (!args.args_list.is_null()) msg.push_back( args.args_list );
-      if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+//   build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
+//     {
+//       call_request_id = request_id;
+//       jalson::json_array msg;
+//       msg.push_back( CALL );
+//       msg.push_back( request_id );
+//       msg.push_back( options );
+//       msg.push_back( proc_uri );
+//       if (!args.args_list.is_null()) msg.push_back( args.args_list );
+//       if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
 
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                nullptr );
-    };
+//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                 nullptr );
+//     };
 
-  m_sesman->send_request(sh, CALL, int_req_id, msg_builder2);
+//   m_sesman->send_request(sh, CALL, int_req_id, msg_builder2);
 
-  return call_request_id;
-}
+//   return call_request_id;
+// }
 
 
 int client_service::connect_session(router_conn& rs,
@@ -757,77 +757,77 @@ int client_service::connect_session(router_conn& rs,
 
 
 
-void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercase
-{
-  /* EV thread */
+// void client_service::handle_RESULT(ev_inbound_message* ev) // change to lowercase
+// {
+//   /* EV thread */
 
-  int reqid=ev->ja[1].as_int();
-  _INFO_("Got RESULT for reqid " << reqid << "," << ev->internal_req_id);
+//   int reqid=ev->ja[1].as_int();
+//   _INFO_("Got RESULT for reqid " << reqid << "," << ev->internal_req_id);
 
-  pending_wamp_call pendingreq;
-  {
-    std::lock_guard<std::mutex> guard( m_pending_wamp_call_lock );
-    pendingreq = m_pending_wamp_call[ev->internal_req_id]; // TODO: need to erase after this
-  }
+//   pending_wamp_call pendingreq;
+//   {
+//     std::lock_guard<std::mutex> guard( m_pending_wamp_call_lock );
+//     pendingreq = m_pending_wamp_call[ev->internal_req_id]; // TODO: need to erase after this
+//   }
 
-  if ( pendingreq.user_cb )
-  {
-    wamp_call_result r;
-    r.reqid = ev->internal_req_id;
-    r.procedure = pendingreq.rpc;
-    r.user = pendingreq.user_data;
-    // TODO: need parse error checking here
-    r.args.args_list  = ev->ja[3];
-    r.details = ev->ja[2].as_object();
+//   if ( pendingreq.user_cb )
+//   {
+//     wamp_call_result r;
+//     r.reqid = ev->internal_req_id;
+//     r.procedure = pendingreq.rpc;
+//     r.user = pendingreq.user_data;
+//     // TODO: need parse error checking here
+//     r.args.args_list  = ev->ja[3];
+//     r.details = ev->ja[2].as_object();
 
-    try {
+//     try {
 
-      pendingreq.user_cb(std::move(r));
-    }
-    catch(...){}
-  }
-  else
-  {
-    // TODO:  improve this error
-    _ERROR_("cannot find pending request, ");
-  }
-}
+//       pendingreq.user_cb(std::move(r));
+//     }
+//     catch(...){}
+//   }
+//   else
+//   {
+//     // TODO:  improve this error
+//     _ERROR_("cannot find pending request, ");
+//   }
+// }
 
-void client_service::handle_ERROR(ev_inbound_message* ev)
-{
-  int request_msg_type = jalson::get_ref(ev->ja, 1).as_int();
+// void client_service::handle_ERROR(ev_inbound_message* ev)
+// {
+//   int request_msg_type = jalson::get_ref(ev->ja, 1).as_int();
 
-  switch (request_msg_type)
-  {
-    case CALL :
-    {
+//   switch (request_msg_type)
+//   {
+//     case CALL :
+//     {
 
-      auto & call_req = m_pending_wamp_call[ev->internal_req_id];
-      if (call_req.user_cb)
-      {
-        wamp_call_result r;
-        r.was_error = true;
-        r.error_uri = ev->ja[4].as_string();
-        r.reqid = ev->internal_req_id;
-        r.procedure = call_req.rpc;
-        r.user = call_req.user_data;
-        r.details = ev->ja[3].as_object();
-        // TODO: need parse error checking here
-        r.args.args_list  = ev->ja[5];
+//       auto & call_req = m_pending_wamp_call[ev->internal_req_id];
+//       if (call_req.user_cb)
+//       {
+//         wamp_call_result r;
+//         r.was_error = true;
+//         r.error_uri = ev->ja[4].as_string();
+//         r.reqid = ev->internal_req_id;
+//         r.procedure = call_req.rpc;
+//         r.user = call_req.user_data;
+//         r.details = ev->ja[3].as_object();
+//         // TODO: need parse error checking here
+//         r.args.args_list  = ev->ja[5];
 
-        try {
-          call_req.user_cb(std::move(r));
-        }
-        catch(...){}
-        return;
-      }
-    }
-    default:
-    {
-      _WARN_("ignoring unexpection ERROR, request_msg_type=" << request_msg_type);
-      return;
-    }
-  }
+//         try {
+//           call_req.user_cb(std::move(r));
+//         }
+//         catch(...){}
+//         return;
+//       }
+//     }
+//     default:
+//     {
+//       _WARN_("ignoring unexpection ERROR, request_msg_type=" << request_msg_type);
+//       return;
+//     }
+//   }
 //   // TODO: need to parse the INVOCATION message here, eg, check it is valid
 //   RegistrationKey rkey;
 //   rkey.router_session_id = ev->user_conn_id;
@@ -906,7 +906,7 @@ void client_service::handle_ERROR(ev_inbound_message* ev)
 //   }
 
 //   return;
-}
+// }
 
 //----------------------------------------------------------------------
 
@@ -1156,7 +1156,10 @@ t_request_id router_conn::call(std::string uri,
                                wamp_call_result_cb user_cb,
                                void* user_data)
 {
-  return m_svc->call_rpc(this, uri, options, args, user_cb, user_data);
+  if (m_session)
+    return m_session->call(uri, options, args, user_cb, user_data);
+  else
+    return 0;
 }
 
 t_request_id router_conn::subscribe(const std::string& uri,

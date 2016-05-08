@@ -466,6 +466,14 @@ void Session::process_message(jalson::json_value&jv)
         process_event(ja);
         return;
 
+      case RESULT :
+        process_result(ja);
+        return;
+
+      case ERROR :
+        process_error(ja);
+        return;
+
     }
   }
 
@@ -524,18 +532,18 @@ void Session::process_message(jalson::json_value&jv)
               << ", pendreq:" << pendreq );
       break;
     }
-    case RESULT :
-    {
-      int const request_id = jv.as_array()[1].as_uint();
-      {
-        // TODO: need to delete from the map
-        std::lock_guard<std::mutex> guard(m_pend_req_lock);
-        pendreq = m_pend_req[request_id];
-        m_pend_req[request_id] = 0;
-        pend2 = m_pend_req_2[request_id]; // TODO: and remove?
-      }
-      break;
-    }
+    // case RESULT :
+    // {
+    //   int const request_id = jv.as_array()[1].as_uint();
+    //   {
+    //     // TODO: need to delete from the map
+    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
+    //     pendreq = m_pend_req[request_id];
+    //     m_pend_req[request_id] = 0;
+    //     pend2 = m_pend_req_2[request_id]; // TODO: and remove?
+    //   }
+    //   break;
+    // }
 
     // case SUBSCRIBED:
     // {
@@ -1249,5 +1257,163 @@ void Session::process_event(jalson::json_array & msg)
            << subscription_id << " not found");
   }
 }
+
+
+t_request_id Session::call(std::string uri,
+                           const jalson::json_object& options,
+                           wamp_args args,
+                           wamp_call_result_cb user_cb,
+                           void* user_data)
+{
+  /* USER thread */
+
+  jalson::json_array msg;
+  msg.push_back( CALL );
+  msg.push_back( 0 );
+  msg.push_back( options );
+  msg.push_back( uri );
+  if (!args.args_list.is_null()) msg.push_back( args.args_list );
+  if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+
+  wamp_call mycall;
+  mycall.user_cb = user_cb;
+  mycall.user_data = user_data;
+  mycall.rpc= uri;
+
+  t_request_id request_id;
+  {
+    std::unique_lock<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    {
+      std::unique_lock<std::mutex> guard(m_pending_lock);
+      m_pending_call[request_id] = std::move(mycall);
+    }
+
+    send_msg( msg );
+  }
+
+
+  _INFO_("Sending CALL request for  '" << uri << "', request_id " << request_id);
+  return request_id;
+
+}
+
+
+void Session::process_result(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  // TODO: add more messsage checking here
+  t_request_id request_id  = msg[1].as_uint();
+  jalson::json_object & details = msg[2].as_object();
+
+
+  wamp_call orig_call;
+  bool found = false;
+
+  {
+    std::unique_lock<std::mutex> guard(m_pending_lock);
+    auto iter = m_pending_call.find( request_id );
+    if (iter != m_pending_call.end())
+    {
+      found = true;
+      orig_call = std::move(iter->second);
+    }
+    m_pending_call.erase(iter);
+  }
+
+  if (found)
+  {
+    if (orig_call.user_cb)
+    {
+      wamp_call_result r;
+      r.was_error = false;
+      r.procedure = orig_call.rpc;
+      r.user = orig_call.user_data;
+      r.args.args_list  = msg[3];
+      r.details = details;
+
+      try {
+        orig_call.user_cb(std::move(r));
+      }
+      catch(...){}
+    }
+  }
+  else
+  {
+    _WARN_("TODO: throw exception here");
+  }
+
+}
+
+
+void Session::process_error(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  // TODO: add more messsage checking here
+  int request_type = msg[1].as_int();
+  t_request_id request_id = msg[2].as_uint();
+  jalson::json_object & details = msg[3].as_object();
+  std::string& error_uri = msg[4].as_string();
+
+
+  switch (request_type)
+  {
+    case CALL :
+    {
+      wamp_call orig_call;
+      bool found = false;
+
+      {
+        std::unique_lock<std::mutex> guard(m_pending_lock);
+        auto iter = m_pending_call.find( request_id );
+        if (iter != m_pending_call.end())
+        {
+          found = true;
+          orig_call = std::move(iter->second);
+        }
+        m_pending_call.erase(iter);
+      }
+
+      if (found)
+      {
+        if (orig_call.user_cb)
+        {
+          wamp_call_result r;
+          r.was_error = true;
+          r.error_uri = error_uri;
+          r.procedure = orig_call.rpc;
+          r.user = orig_call.user_data;
+          // TODO: improve args handling
+          r.args.args_list  = msg[5];
+          r.details = details;
+
+          try {
+            orig_call.user_cb(std::move(r));
+          }
+          catch(...){}
+        }
+      }
+      else
+      {
+        _WARN_("TODO: handle protocol error");
+      }
+
+      break;
+    }
+
+    default:
+    {
+      _WARN_("TODO: throw error here");
+    }
+  }
+
+
+}
+
 
 } // namespace XXX

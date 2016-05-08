@@ -112,6 +112,12 @@ namespace XXX {
                            subscription_cb cb,
                            void * user);
 
+    t_request_id call(std::string uri,
+                      const jalson::json_object& options,
+                      wamp_args args,
+                      wamp_call_result_cb user_cb,
+                      void* user_data);
+
   private:
 
     Session(const Session&) = delete;
@@ -193,6 +199,8 @@ namespace XXX {
     void process_invocation(jalson::json_array &);
     void process_subscribed(jalson::json_array &);
     void process_event(jalson::json_array &);
+    void process_result(jalson::json_array &);
+    void process_error(jalson::json_array &);
 
     bool reply(int callid,
                wamp_args& the_args,
@@ -225,10 +233,19 @@ namespace XXX {
       void * user_data;
     };
 
+    struct wamp_call
+    {
+      std::string rpc;
+      wamp_call_result_cb user_cb;
+      void* user_data;
+      wamp_call() : user_data( nullptr ) { }
+    };
+
     mutable std::mutex m_pending_lock;
 
     std::map<t_request_id, subscription> m_pending_subscribe;
     std::map<t_request_id, procedure>    m_pending_register;
+    std::map<t_request_id, wamp_call>    m_pending_call;
 
     // procedures -- not currently locked, however, need to add locking once
     // unprovide() is added

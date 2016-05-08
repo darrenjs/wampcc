@@ -103,13 +103,13 @@ private:
 
   bool is_open(const router_conn*) const;
 
-  /* Call an RPC on the peer router */
-  t_request_id call_rpc(router_conn*,
-                        std::string rpc,
-                        const jalson::json_object& options,
-                        wamp_args,
-                        wamp_call_result_cb,
-                        void* cb_user_data);
+  // /* Call an RPC on the peer router */
+  // t_request_id call_rpc(router_conn*,
+  //                       std::string rpc,
+  //                       const jalson::json_object& options,
+  //                       wamp_args,
+  //                       wamp_call_result_cb,
+  //                       void* cb_user_data);
 
   // // how do we find out the list of remote topics? and if we have multiple
   // // sessions, then, which session has the topic we want?
@@ -125,8 +125,8 @@ private:
 
   // void handle_REGISTERED(ev_inbound_message*);
   // void handle_INVOCATION(ev_inbound_message*);
-  void handle_RESULT(ev_inbound_message*);
-  void handle_ERROR(ev_inbound_message*);
+  // void handle_RESULT(ev_inbound_message*);
+  // void handle_ERROR(ev_inbound_message*);
   void handle_session_state_change(ev_session_state_event*);
   void handle_event(ev_router_session_connect_fail*);
   // void handle_SUBSCRIBED(ev_inbound_subscribed*);
@@ -222,17 +222,17 @@ public:
 
   t_client_request_id  m_next_client_request_id;
 
-  /* outbound rpc call requests */
-  struct pending_wamp_call
-  {
-    std::string rpc;
-    wamp_call_result_cb user_cb;
-    void* user_data;
-    pending_wamp_call() : user_data( nullptr ) { }
-  };
+  // /* outbound rpc call requests */
+  // struct pending_wamp_call
+  // {
+  //   std::string rpc;
+  //   wamp_call_result_cb user_cb;
+  //   void* user_data;
+  //   pending_wamp_call() : user_data( nullptr ) { }
+  // };
 
-  std::map<int, pending_wamp_call> m_pending_wamp_call;
-  std::mutex m_pending_wamp_call_lock;
+  // std::map<int, pending_wamp_call> m_pending_wamp_call;
+  // std::mutex m_pending_wamp_call_lock;
 
   /* Sessions to remote routers */
   std::map<t_connection_id, router_conn*> m_router_sessions;
