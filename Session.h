@@ -118,6 +118,10 @@ namespace XXX {
                       wamp_call_result_cb user_cb,
                       void* user_data);
 
+    t_request_id publish(std::string uri,
+                         const jalson::json_object& options,
+                         wamp_args args);
+
   private:
 
     Session(const Session&) = delete;

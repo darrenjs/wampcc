@@ -137,10 +137,10 @@ private:
                   int  status,
                   t_connection_id router_session_id);
 
-  t_request_id publish(router_conn*,
-                       const std::string& uri,
-                       const jalson::json_object& options,
-                       wamp_args wargs);
+  // t_request_id publish(router_conn*,
+  //                      const std::string& uri,
+  //                      const jalson::json_object& options,
+  //                      wamp_args wargs);
 
   Logger *__logptr; /* name chosen for log macros */
 

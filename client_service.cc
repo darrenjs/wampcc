@@ -1175,10 +1175,13 @@ t_request_id router_conn::subscribe(const std::string& uri,
 
 
 t_request_id router_conn::publish(const std::string& uri,
-                                  const jalson::json_object& opts,
-                                  wamp_args wargs)
+                                  const jalson::json_object& options,
+                                  wamp_args args)
 {
-  return m_svc->publish(this, uri, opts, wargs);
+  if (m_session)
+    return m_session->publish(uri, options, args);
+  else
+    return 0;
 }
 
 // t_request_id router_conn::provide(const std::string& uri,
@@ -1264,52 +1267,53 @@ t_request_id router_conn::publish(const std::string& uri,
 // }
 
 
-t_request_id client_service::publish(router_conn* rs,
-                                     const std::string& uri,
-                                     const jalson::json_object& options,
-                                     wamp_args wargs)
-{
+// t_request_id client_service::publish(router_conn* rs,
+//                                      const std::string& uri,
+//                                      const jalson::json_object& options,
+//                                      wamp_args wargs)
+// {
 
-  session_handle sh = rs->m_internal_session_handle;
-  if (m_sesman->session_is_open(sh ) == false)
-  {
-    return 0;
-  }
 
-  // // publish to all connected router
-  // auto sp = std::make_shared<ev_outbound_publish>(
-  //   uri,
-  //   opts,
-  //   args_list,
-  //   args_dict,
-  //   1);
+  // session_handle sh = rs->m_internal_session_handle;
+  // if (m_sesman->session_is_open(sh ) == false)
+  // {
+  //   return 0;
+  // }
 
-  // sp->targets.push_back( sh );
+  // // // publish to all connected router
+  // // auto sp = std::make_shared<ev_outbound_publish>(
+  // //   uri,
+  // //   opts,
+  // //   args_list,
+  // //   args_dict,
+  // //   1);
 
-  // m_evl->push( sp );
+  // // sp->targets.push_back( sh );
 
-  t_client_request_id int_req_id = m_next_client_request_id++;
-  t_request_id publish_request_id = 0;
+  // // m_evl->push( sp );
 
-  build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
-    {
-      publish_request_id = request_id;
-      jalson::json_array msg;
-      msg.push_back( PUBLISH );
-      msg.push_back( request_id );
-      msg.push_back( options );
-      msg.push_back( uri );
-      if (!wargs.args_list.is_null()) msg.push_back( wargs.args_list );
-      if (!wargs.args_dict.is_null()) msg.push_back( wargs.args_dict );
+  // t_client_request_id int_req_id = m_next_client_request_id++;
+  // t_request_id publish_request_id = 0;
 
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                nullptr );
-    };
+  // build_message_cb_v2 msg_builder2 = [&](t_request_id request_id)
+  //   {
+  //     publish_request_id = request_id;
+  //     jalson::json_array msg;
+  //     msg.push_back( PUBLISH );
+  //     msg.push_back( request_id );
+  //     msg.push_back( options );
+  //     msg.push_back( uri );
+  //     if (!wargs.args_list.is_null()) msg.push_back( wargs.args_list );
+  //     if (!wargs.args_dict.is_null()) msg.push_back( wargs.args_dict );
 
-  m_sesman->send_request(sh, PUBLISH, int_req_id, msg_builder2);
+  //     return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+  //                                                               nullptr );
+  //   };
 
-  return publish_request_id;
-}
+  // m_sesman->send_request(sh, PUBLISH, int_req_id, msg_builder2);
+
+  // return publish_request_id;
+// }
 
   Logger * client_service::get_logger() { return __logptr; }
   IOLoop* client_service::get_ioloop() { return m_io_loop.get(); }

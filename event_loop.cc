@@ -29,7 +29,7 @@ event_loop::event_loop(Logger *logptr)
     m_thread(&event_loop::eventmain, this),
     m_pubsubman(nullptr),
     m_sesman(nullptr),
-    m_handlers( WAMP_MSGID_MAX ), /* initial handles are empty */
+//    m_handlers( WAMP_MSGID_MAX ), /* initial handles are empty */
     m_last_hb( std::chrono::steady_clock::now() )
 {
 }
@@ -57,25 +57,25 @@ void event_loop::set_session_man(SessionMan* sm)
   m_sesman = sm;
 }
 
-void event_loop::set_handler(unsigned int eventid, event_cb handler)
-{
-  if (eventid > m_handlers.size() )
-  {
-    _ERROR_("resizing handler vector for eventid " << eventid);
-    m_handlers.resize( eventid+1 );
-  }
-  m_handlers[ eventid ] = handler;
+// void event_loop::set_handler(unsigned int eventid, event_cb handler)
+// {
+//   if (eventid > m_handlers.size() )
+//   {
+//     _ERROR_("resizing handler vector for eventid " << eventid);
+//     m_handlers.resize( eventid+1 );
+//   }
+//   m_handlers[ eventid ] = handler;
 
-}
+// }
 
-void event_loop::set_handler2(unsigned int eventid, event_cb2 handler)
-{
-  if (eventid > m_handlers2.size() )
-  {
-    m_handlers2.resize( eventid+1 );
-  }
-  m_handlers2[ eventid ] = handler;
-}
+// void event_loop::set_handler2(unsigned int eventid, event_cb2 handler)
+// {
+//   if (eventid > m_handlers2.size() )
+//   {
+//     m_handlers2.resize( eventid+1 );
+//   }
+//   m_handlers2[ eventid ] = handler;
+// }
 
 /*
   shared_ptr<> sp
@@ -338,10 +338,10 @@ void event_loop::process_event(event * ev)
           m_server_handler.handle_inbound_REGISTER(ev2);
           break;
         }
-        case EVENT :
-          if (m_client_handler.handle_inbound_event)
-            m_client_handler.handle_inbound_event(ev2);
-          break;
+        // case EVENT :
+        //   if (m_client_handler.handle_inbound_event)
+        //     m_client_handler.handle_inbound_event(ev2);
+        //   break;
         case HEARTBEAT: break;
         case HELLO :
         case RESULT :
@@ -351,12 +351,12 @@ void event_loop::process_event(event * ev)
         case AUTHENTICATE :
         case ERROR :
         {
-          event_cb2& cb = m_handlers2[ ev2->msg_type ];
-          if (cb) cb( ev2 );
-          else
-          {
-            _ERROR_( "no handler for message type " << ev2->msg_type);
-          }
+          // event_cb2& cb = m_handlers2[ ev2->msg_type ];
+          // if (cb) cb( ev2 );
+          // else
+          // {
+          //   _ERROR_( "no handler for message type " << ev2->msg_type);
+          // }
           break;
         }
         // case PUBLISH :
@@ -476,106 +476,106 @@ void event_loop::process_event_error(event* ev, event_error& er)
 
 //----------------------------------------------------------------------
 
-void event_loop::process_inbound_error(event* /*e*/)
-{
+// void event_loop::process_inbound_error(event* /*e*/)
+// {
 
-  // Request_INVOCATION_CB_Data* request_cb_data
-  //   = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
+//   // Request_INVOCATION_CB_Data* request_cb_data
+//   //   = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
 
-  // if (request_cb_data != nullptr)
-  // {
-  //   outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
-  //   if (origev && origev->cb)
-  //   {
+//   // if (request_cb_data != nullptr)
+//   // {
+//   //   outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
+//   //   if (origev && origev->cb)
+//   //   {
 
-  //     // TODO: create a generic callback function, which does all the exception
-  //     // catch/log etc
-  //     try
-  //     {
+//   //     // TODO: create a generic callback function, which does all the exception
+//   //     // catch/log etc
+//   //     try
+//   //     {
 
-  //       call_info info; // TODO: dfill in
-  //       // TODO: should use an error callback
-  //       wamp_args args;
-  //       origev->cb(info, args, origev->cb_user_data);  /* TODO: take from network message */
-  //     }
-  //     catch(...)
-  //     {
-  //       // TODO: log exceptions here
-  //     }
-  //   }
-  // }
-  // else
-  // {
-  //   _ERROR_( "error, no request_cb_data found\n" );
-  // }
-  _ERROR_("TODO: put in support for handling inbound errors, and directing to call handler");
-}
+//   //       call_info info; // TODO: dfill in
+//   //       // TODO: should use an error callback
+//   //       wamp_args args;
+//   //       origev->cb(info, args, origev->cb_user_data);  /* TODO: take from network message */
+//   //     }
+//   //     catch(...)
+//   //     {
+//   //       // TODO: log exceptions here
+//   //     }
+//   //   }
+//   // }
+//   // else
+//   // {
+//   //   _ERROR_( "error, no request_cb_data found\n" );
+//   // }
+//   _ERROR_("TODO: put in support for handling inbound errors, and directing to call handler");
+// }
 //----------------------------------------------------------------------
-void event_loop::process_inbound_yield(ev_inbound_message* e)
-{
-  /* This handles a YIELD message received off a socket.  There are two possible
-    options next.  Either route to the session which originated the CALL.  Or,
-    if we can find a local callback function, invoke that.
-   */
+// void event_loop::process_inbound_yield(ev_inbound_message* e)
+// {
+//   /* This handles a YIELD message received off a socket.  There are two possible
+//     options next.  Either route to the session which originated the CALL.  Or,
+//     if we can find a local callback function, invoke that.
+//    */
 
 
-  // new .... see if we have an external handler
-  event_cb& cb = m_handlers[ e->msg_type ];
-  if (cb)
-  {
-    cb( e );
-    return;
-  }
+//   // // new .... see if we have an external handler
+//   // event_cb& cb = m_handlers[ e->msg_type ];
+//   // if (cb)
+//   // {
+//   //   cb( e );
+//   //   return;
+//   // }
 
 
 
-  /*  NOTICE!!!
+//   /*  NOTICE!!!
 
-      This was the original approach for having a YIELD and translating to
-      callback into user code. I.e., the callback was invoked from the event
-      loop.  In the new approach, the callback is invoked from the
-      client_service.
+//       This was the original approach for having a YIELD and translating to
+//       callback into user code. I.e., the callback was invoked from the event
+//       loop.  In the new approach, the callback is invoked from the
+//       client_service.
 
-   */
+//    */
 
-  // Request_INVOCATION_CB_Data* request_cb_data
-  //   = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
+//   // Request_INVOCATION_CB_Data* request_cb_data
+//   //   = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
 
-  // if (request_cb_data != nullptr)
-  // {
-  //   outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
-  //   if (origev && origev->cb)
-  //   {
+//   // if (request_cb_data != nullptr)
+//   // {
+//   //   outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
+//   //   if (origev && origev->cb)
+//   //   {
 
-  //     // TODO: create a generic callback function, which does all the exception
-  //     // catch/log etc
-  //     try
-  //     {
-  //       call_info info; // TODO: dfill in
-  //       info.reqid = e->ja[1].as_uint();
-  //       info.procedure = origev->rpc_name;
+//   //     // TODO: create a generic callback function, which does all the exception
+//   //     // catch/log etc
+//   //     try
+//   //     {
+//   //       call_info info; // TODO: dfill in
+//   //       info.reqid = e->ja[1].as_uint();
+//   //       info.procedure = origev->rpc_name;
 
-  //       wamp_args args;
-  //       args.args    = e->ja[3]; // dont care about the type
-  //       args.options = e->ja[2].as_object();  // TODO: need to pre-verify the message
+//   //       wamp_args args;
+//   //       args.args    = e->ja[3]; // dont care about the type
+//   //       args.options = e->ja[2].as_object();  // TODO: need to pre-verify the message
 
-  //       origev->cb(info, args, origev->cb_user_data); /* TODO: take from network message */
-  //     }
-  //     catch(...)
-  //     {
-  //       // TODO: log exceptions here
-  //     }
-  //   }
-  //   else
-  //   {
-  //     _ERROR_( "cannot find any orig event for a received YIELD\n" );
-  //   }
-  // }
-  // else
-  // {
-  //   _ERROR_( "error, no request_cb_data found" );
-  // }
-}
+//   //       origev->cb(info, args, origev->cb_user_data); /* TODO: take from network message */
+//   //     }
+//   //     catch(...)
+//   //     {
+//   //       // TODO: log exceptions here
+//   //     }
+//   //   }
+//   //   else
+//   //   {
+//   //     _ERROR_( "cannot find any orig event for a received YIELD\n" );
+//   //   }
+//   // }
+//   // else
+//   // {
+//   //   _ERROR_( "error, no request_cb_data found" );
+//   // }
+// }
 
 //----------------------------------------------------------------------
 

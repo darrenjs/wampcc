@@ -1308,7 +1308,7 @@ void Session::process_result(jalson::json_array & msg)
 
   // TODO: add more messsage checking here
   t_request_id request_id  = msg[1].as_uint();
-  jalson::json_object & details = msg[2].as_object();
+  jalson::json_object & options = msg[2].as_object();
 
 
   wamp_call orig_call;
@@ -1333,8 +1333,9 @@ void Session::process_result(jalson::json_array & msg)
       r.was_error = false;
       r.procedure = orig_call.rpc;
       r.user = orig_call.user_data;
-      r.args.args_list  = msg[3];
-      r.details = details;
+      if (msg.size()>3) r.args.args_list  = std::move(msg[3]);
+      if (msg.size()>4) r.args.args_dict  = msg[4];
+      r.details = options;
 
       try {
         orig_call.user_cb(std::move(r));
@@ -1415,5 +1416,36 @@ void Session::process_error(jalson::json_array & msg)
 
 }
 
+
+t_request_id Session::publish(std::string uri,
+                         const jalson::json_object& options,
+                         wamp_args args)
+{
+  /* USER thread */
+
+  jalson::json_array msg;
+  msg.push_back( PUBLISH );
+  msg.push_back( 0 );
+  msg.push_back( options );
+  msg.push_back( uri );
+  if (!args.args_list.is_null())
+  {
+    msg.push_back( args.args_list );
+    if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+  }
+
+  t_request_id request_id;
+
+  {
+    std::unique_lock<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    send_msg( msg );
+  }
+
+  return request_id;
+}
 
 } // namespace XXX
