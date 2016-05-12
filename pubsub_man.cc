@@ -272,16 +272,6 @@ void pubsub_man::update_topic(const std::string& topic,
       jalson::json_array& patch = publish_msg;
       mt->image.patch(patch);
 
-      /*
-        [ EVENT,
-        SUBSCRIBED.Subscription|id,
-        PUBLISHED.Publication|id,
-        Details|dict,
-        PUBLISH.Arguments|list,
-        PUBLISH.ArgumentKw|dict
-        ]
-      */
-
       jalson::json_array msg;
       msg.push_back( EVENT );
       msg.push_back( mt->subscription_id ); // TODO: generate subscription ID

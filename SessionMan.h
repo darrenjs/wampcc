@@ -45,7 +45,6 @@ public:
 
 
   /* Can be called on the EV thread */
-  //void send_to_session(SID, jalson::json_array& msg);
   void send_to_session(session_handle,
                        jalson::json_array& msg);
   void send_to_session(const std::vector<session_handle>&,

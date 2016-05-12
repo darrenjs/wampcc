@@ -29,7 +29,6 @@ event_loop::event_loop(Logger *logptr)
     m_thread(&event_loop::eventmain, this),
     m_pubsubman(nullptr),
     m_sesman(nullptr),
-//    m_handlers( WAMP_MSGID_MAX ), /* initial handles are empty */
     m_last_hb( std::chrono::steady_clock::now() )
 {
 }
@@ -57,39 +56,7 @@ void event_loop::set_session_man(SessionMan* sm)
   m_sesman = sm;
 }
 
-// void event_loop::set_handler(unsigned int eventid, event_cb handler)
-// {
-//   if (eventid > m_handlers.size() )
-//   {
-//     _ERROR_("resizing handler vector for eventid " << eventid);
-//     m_handlers.resize( eventid+1 );
-//   }
-//   m_handlers[ eventid ] = handler;
 
-// }
-
-// void event_loop::set_handler2(unsigned int eventid, event_cb2 handler)
-// {
-//   if (eventid > m_handlers2.size() )
-//   {
-//     m_handlers2.resize( eventid+1 );
-//   }
-//   m_handlers2[ eventid ] = handler;
-// }
-
-/*
-  shared_ptr<> sp
-  push_
-*/
-
-// void push(std::shared_ptr<event>& ev)
-// {
-//   if (ev == 0) m_continue = false;
-
-//   std::unique_lock<std::mutex> guard(m_mutex);
-//   m_queue.push_back( e );
-//   m_condvar.notify_one();
-// }
 
 // TODO: general threading concner here.  How do I enqure that any users of this
 // EVL dont make a call into here once self has started into the destructor????
@@ -242,30 +209,6 @@ void event_loop::process_event(event * ev)
       process_outbound_publish(ev2);
       break;
     }
-    // case event::inbound_subscribed:
-    // {
-    //   // TODO: create a template for this, which will throw etc.
-    //   if (m_client_handler.handle_inbound_SUBSCRIBED)
-    //   {
-    //     ev_inbound_subscribed* ev2 = dynamic_cast<ev_inbound_subscribed*>(ev);
-    //     if (ev2) m_client_handler.handle_inbound_SUBSCRIBED( ev2 );
-    //   }
-    //   break;
-    // }
-    // case event::outbound_subscribe :
-    // {
-    //   // TODO: create a template for this, which will throw etc.
-    //   ev_outbound_subscribe* ev2 = dynamic_cast<ev_outbound_subscribe*>(ev);
-    //   process_outbound_subscribe(ev2);
-    //   break;
-    // }
-    // case event::outbound_call_event :
-    // {
-    //   // TODO: create a template for this, which will throw etc.
-    //   outbound_call_event* ev2 = dynamic_cast<outbound_call_event*>(ev);
-    //   process_outbound_call(ev2);
-    //   break;
-    // }
     case event::outbound_response_event :
     {
       // TODO: create a template for this, which will throw etc. Will be a
@@ -274,14 +217,6 @@ void event_loop::process_event(event * ev)
       process_outbound_response( ev2 );
       break;
     }
-    // case event::outbound_message :
-    // {
-    //   // TODO: create a template for this, which will throw etc. Will be a
-    //   // series error if the cast failes.
-    //   outbound_message * ev2 = dynamic_cast<outbound_message *>(ev);
-    //   process_outbound_message( ev2 );
-    //   break;
-    // }
     case event::session_state_event :
     {
       ev_session_state_event * ev2 = dynamic_cast<ev_session_state_event *>(ev);
@@ -299,12 +234,6 @@ void event_loop::process_event(event * ev)
       }
       break;
     }
-    // case event::internal_publish :
-    // {
-    //   if (m_pubsubman)
-    //     m_pubsubman->handle_event(dynamic_cast<ev_internal_publish *>(ev));
-    //   break;
-    // }
     case event::inbound_message :
     {
       ev_inbound_message * ev2 =
@@ -328,45 +257,20 @@ void event_loop::process_event(event * ev)
           m_server_handler.handle_inbound_SUSCRIBE(ev2);
           break;
         }
-        // case CALL :
-        // {
-        //   m_server_handler.handle_inbound_CALL(ev2);
-        //   break;
-        // }
         case REGISTER :
         {
           m_server_handler.handle_inbound_REGISTER(ev2);
           break;
         }
-        // case EVENT :
-        //   if (m_client_handler.handle_inbound_event)
-        //     m_client_handler.handle_inbound_event(ev2);
-        //   break;
         case HEARTBEAT: break;
         case HELLO :
         case RESULT :
-        // case REGISTERED :
-        // case INVOCATION :
         case CHALLENGE :
         case AUTHENTICATE :
         case ERROR :
         {
-          // event_cb2& cb = m_handlers2[ ev2->msg_type ];
-          // if (cb) cb( ev2 );
-          // else
-          // {
-          //   _ERROR_( "no handler for message type " << ev2->msg_type);
-          // }
           break;
         }
-        // case PUBLISH :
-        // {
-        //   if (m_pubsubman)
-        //     m_pubsubman->handle_inbound_publish(ev2);
-        //   else
-        //     _WARN_("unable to handle inbound PUBLISH message");
-        //   break;
-        // }
         default:
         {
           // TODO: probably should reply here
@@ -417,17 +321,6 @@ void event_loop::process_event_error(event* ev, event_error& er)
     return;
   }
 
-/*
-    [
-      ERROR,
-      CALL,
-      CALL.Request|id,
-      Details|dict,
-      Error|uri,
-      Arguments|list,
-      ArgumentsKw|dict
-    ]
-*/
 
   ev_inbound_message * ev2 = dynamic_cast<ev_inbound_message*>(ev);
   if (ev2)
@@ -473,109 +366,6 @@ void event_loop::process_event_error(event* ev, event_error& er)
 
 }
 
-
-//----------------------------------------------------------------------
-
-// void event_loop::process_inbound_error(event* /*e*/)
-// {
-
-//   // Request_INVOCATION_CB_Data* request_cb_data
-//   //   = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
-
-//   // if (request_cb_data != nullptr)
-//   // {
-//   //   outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
-//   //   if (origev && origev->cb)
-//   //   {
-
-//   //     // TODO: create a generic callback function, which does all the exception
-//   //     // catch/log etc
-//   //     try
-//   //     {
-
-//   //       call_info info; // TODO: dfill in
-//   //       // TODO: should use an error callback
-//   //       wamp_args args;
-//   //       origev->cb(info, args, origev->cb_user_data);  /* TODO: take from network message */
-//   //     }
-//   //     catch(...)
-//   //     {
-//   //       // TODO: log exceptions here
-//   //     }
-//   //   }
-//   // }
-//   // else
-//   // {
-//   //   _ERROR_( "error, no request_cb_data found\n" );
-//   // }
-//   _ERROR_("TODO: put in support for handling inbound errors, and directing to call handler");
-// }
-//----------------------------------------------------------------------
-// void event_loop::process_inbound_yield(ev_inbound_message* e)
-// {
-//   /* This handles a YIELD message received off a socket.  There are two possible
-//     options next.  Either route to the session which originated the CALL.  Or,
-//     if we can find a local callback function, invoke that.
-//    */
-
-
-//   // // new .... see if we have an external handler
-//   // event_cb& cb = m_handlers[ e->msg_type ];
-//   // if (cb)
-//   // {
-//   //   cb( e );
-//   //   return;
-//   // }
-
-
-
-//   /*  NOTICE!!!
-
-//       This was the original approach for having a YIELD and translating to
-//       callback into user code. I.e., the callback was invoked from the event
-//       loop.  In the new approach, the callback is invoked from the
-//       client_service.
-
-//    */
-
-//   // Request_INVOCATION_CB_Data* request_cb_data
-//   //   = dynamic_cast<Request_INVOCATION_CB_Data*>( e->cb_data );
-
-//   // if (request_cb_data != nullptr)
-//   // {
-//   //   outbound_call_event* origev = ( outbound_call_event*)request_cb_data->cb_data;
-//   //   if (origev && origev->cb)
-//   //   {
-
-//   //     // TODO: create a generic callback function, which does all the exception
-//   //     // catch/log etc
-//   //     try
-//   //     {
-//   //       call_info info; // TODO: dfill in
-//   //       info.reqid = e->ja[1].as_uint();
-//   //       info.procedure = origev->rpc_name;
-
-//   //       wamp_args args;
-//   //       args.args    = e->ja[3]; // dont care about the type
-//   //       args.options = e->ja[2].as_object();  // TODO: need to pre-verify the message
-
-//   //       origev->cb(info, args, origev->cb_user_data); /* TODO: take from network message */
-//   //     }
-//   //     catch(...)
-//   //     {
-//   //       // TODO: log exceptions here
-//   //     }
-//   //   }
-//   //   else
-//   //   {
-//   //     _ERROR_( "cannot find any orig event for a received YIELD\n" );
-//   //   }
-//   // }
-//   // else
-//   // {
-//   //   _ERROR_( "error, no request_cb_data found" );
-//   // }
-// }
 
 //----------------------------------------------------------------------
 
@@ -658,70 +448,6 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
   m_sesman->send_to_session(ev->destination, msgbuilder);
 
 }
-
-//----------------------------------------------------------------------
-
-// void event_loop::process_outbound_message(outbound_message* ev)
-// {
-//   m_sesman->send_to_session(ev->destination, ev->ja);
-// }
-
-//----------------------------------------------------------------------
-
-// void event_loop::process_outbound_call(outbound_call_event* ev)
-// {
-//   // not good... we need a to a copy of the event for the later arrival of the
-//   // YIELD/ERROR respons.  Eventually I need to try to just steal the source
-//   // event.
-//   //outbound_call_event * copy = new outbound_call_event( *ev );
-
-//   // also not good ... need to create the request content data.  Is there way to
-//   // just use the source event object directly?
-//   //Request_INVOCATION_CB_Data* cb_data = new Request_INVOCATION_CB_Data(); // TODO: memleak?
-//   //cb_data->cb_data = copy;
-
-//   build_message_cb_v2 msg_builder2 = [&](int request_id)
-//     {
-
-//       jalson::json_array msg;
-//       msg.push_back( CALL );
-//       msg.push_back( request_id );
-//       msg.push_back( ev->options );
-//       msg.push_back( ev->rpc_name );
-//       if (ev->args.args_list.is_null() == false)
-//       {
-//         msg.push_back( ev->args.args_list );
-//       }
-
-//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-//                                                                 nullptr );
-
-//     };
-
-//   m_sesman->send_request( ev->dest, CALL, ev->internal_req_id, msg_builder2);
-// }
-
-//----------------------------------------------------------------------
-
-// void event_loop::process_outbound_subscribe(ev_outbound_subscribe* ev)
-// {
-//   build_message_cb_v2 msg_builder2 = [&](int request_id)
-//     {
-//       jalson::json_array msg;
-//       msg.push_back( SUBSCRIBE );
-//       msg.push_back( request_id );
-//       msg.push_back( jalson::json_object() );
-//       msg.push_back( ev->uri );
-
-//       return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-//                                                                 nullptr );
-
-//     };
-
-//   m_sesman->send_request( ev->dest,SUBSCRIBE , ev->internal_req_id, msg_builder2);
-// }
-
-//----------------------------------------------------------------------
 
 void event_loop::process_outbound_publish(ev_outbound_publish* ev)
 {

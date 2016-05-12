@@ -16,12 +16,7 @@ struct event
   enum Type
   {
     session_state_event = 0,
-    // outbound_call_event,
     outbound_response_event,
-    // outbound_message,
-    // internal_publish,
-    // outbound_subscribe,
-    // inbound_subscribed,
     router_session_connect_fail,
     inbound_message,
     outbound_publish,
@@ -79,17 +74,6 @@ struct ev_session_state_event : public event
 };
 
 
-// struct outbound_message : public event
-// {
-//   session_handle destination;
-//   jalson::json_array ja;
-
-//   outbound_message()
-//   : event( event::outbound_message )
-//   {}
-// };
-
-
 struct outbound_response_event : public event
 {
   session_handle destination;
@@ -107,21 +91,6 @@ struct outbound_response_event : public event
     : event( event::outbound_response_event )
   {}
 };
-
-
-
-// struct outbound_call_event : public event
-// {
-//   session_handle dest;
-//   std::string rpc_name;
-//   jalson::json_object options;
-//   wamp_args args;
-//   unsigned int internal_req_id;
-
-//   outbound_call_event()
-//     : event( event::outbound_call_event )
-//   {}
-// };
 
 
 struct ev_outbound_publish : public event
@@ -163,65 +132,6 @@ struct ev_outbound_publish : public event
   }
 
 };
-
-// struct ev_internal_publish : public event
-// {
-//   std::string uri;
-//   jalson::json_value patch;  // TODO: maybe change to array?
-
-//   ev_internal_publish( const std::string & __topic_uri,
-//                        const jalson::json_value& __patch)
-//     : event( event::internal_publish ),
-//       uri( __topic_uri ),
-//       patch( __patch )
-//   {}
-// };
-
-// struct ev_outbound_event : public event
-// {
-//   std::string uri;
-//   std::vector< session_handle > dest;
-//   jalson::json_value event_msg;
-
-//   ev_outbound_event(const std::string& __topic_uri,
-//                    const std::vector< session_handle >& __dest,
-//                    const jalson::json_value& __event_msg)
-//   :  event( event::outbound_event ),
-//      uri( __topic_uri ),
-//      dest(__dest),
-//      event_msg(__event_msg)
-//   {
-//   }
-// };
-
-
-// struct ev_outbound_subscribe : public event
-// {
-//   session_handle dest;
-//   jalson::json_object options;
-//   std::string uri;
-//   int internal_req_id;
-
-//   ev_outbound_subscribe(const std::string & __topic_uri,
-//                         const jalson::json_object& __options)
-//   :  event( event::outbound_subscribe ),
-//      options( __options ),
-//      uri( __topic_uri )
-//   {}
-// };
-
-
-// struct ev_inbound_subscribed : public event
-// {
-//   session_handle src;
-//   unsigned int internal_req_id;
-//   jalson::json_array ja;
-
-//   ev_inbound_subscribed()
-//     : event( event::inbound_subscribed )
-//   {}
-
-// };
 
 
 struct ev_router_session_connect_fail : public event

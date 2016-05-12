@@ -103,7 +103,6 @@ struct invoke_details // TODO: rename
   wamp_args args;
   void * user;
   t_invoke_id id;
-  //client_service* svc;  // TODO: try to remove
 
   std::function<void(t_request_id, wamp_args&)> reply_fn;
 
@@ -205,11 +204,6 @@ typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
 typedef std::function<void(router_conn*,
                            int status, /* 0 is no error */
                            bool is_open)> router_session_connect_cb;
-
-// typedef std::function<void(session_handle&,
-//                            t_request_id,
-//                            int,
-//                            wamp_args&) > internal_invoke_cb;
 
 } // namespace XXX
 

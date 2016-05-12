@@ -48,21 +48,6 @@ struct PendingReq
     : cb_data( nullptr )
   {
   }
-
-  // NOTICE: have commented this out, because I am revieiwn approach to storing
-  // callback objects.
-
-  // virtual ~PendingReq()
-  // {
-  //   delete cb_data;
-  // }
-};
-
-
-
-struct PendingCall : public PendingReq
-{
-  std::string procedure;
 };
 
 
@@ -376,16 +361,6 @@ void Session::process_message(jalson::json_value&jv)
 
   int const message_type = jv.as_array()[0].as_int();
 
-  /*  TODO: remove this
-  static int c = 0;
-  c++;
-
-  if (c > 10)
-  {
-    c = jv.as_array()[0].as_real();
-  }
-  */
-
   m_time_last_msg = time(NULL);
 
   /* session state validation */
@@ -504,86 +479,6 @@ void Session::process_message(jalson::json_value&jv)
   PendingReq * pendreq = nullptr;
   PendingReq2 pend2;
 
-  /* A subset of WAMP message types are classified as Responses, ie, the match
-   * up to Request class messages that would have been earlier sent out.  Here
-   * we try to match up a received response to its earlier request.  */
-  switch(message_type)
-  {
-    // case YIELD :
-    // {
-    //   int const request_id = jv.as_array()[1].as_uint();
-    //   {
-    //     // TODO: need to delete from the map
-    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
-    //     pendreq = m_pend_req[request_id];
-    //     m_pend_req[request_id] = 0;
-    //     pend2 = m_pend_req_2[request_id];  // TODO: and remove?
-    //   }
-    //   break;
-    // }
-    // case REGISTERED :
-    // {
-    //   int const request_id = jv.as_array()[1].as_uint();
-    //   {
-    //     // TODO: need to delete from the map
-    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
-    //     pendreq = m_pend_req[request_id];
-    //     m_pend_req[request_id] = 0;
-    //     pend2 = m_pend_req_2[request_id]; // TODO: and remove?
-    //   }
-    //   break;
-    // }
-    // case ERROR :
-    // {
-    //   int const request_id = jv.as_array()[2].as_uint();
-    //   {
-    //     // TODO: need to delete from the map
-    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
-    //     pendreq = m_pend_req[request_id];
-    //     m_pend_req[request_id] = 0;
-    //     pend2 = m_pend_req_2[request_id]; // TODO: and remove?
-    //   }
-    //   _INFO_( "got ERROR for request_id: " << request_id
-    //           << ", pendreq:" << pendreq );
-    //   break;
-    // }
-    // case RESULT :
-    // {
-    //   int const request_id = jv.as_array()[1].as_uint();
-    //   {
-    //     // TODO: need to delete from the map
-    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
-    //     pendreq = m_pend_req[request_id];
-    //     m_pend_req[request_id] = 0;
-    //     pend2 = m_pend_req_2[request_id]; // TODO: and remove?
-    //   }
-    //   break;
-    // }
-
-    // case SUBSCRIBED:
-    // {
-    //   int const request_id = jv.as_array()[1].as_uint();
-    //   {
-    //     // TODO: need to delete from the map
-    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
-    //     pendreq = m_pend_req[request_id];
-    //     m_pend_req[request_id] = 0;
-    //     pend2 = m_pend_req_2[request_id];  // TODO: and remove?
-    //   }
-
-    //   ev_inbound_subscribed* ev = new ev_inbound_subscribed();
-    //   ev->src = handle();
-    //   ev->realm = m_realm;
-    //   ev->user_conn_id = m_user_conn_id;
-    //   ev->ja = ja;
-    //   ev->internal_req_id  = pend2.internal_req_id;
-    //   m_evl.push( ev );
-    //   delete pendreq;
-    //   return;
-    // }
-
-  }
-
 /*
   NEXT: extract the request id, get the message, remove the request, and get the
     json message and add it to the event. Meanwhile make a note to think about
@@ -636,12 +531,6 @@ void Session::send_request( int request_type,
 
   pending->request = req.first;
   pending->cb_data = req.second;
-
-  // PendingReq2 pend2;
-  // pend2.request_type = request_type;
-  // pend2.external_req_id = request_id;
-  // pend2.internal_req_id = internal_req_id;
-  // m_pend_req_2[ request_id ] = pend2;
 
   this->send_msg( req.first );
 }

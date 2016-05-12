@@ -22,7 +22,6 @@ namespace XXX {
 
 struct server_event_handler
 {
-  // std::function<void(ev_inbound_message*)> handle_inbound_CALL;
   std::function<void(ev_inbound_message*)> handle_inbound_PUBLISH;
   std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
   std::function<void(ev_inbound_message*)> handle_inbound_SUSCRIBE;
@@ -32,8 +31,6 @@ struct server_event_handler
 
 struct client_event_handler
 {
-  // std::function<void(ev_inbound_subscribed*)> handle_inbound_SUBSCRIBED;
-  // std::function<void(ev_inbound_message*)> handle_inbound_event;
   std::function<void(ev_router_session_connect_fail*)> handle_router_session_connect_fail;
 };
 
@@ -95,11 +92,6 @@ public:
 };
 
 
-
-  // typedef std::function<void(event*) > event_cb;
-  // typedef std::function<void(ev_inbound_message*) > event_cb2;
-
-
   class event_loop
   {
   public:
@@ -120,8 +112,6 @@ public:
     void set_pubsub_man(pubsub_man*);
     void set_session_man(SessionMan*);
 
-    // void set_handler(unsigned int eventid, event_cb handler);
-    // void set_handler2(unsigned int eventid, event_cb2 handler);
     void set_handler(client_event_handler h)  { m_client_handler=h; }
     void set_handler(server_event_handler h ) { m_server_handler=h;  }
 
@@ -137,12 +127,7 @@ public:
     void process_event_error(event* e, event_error&);
 
     void process_event_InboundCall(event* e);
-//    void process_outbound_call(outbound_call_event*);
     void process_outbound_response(outbound_response_event *);
-    // void process_outbound_message(outbound_message *);
-    // void process_inbound_error(event* e);
-    // void process_inbound_yield(ev_inbound_message* e);
-    // void process_outbound_subscribe(ev_outbound_subscribe* e);
     void process_outbound_publish(ev_outbound_publish* e);
 
     void hb_check();
@@ -159,9 +144,6 @@ public:
 
     pubsub_man* m_pubsubman;
     SessionMan* m_sesman;
-
-    // std::vector<event_cb> m_handlers;
-    // std::vector<event_cb2> m_handlers2;
 
     server_event_handler m_server_handler;
     client_event_handler m_client_handler;

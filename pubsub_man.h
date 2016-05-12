@@ -12,7 +12,6 @@ namespace XXX {
 
 class Logger;
 class client_service;
-// class ev_internal_publish;
 class event_loop;
 class managed_topic;
 class SessionMan;

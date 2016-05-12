@@ -18,49 +18,6 @@ rpc_man::rpc_man(Logger * logptr, rpc_added_cb cb)
 }
 
 
-// // TODO: instead of int, use a typedef
-// int rpc_man::register_internal_rpc(const std::string& procedure_uri,
-//                                    const std::string& realm)
-// {
-//   rpc_details r;
-//   r.registration_id = 0;
-//   r.uri = procedure_uri;
-//   r.type = rpc_details::eInternal;
-
-
-//   {
-//     std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-//     auto realm_iter = m_realm_to_registry.find( realm );
-
-//     // TODO: all this code for inserting a new RPC is dupliacted in another part
-//     // of this file.
-//     if (realm_iter == m_realm_to_registry.end())
-//     {
-//       // insert realm
-//       auto p = m_realm_to_registry.insert(std::make_pair(realm, rpc_registry()));
-//       realm_iter = std::move(p.first);
-//     }
-
-//     auto rpc_iter = realm_iter->second.find(procedure_uri);
-//     if (rpc_iter != realm_iter->second.end())
-//     {
-//       _WARN_("Ignoring duplicate rpc registration for " << realm << ":" << procedure_uri);
-//       throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
-//     }
-
-//     // create registration record
-
-//     r.registration_id = m_next_regid++;
-//     realm_iter->second[ procedure_uri ] = std::move(r);
-
-//   }
-
-//   _INFO_( "Internal  "<< realm << "::'" << procedure_uri <<"' registered with id " << r.registration_id );
-
-
-//   if (m_rpc_added_cb) m_rpc_added_cb( r );
-//   return r.registration_id;
-// }
 
 
 rpc_details rpc_man::get_rpc_details( const std::string& rpcname,

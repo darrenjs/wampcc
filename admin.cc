@@ -365,15 +365,6 @@ int main(int argc, char** argv)
   ja.push_back( "world" );
   args.args_list = ja ;
 
-  // rconn.call("stop", jalson::json_object(), args,
-  //            [](XXX::call_info& reqdet,
-  //               jalson::json_object options,
-  //               XXX::wamp_args& args,
-  //               void* cb_data)
-  //            { call_cb(reqdet, options, args, cb_data);},
-  //            (void*)"I_called_stop");
-
-
   bool long_wait = false;
   bool wait_reply = false;
 

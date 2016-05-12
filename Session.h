@@ -21,7 +21,6 @@ namespace XXX {
   struct server_msg_handler
   {
     std::function<t_request_id (Session*, std::string uri, jalson::json_array &, wamp_invocation_reply_fn)> handle_call;
-    std::function<void(Session*, jalson::json_array &)> handle_yield;
     std::function<void(ev_inbound_message*)> handle_inbound_PUBLISH;
     std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
     std::function<void(ev_inbound_message*)> handle_inbound_SUSCRIBE;
@@ -236,9 +235,8 @@ namespace XXX {
                bool is_error,
                std::string error_uri);
   private:
-    // TODO: why two?
+
     std::map<int, PendingReq* > m_pend_req;
-    // std::map<int, PendingReq2 > m_pend_req_2;
     std::mutex m_pend_req_lock;
 
     server_msg_handler m_server_handler;

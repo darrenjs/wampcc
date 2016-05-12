@@ -14,7 +14,6 @@
 namespace XXX {
 
   class SessionMan;
-  // class Session;
   class pubsub_man;
   class rpc_man;
   class Logger;
@@ -34,10 +33,7 @@ class dealer_service
 {
 public:
   dealer_service(client_service * __svc, dealer_listener*);
-  // dealer_service(Logger*, dealer_listener*, IOLoop* io, event_loop* ev /*, internal_invoke_cb internal_rpc_cb */);
   ~dealer_service();
-
-  // void start();
 
   // publish to an internal topic
   t_request_id publish(const std::string& topic,
@@ -47,21 +43,11 @@ public:
 
   void listen(int port);
 
-  // int register_internal_procedure(std::string procedure,
-  //                                 const std::string& realm);
-
   void register_procedure(const std::string& realm,
                           const std::string& uri,
                           const jalson::json_object& options,
                           rpc_cb cb,
                           void * data);
-
-
-  // bool reply(t_invoke_id,
-  //            wamp_args& the_args,
-  //            std::string error_uri);
-
-  // TODO: have a register proc interface
 
 private:
   dealer_service(const dealer_service&) = delete;
@@ -70,7 +56,6 @@ private:
   void rpc_registered_cb(const rpc_details&);
   void handle_YIELD(ev_inbound_message* ev);
   void handle_SUBSCRIBE(ev_inbound_message* ev);
-  // void handle_CALL(ev_inbound_message*);
   void handle_REGISTER(ev_inbound_message*);
 
   void invoke_procedure(rpc_details&,
@@ -78,7 +63,6 @@ private:
 
 
   t_request_id handle_call(Session*, const std::string&, jalson::json_array & msg, wamp_invocation_reply_fn);
-  void handle_yield(Session*, jalson::json_array & msg);
 
   bool reply(t_invoke_id,
              wamp_args& the_args,
@@ -95,8 +79,6 @@ private:
   std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;
   std::unique_ptr<pubsub_man> m_pubsub;
-
-//  internal_invoke_cb m_internal_invoke_cb;
 
   dealer_listener* m_listener;
 
