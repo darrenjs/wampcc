@@ -328,11 +328,11 @@ void event_loop::process_event(event * ev)
           m_server_handler.handle_inbound_SUSCRIBE(ev2);
           break;
         }
-        case CALL :
-        {
-          m_server_handler.handle_inbound_CALL(ev2);
-          break;
-        }
+        // case CALL :
+        // {
+        //   m_server_handler.handle_inbound_CALL(ev2);
+        //   break;
+        // }
         case REGISTER :
         {
           m_server_handler.handle_inbound_REGISTER(ev2);

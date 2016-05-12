@@ -44,7 +44,7 @@ dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
   server_event_handler my_handlers;
   my_handlers.handle_inbound_YIELD    = [this](ev_inbound_message* ev){ this->handle_YIELD(ev);  };
   my_handlers.handle_inbound_SUSCRIBE = [this](ev_inbound_message* ev){ this->handle_SUBSCRIBE(ev); };
-  my_handlers.handle_inbound_CALL     = [this](ev_inbound_message* ev){ this->handle_CALL(ev); };
+  // my_handlers.handle_inbound_CALL     = [this](ev_inbound_message* ev){ this->handle_CALL(ev); };
   my_handlers.handle_inbound_REGISTER = [this](ev_inbound_message* ev){ this->handle_REGISTER(ev); };
   my_handlers.handle_inbound_PUBLISH  = [this](ev_inbound_message* ev){
     m_pubsub->handle_inbound_publish(ev);
@@ -182,7 +182,14 @@ void dealer_service::listen(int port)
            IOHandle* hndl)
     {
       // note, we dont make use of the user connection id for passive sessions
-      m_sesman->create_session(hndl, true, t_connection_id(), "" /* undefined realm */);
+      Session* sptr = m_sesman->create_session(hndl, true, t_connection_id(), "" /* undefined realm */);
+
+      auto handlers = server_msg_handler();
+      handlers.handle_call  = [this](Session* s, std::string u, jalson::json_array & m, wamp_invocation_reply_fn f) {
+        return this->handle_call(s,u,m,f);
+      };
+      handlers.handle_yield = [this](Session* s,jalson::json_array & m){this->handle_yield(s,m);};
+      sptr->set_server_handler( handlers );
     } );
 }
 
@@ -200,68 +207,66 @@ void dealer_service::handle_SUBSCRIBE(ev_inbound_message* ev)
 }
 
 
-void dealer_service::handle_CALL(ev_inbound_message* ev)
-{
-  // TODO: improve json parsing
-  t_request_id call_request_id = ev->ja[1].as_int();
-  std::string uri = ev->ja[3].as_string();
+// void dealer_service::handle_CALL(ev_inbound_message* ev)
+// {
+//   // TODO: improve json parsing
+//   t_request_id call_request_id = ev->ja[1].as_int();
+//   std::string uri = ev->ja[3].as_string();
 
-  // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
-  rpc_details rpc = m_rpcman->get_rpc_details(uri, ev->realm);
-  if (rpc.registration_id)
-  {
-    if (rpc.type == rpc_details::eInternal)
-    {
-      invoke_procedure(rpc, ev);
-      return;
-    }
-    // else if (m_internal_invoke_cb)
-    // {
-    //   _INFO_("old style internal procedure");
-    //   wamp_args my_wamp_args;
-    //   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
-    //   t_request_id reqid = ev->ja[1].as_int();
-    //   m_internal_invoke_cb( ev->src,
-    //                         reqid,
-    //                         rpc.registration_id,
-    //                         my_wamp_args);
-    // }
-    else
-    {
-      unsigned int internal_req_id = m_next_internal_request_id++;
-      {
-        std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-        auto & pending = m_pending_requests[internal_req_id];
-        pending.is_external = true;
-        pending.call_request_id = call_request_id;
-        pending.call_source = ev->src;
-      }
+//   // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
+//   rpc_details rpc = m_rpcman->get_rpc_details(uri, ev->realm);
+//   if (rpc.registration_id)
+//   {
+//     if (rpc.type == rpc_details::eInternal)
+//     {
+//     }
+//     // else if (m_internal_invoke_cb)
+//     // {
+//     //   _INFO_("old style internal procedure");
+//     //   wamp_args my_wamp_args;
+//     //   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
+//     //   t_request_id reqid = ev->ja[1].as_int();
+//     //   m_internal_invoke_cb( ev->src,
+//     //                         reqid,
+//     //                         rpc.registration_id,
+//     //                         my_wamp_args);
+//     // }
+//     else
+//     {
+//       unsigned int internal_req_id = m_next_internal_request_id++;
+//       {
+//         std::lock_guard<std::mutex> guard( m_pending_requests_lock );
+//         auto & pending = m_pending_requests[internal_req_id];
+//         pending.is_external = true;
+//         pending.call_request_id = call_request_id;
+//         pending.call_source = ev->src;
+//       }
 
-      build_message_cb_v2 msg_builder2 = [&](int request_id)
-        {
-          jalson::json_array msg;
-          msg.push_back( INVOCATION );
-          msg.push_back( request_id );
-          msg.push_back( rpc.registration_id );
-          msg.push_back( jalson::json_object() );
-          msg.push_back( jalson::json_array() );
-          msg.push_back( jalson::json_object() );
+//       build_message_cb_v2 msg_builder2 = [&](int request_id)
+//         {
+//           jalson::json_array msg;
+//           msg.push_back( INVOCATION );
+//           msg.push_back( request_id );
+//           msg.push_back( rpc.registration_id );
+//           msg.push_back( jalson::json_object() );
+//           msg.push_back( jalson::json_array() );
+//           msg.push_back( jalson::json_object() );
 
-          return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
-                                                                    nullptr );
-        };
+//           return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+//                                                                     nullptr );
+//         };
 
-      m_sesman->send_request(rpc.sesionh, INVOCATION, internal_req_id, msg_builder2);
-    }
-  }
-  else
-  {
-    _WARN_("Failed to find RPC for CALL request: " << rpc.uri);
-    // TODO : test this path; should reulst in a ERROR going back to the
-    // client process, and that it can successfully handle it.
-    throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
-  }
-}
+//       m_sesman->send_request(rpc.sesionh, INVOCATION, internal_req_id, msg_builder2);
+//     }
+//   }
+//   else
+//   {
+//     _WARN_("Failed to find RPC for CALL request: " << rpc.uri);
+//     // TODO : test this path; should reulst in a ERROR going back to the
+//     // client process, and that it can successfully handle it.
+//     throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
+//   }
+// }
 
 
 
@@ -308,7 +313,13 @@ void dealer_service::invoke_procedure(rpc_details& rpc,
     // TODO: handle exception (raises an ERROR)
     try
     {
-      rpc.user_cb(mycallid, invoke, rpc.uri, details, my_wamp_args, ev->src, rpc.user_data);
+      rpc.user_cb(mycallid,
+                  invoke,
+                  rpc.uri,
+                  details,
+                  my_wamp_args,
+                  ev->src,
+                  rpc.user_data);
     }
     catch (XXX::invocation_exception& ex)
     {
@@ -400,6 +411,207 @@ void dealer_service::handle_REGISTER(ev_inbound_message* ev)
   msg.push_back( ev->ja[1] );
   msg.push_back( registration_id );
   m_sesman->send_to_session( ev->src, msg );
+}
+
+
+t_request_id dealer_service::handle_call(Session* sptr,
+                                         const std::string&,
+                                         jalson::json_array & msg,
+                                         wamp_invocation_reply_fn fn )
+{
+  /* EV thread */
+  std::cout << "dealer_service::handle_call" << "\n";
+
+  // TODO: improve json parsing
+  t_request_id request_id = msg[1].as_int();
+  std::string uri = msg[3].as_string();
+
+  // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
+  rpc_details rpc = m_rpcman->get_rpc_details(uri, sptr->realm());
+  if (rpc.registration_id)
+  {
+    wamp_args my_wamp_args;
+    if ( msg.size() > 4 ) my_wamp_args.args_list = msg[ 4 ].as_array();
+    if ( msg.size() > 5 ) my_wamp_args.args_list = msg[ 4 ].as_object();
+
+
+    _INFO_("handle_call: found the PROC");
+    if (rpc.type == rpc_details::eInternal)
+    {
+      _INFO_("got internal RPC call request");
+
+      size_t mycallid = 0;
+      {
+        std::unique_lock<std::mutex> guard(m_calls_lock);
+        mycallid = m_next_call_id++;
+        m_calls[ mycallid ].seshandle = sptr->handle();
+        m_calls[ mycallid ].requestid = request_id;
+      }
+
+      // TODO: note this is the new style of intenral RPC callback
+      if (rpc.user_cb)
+      {
+        invoke_details invoke(mycallid);
+        invoke.reply_fn = [this](t_request_id tid, wamp_args& args){
+          this->reply(tid, args, false, "");
+        };
+        jalson::json_object details;
+
+        try
+        {
+          session_handle h = sptr->handle();
+          rpc.user_cb(mycallid, invoke, rpc.uri, details, my_wamp_args, h, rpc.user_data);
+        }
+        catch (XXX::invocation_exception& ex)
+        {
+          this->reply(mycallid, ex.args(), true, ex.what());
+        }
+        catch (std::exception& ex)
+        {
+          wamp_args temp;
+          this->reply(mycallid, temp, true, ex.what());
+        }
+        catch (...)
+        {
+          wamp_args temp;
+          this->reply(mycallid, temp, true, WAMP_RUNTIME_ERROR);
+        }
+        return 0;
+      }
+
+
+    }
+    // else if (m_internal_invoke_cb)
+    // {
+    //   _INFO_("old style internal procedure");
+    //   wamp_args my_wamp_args;
+    //   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
+    //   t_request_id reqid = ev->ja[1].as_int();
+    //   m_internal_invoke_cb( ev->src,
+    //                         reqid,
+    //                         rpc.registration_id,
+    //                         my_wamp_args);
+    // }
+    else
+    {
+      unsigned int internal_req_id = m_next_internal_request_id++;
+      {
+        std::lock_guard<std::mutex> guard( m_pending_requests_lock );
+        auto & pending = m_pending_requests[internal_req_id];
+        pending.is_external = true;
+        pending.call_request_id = request_id;
+        pending.call_source = sptr->handle();
+      }
+
+      // build_message_cb_v2 msg_builder2 = [&](int request_id)
+      //   {
+      //     jalson::json_array msg;
+      //     msg.push_back( INVOCATION );
+      //     msg.push_back( request_id );
+      //     msg.push_back( rpc.registration_id );
+      //     msg.push_back( jalson::json_object() );
+      //     msg.push_back( jalson::json_array() );
+      //     msg.push_back( jalson::json_object() );
+
+      //     return std::pair< jalson::json_array, Request_CB_Data*> ( msg,
+      //                                                               nullptr );
+      //   };
+
+
+      Session* sptr = m_sesman->get_session(rpc.sesionh);
+      // t_request_id invocation_request_id =
+      sptr->invocation(rpc.registration_id,
+                       jalson::json_object(),
+                       my_wamp_args,
+                       fn);
+//      m_sesman->send_request(rpc.sesionh, INVOCATION, internal_req_id, msg_builder2);
+    }
+  }
+
+  else
+  {
+    _WARN_("Failed to find RPC for CALL request: " << sptr->realm() << "::" << rpc.uri);
+    // TODO : test this path; should reulst in a ERROR going back to the
+    // client process, and that it can successfully handle it.
+    throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
+  }
+
+}
+
+
+
+void dealer_service::handle_yield(Session* sptr, jalson::json_array & msg)
+{
+  std::cout << __FUNCTION__ << "\n";
+
+
+
+
+
+
+
+  // // TODO: use a proper int type
+  // unsigned int internal_req_id = ev->internal_req_id;
+
+  // pending_request pend ;
+  // {
+  //   std::lock_guard<std::mutex> guard( m_pending_requests_lock );
+  //   pend = m_pending_requests[internal_req_id];
+  //   // TODO: if found, remove it.  If not found, cannot continue
+  // }
+
+  // if (pend.is_external )
+  // {
+  //   // send a RESULT back to originator of the call
+  //   build_message_cb_v4 msgbuilder;
+  //   msgbuilder = [&pend, &ev](){
+  //     jalson::json_array msg;
+  //     msg.push_back(RESULT);
+  //     msg.push_back(pend.call_request_id);
+  //     msg.push_back(jalson::json_object());
+  //     auto ptr = jalson::get_ptr(ev->ja,3);
+  //     if (ptr) msg.push_back(*ptr);
+  //     ptr = jalson::get_ptr(ev->ja,4);
+  //     if (ptr) msg.push_back(*ptr);
+  //     return msg;
+  //   };
+  //   m_sesman->send_to_session(pend.call_source, msgbuilder);
+  //   return;
+  // }
+  // else
+  // {
+
+  //   if ( pend.cb )
+  //   {
+  //     wamp_call_result r;
+
+  //     //    call_info info;
+  //     r.reqid = ev->ja[1].as_uint();
+  //     r.procedure = pend.procedure;
+  //     r.details = ev->ja[2].as_object();
+  //     r.args.args_list = ev->ja[3]; // dont care about the type
+  //     r.user = pend.user_cb_data;
+  //     try {
+  //       pend.cb(std::move(r));
+  //     }
+  //     catch (...) { }
+  //   }
+  //   else
+  //   {
+  //     _WARN_("no callback function to handle request response");
+  //   }
+  // }
+
+
+
+
+
+
+
+
+
+
+
 }
 
 

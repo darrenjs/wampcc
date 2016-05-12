@@ -3,6 +3,7 @@
 
 
 #include "Callbacks.h"
+#include "Session.h"
 
 #include <jalson/jalson.h>
 
@@ -13,7 +14,7 @@
 namespace XXX {
 
   class SessionMan;
-  class Session;
+  // class Session;
   class pubsub_man;
   class rpc_man;
   class Logger;
@@ -69,11 +70,15 @@ private:
   void rpc_registered_cb(const rpc_details&);
   void handle_YIELD(ev_inbound_message* ev);
   void handle_SUBSCRIBE(ev_inbound_message* ev);
-  void handle_CALL(ev_inbound_message*);
+  // void handle_CALL(ev_inbound_message*);
   void handle_REGISTER(ev_inbound_message*);
 
   void invoke_procedure(rpc_details&,
                         ev_inbound_message*);
+
+
+  t_request_id handle_call(Session*, const std::string&, jalson::json_array & msg, wamp_invocation_reply_fn);
+  void handle_yield(Session*, jalson::json_array & msg);
 
   bool reply(t_invoke_id,
              wamp_args& the_args,

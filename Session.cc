@@ -409,7 +409,6 @@ void Session::process_message(jalson::json_value&jv)
     }
     else if (message_type == ABORT)
     {
-      _INFO_("recv ABORT from peer");
       change_state(eClosed, eClosed);
       handle_ABORT(ja);
       return;
@@ -417,6 +416,22 @@ void Session::process_message(jalson::json_value&jv)
     else
     {
       if (m_state != eOpen) this->close();
+    }
+
+    // New style
+    switch (message_type)
+    {
+      case CALL :
+        process_call(ja);
+        return;
+
+      case YIELD :
+        process_yield(ja);
+        return;
+
+      case ERROR :
+        process_error(ja);
+        return;
     }
   }
   else
@@ -494,18 +509,18 @@ void Session::process_message(jalson::json_value&jv)
    * we try to match up a received response to its earlier request.  */
   switch(message_type)
   {
-    case YIELD :
-    {
-      int const request_id = jv.as_array()[1].as_uint();
-      {
-        // TODO: need to delete from the map
-        std::lock_guard<std::mutex> guard(m_pend_req_lock);
-        pendreq = m_pend_req[request_id];
-        m_pend_req[request_id] = 0;
-        pend2 = m_pend_req_2[request_id];  // TODO: and remove?
-      }
-      break;
-    }
+    // case YIELD :
+    // {
+    //   int const request_id = jv.as_array()[1].as_uint();
+    //   {
+    //     // TODO: need to delete from the map
+    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
+    //     pendreq = m_pend_req[request_id];
+    //     m_pend_req[request_id] = 0;
+    //     pend2 = m_pend_req_2[request_id];  // TODO: and remove?
+    //   }
+    //   break;
+    // }
     // case REGISTERED :
     // {
     //   int const request_id = jv.as_array()[1].as_uint();
@@ -518,20 +533,20 @@ void Session::process_message(jalson::json_value&jv)
     //   }
     //   break;
     // }
-    case ERROR :
-    {
-      int const request_id = jv.as_array()[2].as_uint();
-      {
-        // TODO: need to delete from the map
-        std::lock_guard<std::mutex> guard(m_pend_req_lock);
-        pendreq = m_pend_req[request_id];
-        m_pend_req[request_id] = 0;
-        pend2 = m_pend_req_2[request_id]; // TODO: and remove?
-      }
-      _INFO_( "got ERROR for request_id: " << request_id
-              << ", pendreq:" << pendreq );
-      break;
-    }
+    // case ERROR :
+    // {
+    //   int const request_id = jv.as_array()[2].as_uint();
+    //   {
+    //     // TODO: need to delete from the map
+    //     std::lock_guard<std::mutex> guard(m_pend_req_lock);
+    //     pendreq = m_pend_req[request_id];
+    //     m_pend_req[request_id] = 0;
+    //     pend2 = m_pend_req_2[request_id]; // TODO: and remove?
+    //   }
+    //   _INFO_( "got ERROR for request_id: " << request_id
+    //           << ", pendreq:" << pendreq );
+    //   break;
+    // }
     // case RESULT :
     // {
     //   int const request_id = jv.as_array()[1].as_uint();
@@ -622,11 +637,11 @@ void Session::send_request( int request_type,
   pending->request = req.first;
   pending->cb_data = req.second;
 
-  PendingReq2 pend2;
-  pend2.request_type = request_type;
-  pend2.external_req_id = request_id;
-  pend2.internal_req_id = internal_req_id;
-  m_pend_req_2[ request_id ] = pend2;
+  // PendingReq2 pend2;
+  // pend2.request_type = request_type;
+  // pend2.external_req_id = request_id;
+  // pend2.internal_req_id = internal_req_id;
+  // m_pend_req_2[ request_id ] = pend2;
 
   this->send_msg( req.first );
 }
@@ -984,7 +999,7 @@ int Session::duration_pending_open() const
     return (time(NULL) - m_time_create);
 }
 
-std::string  Session::realm() const
+const std::string&  Session::realm() const
 {
   // need this lock, because realm might be updated from IO thread during logon
   std::unique_lock<std::mutex> guard(m_realm_lock);
@@ -1259,6 +1274,7 @@ void Session::process_event(jalson::json_array & msg)
 }
 
 
+/* Initiate a CALL sequence */
 t_request_id Session::call(std::string uri,
                            const jalson::json_object& options,
                            wamp_args args,
@@ -1364,6 +1380,31 @@ void Session::process_error(jalson::json_array & msg)
 
   switch (request_type)
   {
+    case INVOCATION:
+    {
+      wamp_invocation orig_request;
+      bool found = false;
+
+      {
+        std::unique_lock<std::mutex> guard(m_pending_lock);
+        auto iter = m_pending_invocation.find( request_id );
+        if (iter != m_pending_invocation.end())
+        {
+          found = true;
+          orig_request = std::move(iter->second);
+          m_pending_invocation.erase(iter);
+        }
+      }
+
+      std::cout << "TODO: here need to call the incoation reply_fn\n";
+      wamp_args args;
+      if ( msg.size() > 5 ) args.args_list = msg[5];
+      if ( msg.size() > 6 ) args.args_dict = msg[6];
+      std::unique_ptr<std::string> error_ptr( new std::string(error_uri) );
+      orig_request.reply_fn(args, std::move(error_ptr));
+
+      break;
+    }
     case CALL :
     {
       wamp_call orig_call;
@@ -1376,8 +1417,8 @@ void Session::process_error(jalson::json_array & msg)
         {
           found = true;
           orig_call = std::move(iter->second);
+          m_pending_call.erase(iter);
         }
-        m_pending_call.erase(iter);
       }
 
       if (found)
@@ -1409,7 +1450,7 @@ void Session::process_error(jalson::json_array & msg)
 
     default:
     {
-      _WARN_("TODO: throw error here");
+      _WARN_("TODO: handle error msg on unsupported type");
     }
   }
 
@@ -1447,5 +1488,133 @@ t_request_id Session::publish(std::string uri,
 
   return request_id;
 }
+
+
+void Session::process_call(jalson::json_array & msg)
+{
+  std::cout << "Session::process_call" << "\n";
+  /* EV thread */
+
+  // TODO: add more messsage checking here
+  t_request_id request_id = msg[1].as_uint();
+  jalson::json_object & options = msg[2].as_object();
+  std::string& uri = msg[3].as_string();
+  wamp_args my_wamp_args;
+  if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
+  if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
+
+
+  auto reply_fn = [this, request_id](wamp_args args, std::unique_ptr<std::string> error_uri){
+    /* EV thread */
+    // m_pending.erase(request_id);   <---- if that is found, ie, erase the function that allows for cancel
+    // send a RESULT back to originator of the call
+
+    if (!error_uri)
+    {
+      jalson::json_array msg;
+      msg.push_back(RESULT);
+      msg.push_back(request_id);
+      msg.push_back(jalson::json_object());
+      if (!args.args_list.is_null())
+      {
+        msg.push_back( args.args_list );
+        if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+      }
+      send_msg( msg );
+    }
+    else
+    {
+      jalson::json_array msg;
+      msg.push_back(ERROR);
+      msg.push_back(CALL);
+      msg.push_back(request_id);
+      msg.push_back(jalson::json_object());
+      msg.push_back(*error_uri);
+      {
+        msg.push_back( args.args_list );
+        if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+      }
+      send_msg( msg );
+    }
+  };
+
+  m_server_handler.handle_call(this, uri, msg, std::move(reply_fn));
+}
+
+
+void Session::set_server_handler(server_msg_handler h)
+{
+  m_server_handler = h;
+}
+
+
+t_request_id Session::invocation(uint64_t registration_id,
+                                 const jalson::json_object& options,
+                                 wamp_args args,
+                                 wamp_invocation_reply_fn fn)
+{
+  /* EV & USER thread */
+
+  jalson::json_array msg;
+  msg.push_back( INVOCATION );
+  msg.push_back( 0 );
+  msg.push_back( registration_id );
+  msg.push_back( options );
+  if (!args.args_list.is_null())
+  {
+    msg.push_back( args.args_list );
+    if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+  }
+
+  t_request_id request_id;
+  wamp_invocation my_invocation;
+  my_invocation.reply_fn = fn;
+
+  {
+    std::unique_lock<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    {
+      std::unique_lock<std::mutex> guard(m_pending_lock);
+      m_pending_invocation[request_id] = std::move(my_invocation);
+    }
+
+    send_msg( msg );
+  }
+
+  return  request_id;
+}
+
+
+void Session::process_yield(jalson::json_array & msg)
+{
+  std::cout << __FUNCTION__ << "\n";
+
+  // TODO: add more messsage checking here
+  t_request_id request_id = msg[1].as_uint();
+  jalson::json_object & options = msg[2].as_object();
+
+  wamp_args args;
+  if ( msg.size() > 3 ) args.args_list = msg[3];
+  if ( msg.size() > 4 ) args.args_dict = msg[4];
+
+  auto iter = m_pending_invocation.find(request_id);
+  if (iter != m_pending_invocation.end())
+  {
+    if (iter->second.reply_fn)
+    {
+      try {
+        _INFO_("yield --> calling invocation reply_fn");
+        iter->second.reply_fn(args, nullptr);
+      } catch (...){}
+    }
+    m_pending_invocation.erase(iter);
+  }
+
+}
+
+
 
 } // namespace XXX

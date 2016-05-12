@@ -13,6 +13,21 @@
 
 namespace XXX {
 
+  class Session;
+
+  typedef std::function< void() > reply_fn;
+  typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
+
+  struct server_msg_handler
+  {
+    std::function<t_request_id (Session*, std::string uri, jalson::json_array &, wamp_invocation_reply_fn)> handle_call;
+    std::function<void(Session*, jalson::json_array &)> handle_yield;
+    std::function<void(ev_inbound_message*)> handle_inbound_PUBLISH;
+    std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
+    std::function<void(ev_inbound_message*)> handle_inbound_SUSCRIBE;
+  };
+
+
 
   // TODO: this can probably be moved to an impl file.
   struct Request_CB_Data
@@ -70,6 +85,8 @@ namespace XXX {
                        unsigned int internal_req_id,
                        build_message_cb_v2 msg_builder );
 
+    void set_server_handler(server_msg_handler);
+
     void subscribe()  {}
 
     bool send_bytes(std::pair<const char*, size_t>*, size_t, bool final);
@@ -97,7 +114,7 @@ namespace XXX {
 
     /* return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a passive session */
-    std::string realm() const;
+    const std::string& realm() const;
 
     int hb_interval_secs() const { return m_hb_intvl; }
 
@@ -121,6 +138,12 @@ namespace XXX {
     t_request_id publish(std::string uri,
                          const jalson::json_object& options,
                          wamp_args args);
+
+    t_request_id invocation(uint64_t registration_id,
+                            const jalson::json_object& options,
+                            wamp_args args,
+                            wamp_invocation_reply_fn);
+
 
   private:
 
@@ -205,6 +228,8 @@ namespace XXX {
     void process_event(jalson::json_array &);
     void process_result(jalson::json_array &);
     void process_error(jalson::json_array &);
+    void process_call(jalson::json_array &);
+    void process_yield(jalson::json_array &);
 
     bool reply(int callid,
                wamp_args& the_args,
@@ -213,8 +238,10 @@ namespace XXX {
   private:
     // TODO: why two?
     std::map<int, PendingReq* > m_pend_req;
-    std::map<int, PendingReq2 > m_pend_req_2;
+    // std::map<int, PendingReq2 > m_pend_req_2;
     std::mutex m_pend_req_lock;
+
+    server_msg_handler m_server_handler;
 
     std::shared_ptr< t_sid > m_session_handle;
 
@@ -245,14 +272,20 @@ namespace XXX {
       wamp_call() : user_data( nullptr ) { }
     };
 
+    struct wamp_invocation
+    {
+      wamp_invocation_reply_fn reply_fn;
+    };
+
     mutable std::mutex m_pending_lock;
 
     std::map<t_request_id, subscription> m_pending_subscribe;
     std::map<t_request_id, procedure>    m_pending_register;
     std::map<t_request_id, wamp_call>    m_pending_call;
+    std::map<t_request_id, wamp_invocation> m_pending_invocation;
 
-    // procedures -- not currently locked, however, need to add locking once
-    // unprovide() is added
+    // TODO: procedures -- not currently locked, however, need to add locking once
+    // unprovide() is added, and if it is implemented synchronously.
     std::map<t_request_id, procedure> m_procedures;
     std::map<t_subscription_id, subscription> m_subscriptions;
   };
