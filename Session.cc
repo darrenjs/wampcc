@@ -22,40 +22,6 @@
 
 namespace XXX {
 
-
-// TODO: I am still not sure of the best way to create the pending request
-// structure. One the one hand, I could just stor ehte full messages, but then I
-// think, do I need all those details on the reply?  Do we need to store the
-// entire outbound message?  That concern has led me to come up with these
-// pending structures, but the initial though that they could be jsut local to
-// this class.  However, this cannot be the case now, because these structures
-// need to go into the event loop etc, and used there.  So now we have a new set
-// of data classes cropping up and being used all over the place.  So now I am
-// going back to the json approach, just puting the entire output message into
-// the pending queue.  Or perhaps this is not the right place ?  Maybe I need to
-// have a request man, that anyone can interrogate?  ...... But, why do I need
-// pending data for?  Well, yes, nice to have, for diagnoistics etc.  But one
-// definite reason is to be able to store user data.  E.g., we have the cb_data
-// field. E.g., at mimumum, will be the user-code callback to eventually call
-// when a reply is received.
-struct PendingReq
-{
-  int message_type;
-  jalson::json_array request;
-  Request_CB_Data * cb_data;
-
-  PendingReq()
-    : cb_data( nullptr )
-  {
-  }
-};
-
-
-struct PendingRegister : public PendingReq
-{
-  std::string procedure;
-};
-
 /* Constructor */
 Session::Session(SID s,
                  Logger* logptr,
@@ -89,9 +55,6 @@ Session::Session(SID s,
 Session::~Session()
 {
   delete [] m_buf;
-
-  for (auto & item : m_pend_req) delete item.second;
-
 }
 
 uint64_t Session::unique_id()
@@ -493,36 +456,7 @@ void Session::process_message(jalson::json_value&jv)
   }
 
 
-  PendingReq * pendreq = nullptr;
-  PendingReq2 pend2;
-
-/*
-  NEXT: extract the request id, get the message, remove the request, and get the
-    json message and add it to the event. Meanwhile make a note to think about
-    if this is the correct approach.  E.g. alter approach is to have a pending
-    man, who can be interrogated from anywhere.  */
-
-  // TODO: this is the generic message handling. Ie defer everything to the
-  // event loop.  Although, there will be some stuff we need to handle at the
-  // session layer.
-
-  // new style, using a dedicated event class for inbound messages
-  ev_inbound_message * ev = new ev_inbound_message(message_type);
-  ev->src = handle();
-  ev->realm = m_realm;
-  ev->user_conn_id = m_user_conn_id;
-  ev->ja = ja;
-  if (pendreq) ev->cb_data  = pendreq->cb_data;
-  ev->internal_req_id  = pend2.internal_req_id;
-  ev->user = pend2.user;
-  m_evl.push( ev );
-
-  // TODO: arrrgh. Cannot use this delete here, because it currently seems to
-  // also delete the internal pointer the CB object, which there causes a core
-  // dumpo in client_service::handle_REGISTERED during the dynamic_cast.
-  // Update: have put it back in now, because I might try to move to the new
-  // style, where I use an internal request ID.
-  delete pendreq;
+  // TODO: if here, could be an unsupported message type
 }
 
 
@@ -532,24 +466,9 @@ void Session::send_request( int request_type,
 {
   t_request_id request_id = m_next_request_id++;
 
-  // TODO: here I am using the PendingRegister struct ... but question is, do I
-  // need a request-specific structure, or, can I have something generic?
-  PendingRegister * pending = new PendingRegister();  // TODO: memleak
+  jalson::json_array req = msg_builder( request_id );
 
-  pending->message_type = request_type;
-
-  {
-    std::lock_guard<std::mutex> guard(m_pend_req_lock);
-    m_pend_req[request_id] = pending;
-  }
-
-  std::pair< jalson::json_array, Request_CB_Data*> req
-    = msg_builder( request_id );
-
-  pending->request = req.first;
-  pending->cb_data = req.second;
-
-  this->send_msg( req.first );
+  this->send_msg( req );
 }
 
 //----------------------------------------------------------------------

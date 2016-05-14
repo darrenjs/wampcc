@@ -9,15 +9,12 @@
 
 namespace XXX {
 
-struct Request_CB_Data;
-
 struct event
 {
   enum Type
   {
     session_state_event = 0,
     router_session_connect_fail,
-    inbound_message,
     outbound_publish,
     function_dispatch
   } type;
@@ -33,29 +30,6 @@ struct event
   {}
 
   virtual ~event(){}
-};
-
-
-
-struct ev_inbound_message : public event
-{
-  int msg_type; // WAMP message type
-  jalson::json_array ja;
-
-  void * user;
-  Request_CB_Data* cb_data; // valid for responses to request
-
-  unsigned int internal_req_id;
-
-  ev_inbound_message(int __msgtype)
-    : event(inbound_message),
-      msg_type(__msgtype),
-      user(nullptr),
-      cb_data(nullptr)
-  {
-  }
-
-  ~ev_inbound_message();
 };
 
 

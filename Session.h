@@ -28,47 +28,14 @@ namespace XXX {
   };
 
 
-
-  // TODO: this can probably be moved to an impl file.
-  struct Request_CB_Data
-  {
-    virtual ~Request_CB_Data() {}
-  };
-
-
-  typedef std::function< std::pair< jalson::json_array, Request_CB_Data*> (int) > build_message_cb_v2;
-  typedef std::function<  jalson::json_array  ()    > build_message_cb_v4;
+  typedef std::function<  jalson::json_array (int) > build_message_cb_v2;
+  typedef std::function<  jalson::json_array ()    > build_message_cb_v4;
 
 
   class event_loop;
   class IOHandle;
   class SessionMan;
-
-
   class Logger;
-
-  struct PendingReq;
-
-  struct PendingReq2
-  {
-    unsigned int request_type;
-    unsigned int external_req_id;
-    unsigned int internal_req_id;
-    void * user;
-
-    PendingReq2()
-      : request_type(0),
-        external_req_id(0),
-        internal_req_id(0),
-        user(0)
-    {
-    }
-
-  };
-
-  struct Request_CB_Data;
-
-
 
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
@@ -240,9 +207,6 @@ namespace XXX {
                bool is_error,
                std::string error_uri);
   private:
-
-    std::map<int, PendingReq* > m_pend_req;
-    std::mutex m_pend_req_lock;
 
     server_msg_handler m_server_handler;
 

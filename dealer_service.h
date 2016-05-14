@@ -55,10 +55,6 @@ private:
 
   void rpc_registered_cb(const rpc_details&);
 
-  void invoke_procedure(rpc_details&,
-                        ev_inbound_message*);
-
-
   t_request_id handle_call(Session*, const std::string&, jalson::json_array & msg, wamp_invocation_reply_fn);
 
   bool reply(t_invoke_id,

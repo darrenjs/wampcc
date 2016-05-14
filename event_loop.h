@@ -20,21 +20,10 @@ namespace XXX {
   class SessionMan;
   class Logger;
 
-struct server_event_handler
-{
-  std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
-  std::function<void(ev_inbound_message*)> handle_inbound_SUSCRIBE;
-  std::function<void(ev_inbound_message*)> handle_inbound_YIELD;
-};
-
-
 struct client_event_handler
 {
   std::function<void(ev_router_session_connect_fail*)> handle_router_session_connect_fail;
 };
-
-
-
 
 class event_error : public std::runtime_error
 {

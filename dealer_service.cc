@@ -156,61 +156,61 @@ void dealer_service::register_procedure(const std::string& realm,
 }
 
 
-void dealer_service::invoke_procedure(rpc_details& rpc,
-                                      ev_inbound_message* ev)
-{
-  t_request_id request_id = ev->ja[1].as_int();
-  wamp_args my_wamp_args;
-  if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
-  _INFO_("got internal RPC call request");
+// void dealer_service::invoke_procedure(rpc_details& rpc,
+//                                       ev_inbound_message* ev)
+// {
+//   t_request_id request_id = ev->ja[1].as_int();
+//   wamp_args my_wamp_args;
+//   if ( ev->ja.size() > 4 ) my_wamp_args.args_list = ev->ja[ 4 ].as_array();
+//   _INFO_("got internal RPC call request");
 
-  size_t mycallid = 0;
-//  bool had_exception = true;
+//   size_t mycallid = 0;
+// //  bool had_exception = true;
 
-  {
-    std::unique_lock<std::mutex> guard(m_calls_lock);
-    mycallid = m_next_call_id++;
-    m_calls[ mycallid ].seshandle = ev->src;
-    m_calls[ mycallid ].requestid = request_id;
-  }
+//   {
+//     std::unique_lock<std::mutex> guard(m_calls_lock);
+//     mycallid = m_next_call_id++;
+//     m_calls[ mycallid ].seshandle = ev->src;
+//     m_calls[ mycallid ].requestid = request_id;
+//   }
 
 
-  // TODO: note this is the new style of intenral RPC callback
-  if (rpc.user_cb)
-  {
-    invoke_details invoke(mycallid);
-    invoke.reply_fn = [this](t_request_id tid, wamp_args& args){
-      this->reply(tid, args, false, "");
-    };
-    jalson::json_object details;
+//   // TODO: note this is the new style of intenral RPC callback
+//   if (rpc.user_cb)
+//   {
+//     invoke_details invoke(mycallid);
+//     invoke.reply_fn = [this](t_request_id tid, wamp_args& args){
+//       this->reply(tid, args, false, "");
+//     };
+//     jalson::json_object details;
 
-    // TODO: handle exception (raises an ERROR)
-    try
-    {
-      rpc.user_cb(mycallid,
-                  invoke,
-                  rpc.uri,
-                  details,
-                  my_wamp_args,
-                  ev->src,
-                  rpc.user_data);
-    }
-    catch (XXX::invocation_exception& ex)
-    {
-      this->reply(mycallid, ex.args(), true, ex.what());
-    }
-    catch (std::exception& ex)
-    {
-      wamp_args temp;
-      this->reply(mycallid, temp, true, ex.what());
-    }
-    catch (...)
-    {
-      wamp_args temp;
-      this->reply(mycallid, temp, true, WAMP_RUNTIME_ERROR);
-    }
-  }
-}
+//     // TODO: handle exception (raises an ERROR)
+//     try
+//     {
+//       rpc.user_cb(mycallid,
+//                   invoke,
+//                   rpc.uri,
+//                   details,
+//                   my_wamp_args,
+//                   ev->src,
+//                   rpc.user_data);
+//     }
+//     catch (XXX::invocation_exception& ex)
+//     {
+//       this->reply(mycallid, ex.args(), true, ex.what());
+//     }
+//     catch (std::exception& ex)
+//     {
+//       wamp_args temp;
+//       this->reply(mycallid, temp, true, ex.what());
+//     }
+//     catch (...)
+//     {
+//       wamp_args temp;
+//       this->reply(mycallid, temp, true, WAMP_RUNTIME_ERROR);
+//     }
+//   }
+// }
 
 
 bool dealer_service::reply(t_invoke_id callid,

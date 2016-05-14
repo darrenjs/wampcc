@@ -20,14 +20,6 @@
 namespace XXX {
 
 
-
-struct Request_Register_CD_Data : public Request_CB_Data
-{
-  std::string procedure;
-};
-
-
-
 //----------------------------------------------------------------------
 
 
@@ -125,7 +117,7 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
           msg.push_back( jalson::json_array() );
 
           // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
-          return std::pair< jalson::json_array, Request_CB_Data*> ( msg, nullptr );
+          return msg;
 
         };
 

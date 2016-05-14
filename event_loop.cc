@@ -226,34 +226,7 @@ void event_loop::process_event(event * ev)
       }
       break;
     }
-    case event::inbound_message :
-    {
-      ev_inbound_message * ev2 =
-        dynamic_cast<ev_inbound_message*>(ev);
-      if (ev2==nullptr) throw std::runtime_error("invalid inbound_message event");
 
-      switch ( ev2->msg_type )
-      {
-        case HEARTBEAT: break;
-        case HELLO :
-        case RESULT :
-        case CHALLENGE :
-        case AUTHENTICATE :
-        case ERROR :
-        {
-          break;
-        }
-        default:
-        {
-          // TODO: probably should reply here
-          std::ostringstream os;
-          os << "msg type " << ev2->msg_type << " not supported"; // DJS
-          _ERROR_( os.str() );
-          throw std::runtime_error(os.str());
-        }
-      }
-      break;
-    }
     case event::function_dispatch :
     {
       ev_function_dispatch * ev2 =  dynamic_cast<ev_function_dispatch*>(ev);
@@ -289,49 +262,6 @@ void event_loop::process_event_error(event* ev, event_error& er)
     return;
   }
 
-
-  ev_inbound_message * ev2 = dynamic_cast<ev_inbound_message*>(ev);
-  if (ev2)
-  {
-    switch ( ev2->msg_type )
-    {
-      case CALL :
-      {
-        jalson::json_array msg;
-        msg.push_back( ERROR );
-        msg.push_back( CALL );
-        msg.push_back( jalson::get_copy(ev2->ja,1,jalson::json_value::make_int(0)));
-        msg.push_back( jalson::json_object() );
-        msg.push_back( er.error_uri );
-        msg.push_back( jalson::json_array() );
-        msg.push_back( jalson::json_object() );
-
-        m_sesman->send_to_session( ev->src, msg );
-        break;
-      }
-      case REGISTER :
-      {
-        jalson::json_array msg;
-        msg.push_back( ERROR );
-        msg.push_back( REGISTER );
-        msg.push_back( jalson::get_copy(ev2->ja,1,jalson::json_value::make_int(0)));
-        msg.push_back( jalson::json_object() );
-        msg.push_back( er.error_uri );
-        msg.push_back( jalson::json_array() );
-        msg.push_back( jalson::json_object() );
-        msg.push_back( "qazwsx" );
-
-        m_sesman->send_to_session( ev2->src, msg );
-        break;
-      }
-      default:
-      {
-        THROW(std::runtime_error,
-              "unsupported event type " << ev2->msg_type );
-      }
-    }
-  }
-
 }
 
 
@@ -360,7 +290,7 @@ void event_loop::process_outbound_publish(ev_outbound_publish* ev)
       msg[1] = request_id;
 
       // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
-      return std::pair< jalson::json_array, Request_CB_Data*> ( msg, nullptr );
+      return msg;
 
     };
 
