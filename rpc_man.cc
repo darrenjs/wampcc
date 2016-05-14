@@ -2,6 +2,7 @@
 
 #include "event_loop.h"
 #include "Logger.h"
+#include "Session.h"
 
 #include <memory>
 
@@ -35,51 +36,6 @@ rpc_details rpc_man::get_rpc_details( const std::string& rpcname,
     return rpc_details(); // procedure not found
 
   return rpc_iter->second;
-}
-
-
-int rpc_man::handle_inbound_REGISTER(ev_inbound_message* ev)
-{
-  //int size = ja.size();
-  const std::string& procedure_uri = jalson::get_ref(ev->ja, 3).as_string();
-
-  rpc_details r;
-  r.registration_id = 0;
-  r.uri = procedure_uri;
-  r.sesionh = ev->src;
-  r.type = rpc_details::eRemote;
-
-
-  {
-    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-    auto realm_iter = m_realm_to_registry.find( ev->realm );
-
-    if (realm_iter == m_realm_to_registry.end())
-    {
-      // insert realm
-      auto p = m_realm_to_registry.insert(std::make_pair(ev->realm, rpc_registry()));
-      realm_iter = std::move(p.first);
-    }
-
-    auto rpc_iter = realm_iter->second.find(procedure_uri);
-    if (rpc_iter != realm_iter->second.end())
-    {
-      _WARN_("Ignore duplicate procedure register for " << ev->realm << ":" << procedure_uri);
-      throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
-    }
-
-    // create registration record
-
-    r.registration_id = m_next_regid++;
-    realm_iter->second[ procedure_uri ] = r;
-
-  }
-
-  _INFO_( "Procedure "<< ev->realm << "::'" << procedure_uri <<"' registered with id " << r.registration_id );
-
-
-  if (m_rpc_added_cb) m_rpc_added_cb( r );
-  return r.registration_id;
 }
 
 
@@ -125,6 +81,50 @@ int rpc_man::register_internal_rpc_2(const std::string& realm,
   }
 
   _INFO_( "Internal  "<< realm << "::'" << uri <<"' registered with id " << r.registration_id );
+
+  if (m_rpc_added_cb) m_rpc_added_cb( r );
+  return r.registration_id;
+}
+
+int rpc_man::handle_inbound_register(Session* sptr,
+                                     std::string procedure_uri,
+                                     registered_fn on_registered)
+{
+  rpc_details r;
+  r.registration_id = 0;
+  r.uri = procedure_uri;
+  r.sesionh = sptr->handle();
+  r.type = rpc_details::eRemote;
+
+
+  {
+    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+    auto realm_iter = m_realm_to_registry.find( sptr->realm() );
+
+    if (realm_iter == m_realm_to_registry.end())
+    {
+      // insert realm
+      auto p = m_realm_to_registry.insert(std::make_pair(sptr->realm(), rpc_registry()));
+      realm_iter = std::move(p.first);
+    }
+
+    auto rpc_iter = realm_iter->second.find(procedure_uri);
+    if (rpc_iter != realm_iter->second.end())
+    {
+      _WARN_("Ignore duplicate procedure register for " << sptr->realm() << ":" << procedure_uri);
+      throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
+    }
+
+    // create registration record
+
+    r.registration_id = m_next_regid++;
+    realm_iter->second[ procedure_uri ] = r;
+
+  }
+
+  _INFO_( "Procedure "<< sptr->realm() << "::'" << procedure_uri <<"' registered with id " << r.registration_id );
+
+  on_registered(r.registration_id);
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;

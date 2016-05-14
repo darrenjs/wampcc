@@ -30,13 +30,6 @@ dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
 {
   m_evl->set_session_man( m_sesman.get() );
   m_evl->set_pubsub_man( m_pubsub.get() );
-
-  server_event_handler my_handlers;
-  my_handlers.handle_inbound_YIELD    = [this](ev_inbound_message* ev){ this->handle_YIELD(ev);  };
-  my_handlers.handle_inbound_REGISTER = [this](ev_inbound_message* ev){ this->handle_REGISTER(ev); };
-
-  m_evl->set_handler( std::move(my_handlers) );
-
 };
 
 
@@ -57,66 +50,66 @@ void dealer_service::rpc_registered_cb(const rpc_details& r)
 
 //----------------------------------------------------------------------
 
-/* TODO: the way the handlers are set up, as callback via functional objects,
- * means I have to pass in the base class 'event', even though earlier in the
- * call sequence I would have detected a YIELD and corresponding type as
- * ev_inbound_message.
- */
-void dealer_service::handle_YIELD(ev_inbound_message* ev)
-{
-  // TODO: use a proper int type
-  unsigned int internal_req_id = ev->internal_req_id;
+// /* TODO: the way the handlers are set up, as callback via functional objects,
+//  * means I have to pass in the base class 'event', even though earlier in the
+//  * call sequence I would have detected a YIELD and corresponding type as
+//  * ev_inbound_message.
+//  */
+// void dealer_service::handle_YIELD(ev_inbound_message* ev)
+// {
+//   // TODO: use a proper int type
+//   unsigned int internal_req_id = ev->internal_req_id;
 
-  pending_request pend ;
-  {
-    std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-    pend = m_pending_requests[internal_req_id];
-    // TODO: if found, remove it.  If not found, cannot continue
-  }
+//   pending_request pend ;
+//   {
+//     std::lock_guard<std::mutex> guard( m_pending_requests_lock );
+//     pend = m_pending_requests[internal_req_id];
+//     // TODO: if found, remove it.  If not found, cannot continue
+//   }
 
-  if (pend.is_external )
-  {
-    // send a RESULT back to originator of the call
-    build_message_cb_v4 msgbuilder;
-    msgbuilder = [&pend, &ev](){
-      jalson::json_array msg;
-      msg.push_back(RESULT);
-      msg.push_back(pend.call_request_id);
-      msg.push_back(jalson::json_object());
-      auto ptr = jalson::get_ptr(ev->ja,3);
-      if (ptr) msg.push_back(*ptr);
-      ptr = jalson::get_ptr(ev->ja,4);
-      if (ptr) msg.push_back(*ptr);
-      return msg;
-    };
-    m_sesman->send_to_session(pend.call_source, msgbuilder);
-    return;
-  }
-  else
-  {
+//   if (pend.is_external )
+//   {
+//     // send a RESULT back to originator of the call
+//     build_message_cb_v4 msgbuilder;
+//     msgbuilder = [&pend, &ev](){
+//       jalson::json_array msg;
+//       msg.push_back(RESULT);
+//       msg.push_back(pend.call_request_id);
+//       msg.push_back(jalson::json_object());
+//       auto ptr = jalson::get_ptr(ev->ja,3);
+//       if (ptr) msg.push_back(*ptr);
+//       ptr = jalson::get_ptr(ev->ja,4);
+//       if (ptr) msg.push_back(*ptr);
+//       return msg;
+//     };
+//     m_sesman->send_to_session(pend.call_source, msgbuilder);
+//     return;
+//   }
+//   else
+//   {
 
-    if ( pend.cb )
-    {
-      wamp_call_result r;
+//     if ( pend.cb )
+//     {
+//       wamp_call_result r;
 
-      //    call_info info;
-      r.reqid = ev->ja[1].as_uint();
-      r.procedure = pend.procedure;
-      r.details = ev->ja[2].as_object();
-      r.args.args_list = ev->ja[3]; // dont care about the type
-      r.user = pend.user_cb_data;
-      try {
-        pend.cb(std::move(r));
-      }
-      catch (...) { }
-    }
-    else
-    {
-      _WARN_("no callback function to handle request response");
-    }
-  }
+//       //    call_info info;
+//       r.reqid = ev->ja[1].as_uint();
+//       r.procedure = pend.procedure;
+//       r.details = ev->ja[2].as_object();
+//       r.args.args_list = ev->ja[3]; // dont care about the type
+//       r.user = pend.user_cb_data;
+//       try {
+//         pend.cb(std::move(r));
+//       }
+//       catch (...) { }
+//     }
+//     else
+//     {
+//       _WARN_("no callback function to handle request response");
+//     }
+//   }
 
-}
+// }
 
 void dealer_service::listen(int port)
 {
@@ -140,6 +133,10 @@ void dealer_service::listen(int port)
 
       handlers.inbound_subscribe  = [this](Session* sptr, jalson::json_array & msg) {
         m_pubsub->handle_inbound_subscribe(sptr, msg);
+      };
+
+      handlers.inbound_register  = [this](Session* sptr, std::string uri, registered_fn fn) {
+        m_rpcman->handle_inbound_register(sptr, uri, fn);
       };
 
       sptr->set_server_handler( std::move(handlers) );
@@ -273,22 +270,6 @@ t_request_id dealer_service::publish(const std::string& topic,
   return m_pubsub->publish(topic, realm, options, std::move(args));
 }
 
-
-void dealer_service::handle_REGISTER(ev_inbound_message* ev)
-{
-
-  // Register the RPC. Once this function has been called, we should
-  // expect that requests can be sent immediately, so its important that
-  // we immediately sent the registration ID to the peer, before requests
-  // arrive.
-  int registration_id = m_rpcman->handle_inbound_REGISTER(ev);
-
-  jalson::json_array msg;
-  msg.push_back( REGISTERED );
-  msg.push_back( ev->ja[1] );
-  msg.push_back( registration_id );
-  m_sesman->send_to_session( ev->src, msg );
-}
 
 
 t_request_id dealer_service::handle_call(Session* sptr,

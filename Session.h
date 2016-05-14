@@ -17,12 +17,13 @@ namespace XXX {
 
   typedef std::function< void() > reply_fn;
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
+  typedef std::function< void(uint64_t) > registered_fn;
 
   struct server_msg_handler
   {
     std::function<t_request_id (Session*, std::string uri, jalson::json_array &, wamp_invocation_reply_fn)> handle_call;
     std::function<void(Session*, std::string uri, jalson::json_array &)> handle_inbound_publish;
-    std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
+    std::function<void(Session*, std::string uri, registered_fn)> inbound_register;
     std::function<void(Session*, jalson::json_array &)> inbound_subscribe;
   };
 
@@ -232,6 +233,7 @@ namespace XXX {
     void process_yield(jalson::json_array &);
     void process_publish(jalson::json_array &);
     void process_subscribe(jalson::json_array &);
+    void process_register(jalson::json_array &);
 
     bool reply(int callid,
                wamp_args& the_args,

@@ -234,11 +234,6 @@ void event_loop::process_event(event * ev)
 
       switch ( ev2->msg_type )
       {
-        case REGISTER :
-        {
-          m_server_handler.handle_inbound_REGISTER(ev2);
-          break;
-        }
         case HEARTBEAT: break;
         case HELLO :
         case RESULT :

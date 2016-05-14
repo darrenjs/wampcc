@@ -112,7 +112,6 @@ public:
     void set_session_man(SessionMan*);
 
     void set_handler(client_event_handler h)  { m_client_handler=h; }
-    void set_handler(server_event_handler h ) { m_server_handler=h;  }
 
   private:
     event_loop(const event_loop&); // no copy
@@ -142,7 +141,6 @@ public:
     pubsub_man* m_pubsubman;
     SessionMan* m_sesman;
 
-    server_event_handler m_server_handler;
     client_event_handler m_client_handler;
 
     std::chrono::time_point<std::chrono::steady_clock> m_last_hb;

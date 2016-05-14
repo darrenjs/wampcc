@@ -3,6 +3,7 @@
 
 #include "WampTypes.h"
 #include "Callbacks.h"
+#include "Session.h"
 
 #include <jalson/jalson.h>
 
@@ -46,7 +47,9 @@ public:
   rpc_man(Logger *, rpc_added_cb);
 
   // return the registion id
-  int handle_inbound_REGISTER(ev_inbound_message*);
+  int handle_inbound_register(Session*,
+                              std::string uri,
+                              registered_fn on_registered);
 
   // Register and RPC that is handled by the internal session
   int register_internal_rpc_2(const std::string& realm,

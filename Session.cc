@@ -417,6 +417,9 @@ void Session::process_message(jalson::json_value&jv)
         process_subscribe(ja);
         return;
 
+      case REGISTER :
+        process_register(ja);
+        return;
 
       case ERROR :
         process_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
@@ -1542,6 +1545,28 @@ void Session::process_subscribe(jalson::json_array & msg)
   {
     m_server_handler.inbound_subscribe(this, msg);
   }
+}
+
+void Session::process_register(jalson::json_array & msg)
+{
+  // TODO: add more messsage checking here
+  t_request_id request_id = msg[1].as_uint();
+  std::string uri = std::move(msg[3].as_string());
+
+  if (m_server_handler.inbound_register)
+  {
+    auto cb = [this,request_id](uint64_t registration_id)
+      {
+        jalson::json_array msg;
+        msg.push_back(REGISTERED);
+        msg.push_back(request_id);
+        msg.push_back(registration_id);
+        send_msg(msg);
+      };
+
+    m_server_handler.inbound_register(this, uri, std::move(cb));
+  }
+
 }
 
 
