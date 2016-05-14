@@ -64,9 +64,6 @@ private:
                       const std::string & addr,
                       int port);
 
-  bool is_open(const router_conn*) const;
-
-
 
   t_connection_id register_session(router_conn&);
 
@@ -151,7 +148,7 @@ private:
   t_connection_id m_router_session_id;
 
   session_handle m_internal_session_handle;
-  Session* m_session = nullptr;
+  std::shared_ptr<Session> m_session;
   // struct user_procedure
   // {
   //   std::string uri;

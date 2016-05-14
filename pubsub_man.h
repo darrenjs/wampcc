@@ -22,7 +22,7 @@ class ev_inbound_message;
 class pubsub_man
 {
 public:
-  pubsub_man(Logger *, event_loop&, SessionMan&);
+  pubsub_man(Logger *, event_loop&);
   ~pubsub_man();
 
   void handle_event( ev_session_state_event* );
@@ -49,7 +49,6 @@ private:
 
   Logger *__logptr; /* name chosen for log macros */
   event_loop& m_evl;
-  SessionMan& m_sesman;
 
   typedef  std::map< std::string, std::unique_ptr<managed_topic> > topic_registry;
   typedef  std::map< std::string, topic_registry >   realm_to_topicreg;

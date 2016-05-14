@@ -39,7 +39,7 @@ namespace XXX {
 
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
-  class Session : public io_listener
+  class Session : public std::enable_shared_from_this<Session>, public io_listener
   {
   public:
     Session(SID, Logger*, IOHandle *,
@@ -49,7 +49,6 @@ namespace XXX {
     ~Session();
 
     void set_server_handler(server_msg_handler);
-
 
     void send_request( int request_type,
                        unsigned int internal_req_id,
@@ -63,7 +62,7 @@ namespace XXX {
 
     void remove_listener();
 
-    session_handle handle() { return m_session_handle; }
+    session_handle handle() { return shared_from_this(); }
 
     bool is_open() const;
     bool is_pending_open() const;
@@ -208,9 +207,10 @@ namespace XXX {
                std::string error_uri);
   private:
 
+    uint64_t m_sid;
     server_msg_handler m_server_handler;
 
-    std::shared_ptr< t_sid > m_session_handle;
+    std::shared_ptr< t_sid > m_session_handle; // TODO
 
     t_connection_id m_user_conn_id;
 

@@ -26,18 +26,12 @@ SessionMan::SessionMan(Logger* logptr, event_loop& evl)
 SessionMan::~SessionMan()
 {
   std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-
-  for (auto & item  : m_sessions.active)
-    delete item.second;
-  for (auto & item : m_sessions.closed)
-    delete item;
 }
 
 
-Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
-                                    t_connection_id user_conn_id,
-                                    std::string realm)
+std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is_passive,
+                                                    t_connection_id user_conn_id,
+                                                    std::string realm)
 {
   /* IO thread */
 
@@ -49,14 +43,13 @@ Session* SessionMan::create_session(IOHandle * iohandle, bool is_passive,
 
   // TODO: its not the place here to configure the newly created session .
   // That should be done by the caller of this function.
-  Session * sptr;
-  sptr = new Session( sid,
-                      __logptr,
-                      iohandle,
-                      m_evl,
-                      is_passive,
-                      user_conn_id,
-                      realm);
+  std::shared_ptr<Session>  sptr (new Session( sid,
+                                               __logptr,
+                                               iohandle,
+                                               m_evl,
+                                               is_passive,
+                                               user_conn_id,
+                                               realm));
 
   m_sessions.active[ sid ] = sptr;
 
@@ -129,8 +122,7 @@ void SessionMan::send_to_session(session_handle handle,
     _WARN_("failed to lock the session handle");
     return;
   }
-  SID dest( *sp );
-
+  SID dest( sp->unique_id() );
 
   if (dest == SID())
   {
@@ -152,13 +144,6 @@ void SessionMan::send_to_session(session_handle handle,
   }
 }
 
-//----------------------------------------------------------------------
-
-void SessionMan::send_to_session(session_handle handle, jalson::json_array& msg)
-{
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-  send_to_session_impl(handle, msg);
-}
 
 //----------------------------------------------------------------------
 
@@ -172,7 +157,7 @@ void SessionMan::send_to_session_impl(session_handle handle,
     return;
   }
 
-  SID dest( *sp );
+  SID dest( sp->unique_id() );
   if (dest == SID())
   {
     _WARN_("ignoring attempt to send to session with id 0");
@@ -211,21 +196,6 @@ void SessionMan::send_to_session(const std::vector<session_handle>& handles,
 }
 
 
-//----------------------------------------------------------------------
-
-Session* SessionMan::get_session(session_handle sh)
-{
-  auto sp = sh.lock();
-  if (!sp) return nullptr;
-
-  SID dest( *sp );
-  auto it = m_sessions.active.find( dest );
-  if (it != m_sessions.active.end())
-    return it->second;
-  else
-    return nullptr;
-}
-
 void SessionMan::send_request(session_handle handle_weak,
                               int request_type,
                               unsigned int internal_req_id,
@@ -240,7 +210,7 @@ void SessionMan::send_request(session_handle handle_weak,
     return;
   }
 
-  SID dest( *sp );
+  SID dest( sp->unique_id() );
   if (dest == SID())
   {
     _WARN_("ignoring attempt to send to session with id 0");
@@ -263,15 +233,13 @@ void SessionMan::send_request(session_handle handle_weak,
 
 void SessionMan::handle_event(ev_session_state_event* ev)
 {
-  Session* sptr = NULL;
+  auto sp = ev->src.lock();
+  if (!sp) return;
 
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
 
-    auto sp = ev->src.lock();
-    if (!sp) return;
-    SID sid ( *sp );
-
+    SID sid ( sp->unique_id() );
 
     auto it = m_sessions.active.find( sid );
 
@@ -281,12 +249,11 @@ void SessionMan::handle_event(ev_session_state_event* ev)
       return;
     }
 
-    sptr = it->second;
 
     if (ev->is_open == false)
     {
       m_sessions.active.erase( it );
-      m_sessions.closed.push_back(sptr);
+      m_sessions.closed.push_back(sp);
     }
   }
 
@@ -306,33 +273,15 @@ void SessionMan::handle_housekeeping_event()
 {
   this->heartbeat_all();
 
-
-  std::vector<Session*> to_delete;
+  std::vector< std::shared_ptr<Session> > to_delete;
 
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
     to_delete.swap( m_sessions.closed );
   }
 
-  for (auto & i : to_delete) delete i;
+  to_delete.clear(); // expected to call ~Session
 }
 
-//----------------------------------------------------------------------
-
-bool SessionMan::session_is_open(session_handle sh) const
-{
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-  auto sp = sh.lock();
-  if (!sp) return false;
-  SID sid ( *sp );
-
-  auto it = m_sessions.active.find( sid );
-
-  if (it == m_sessions.active.end()) return false;
-
-  Session * sptr = it->second;
-  return sptr->is_open();
-}
 
 }

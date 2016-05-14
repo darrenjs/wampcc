@@ -99,6 +99,9 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
 
   _INFO_("session is now ready #" << ev->user_conn_id << " ... registering procedures");
 
+
+  auto sp = sh.lock();
+
   // publish our topics
   {
     std::lock_guard< std::mutex > guard ( m_topics_lock );
@@ -135,7 +138,7 @@ void client_service::handle_session_state_change(ev_session_state_event* ev)
     {
       router_conn*  rs = iter->second;
       rs->m_internal_session_handle = sh;
-      rs->m_session = m_sesman->get_session(sh);
+      rs->m_session = sp;
       if (rs->m_connection_cb)
         try {
           rs->m_connection_cb(rs, 0, true);
@@ -246,13 +249,6 @@ int client_service::connect_session(router_conn& rs,
                             port,
                             rs.router_session_id());
   return 0;
-}
-
-
-
-bool client_service::is_open(const router_conn* rs) const
-{
-  return m_sesman->session_is_open( rs->m_internal_session_handle );
 }
 
 

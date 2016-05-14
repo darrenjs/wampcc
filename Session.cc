@@ -31,6 +31,7 @@ Session::Session(SID s,
                  t_connection_id __user_conn_id,
                  std::string __realm)
   : m_state( eInit ),
+    m_sid(s.unique_id()),
     __logptr(logptr),
     m_handle( h ),
     m_hb_intvl(2),
@@ -43,7 +44,6 @@ Session::Session(SID s,
     m_evl(evl),
     m_is_passive(is_passive),
     m_realm(__realm),
-    m_session_handle(std::make_shared<t_sid>(s.unique_id())),
     m_user_conn_id(__user_conn_id)
 {
   m_handle->set_listener(this);
@@ -59,7 +59,7 @@ Session::~Session()
 
 uint64_t Session::unique_id()
 {
-  return *m_session_handle;
+  return m_sid;
 }
 
 //----------------------------------------------------------------------
@@ -744,11 +744,9 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
 
   if (digest == peer_digest)
   {
-    t_sid sid = *m_session_handle;
-
     jalson::json_array msg;
     msg.push_back( WELCOME );
-    msg.push_back( sid );
+    msg.push_back( m_sid );
 
     send_msg( msg );
 

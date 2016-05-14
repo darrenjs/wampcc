@@ -22,7 +22,7 @@ TODO: what locking is needed around this?
 */
 struct managed_topic
 {
-  std::vector< Session* > m_subscribers2;
+  std::vector< std::weak_ptr<Session> > m_subscribers;
 
   // current upto date image of the value
   jalson::json_value image;
@@ -44,10 +44,9 @@ struct managed_topic
 };
 
 /* Constructor */
-pubsub_man::pubsub_man(Logger * logptr, event_loop&evl, SessionMan& sm)
+pubsub_man::pubsub_man(Logger * logptr, event_loop&evl)
   : __logptr(logptr),
     m_evl(evl),
-    m_sesman( sm ),
     m_next_subscription_id(1)
 {
 }
@@ -86,12 +85,12 @@ void pubsub_man::handle_event(ev_session_state_event* ev)
     for (auto & item : realm_iter.second)
     {
 
-      for (auto it = item.second->m_subscribers2.begin();
-           it != item.second->m_subscribers2.end(); it++)
+      for (auto it = item.second->m_subscribers.begin();
+           it != item.second->m_subscribers.end(); it++)
       {
-        if (compare_session( (*it)->handle(), ev->src))
+        if (compare_session( *it, ev->src))
         {
-          item.second->m_subscribers2.erase( it );
+          item.second->m_subscribers.erase( it );
           break;
         }
       }
@@ -235,10 +234,10 @@ void pubsub_man::update_topic(const std::string& topic,
     if (args_list && args_dict) msg.push_back( *args_dict );
 
 
-    for (auto sub : mt->m_subscribers2)
+    for (auto item : mt->m_subscribers)
     {
       // TODO: should this be done here, or, on the dispatch thread?
-      sub->send_msg(msg);
+      if (auto sp = item.lock()) sp->send_msg(msg);
     }
 
   }
@@ -317,7 +316,7 @@ void pubsub_man::handle_inbound_subscribe(Session* sptr,
     throw event_error::request_error(WAMP_ERROR_INVALID_URI,
                                      SUBSCRIBE, request_id);
   {
-    mt->m_subscribers2.push_back(sptr);
+    mt->m_subscribers.push_back(sptr->handle());
     _INFO_("session " << sptr->unique_id() << " subscribed to topic '"<< uri<< "'");
 
     // TODO: maybe building and sending message here is not best approach. Possibly use a callback?

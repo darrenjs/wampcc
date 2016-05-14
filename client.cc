@@ -32,8 +32,8 @@ struct callback_t
 
 XXX::text_topic topic("topic1");
 
-void procedure_error_cb(XXX::t_invoke_id invokeid,
-                        XXX::invoke_details& invocation,
+void procedure_error_cb(XXX::t_invoke_id /*invokeid*/,
+                        XXX::invoke_details& /*invocation*/,
                         const std::string& procedure,
                         jalson::json_object& /* options */,
                         XXX::wamp_args& the_args,

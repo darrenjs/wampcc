@@ -21,6 +21,7 @@ namespace XXX {
   class client_service;
   class dealer_service;
   class ev_inbound_message;
+  class Session;
 
 
 class session_error : public std::runtime_error
@@ -73,7 +74,7 @@ typedef uint64_t t_client_request_id;
 typedef uint64_t t_sid;
 typedef uint64_t t_subscription_id;
 
-typedef std::weak_ptr<t_sid> session_handle;
+typedef std::weak_ptr<Session> session_handle;
 
 
 class invocation_exception : public std::runtime_error

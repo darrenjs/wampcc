@@ -82,7 +82,6 @@ void event_loop::push(std::function<void()> fn)
 }
 
 
-
 void event_loop::hb_check()
 {
   auto tnow = std::chrono::steady_clock::now();
@@ -93,6 +92,7 @@ void event_loop::hb_check()
     if (m_sesman) m_sesman->handle_housekeeping_event();
   }
 }
+
 
 void event_loop::eventloop()
 {
@@ -177,6 +177,7 @@ void event_loop::eventloop()
   }
 }
 
+
 void event_loop::eventmain()
 {
   while (m_continue)
@@ -234,7 +235,6 @@ void event_loop::process_event(event * ev)
       break;
     }
 
-
     default:
     {
       _ERROR_( "unsupported event type " << ev->type );
@@ -250,15 +250,20 @@ void event_loop::process_event_error(event* ev, event_error& er)
   if (er.msg_type != UNDEF)
   {
     /* new style error */
-    jalson::json_array msg;
-    msg.push_back( ERROR );
-    msg.push_back( er.msg_type );
-    msg.push_back( er.request_id );
-    msg.push_back( jalson::json_object() );
-    msg.push_back( er.error_uri );
-    msg.push_back( jalson::json_array() );
-    msg.push_back( jalson::json_object() );
-    m_sesman->send_to_session( ev->src, msg );
+
+    if (auto sp = ev->src.lock())
+    {
+      jalson::json_array msg;
+      msg.push_back( ERROR );
+      msg.push_back( er.msg_type );
+      msg.push_back( er.request_id );
+      msg.push_back( jalson::json_object() );
+      msg.push_back( er.error_uri );
+      msg.push_back( jalson::json_array() );
+      msg.push_back( jalson::json_object() );
+
+      sp->send_msg( msg );
+    }
     return;
   }
 

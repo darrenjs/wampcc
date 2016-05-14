@@ -17,11 +17,9 @@ namespace XXX {
 
   class IOHandle;
   class Session;
-
   class event_loop;
   class Logger;
   struct ev_session_state_event;
-  struct Request_CB_Data;
 
   typedef std::function<jalson::json_array (int) > build_message_cb;
 
@@ -35,9 +33,9 @@ public:
   SessionMan(Logger*, event_loop&);
   ~SessionMan();
 
-  Session* create_session(IOHandle *, bool is_passive,
-                          t_connection_id user_conn_id,
-                          std::string realm);
+  std::shared_ptr<Session> create_session(IOHandle *, bool is_passive,
+                                          t_connection_id user_conn_id,
+                                          std::string realm);
 
   void close_all();
 
@@ -45,8 +43,6 @@ public:
 
 
   /* Can be called on the EV thread */
-  void send_to_session(session_handle,
-                       jalson::json_array& msg);
   void send_to_session(const std::vector<session_handle>&,
                        jalson::json_array& msg);
 
@@ -61,8 +57,6 @@ public:
   void handle_event( ev_session_state_event* );
   void handle_housekeeping_event( void );
 
-  bool session_is_open(session_handle sh) const;
-  Session* get_session(session_handle sh);
 private:
 
   void send_to_session_impl(session_handle,
@@ -76,8 +70,8 @@ private:
   mutable struct
   {
     std::mutex lock;
-    std::map<SID, Session*> active;
-    std::vector<Session*>   closed;
+    std::map<SID, std::shared_ptr<Session> > active;
+    std::vector< std::shared_ptr<Session> >   closed;
     uint64_t m_next;
   } m_sessions;
 

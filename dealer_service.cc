@@ -24,7 +24,7 @@ dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
    m_own_ev(false),
    m_sesman( new SessionMan(__logptr, *m_evl) ),
    m_rpcman( new rpc_man(__logptr, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
-   m_pubsub(new pubsub_man(__logptr, *m_evl, *m_sesman)),
+   m_pubsub(new pubsub_man(__logptr, *m_evl)),
    m_listener( l ),
    m_next_internal_request_id(1)
 {
@@ -119,7 +119,7 @@ void dealer_service::listen(int port)
            IOHandle* hndl)
     {
       // note, we dont make use of the user connection id for passive sessions
-      Session* sptr = m_sesman->create_session(hndl, true, t_connection_id(), "" /* undefined realm */);
+      auto sptr = m_sesman->create_session(hndl, true, t_connection_id(), "" /* undefined realm */);
 
       auto handlers = server_msg_handler();
 
@@ -150,8 +150,6 @@ void dealer_service::register_procedure(const std::string& realm,
                                         rpc_cb user_cb,
                                         void * user_data)
 {
-
-
   m_rpcman->register_internal_rpc_2(realm, uri, options, user_cb, user_data);
 }
 
@@ -278,7 +276,6 @@ t_request_id dealer_service::handle_call(Session* sptr,
                                          wamp_invocation_reply_fn fn )
 {
   /* EV thread */
-  std::cout << "dealer_service::handle_call" << "\n";
 
   // TODO: improve json parsing
   t_request_id request_id = msg[1].as_int();
@@ -292,8 +289,6 @@ t_request_id dealer_service::handle_call(Session* sptr,
     if ( msg.size() > 4 ) my_wamp_args.args_list = msg[ 4 ].as_array();
     if ( msg.size() > 5 ) my_wamp_args.args_list = msg[ 4 ].as_object();
 
-
-    _INFO_("handle_call: found the PROC");
     if (rpc.type == rpc_details::eInternal)
     {
       _INFO_("got internal RPC call request");
@@ -339,24 +334,16 @@ t_request_id dealer_service::handle_call(Session* sptr,
 
 
     }
-
     else
     {
-      unsigned int internal_req_id = m_next_internal_request_id++;
+      /* CALL request is for an external RPC */
+      if (auto sp = rpc.sesionh.lock())
       {
-        std::lock_guard<std::mutex> guard( m_pending_requests_lock );
-        auto & pending = m_pending_requests[internal_req_id];
-        pending.is_external = true;
-        pending.call_request_id = request_id;
-        pending.call_source = sptr->handle();
-      }
-
-      Session* sptr = m_sesman->get_session(rpc.sesionh);
-      // t_request_id invocation_request_id =
-      sptr->invocation(rpc.registration_id,
+        sp->invocation(rpc.registration_id,
                        jalson::json_object(),
                        my_wamp_args,
                        fn);
+      }
     }
   }
 
