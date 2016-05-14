@@ -291,8 +291,11 @@ void pubsub_man::update_topic(const std::string& topic,
   }
 }
 
+
 /* Handle arrival of the a PUBLISH event, targeted at a topic. */
-void pubsub_man::handle_inbound_publish(ev_inbound_message* ev)
+void pubsub_man::inbound_publish(std::string realm,
+                                 std::string topic,
+                                 jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -300,21 +303,19 @@ void pubsub_man::handle_inbound_publish(ev_inbound_message* ev)
 
   if ( is_patch )
   {
-    // parse message
-    std::string & topic = ev->ja[ 3 ].as_string();
-    jalson::json_array & patch = ev->ja[ 4 ].as_array();
+    // // parse message
+    // std::string & topic = ev->ja[ 3 ].as_string();
+    // jalson::json_array & patch = ev->ja[ 4 ].as_array();
 
-    // update
-    update_topic(topic, ev->realm, patch);
+    // // update
+    // update_topic(topic, ev->realm, patch);
   }
   else
   {
     // parse message
-    std::string & topic = ev->ja[ 3 ].as_string();
-    update_topic(topic, ev->realm, ev->ja);
+    update_topic(topic, realm, msg);
   }
 }
-
 
 
 } // namespace XXX

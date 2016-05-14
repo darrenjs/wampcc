@@ -35,9 +35,6 @@ dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
   my_handlers.handle_inbound_YIELD    = [this](ev_inbound_message* ev){ this->handle_YIELD(ev);  };
   my_handlers.handle_inbound_SUSCRIBE = [this](ev_inbound_message* ev){ this->handle_SUBSCRIBE(ev); };
   my_handlers.handle_inbound_REGISTER = [this](ev_inbound_message* ev){ this->handle_REGISTER(ev); };
-  my_handlers.handle_inbound_PUBLISH  = [this](ev_inbound_message* ev){
-    m_pubsub->handle_inbound_publish(ev);
-  };
 
   m_evl->set_handler( std::move(my_handlers) );
 
@@ -133,10 +130,16 @@ void dealer_service::listen(int port)
       Session* sptr = m_sesman->create_session(hndl, true, t_connection_id(), "" /* undefined realm */);
 
       auto handlers = server_msg_handler();
+
       handlers.handle_call  = [this](Session* s, std::string u, jalson::json_array & m, wamp_invocation_reply_fn f) {
         return this->handle_call(s,u,m,f);
       };
-      sptr->set_server_handler( handlers );
+
+      handlers.handle_inbound_publish  = [this](Session* sptr, std::string uri,jalson::json_array & msg ) {
+        m_pubsub->inbound_publish(sptr->realm(), uri, msg);
+      };
+
+      sptr->set_server_handler( std::move(handlers) );
     } );
 }
 
@@ -388,6 +391,7 @@ t_request_id dealer_service::handle_call(Session* sptr,
     throw event_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
   }
 
+  return request_id;
 }
 
 } // namespace

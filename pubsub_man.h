@@ -27,7 +27,7 @@ public:
   // void handle_event(ev_internal_publish*);
   void handle_subscribe(ev_inbound_message* ev);
   void handle_event( ev_session_state_event* );
-  void handle_inbound_publish(ev_inbound_message*);
+  void inbound_publish(std::string realm, std::string uri, jalson::json_array&);
 
   t_request_id publish(const std::string& topic,
                        const std::string& realm,

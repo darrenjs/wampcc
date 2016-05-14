@@ -242,11 +242,6 @@ void event_loop::process_event(event * ev)
 
       switch ( ev2->msg_type )
       {
-        case PUBLISH :
-        {
-          m_server_handler.handle_inbound_PUBLISH(ev2);
-          break;
-        }
         case YIELD :
         {
           m_server_handler.handle_inbound_YIELD(ev2);

@@ -22,7 +22,6 @@ namespace XXX {
 
 struct server_event_handler
 {
-  std::function<void(ev_inbound_message*)> handle_inbound_PUBLISH;
   std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
   std::function<void(ev_inbound_message*)> handle_inbound_SUSCRIBE;
   std::function<void(ev_inbound_message*)> handle_inbound_YIELD;

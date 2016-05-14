@@ -404,8 +404,12 @@ void Session::process_message(jalson::json_value&jv)
         process_yield(ja);
         return;
 
+      case PUBLISH :
+        process_publish(ja); // TODO: have an error handling specific to the kind of session (active/passive)
+        return;
+
       case ERROR :
-        process_error(ja);
+        process_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
         return;
     }
   }
@@ -461,7 +465,7 @@ void Session::process_message(jalson::json_value&jv)
         return;
 
       case ERROR :
-        process_error(ja);
+        process_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
         return;
 
     }
@@ -1503,6 +1507,26 @@ void Session::process_yield(jalson::json_array & msg)
   }
 
 }
+
+
+void Session::process_publish(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  if (m_server_handler.handle_inbound_publish)
+  {
+    // TODO: add more messsage checking here
+    t_request_id request_id = msg[1].as_uint();
+    jalson::json_object & options = msg[2].as_object();
+    jalson::json_string & uri = msg[3].as_string();
+    // wamp_args args;
+    // if ( msg.size() > 4 ) args.args_list = msg[4];
+    // if ( msg.size() > 5 ) args.args_dict = msg[5];
+
+    m_server_handler.handle_inbound_publish(this, uri, msg);
+  }
+}
+
 
 
 
