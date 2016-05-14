@@ -16,7 +16,6 @@ struct event
   enum Type
   {
     session_state_event = 0,
-    outbound_response_event,
     router_session_connect_fail,
     inbound_message,
     outbound_publish,
@@ -70,25 +69,6 @@ struct ev_session_state_event : public event
   : event( event::session_state_event ),
     is_open( __session_open ),
     err( e )
-  {}
-};
-
-
-struct outbound_response_event : public event
-{
-  session_handle destination;
-  int response_type;
-  int request_type;
-  t_request_id reqid;
-
-  jalson::json_object options;
-  std::string error_uri;  // used only for ERROR
-  jalson::json_value subscription_id;
-
-  wamp_args args;
-
-  outbound_response_event()
-    : event( event::outbound_response_event )
   {}
 };
 

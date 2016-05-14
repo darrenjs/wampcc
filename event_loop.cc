@@ -209,14 +209,6 @@ void event_loop::process_event(event * ev)
       process_outbound_publish(ev2);
       break;
     }
-    case event::outbound_response_event :
-    {
-      // TODO: create a template for this, which will throw etc. Will be a
-      // series error if the cast failes.
-      outbound_response_event * ev2 = dynamic_cast<outbound_response_event *>(ev);
-      process_outbound_response( ev2 );
-      break;
-    }
     case event::session_state_event :
     {
       ev_session_state_event * ev2 = dynamic_cast<ev_session_state_event *>(ev);
@@ -242,16 +234,6 @@ void event_loop::process_event(event * ev)
 
       switch ( ev2->msg_type )
       {
-        case YIELD :
-        {
-          m_server_handler.handle_inbound_YIELD(ev2);
-          break;
-        }
-        case SUBSCRIBE:
-        {
-          m_server_handler.handle_inbound_SUSCRIBE(ev2);
-          break;
-        }
         case REGISTER :
         {
           m_server_handler.handle_inbound_REGISTER(ev2);
@@ -291,10 +273,6 @@ void event_loop::process_event(event * ev)
     }
   }
 
-}
-
-void event_loop::process_event_InboundCall(event* )
-{
 }
 
 
@@ -361,88 +339,6 @@ void event_loop::process_event_error(event* ev, event_error& er)
 
 }
 
-
-//----------------------------------------------------------------------
-
-void event_loop::process_outbound_response(outbound_response_event* ev)
-{
-  /* Handle outbound response events.  Example flows coming through here are
-
-     - YIELD
-     - REGISTERED
-     - ERROR
-
-    Outbound means these these event are destined to end up sessions, and
-    trigger an output IO event.
-
-    TODO: add support here for REGISTERED, and see if we can remove the legacy
-    implementation of REGISTERED.
-   */
-
-  build_message_cb_v4 msgbuilder;
-
-  if (ev->response_type == YIELD)
-  {
-    msgbuilder = [ev](){
-      jalson::json_array msg;
-      msg.push_back(YIELD);
-      msg.push_back(ev->reqid);
-      msg.push_back(ev->options);
-      if (ev->args.args_list.is_null() == false)
-      {
-        msg.push_back(ev->args.args_list);
-      }
-      return msg;
-    };
-  }
-  // if (ev->response_type == SUBSCRIBED)
-  // {
-  //   msgbuilder = [ev](){
-  //     jalson::json_array msg;
-  //     msg.push_back(SUBSCRIBED);
-  //     msg.push_back(ev->reqid);
-  //     msg.push_back(ev->subscription_id);
-  //     if (ev->args.args_list.is_null() == false)
-  //     {
-  //       msg.push_back(ev->args.args_list);
-  //     }
-  //     return msg;
-  //   };
-  // }
-  else if (ev->response_type == ERROR)
-  {
-    msgbuilder = [ev](){
-      jalson::json_array msg;
-      msg.push_back(ERROR);
-      msg.push_back(ev->request_type);
-      msg.push_back(ev->reqid);
-      msg.push_back(ev->options);
-      msg.push_back(ev->error_uri);
-      return msg;
-    };
-  }
-  else if (ev->response_type == RESULT)
-  {
-    msgbuilder = [ev](){
-      jalson::json_array msg;
-      msg.push_back(RESULT);
-      msg.push_back(ev->reqid);
-      msg.push_back(ev->options);
-      if (ev->args.args_list.is_null() == false)
-      {
-        msg.push_back(ev->args.args_list);
-      }
-      return msg;
-    };
-  }
-  else
-  {
-    throw std::runtime_error("unknown response_type");
-  }
-
-  m_sesman->send_to_session(ev->destination, msgbuilder);
-
-}
 
 void event_loop::process_outbound_publish(ev_outbound_publish* ev)
 {

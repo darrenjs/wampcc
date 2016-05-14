@@ -125,8 +125,6 @@ public:
     void process_event(event* e);
     void process_event_error(event* e, event_error&);
 
-    void process_event_InboundCall(event* e);
-    void process_outbound_response(outbound_response_event *);
     void process_outbound_publish(ev_outbound_publish* e);
 
     void hb_check();
