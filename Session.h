@@ -48,15 +48,13 @@ namespace XXX {
             std::string realm = "" /* should be empty for passive session */);
     ~Session();
 
+    void set_server_handler(server_msg_handler);
+
+
     void send_request( int request_type,
                        unsigned int internal_req_id,
                        build_message_cb_v2 msg_builder );
 
-    void set_server_handler(server_msg_handler);
-
-    void subscribe()  {}
-
-    bool send_bytes(std::pair<const char*, size_t>*, size_t, bool final);
 
     void send_msg(jalson::json_array&, bool final=false);
     void send_msg(build_message_cb_v4 builder);
@@ -117,6 +115,8 @@ namespace XXX {
 
     Session(const Session&) = delete;
     Session& operator=(const Session&) = delete;
+
+    bool send_bytes(std::pair<const char*, size_t>*, size_t, bool final);
 
     void on_close() override;
     void on_read(char*, size_t) override;
@@ -244,11 +244,11 @@ namespace XXX {
       wamp_invocation_reply_fn reply_fn;
     };
 
-    mutable std::mutex m_pending_lock;
 
-    std::map<t_request_id, subscription> m_pending_subscribe;
-    std::map<t_request_id, procedure>    m_pending_register;
-    std::map<t_request_id, wamp_call>    m_pending_call;
+    mutable std::mutex m_pending_lock;
+    std::map<t_request_id, subscription>    m_pending_subscribe;
+    std::map<t_request_id, procedure>       m_pending_register;
+    std::map<t_request_id, wamp_call>       m_pending_call;
     std::map<t_request_id, wamp_invocation> m_pending_invocation;
 
     // TODO: procedures -- not currently locked, however, need to add locking once
