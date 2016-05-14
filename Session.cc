@@ -94,6 +94,11 @@ Session::~Session()
 
 }
 
+uint64_t Session::unique_id()
+{
+  return *m_session_handle;
+}
+
 //----------------------------------------------------------------------
 
 void Session::close()
@@ -125,8 +130,8 @@ void Session::on_read(char* src, size_t len)
 {
   /* IO thread */
 
-  //std::string temp(src,len);
-  //std::cout << "recv: bytes " << len << ": " << temp << "\n";
+  std::string temp(src,len);
+  std::cout << "recv: bytes " << len << ": " << temp << "\n";
   session_error se ( "", session_error::no_error );
   try
   {
@@ -408,6 +413,11 @@ void Session::process_message(jalson::json_value&jv)
         process_publish(ja); // TODO: have an error handling specific to the kind of session (active/passive)
         return;
 
+      case SUBSCRIBE :
+        process_subscribe(ja);
+        return;
+
+
       case ERROR :
         process_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
         return;
@@ -514,7 +524,7 @@ void Session::process_message(jalson::json_value&jv)
 
 
 void Session::send_request( int request_type,
-                            unsigned int internal_req_id,
+                            unsigned int /*internal_req_id*/,
                             build_message_cb_v2 msg_builder )
 {
   t_request_id request_id = m_next_request_id++;
@@ -1390,7 +1400,6 @@ void Session::process_call(jalson::json_array & msg)
 
   // TODO: add more messsage checking here
   t_request_id request_id = msg[1].as_uint();
-  jalson::json_object & options = msg[2].as_object();
   std::string& uri = msg[3].as_string();
   wamp_args my_wamp_args;
   if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
@@ -1487,7 +1496,6 @@ void Session::process_yield(jalson::json_array & msg)
 
   // TODO: add more messsage checking here
   t_request_id request_id = msg[1].as_uint();
-  jalson::json_object & options = msg[2].as_object();
 
   wamp_args args;
   if ( msg.size() > 3 ) args.args_list = msg[3];
@@ -1516,8 +1524,6 @@ void Session::process_publish(jalson::json_array & msg)
   if (m_server_handler.handle_inbound_publish)
   {
     // TODO: add more messsage checking here
-    t_request_id request_id = msg[1].as_uint();
-    jalson::json_object & options = msg[2].as_object();
     jalson::json_string & uri = msg[3].as_string();
     // wamp_args args;
     // if ( msg.size() > 4 ) args.args_list = msg[4];
@@ -1528,6 +1534,15 @@ void Session::process_publish(jalson::json_array & msg)
 }
 
 
+void Session::process_subscribe(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  if (m_server_handler.inbound_subscribe)
+  {
+    m_server_handler.inbound_subscribe(this, msg);
+  }
+}
 
 
 } // namespace XXX

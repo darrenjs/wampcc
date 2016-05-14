@@ -23,7 +23,7 @@ namespace XXX {
     std::function<t_request_id (Session*, std::string uri, jalson::json_array &, wamp_invocation_reply_fn)> handle_call;
     std::function<void(Session*, std::string uri, jalson::json_array &)> handle_inbound_publish;
     std::function<void(ev_inbound_message*)> handle_inbound_REGISTER;
-    std::function<void(ev_inbound_message*)> handle_inbound_SUSCRIBE;
+    std::function<void(Session*, jalson::json_array &)> inbound_subscribe;
   };
 
 
@@ -143,6 +143,7 @@ namespace XXX {
                             wamp_args args,
                             wamp_invocation_reply_fn);
 
+    uint64_t unique_id();
 
   private:
 
@@ -230,6 +231,7 @@ namespace XXX {
     void process_call(jalson::json_array &);
     void process_yield(jalson::json_array &);
     void process_publish(jalson::json_array &);
+    void process_subscribe(jalson::json_array &);
 
     bool reply(int callid,
                wamp_args& the_args,

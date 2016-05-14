@@ -15,6 +15,7 @@ class client_service;
 class event_loop;
 class managed_topic;
 class SessionMan;
+class Session;
 class ev_session_state_event;
 class ev_inbound_message;
 
@@ -24,10 +25,9 @@ public:
   pubsub_man(Logger *, event_loop&, SessionMan&);
   ~pubsub_man();
 
-  // void handle_event(ev_internal_publish*);
-  void handle_subscribe(ev_inbound_message* ev);
   void handle_event( ev_session_state_event* );
   void inbound_publish(std::string realm, std::string uri, jalson::json_array&);
+  void handle_inbound_subscribe(Session* ptr, jalson::json_array&);
 
   t_request_id publish(const std::string& topic,
                        const std::string& realm,

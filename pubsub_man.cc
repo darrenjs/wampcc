@@ -22,7 +22,7 @@ TODO: what locking is needed around this?
 */
 struct managed_topic
 {
-  std::vector< session_handle > m_subscribers;
+  std::vector< Session* > m_subscribers2;
 
   // current upto date image of the value
   jalson::json_value image;
@@ -69,43 +69,7 @@ pubsub_man::~pubsub_man()
 // }
 
 
-void pubsub_man::handle_subscribe(ev_inbound_message* ev)
-{
-  /* EV thread */
 
-  /* We have received an external request to subscribe to a top */
-
-  // TODO: improve this parsing
-  int request_id = ev->ja[1].as_int();
-  jalson::json_string uri = ev->ja[3].as_string();
-
-  // find or create a topic
-  _INFO_("SUBSCRIBE for " << ev->realm << "::" << uri);
-  managed_topic* mt = find_topic(uri, ev->realm, true);
-
-  if (!mt)
-    throw event_error::request_error(WAMP_ERROR_INVALID_URI,
-                                     SUBSCRIBE, request_id);
-  {
-    auto sp = ev->src.lock();
-    if (!sp) return;
-    mt->m_subscribers.push_back(ev->src);
-    _INFO_("session " << *sp << " subscribed to topic '"<< uri<< "'");
-
-    // TODO: probably could call the session manager directly here, instead of
-    // going via the event loop. I.e., in this function, we should already be on
-    // the event thread.
-    outbound_response_event* evout = new outbound_response_event();
-
-    evout->destination   = ev->src;
-    evout->response_type = SUBSCRIBED;
-    evout->request_type  = SUBSCRIBE;
-    evout->reqid         = request_id;
-    evout->subscription_id = mt->subscription_id;
-    m_evl.push( evout );
-  }
-
-}
 
 static bool compare_session(const session_handle& p1, const session_handle& p2)
 {
@@ -121,15 +85,17 @@ void pubsub_man::handle_event(ev_session_state_event* ev)
   for (auto & realm_iter : m_topics)
     for (auto & item : realm_iter.second)
     {
-      for (auto it = item.second->m_subscribers.begin();
-           it != item.second->m_subscribers.end(); it++)
+
+      for (auto it = item.second->m_subscribers2.begin();
+           it != item.second->m_subscribers2.end(); it++)
       {
-        if (compare_session(*it, ev->src))
+        if (compare_session( (*it)->handle(), ev->src))
         {
-          item.second->m_subscribers.erase( it );
+          item.second->m_subscribers2.erase( it );
           break;
         }
       }
+
     }
 }
 
@@ -166,33 +132,38 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 }
 
 
-t_request_id pubsub_man::publish(const std::string& topic,
-                                 const std::string& realm,
+  t_request_id pubsub_man::publish(const std::string& /*topic*/,
+                                   const std::string& /*realm*/,
                                  const jalson::json_object& /* options */,
-                                 wamp_args wamps)
+                                   wamp_args /*wamps*/)
 {
   /* USER thread */
 
-  managed_topic* mt = find_topic(topic, realm, true);
+  // TODO: this function needs implemntation.  Comes in on user thread, so need
+  // to change that to come in on the EV thread.
 
-  // TODO: do we want to reply to the originating client, if we reject the
-  // publish? Also, we can have other exceptions (below), e.g., patch
-  // exceptions. Also, dont want to throw, if it is an internal update
-  if (!mt) return 0;
+  // this->update_topic(topic, realm, );
+  // managed_topic* mt = find_topic(topic, realm, true);
 
-  t_request_id publish_request_id = 717171; // TODO: generate publication ID
+  // // TODO: do we want to reply to the originating client, if we reject the
+  // // publish? Also, we can have other exceptions (below), e.g., patch
+  // // exceptions. Also, dont want to throw, if it is an internal update
+  // if (!mt) return 0;
 
-  // broadcast event to subscribers
-  jalson::json_array msg;
-  msg.push_back( EVENT );
-  msg.push_back( mt->subscription_id );
-  msg.push_back( publish_request_id );
-  msg.push_back( jalson::json_value::make_object() );
-  if (!wamps.args_list.is_null()) msg.push_back( std::move(wamps.args_list) );
-  if (!wamps.args_list.is_null() && !wamps.args_dict.is_null()) msg.push_back( std::move(wamps.args_dict) );
-  m_sesman.send_to_session(mt->m_subscribers, msg);
+  // t_request_id publish_request_id = 717171; // TODO: generate publication ID
 
-  return publish_request_id;
+  // // broadcast event to subscribers
+  // jalson::json_array msg;
+  // msg.push_back( EVENT );
+  // msg.push_back( mt->subscription_id );
+  // msg.push_back( publish_request_id );
+  // msg.push_back( jalson::json_value::make_object() );
+  // if (!wamps.args_list.is_null()) msg.push_back( std::move(wamps.args_list) );
+  // if (!wamps.args_list.is_null() && !wamps.args_dict.is_null()) msg.push_back( std::move(wamps.args_dict) );
+  // m_sesman.send_to_session(mt->m_subscribers, msg);
+
+  // return publish_request_id;
+  return 0;
 }
 
 
@@ -262,32 +233,40 @@ void pubsub_man::update_topic(const std::string& topic,
     msg.push_back( jalson::json_value::make_object() );
     if (args_list) msg.push_back( *args_list );
     if (args_list && args_dict) msg.push_back( *args_dict );
-    m_sesman.send_to_session(mt->m_subscribers, msg);
+
+
+    for (auto sub : mt->m_subscribers2)
+    {
+      // TODO: should this be done here, or, on the dispatch thread?
+      sub->send_msg(msg);
+    }
 
   }
   else
   {
-    try
-    {
-      jalson::json_array& patch = publish_msg;
-      mt->image.patch(patch);
+    // try
+    // {
+    //   jalson::json_array& patch = publish_msg;
+    //   mt->image.patch(patch);
 
-      jalson::json_array msg;
-      msg.push_back( EVENT );
-      msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
-      msg.push_back( 2 ); // TODO: generate publication ID
-      msg.push_back( jalson::json_value::make_object() );
-      jalson::json_array& args = jalson::append_array(msg);
-      msg.push_back( jalson::json_value::make_object() );
-      args.push_back(patch);
+    //   jalson::json_array msg;
+    //   msg.push_back( EVENT );
+    //   msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
+    //   msg.push_back( 2 ); // TODO: generate publication ID
+    //   msg.push_back( jalson::json_value::make_object() );
+    //   jalson::json_array& args = jalson::append_array(msg);
+    //   msg.push_back( jalson::json_value::make_object() );
+    //   args.push_back(patch);
 
-      m_sesman.send_to_session(mt->m_subscribers,
-                               msg);
-    }
-    catch (const std::exception& e)
-    {
-      _ERROR_("patch failed: " << e.what());
-    }
+    //   m_sesman.send_to_session(mt->m_subscribers,
+    //                            msg);
+
+
+    // }
+    // catch (const std::exception& e)
+    // {
+    //   _ERROR_("patch failed: " << e.what());
+    // }
   }
 }
 
@@ -317,5 +296,38 @@ void pubsub_man::inbound_publish(std::string realm,
   }
 }
 
+void pubsub_man::handle_inbound_subscribe(Session* sptr,
+                                          jalson::json_array& msg)
+{
+  /* EV thread */
+
+  /* We have received an external request to subscribe to a top */
+
+
+  // TODO: improve this parsing
+  t_request_id request_id = msg[1].as_uint();
+  jalson::json_string uri = msg[3].as_string();
+
+  // find or create a topic
+  _INFO_("SUBSCRIBE for " << sptr->realm() << "::" << uri);
+  managed_topic* mt = find_topic(uri, sptr->realm(), true);
+
+  // TODO: test that this causes an error response
+  if (!mt)
+    throw event_error::request_error(WAMP_ERROR_INVALID_URI,
+                                     SUBSCRIBE, request_id);
+  {
+    mt->m_subscribers2.push_back(sptr);
+    _INFO_("session " << sptr->unique_id() << " subscribed to topic '"<< uri<< "'");
+
+    // TODO: maybe building and sending message here is not best approach. Possibly use a callback?
+    jalson::json_array out;
+    out.push_back(SUBSCRIBED);
+    out.push_back(request_id);
+    out.push_back(mt->subscription_id);
+    sptr->send_msg(out);
+  }
+
+}
 
 } // namespace XXX

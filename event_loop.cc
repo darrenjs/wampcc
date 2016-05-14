@@ -395,20 +395,20 @@ void event_loop::process_outbound_response(outbound_response_event* ev)
       return msg;
     };
   }
-  if (ev->response_type == SUBSCRIBED)
-  {
-    msgbuilder = [ev](){
-      jalson::json_array msg;
-      msg.push_back(SUBSCRIBED);
-      msg.push_back(ev->reqid);
-      msg.push_back(ev->subscription_id);
-      if (ev->args.args_list.is_null() == false)
-      {
-        msg.push_back(ev->args.args_list);
-      }
-      return msg;
-    };
-  }
+  // if (ev->response_type == SUBSCRIBED)
+  // {
+  //   msgbuilder = [ev](){
+  //     jalson::json_array msg;
+  //     msg.push_back(SUBSCRIBED);
+  //     msg.push_back(ev->reqid);
+  //     msg.push_back(ev->subscription_id);
+  //     if (ev->args.args_list.is_null() == false)
+  //     {
+  //       msg.push_back(ev->args.args_list);
+  //     }
+  //     return msg;
+  //   };
+  // }
   else if (ev->response_type == ERROR)
   {
     msgbuilder = [ev](){

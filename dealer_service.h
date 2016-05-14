@@ -55,7 +55,6 @@ private:
 
   void rpc_registered_cb(const rpc_details&);
   void handle_YIELD(ev_inbound_message* ev);
-  void handle_SUBSCRIBE(ev_inbound_message* ev);
   void handle_REGISTER(ev_inbound_message*);
 
   void invoke_procedure(rpc_details&,

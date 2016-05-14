@@ -33,7 +33,6 @@ dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
 
   server_event_handler my_handlers;
   my_handlers.handle_inbound_YIELD    = [this](ev_inbound_message* ev){ this->handle_YIELD(ev);  };
-  my_handlers.handle_inbound_SUSCRIBE = [this](ev_inbound_message* ev){ this->handle_SUBSCRIBE(ev); };
   my_handlers.handle_inbound_REGISTER = [this](ev_inbound_message* ev){ this->handle_REGISTER(ev); };
 
   m_evl->set_handler( std::move(my_handlers) );
@@ -135,19 +134,16 @@ void dealer_service::listen(int port)
         return this->handle_call(s,u,m,f);
       };
 
-      handlers.handle_inbound_publish  = [this](Session* sptr, std::string uri,jalson::json_array & msg ) {
+      handlers.handle_inbound_publish  = [this](Session* sptr, std::string uri, jalson::json_array & msg ) {
         m_pubsub->inbound_publish(sptr->realm(), uri, msg);
+      };
+
+      handlers.inbound_subscribe  = [this](Session* sptr, jalson::json_array & msg) {
+        m_pubsub->handle_inbound_subscribe(sptr, msg);
       };
 
       sptr->set_server_handler( std::move(handlers) );
     } );
-}
-
-//----------------------------------------------------------------------
-
-void dealer_service::handle_SUBSCRIBE(ev_inbound_message* ev)
-{
-  m_pubsub->handle_subscribe(ev);
 }
 
 
