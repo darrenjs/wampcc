@@ -52,7 +52,7 @@ JALSONLIBSTATIC=$(JALSONHOME)/lib/libjalson.a $(JANSSONLIBSTATIC)
 BIN1=
 BIN2=admin
 BIN3=client
-BIN4=
+BIN4=test_short_session
 TARGETS=$(BIN1) $(BIN2) $(BIN3)  $(BIN4)
 
 ##
@@ -74,7 +74,7 @@ SOURCES_BIN3 = realm_registry.cc utils.cc  SessionMan.cc Session.cc IOHandle.cc 
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN4 =
+SOURCES_BIN4 = realm_registry.cc utils.cc  SessionMan.cc Session.cc IOHandle.cc Topic.cc IOLoop.cc rpc_man.cc event_loop.cc client_service.cc dealer_service.cc Logger.cc  pubsub_man.cc test_short_session.cc
 
 
 

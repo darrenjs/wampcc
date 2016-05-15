@@ -15,9 +15,6 @@
 namespace XXX {
 
 
-  class client_service;
-  class dealer_service;
-  class ev_inbound_message;
   class Session;
 
 
@@ -65,7 +62,6 @@ class router_conn;
 
 typedef uint64_t t_request_id;
 typedef uint64_t t_invoke_id;
-typedef uint64_t t_client_request_id;
 typedef uint64_t t_sid;
 typedef uint64_t t_subscription_id;
 
@@ -107,8 +103,6 @@ struct invoke_details // TODO: rename
   {}
 };
 
-
-class client_service;
 
 
 enum subscription_event_type

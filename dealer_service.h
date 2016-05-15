@@ -22,7 +22,7 @@ namespace XXX {
   class IOLoop;
   class IOHandle;
   class event_loop;
-  class ev_inbound_message;
+  class client_service;
 
 struct dealer_listener
 {

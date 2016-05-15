@@ -306,7 +306,7 @@ void Session::change_state(SessionState expected, SessionState next)
 
   if (next == eClosed && m_state != eClosed)
   {
-    _INFO_("Session closed");
+    _INFO_("session closed #" << m_sid);
     m_state = eClosed;
     notify_session_state_change( false );
     return;

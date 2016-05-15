@@ -54,7 +54,7 @@ private:
   std::unique_ptr<event_loop> m_evl;
 };
 
-
+struct router_conn_impl;
 class router_conn
 {
 public:
@@ -64,6 +64,9 @@ public:
               std::string realm,
               router_session_connect_cb,
               void * __user = nullptr);
+  ~router_conn();
+  router_conn(const router_conn&) = delete;
+  router_conn& operator=(const router_conn&) = delete;
 
   int connect(const std::string & addr, int port);
 
@@ -95,10 +98,8 @@ private:
   client_service * m_svc;
   Logger *__logptr; /* name chosen for log macros */
 
-  std::string m_realm;
-  router_session_connect_cb m_user_cb;
+  std::shared_ptr<router_conn_impl> m_impl;
 
-  std::shared_ptr<Session> m_session;
 };
 
 } // namespace XXX

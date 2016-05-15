@@ -17,6 +17,50 @@
 namespace XXX {
 
 
+/* Implementation of the router session object.  Implementation is separate, so
+ * that the internals can have a lifetime which is longer than that of the user
+ * object.  This is desirable because we may have IO thread or EV thread
+ * callbacks due that can arrive after the user object has died.
+ */
+struct router_conn_impl
+{
+  router_conn* owner;
+  std::string realm;
+  router_session_connect_cb m_user_cb;
+  std::mutex lock;
+  std::shared_ptr<Session> session;
+
+  router_conn_impl(router_conn* r,
+                   std::string __realm,
+                   router_session_connect_cb cb)
+    : owner(r),
+      realm(std::move(__realm)),
+      m_user_cb(cb)
+  {
+  }
+
+  ~router_conn_impl()
+  {
+    invalidate();
+  }
+
+  void invalidate()
+  {
+    std::unique_lock<std::mutex> guard(lock);
+    owner = nullptr;
+  }
+
+  void invoke_router_session_connect_cb(int errorcode, bool is_open)
+  {
+    std::unique_lock<std::mutex> guard(lock);
+    if (owner && m_user_cb)
+      try {
+        m_user_cb(owner, errorcode, is_open);
+      } catch (...) {};
+  }
+};
+
+
 //----------------------------------------------------------------------
 
 
@@ -150,44 +194,70 @@ router_conn::router_conn(client_service * __svc,
                          void * __user)
   : user(__user),
     m_svc(__svc),
-    __logptr(__svc->get_logger() ),
-    m_realm(std::move(realm)),
-    m_user_cb(__cb)
+    m_impl(std::make_shared<router_conn_impl>(this, std::move(realm), std::move(__cb))),
+    __logptr(__svc->get_logger() )
 {
+
 }
+
+router_conn::~router_conn()
+{
+  m_impl->invalidate(); // prevent impl object making user callbacks
+}
+
+
 
 int router_conn::connect(const std::string & addr, int port)
 {
-  tcp_connect_cb cb = [this](IOHandle* iohandle, int err){
-    /* IO thread */
+  std::weak_ptr<router_conn_impl> wp = m_impl;
 
-    _INFO_("router_conn::connect, err:" << err);
-    if (iohandle)
+  // TODO: 'this' must be removed from this callback object
+  tcp_connect_cb cb = [wp,this](IOHandle* iohandle, int err)
     {
+      /* IO thread */
 
-      session_state_fn fn = [this](session_handle, bool is_open){
-        if (m_user_cb) m_user_cb(this, 0, is_open);
-      };
+      // // Use for testing race conditions
+      // std::cout << "router_conn::connect, err:" << err << "\n";
+      // sleep(1);
 
-      m_session = std::shared_ptr<Session>
-        (new Session( m_svc->get_logger(),
-                      iohandle,
-                      *m_svc->get_event_loop(),
-                      false,
-                      m_realm, std::move(fn)));
-      m_session->initiate_handshake();
-    }
-    else
-    {
-      if (m_user_cb)
+      std::shared_ptr<router_conn_impl> impl = wp.lock();
+      if (impl)
       {
-        // notify user on event-thread
-        m_svc->get_event_loop()->push([this,err](){
-            m_user_cb(this, err, false);
-          });
+        if (iohandle)
+        {
+          // The availability of an iohandle means the connect was
+          // successful. Next stage is to perform the handshake.
+
+          session_state_fn fn = [wp](session_handle, bool is_open){
+            if (auto sp = wp.lock())
+              sp->invoke_router_session_connect_cb(0, is_open);
+          };
+
+          impl->session = std::shared_ptr<Session>
+            (new Session( m_svc->get_logger(),
+                          iohandle,
+                          *m_svc->get_event_loop(),
+                          false,
+                          impl->realm, std::move(fn)));
+          impl->session->initiate_handshake();
+        }
+        else
+        {
+          m_svc->get_event_loop()->push(
+            [wp,err]()
+            {
+              if (auto sp = wp.lock())
+                sp->invoke_router_session_connect_cb(err, false);
+            });
+        }
       }
-    }
-  };
+      else
+      {
+        std::cout << "implementation has been deleted!\n";
+        delete iohandle; // BUG: this is not closing the connection
+        std::cout << "iohandle has been deleted \n";
+      }
+    };
 
   m_svc->get_io()->add_connection(addr, port, cb);
   return 0;
@@ -200,8 +270,8 @@ t_request_id router_conn::call(std::string uri,
                                wamp_call_result_cb user_cb,
                                void* user_data)
 {
-  if (m_session)
-    return m_session->call(uri, options, args, user_cb, user_data);
+  if (m_impl->session)
+    return m_impl->session->call(uri, options, args, user_cb, user_data);
   else
     return 0;
 }
@@ -211,8 +281,9 @@ t_request_id router_conn::subscribe(const std::string& uri,
                                     subscription_cb user_cb,
                                     void * user_data)
 {
-  if (m_session)
-    return m_session->subscribe(uri, options, user_cb, user_data);
+
+  if (m_impl->session)
+    return m_impl->session->subscribe(uri, options, user_cb, user_data);
   else
     return 0;
 }
@@ -222,8 +293,9 @@ t_request_id router_conn::publish(const std::string& uri,
                                   const jalson::json_object& options,
                                   wamp_args args)
 {
-  if (m_session)
-    return m_session->publish(uri, options, args);
+
+  if (m_impl->session)
+    return m_impl->session->publish(uri, options, args);
   else
     return 0;
 }
@@ -235,8 +307,8 @@ t_request_id router_conn::provide(const std::string& uri,
                                   rpc_cb user_cb,
                                   void * user_data)
 {
-  if (m_session)
-    return m_session->provide(uri, options, user_cb, user_data);
+  if (m_impl->session)
+    return m_impl->session->provide(uri, options, user_cb, user_data);
   else
     return 0;
 }
