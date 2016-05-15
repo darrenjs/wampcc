@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <iomanip>
+#include <iostream>
 
 #include <string.h>
 #include <unistd.h>
@@ -20,11 +21,18 @@
 #define INBOUND_BUFFER_SIZE 2000 // TODO: increase
 
 
+
+
 namespace XXX {
 
+static std::atomic<uint64_t> m_next_id(1); // start at 1, so that 0 implies invalid ID
+static uint64_t generate_unique_session_id()
+{
+  return m_next_id++;
+}
+
 /* Constructor */
-Session::Session(SID s,
-                 Logger* logptr,
+Session::Session(Logger* logptr,
                  IOHandle* h,
                  event_loop & evl,
                  bool is_passive,
@@ -32,7 +40,7 @@ Session::Session(SID s,
                  session_state_fn state_cb)
   : m_state( eInit ),
     __logptr(logptr),
-    m_sid(s.unique_id()),
+    m_sid( generate_unique_session_id() ),
     m_handle( h ),
     m_hb_intvl(2),
     m_time_create(time(NULL)),

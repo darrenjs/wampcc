@@ -169,11 +169,8 @@ int router_conn::connect(const std::string & addr, int port)
         if (m_user_cb) m_user_cb(this, 0, is_open);
       };
 
-
-      int sid= 0;
       m_session = std::shared_ptr<Session>
-        (new Session( SID(sid),
-                      m_svc->get_logger(),
+        (new Session( m_svc->get_logger(),
                       iohandle,
                       *m_svc->get_event_loop(),
                       false,

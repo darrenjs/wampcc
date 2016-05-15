@@ -68,9 +68,8 @@ private:
   mutable struct
   {
     std::mutex lock;
-    std::map<SID, std::shared_ptr<Session> > active;
+    std::map<t_sid, std::shared_ptr<Session> > active;
     std::vector< std::shared_ptr<Session> >  closed;
-    uint64_t m_next;
   } m_sessions;
 
   session_state_cb m_session_event_cb;

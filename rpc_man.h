@@ -32,7 +32,6 @@ struct rpc_details
 
   int         registration_id; // 0 implies invalid
   std::string uri;
-  SID sid;
   session_handle sesionh;
   rpc_cb user_cb; // applies only for eInternal
   void*  user_data; // applies only for eInternal

@@ -19,7 +19,6 @@ SessionMan::SessionMan(Logger* logptr, event_loop& evl)
     m_evl(evl)
 {
   m_evl.set_session_man( this );
-  m_sessions.m_next = 1;
 }
 
 
@@ -35,24 +34,23 @@ std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is
   /* IO thread */
 
   std::lock_guard<std::mutex> guard(m_sessions.lock);
-  SID sid (m_sessions.m_next++);  // TODO find a unqiue numner, dont use 0,
+
   // and chekc is not altready in the map.
   // Need to handle case where we wrap around
   // and have to skip zero ... actuall, to handle this, set start number to minus 1
 
   // TODO: its not the place here to configure the newly created session .
   // That should be done by the caller of this function.
-  std::shared_ptr<Session>  sptr (new Session( sid,
-                                               __logptr,
+  std::shared_ptr<Session>  sptr (new Session( __logptr,
                                                iohandle,
                                                m_evl,
                                                is_passive,
                                                realm,
                                                nullptr));
 
-  m_sessions.active[ sid ] = sptr;
+  m_sessions.active[ sptr->unique_id() ] = sptr;
 
-  _INFO_( "session created, id:" << sid );
+  _INFO_( "session created, id:" << sptr->unique_id() );
   if (!is_passive) sptr->initiate_handshake();
 
   return sptr;
@@ -121,9 +119,9 @@ void SessionMan::send_to_session(session_handle handle,
     _WARN_("failed to lock the session handle");
     return;
   }
-  SID dest( sp->unique_id() );
+  t_sid dest( sp->unique_id() );
 
-  if (dest == SID())
+  if (dest == 0)
   {
     _WARN_("ignoring attempt to send to session with id 0");
     return;
@@ -138,7 +136,7 @@ void SessionMan::send_to_session(session_handle handle,
   else
   {
     std::ostringstream os;
-    os << "session send failed; cannot find session with id " << dest.unique_id();
+    os << "session send failed; cannot find session with id " << dest;
     throw std::runtime_error( os.str() );
   }
 }
@@ -156,8 +154,8 @@ void SessionMan::send_to_session_impl(session_handle handle,
     return;
   }
 
-  SID dest( sp->unique_id() );
-  if (dest == SID())
+  t_sid dest( sp->unique_id() );
+  if (dest == 0)
   {
     _WARN_("ignoring attempt to send to session with id 0");
     return;
@@ -208,8 +206,8 @@ void SessionMan::send_request(session_handle handle_weak,
     return;
   }
 
-  SID dest( sp->unique_id() );
-  if (dest == SID())
+  t_sid dest( sp->unique_id() );
+  if (dest == 0)
   {
     _WARN_("ignoring attempt to send to session with id 0");
     return;
@@ -237,7 +235,7 @@ void SessionMan::handle_event(ev_session_state_event* ev)
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
 
-    SID sid ( sp->unique_id() );
+    t_sid sid ( sp->unique_id() );
 
     auto it = m_sessions.active.find( sid );
 

@@ -43,7 +43,7 @@ namespace XXX {
   class Session : public std::enable_shared_from_this<Session>, public io_listener
   {
   public:
-    Session(SID, Logger*, IOHandle *,
+    Session(Logger*, IOHandle *,
             event_loop&, bool is_passive,
             std::string realm,
             session_state_fn state_cb);
@@ -108,7 +108,7 @@ namespace XXX {
                             wamp_args args,
                             wamp_invocation_reply_fn);
 
-    uint64_t unique_id();
+    t_sid unique_id();
 
   private:
 
