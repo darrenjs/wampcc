@@ -14,7 +14,6 @@ struct event
   enum Type
   {
     session_state_event = 0,
-    router_session_connect_fail,
     outbound_publish,
     function_dispatch
   } type;
@@ -84,19 +83,6 @@ struct ev_outbound_publish : public event
   {
     targets.reserve( reserve_size );
   }
-
-};
-
-
-struct ev_router_session_connect_fail : public event
-{
-  int status;  /* 0 is no error */
-
-  ev_router_session_connect_fail(t_connection_id __conn_id,
-                                 int __status)
-    : event( event::router_session_connect_fail, __conn_id),
-      status(__status)
-  {}
 
 };
 

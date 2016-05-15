@@ -217,17 +217,6 @@ void event_loop::process_event(event * ev)
       if (m_pubsubman) m_pubsubman->handle_event( ev2 );
       break;
     }
-    case event::router_session_connect_fail :
-    {
-      if (m_client_handler.handle_router_session_connect_fail)
-      {
-        m_client_handler.handle_router_session_connect_fail(
-          dynamic_cast<ev_router_session_connect_fail*>(ev)
-          );
-      }
-      break;
-    }
-
     case event::function_dispatch :
     {
       ev_function_dispatch * ev2 =  dynamic_cast<ev_function_dispatch*>(ev);

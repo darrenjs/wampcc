@@ -18,6 +18,7 @@ namespace XXX {
   typedef std::function< void() > reply_fn;
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
   typedef std::function< void(uint64_t) > registered_fn;
+  typedef std::function< void(session_handle, bool) > session_state_fn;
 
   struct server_msg_handler
   {
@@ -45,7 +46,8 @@ namespace XXX {
     Session(SID, Logger*, IOHandle *,
             event_loop&, bool is_passive,
             t_connection_id user_conn_id,
-            std::string realm = "" /* should be empty for passive session */);
+            std::string realm,
+            session_state_fn state_cb);
     ~Session();
 
     void set_server_handler(server_msg_handler);
@@ -187,6 +189,7 @@ namespace XXX {
     std::string m_realm;
     mutable std::mutex m_realm_lock;
 
+    session_state_fn m_notify_state_change_fn;
   private:
 
     void process_registered(jalson::json_array &);

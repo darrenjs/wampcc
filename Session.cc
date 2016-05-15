@@ -29,7 +29,8 @@ Session::Session(SID s,
                  event_loop & evl,
                  bool is_passive,
                  t_connection_id __user_conn_id,
-                 std::string __realm)
+                 std::string __realm,
+                 session_state_fn state_cb)
   : m_state( eInit ),
     m_sid(s.unique_id()),
     __logptr(logptr),
@@ -44,7 +45,8 @@ Session::Session(SID s,
     m_evl(evl),
     m_is_passive(is_passive),
     m_realm(__realm),
-    m_user_conn_id(__user_conn_id)
+    m_user_conn_id(__user_conn_id),
+    m_notify_state_change_fn(state_cb)
 {
   m_handle->set_listener(this);
 }
@@ -778,6 +780,17 @@ void Session::notify_session_state_change(bool is_open)
   e->src  = handle();
   e->user_conn_id = m_user_conn_id;
   m_evl.push( e );
+
+  // new approach -- make an EV thread call to the session state callback
+  if (m_notify_state_change_fn)
+  {
+    session_handle self = handle();
+
+    m_evl.push( [this, self, is_open]()
+                {
+                  m_notify_state_change_fn(self, is_open);
+                } );
+  }
 }
 
 //----------------------------------------------------------------------
@@ -1315,7 +1328,6 @@ t_request_id Session::publish(std::string uri,
 
 void Session::process_call(jalson::json_array & msg)
 {
-  std::cout << "Session::process_call" << "\n";
   /* EV thread */
 
   // TODO: add more messsage checking here

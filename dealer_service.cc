@@ -18,7 +18,7 @@ namespace XXX {
 
 dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
   :__logptr(__svc->get_logger()),
-   m_io_loop(__svc->get_ioloop()),
+   m_io_loop(__svc->get_io()),
    m_evl(__svc->get_event_loop()),
    m_own_io(false),
    m_own_ev(false),

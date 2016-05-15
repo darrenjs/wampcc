@@ -22,9 +22,8 @@ class IOLoop;
 class IOHandle;
 
 
-
-typedef std::function<void(IOHandle* ,int, int)> NewConnectionCallback;
 typedef std::function<void(int port, IOHandle*)> socket_accept_cb;
+typedef std::function<void(IOHandle*, int)> tcp_connect_cb;
 
 // TODO: try to move to impl file
 struct io_request
@@ -34,6 +33,7 @@ struct io_request
   uv_tcp_t * tcp_handle = nullptr;
   Logger * logptr;
   socket_accept_cb on_accept;
+  tcp_connect_cb on_connect;
   t_connection_id user_conn_id = t_connection_id();
   io_request(Logger * __logptr) : logptr(__logptr) {}
 };
@@ -72,7 +72,8 @@ public:
   void add_server(int port, socket_accept_cb);
 
   void add_connection(std::string addr, int port,
-                      t_connection_id);
+                      t_connection_id,
+                      tcp_connect_cb);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
@@ -86,9 +87,6 @@ private:
   std::unique_ptr<uv_async_t> m_async;
   std::thread  m_thread;
   bool m_async_closed = false;
-
-public:
-  NewConnectionCallback m_new_client_cb;
 
 private:
 

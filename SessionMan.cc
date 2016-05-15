@@ -49,7 +49,8 @@ std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is
                                                m_evl,
                                                is_passive,
                                                user_conn_id,
-                                               realm));
+                                               realm,
+                                               nullptr));
 
   m_sessions.active[ sid ] = sptr;
 

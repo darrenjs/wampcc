@@ -124,11 +124,7 @@ void publisher_tep()
 
 int main(int /* argc */, char** /* argv */)
 {
-  XXX::client_service::config cfg;
-  //cfg.server_port = 55555;
-  //cfg.enable_embed_router = true;
-
-  std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger, cfg) );
+  std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger) );
 
   XXX::dealer_service * dealer = new XXX::dealer_service(mycs.get(), nullptr);
   g_dealer = dealer;
@@ -142,7 +138,7 @@ int main(int /* argc */, char** /* argv */)
   // mycs->add_procedure("start", jalson::json_object(), procedure_cb, (void*) cb2.get());
   // mycs->add_procedure("stop",  jalson::json_object(), procedure_cb, (void*) cb3.get());
 
-  mycs->add_topic( &topic );
+  // mycs->add_topic( &topic );
 
   mycs->start();
 

@@ -200,12 +200,15 @@ int g_connect_status = 0;
 
 
 void router_connection_cb(XXX::router_conn* /*router_session*/,
-                          int status,
-                          bool /*is_open*/)
+                          int errcode,
+                          bool is_open)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
-  g_connect_status = status;
+  auto __logptr = logger;
+  _INFO_ ("router connection is " << (is_open? "open" : "closed") << ", errcode " << errcode);
+
+  g_connect_status = errcode;
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
 }
@@ -319,11 +322,7 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-
-  XXX::client_service::config config;
-  // config.server_port = 0;
-  config.realm = "default_realm";
-  g_client.reset( new XXX::client_service(logger, config) );
+  g_client.reset( new XXX::client_service(logger) );
 
   //std::unique_ptr<XXX::text_topic> topic;
 
@@ -334,7 +333,7 @@ int main(int argc, char** argv)
 
   g_client->start();
 
-  XXX::router_conn rconn( g_client.get(), router_connection_cb, nullptr );
+  XXX::router_conn rconn( g_client.get(),  "default_realm", router_connection_cb, nullptr );
 
   rconn.connect("127.0.0.1", 55555);
 

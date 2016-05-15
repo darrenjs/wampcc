@@ -20,11 +20,6 @@ namespace XXX {
   class SessionMan;
   class Logger;
 
-struct client_event_handler
-{
-  std::function<void(ev_router_session_connect_fail*)> handle_router_session_connect_fail;
-};
-
 class event_error : public std::runtime_error
 {
 
@@ -100,8 +95,6 @@ public:
     void set_pubsub_man(pubsub_man*);
     void set_session_man(SessionMan*);
 
-    void set_handler(client_event_handler h)  { m_client_handler=h; }
-
   private:
     event_loop(const event_loop&); // no copy
     event_loop& operator=(const event_loop&); // no assignment
@@ -126,15 +119,10 @@ public:
     std::condition_variable m_condvar;
     std::thread m_thread;
 
-
     pubsub_man* m_pubsubman;
     SessionMan* m_sesman;
 
-    client_event_handler m_client_handler;
-
     std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
-
-
 };
 
 } // namespace XXX

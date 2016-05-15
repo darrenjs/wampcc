@@ -24,7 +24,7 @@ static void __on_tcp_connect_cb(uv_connect_t* __req, int status )
   IOLoop * ioloop = static_cast<IOLoop* >(__req->handle->loop->data);
 
   // get the user object
-  std::unique_ptr<io_request> ioreq  (( io_request*) connect_req->data );
+  std::unique_ptr<io_request> ioreq  ((io_request*) connect_req->data );
   Logger * __logptr = ioreq->logptr;
 
   if (status < 0)
@@ -238,13 +238,16 @@ void IOLoop::on_async()
       }
       else
       {
+        if (req->on_connect)
+        {
+          try {
+            req->on_connect(nullptr, abs(r));
+          } catch (...){}
+        }
+
         delete connect_req;
         delete req->tcp_handle;
 
-        if (m_new_client_cb)
-          m_new_client_cb( nullptr,
-                           r<0?-r:r,
-                           req->user_conn_id);
       }
     }
   }
@@ -262,6 +265,7 @@ void IOLoop::async_send()
 
 void IOLoop::run_loop()
 {
+  _INFO_("IOLoop thread starting");
   while ( true )
   {
     try
@@ -328,22 +332,25 @@ void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 /* Here we have completed a tcp connect attempt (either successfully or
  * unsuccessfully).  Next we shall escalate the result upto the handler.
  */
-void IOLoop::add_active_handle(IOHandle * iohandle, int status, io_request * req)
+void IOLoop::add_active_handle(IOHandle * iohandle, int errcode, io_request * req)
 {
   /* IO thread */
 
   if (iohandle) m_handles.push_back( iohandle );
 
-  if (m_new_client_cb)
-    m_new_client_cb( iohandle,
-                     status,
-                     req->user_conn_id);
+  if (req->on_connect)
+  {
+    try {
+      req->on_connect(iohandle, errcode);
+    } catch (...){}
+  }
 }
 
 
 void IOLoop::add_connection(std::string addr,
                             int port,
-                            t_connection_id user_conn_id)
+                            t_connection_id user_conn_id,
+                            tcp_connect_cb cb)
 {
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
@@ -351,6 +358,7 @@ void IOLoop::add_connection(std::string addr,
     r.addr = addr;
     r.port = port;
     r.user_conn_id = user_conn_id;
+    r.on_connect = std::move(cb);
     m_pending_requests.push_back( r );
   }
 
