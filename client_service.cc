@@ -7,6 +7,7 @@
 #include "IOLoop.h"
 #include "event_loop.h"
 #include "Topic.h"
+#include "kernel.h"
 
 #include <iostream>
 
@@ -24,16 +25,19 @@ namespace XXX {
  */
 struct router_conn_impl
 {
+  kernel * the_kernel;
   router_conn* owner;
   std::string realm;
   router_session_connect_cb m_user_cb;
   std::mutex lock;
   std::shared_ptr<Session> session;
 
-  router_conn_impl(router_conn* r,
+  router_conn_impl(kernel * k,
+                   router_conn* r,
                    std::string __realm,
                    router_session_connect_cb cb)
-    : owner(r),
+    : the_kernel(k),
+      owner(r),
       realm(std::move(__realm)),
       m_user_cb(cb)
   {
@@ -59,54 +63,6 @@ struct router_conn_impl
       } catch (...) {};
   }
 };
-
-
-//----------------------------------------------------------------------
-
-
-/* Constructor */
-client_service::client_service(Logger * logptr)
-  : __logptr( logptr),
-    m_io_loop( new IOLoop(logptr) ),
-    m_evl( new event_loop(logptr) )
-{
-}
-
-//----------------------------------------------------------------------
-
-/* Destructor */
-client_service::~client_service()
-{
-  // TODO: dont think this is the best way to shutdown.  Should start by trying
-  // to close all the sessions.
-  m_io_loop->stop();
-  m_evl->stop();
-
-  m_evl.reset();
-}
-
-
-void client_service::start()
-{
-  /* USER thread */
-
-  m_io_loop->start(); // returns immediately
-}
-
-Logger * client_service::get_logger()
-{
-  return __logptr;
-}
-
-IOLoop*  client_service::get_io()
-{
-  return m_io_loop.get();
-}
-
-event_loop* client_service::get_event_loop()
-{
-  return m_evl.get();
-}
 
 
 //----------------------------------------------------------------------
@@ -188,14 +144,12 @@ event_loop* client_service::get_event_loop()
 // }
 
 
-router_conn::router_conn(client_service * __svc,
+router_conn::router_conn(kernel * k,
                          std::string realm,
                          router_session_connect_cb __cb,
                          void * __user)
   : user(__user),
-    m_svc(__svc),
-    m_impl(std::make_shared<router_conn_impl>(this, std::move(realm), std::move(__cb))),
-    __logptr(__svc->get_logger() )
+    m_impl(std::make_shared<router_conn_impl>(k, this, std::move(realm), std::move(__cb)))
 {
 
 }
@@ -211,8 +165,7 @@ int router_conn::connect(const std::string & addr, int port)
 {
   std::weak_ptr<router_conn_impl> wp = m_impl;
 
-  // TODO: 'this' must be removed from this callback object
-  tcp_connect_cb cb = [wp,this](IOHandle* iohandle, int err)
+  tcp_connect_cb cb = [wp](IOHandle* iohandle, int err)
     {
       /* IO thread */
 
@@ -234,16 +187,16 @@ int router_conn::connect(const std::string & addr, int port)
           };
 
           impl->session = std::shared_ptr<Session>
-            (new Session( m_svc->get_logger(),
+            (new Session( impl->the_kernel->get_logger(),
                           iohandle,
-                          *m_svc->get_event_loop(),
+                          *impl->the_kernel->get_event_loop(),
                           false,
                           impl->realm, std::move(fn)));
           impl->session->initiate_handshake();
         }
         else
         {
-          m_svc->get_event_loop()->push(
+          impl->the_kernel->get_event_loop()->push(
             [wp,err]()
             {
               if (auto sp = wp.lock())
@@ -259,7 +212,7 @@ int router_conn::connect(const std::string & addr, int port)
       }
     };
 
-  m_svc->get_io()->add_connection(addr, port, cb);
+  m_impl->the_kernel->get_io()->add_connection(addr, port, cb);
   return 0;
 }
 

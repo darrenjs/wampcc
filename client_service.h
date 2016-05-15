@@ -16,43 +16,14 @@
 
 namespace XXX {
 
+class kernel;
 class IOLoop;
 class Logger;
 class Session;
 class event_loop;
 class topic;
 
-/*
-  Combine the Callee and Caller interfaces.
- */
-class client_service
-{
-public:
 
-  client_service(Logger*);
-  ~client_service();
-
-  void start();
-
-  // /* Register a topic */
-  // void add_topic(topic*);
-
-  Logger * get_logger();
-  IOLoop* get_io();
-  event_loop* get_event_loop();
-
-  // std::map<std::string, topic*> m_topics;
-  // std::mutex                    m_topics_lock;
-
-
-private:
-  client_service(const client_service&) = delete;
-  client_service& operator=(const client_service&) = delete;
-
-  Logger *__logptr; /* name chosen for log macros */
-  std::unique_ptr<IOLoop> m_io_loop;
-  std::unique_ptr<event_loop> m_evl;
-};
 
 struct router_conn_impl;
 class router_conn
@@ -60,7 +31,7 @@ class router_conn
 public:
   void * user;
 
-  router_conn(client_service * __svc,
+  router_conn(kernel * __svc,
               std::string realm,
               router_session_connect_cb,
               void * __user = nullptr);
@@ -91,12 +62,7 @@ public:
                        const jalson::json_object& options,
                        wamp_args);
 
-  client_service * service() { return m_svc; }
-
 private:
-
-  client_service * m_svc;
-  Logger *__logptr; /* name chosen for log macros */
 
   std::shared_ptr<router_conn_impl> m_impl;
 

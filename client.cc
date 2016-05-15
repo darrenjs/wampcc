@@ -1,9 +1,9 @@
 
 
 #include <Topic.h>
-#include <client_service.h>
 #include <dealer_service.h>
 #include <Logger.h>
+#include <kernel.h>
 
 #include <condition_variable>
 #include <iostream>
@@ -21,12 +21,12 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
 
 struct callback_t
 {
-  callback_t(XXX::client_service* s, const char* d)
+  callback_t(XXX::kernel* s, const char* d)
     : svc(s),
       request(d)
   {
   }
-  XXX::client_service* svc;
+  XXX::kernel* svc;
   const char* request;
 };
 
@@ -124,7 +124,7 @@ void publisher_tep()
 
 int main(int /* argc */, char** /* argv */)
 {
-  std::unique_ptr<XXX::client_service> mycs ( new XXX::client_service(logger) );
+  std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(logger) );
 
   XXX::dealer_service * dealer = new XXX::dealer_service(mycs.get(), nullptr);
   g_dealer = dealer;

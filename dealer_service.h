@@ -13,6 +13,7 @@
 
 namespace XXX {
 
+  class kernel;
   class SessionMan;
   class pubsub_man;
   class rpc_man;
@@ -32,7 +33,7 @@ struct dealer_listener
 class dealer_service
 {
 public:
-  dealer_service(client_service * __svc, dealer_listener*);
+  dealer_service(kernel * __svc, dealer_listener*);
   ~dealer_service();
 
   // publish to an internal topic

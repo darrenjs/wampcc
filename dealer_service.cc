@@ -10,13 +10,14 @@
 #include "event_loop.h"
 #include "SessionMan.h"
 #include "client_service.h"
+#include "kernel.h"
 
 #include <unistd.h>
 #include <string.h>
 
 namespace XXX {
 
-dealer_service::dealer_service(client_service * __svc, dealer_listener* l)
+dealer_service::dealer_service(kernel * __svc, dealer_listener* l)
   :__logptr(__svc->get_logger()),
    m_io_loop(__svc->get_io()),
    m_evl(__svc->get_event_loop()),

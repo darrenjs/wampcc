@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include "event_loop.h"
 #include "client_service.h"
+#include "kernel.h"
 #include "Topic.h"
 
 
@@ -28,7 +29,7 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eAll,
                                               true);
 
-std::unique_ptr<XXX::client_service> g_client;
+std::unique_ptr<XXX::kernel> g_client;
 
 
 struct user_options
@@ -102,12 +103,12 @@ std::queue< AdminEvent > event_queue;
 
 struct callback_t
 {
-  callback_t(XXX::client_service* s, const char* d)
+  callback_t(XXX::kernel* s, const char* d)
     : svc(s),
       request(d)
   {
   }
-  XXX::client_service* svc;
+  XXX::kernel* svc;
   const char* request;
 };
 void procedure_cb(XXX::t_invoke_id invokeid,
@@ -322,7 +323,7 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-  g_client.reset( new XXX::client_service(logger) );
+  g_client.reset( new XXX::kernel(logger) );
 
   //std::unique_ptr<XXX::text_topic> topic;
 

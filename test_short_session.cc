@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include "event_loop.h"
 #include "client_service.h"
+#include "kernel.h"
 #include "Topic.h"
 
 
@@ -28,7 +29,7 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eAll,
                                               true);
 
-std::unique_ptr<XXX::client_service> g_client;
+std::unique_ptr<XXX::kernel> g_client;
 
 
 struct user_options
@@ -183,7 +184,7 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-  g_client.reset( new XXX::client_service(logger) );
+  g_client.reset( new XXX::kernel(logger) );
 
   g_client->start();
 
