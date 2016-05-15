@@ -89,17 +89,14 @@ private:
 
 struct invoke_details // TODO: rename
 {
-  t_request_id request_id;
   std::string  uri;
   wamp_args args;
+  jalson::json_object details;
   void * user;
-  t_invoke_id id;
 
-  std::function<void(t_request_id, wamp_args&)> reply_fn;
+  std::function<void(wamp_args)> yield_fn;
+  std::function<void(wamp_args, std::string)> error_fn;
 
-  invoke_details(t_invoke_id _id)
-  : id(_id)
-  {}
 };
 
 
@@ -124,13 +121,7 @@ typedef std::function<void(subscription_event_type evtype,
                            void* user) > subscription_cb;
 
 
-typedef std::function<void(t_invoke_id,
-                           invoke_details&,
-                           const std::string&,
-                           jalson::json_object&,
-                           wamp_args&,
-                           session_handle&,
-                           void* user) > rpc_cb;
+typedef std::function<void(invoke_details&) > rpc_cb;
 
 struct wamp_call_result
 {

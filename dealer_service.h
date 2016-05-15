@@ -20,9 +20,7 @@ namespace XXX {
   class Logger;
   struct rpc_details;
   class event;
-  class IOLoop;
-  class IOHandle;
-  class event_loop;
+
 
 struct dealer_listener
 {
@@ -41,7 +39,7 @@ public:
                        const jalson::json_object& options,
                        wamp_args);
 
-  void listen(int port);
+  void listen(int port);// TODO: needs interface argument
 
   void register_procedure(const std::string& realm,
                           const std::string& uri,
@@ -55,56 +53,20 @@ private:
 
   void rpc_registered_cb(const rpc_details&);
 
-  t_request_id handle_call(Session*, const std::string&, jalson::json_array & msg, wamp_invocation_reply_fn);
-
-  bool reply(t_invoke_id,
-             wamp_args& the_args,
-             bool is_error,
-             std::string error_uri);
+  void handle_inbound_call(Session*,
+                           const std::string&,
+                           wamp_args args,
+                           wamp_invocation_reply_fn);
 
   // essential components
   Logger *__logptr; /* name chosen for log macros */
-  IOLoop*  m_io_loop;
-  event_loop* m_evl;
+  kernel * m_kernel;
 
   std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;
   std::unique_ptr<pubsub_man> m_pubsub;
 
   dealer_listener* m_listener;
-
-  // note, this is not to be confused with the request ID which is included with
-  // a WAMP message send to a peer
-  unsigned int m_next_internal_request_id;
-
-  // TODO: move to impl
-  struct pending_request
-  {
-    wamp_call_result_cb cb;
-    std::string procedure;
-    void* user_cb_data;
-
-    session_handle call_source;
-    t_request_id call_request_id;
-    bool is_external;
-
-    pending_request() : user_cb_data( nullptr ),is_external(false) { }
-  };
-
-  std::map<int, pending_request> m_pending_requests;
-  std::mutex m_pending_requests_lock;
-
-
-
-  struct proc_invoke_context
-  {
-    session_handle seshandle;
-    t_request_id requestid;
-  };
-  size_t m_next_call_id = 1001;
-  std::map <size_t, proc_invoke_context>  m_calls;
-  std::mutex                              m_calls_lock;
-
 };
 
 } // namespace

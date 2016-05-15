@@ -22,7 +22,7 @@ namespace XXX {
 
   struct server_msg_handler
   {
-    std::function<t_request_id (Session*, std::string uri, jalson::json_array &, wamp_invocation_reply_fn)> handle_call;
+    std::function<void(Session*, std::string uri, wamp_args, wamp_invocation_reply_fn)> inbound_call;
     std::function<void(Session*, std::string uri, jalson::json_array &)> handle_inbound_publish;
     std::function<void(Session*, std::string uri, registered_fn)> inbound_register;
     std::function<void(Session*, jalson::json_array &)> inbound_subscribe;

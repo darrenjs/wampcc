@@ -921,29 +921,30 @@ void Session::process_invocation(jalson::json_array & msg)
   if (iter != m_procedures.end())
   {
     wamp_args my_wamp_args;
-    jalson::json_object & details = msg[3].as_object();
     if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
     if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
 
     std::string uri = iter->second.uri;
 
-    invoke_details invoke(request_id);
-    session_handle src = handle();
+    invoke_details invoke;
+    invoke.uri = iter->second.uri;
+    invoke.user = iter->second.user_data;
+    invoke.args = std::move(my_wamp_args);
 
-    invoke.reply_fn = [this,request_id](t_request_id /*tid*/, wamp_args& args)
+    // TODO: BUG -- dont use 'this' here
+    invoke.yield_fn = [this,request_id](wamp_args args)
       {
         this->reply(request_id, args, false, "");
       };
 
+    invoke.error_fn = [this,request_id](wamp_args args, std::string error_uri)
+      {
+        this->reply(request_id, args, true, error_uri);
+      };
+
     try
     {
-      iter->second.user_cb(request_id,
-                           invoke,
-                           iter->second.uri,
-                           details,
-                           my_wamp_args,
-                           src,
-                           iter->second.user_data);
+      iter->second.user_cb(invoke);
     }
     catch (XXX::invocation_exception& ex)
     {
@@ -1166,6 +1167,7 @@ void Session::process_result(jalson::json_array & msg)
   t_request_id request_id  = msg[1].as_uint();
   jalson::json_object & options = msg[2].as_object();
 
+  std::cout << "got result, request_id=" << request_id << "\n";
 
   wamp_call orig_call;
   bool found = false;
@@ -1178,7 +1180,7 @@ void Session::process_result(jalson::json_array & msg)
       found = true;
       orig_call = std::move(iter->second);
     }
-    m_pending_call.erase(iter);
+    m_pending_call.erase(iter); // BUG
   }
 
   if (found)
@@ -1342,41 +1344,48 @@ void Session::process_call(jalson::json_array & msg)
   if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
 
 
-  auto reply_fn = [this, request_id](wamp_args args, std::unique_ptr<std::string> error_uri){
-    /* EV thread */
-    // m_pending.erase(request_id);   <---- if that is found, ie, erase the function that allows for cancel
-    // send a RESULT back to originator of the call
-
-    if (!error_uri)
+  session_handle wp = this->handle();
+  auto reply_fn = [wp, request_id](wamp_args args,
+                                   std::unique_ptr<std::string> error_uri)
     {
-      jalson::json_array msg;
-      msg.push_back(RESULT);
-      msg.push_back(request_id);
-      msg.push_back(jalson::json_object());
-      if (!args.args_list.is_null())
-      {
-        msg.push_back( args.args_list );
-        if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
-      }
-      send_msg( msg );
-    }
-    else
-    {
-      jalson::json_array msg;
-      msg.push_back(ERROR);
-      msg.push_back(CALL);
-      msg.push_back(request_id);
-      msg.push_back(jalson::json_object());
-      msg.push_back(*error_uri);
-      {
-        msg.push_back( args.args_list );
-        if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
-      }
-      send_msg( msg );
-    }
-  };
+      /* EV thread */
 
-  m_server_handler.handle_call(this, uri, msg, std::move(reply_fn));
+      // m_pending.erase(request_id);   <---- if that is found, ie, erase the function that allows for cancel
+      // send a RESULT back to originator of the call
+
+      if (auto sp = wp.lock())
+      {
+        if (!error_uri)
+        {
+          jalson::json_array msg;
+          msg.push_back(RESULT);
+          msg.push_back(request_id);
+          msg.push_back(jalson::json_object());
+          if (!args.args_list.is_null())
+          {
+            msg.push_back( args.args_list );
+            if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+          }
+          sp->send_msg( msg );
+        }
+        else
+        {
+          jalson::json_array msg;
+          msg.push_back(ERROR);
+          msg.push_back(CALL);
+          msg.push_back(request_id);
+          msg.push_back(jalson::json_object());
+          msg.push_back(*error_uri);
+          {
+            msg.push_back( args.args_list );
+            if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+          }
+          sp->send_msg( msg );
+        }
+      }
+    };
+
+  m_server_handler.inbound_call(this, uri, std::move(my_wamp_args), std::move(reply_fn));
 }
 
 

@@ -51,6 +51,8 @@ struct router_conn_impl
     invalidate();
   }
 
+  /* Indicate that the owning object has gone away, so that no more calls should
+   * be made to it. */
   void invalidate()
   {
     std::unique_lock<std::recursive_mutex> guard(lock);
@@ -210,6 +212,8 @@ int router_conn::connect(const std::string & addr, int port)
       }
       else
       {
+        // TODO: need to be able to log in here
+       //  std::cout << "router impl has been deleted; iohandle=" << iohandle <<"\n";
         /* The router session implementation has already been deleted, so close
          * the handle if available. Note that its lifetime is managed
          * elsewhere. */

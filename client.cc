@@ -32,52 +32,37 @@ struct callback_t
 
 XXX::text_topic topic("topic1");
 
-void procedure_error_cb(XXX::t_invoke_id /*invokeid*/,
-                        XXX::invoke_details& /*invocation*/,
-                        const std::string& procedure,
-                        jalson::json_object& /* options */,
-                        XXX::wamp_args& the_args,
-                        XXX::session_handle&,
-                        void* user)
+void procedure_error_cb(XXX::invoke_details& invocation)
 {
-  const callback_t* cbdata = (callback_t*) user;
+  const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
   auto __logptr = logger;
-  _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args_list
+  _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
   throw XXX::invocation_exception("opps, cannot fulfill RPC");
 
 }
 
-void procedure_cb(XXX::t_invoke_id invokeid,
-                  XXX::invoke_details& invocation,
-                  const std::string& procedure,
-                  jalson::json_object& /* options */,
-                  XXX::wamp_args& the_args,
-                  XXX::session_handle&,
-                  void* user)
+void procedure_cb(XXX::invoke_details& invocation)
 {
-  const callback_t* cbdata = (callback_t*) user;
+  const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
   auto __logptr = logger;
-  _INFO_ ("CALLEE has procuedure '"<< procedure << "' invoked, args: " << the_args.args_list
+  _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
 //  throw std::runtime_error("bad alloc");
-  auto my_args = the_args;
+  auto my_args = invocation.args;
 
   my_args.args_list = jalson::json_array();
   jalson::json_array & arr = my_args.args_list.as_array();
   arr.push_back("hello");
   arr.push_back("back");
 
-  invocation.reply_fn(invokeid,
-                      my_args);
-
-
+  invocation.yield_fn(my_args);
 }
 
 
