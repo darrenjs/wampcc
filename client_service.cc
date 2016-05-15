@@ -29,8 +29,11 @@ struct router_conn_impl
   router_conn* owner;
   std::string realm;
   router_session_connect_cb m_user_cb;
-  std::mutex lock;
   std::shared_ptr<Session> session;
+
+  // using a recursive mutex, just in case the destructor is triggered during a
+  // callback
+  std::recursive_mutex lock;
 
   router_conn_impl(kernel * k,
                    router_conn* r,
@@ -50,13 +53,13 @@ struct router_conn_impl
 
   void invalidate()
   {
-    std::unique_lock<std::mutex> guard(lock);
+    std::unique_lock<std::recursive_mutex> guard(lock);
     owner = nullptr;
   }
 
   void invoke_router_session_connect_cb(int errorcode, bool is_open)
   {
-    std::unique_lock<std::mutex> guard(lock);
+    std::unique_lock<std::recursive_mutex> guard(lock);
     if (owner && m_user_cb)
       try {
         m_user_cb(owner, errorcode, is_open);
@@ -165,17 +168,17 @@ int router_conn::connect(const std::string & addr, int port)
 {
   std::weak_ptr<router_conn_impl> wp = m_impl;
 
+  // create the tcp-connect callback
   tcp_connect_cb cb = [wp](IOHandle* iohandle, int err)
     {
       /* IO thread */
 
-      // // Use for testing race conditions
-      // std::cout << "router_conn::connect, err:" << err << "\n";
-      // sleep(1);
-
       std::shared_ptr<router_conn_impl> impl = wp.lock();
       if (impl)
       {
+        /* the router session impl is still around, so here we can give it the
+         * iohandle just created */
+
         if (iohandle)
         {
           // The availability of an iohandle means the connect was
@@ -196,6 +199,7 @@ int router_conn::connect(const std::string & addr, int port)
         }
         else
         {
+          /* the tcp-connect failed, so we schedule a user callback */
           impl->the_kernel->get_event_loop()->push(
             [wp,err]()
             {
@@ -206,13 +210,14 @@ int router_conn::connect(const std::string & addr, int port)
       }
       else
       {
-        std::cout << "implementation has been deleted!\n";
-        delete iohandle; // BUG: this is not closing the connection
-        std::cout << "iohandle has been deleted \n";
+        /* The router session implementation has already been deleted, so close
+         * the handle if available. Note that its lifetime is managed
+         * elsewhere. */
+        if (iohandle) iohandle->request_close();
       }
     };
 
-  m_impl->the_kernel->get_io()->add_connection(addr, port, cb);
+  m_impl->the_kernel->get_io()->add_connection(addr, port, std::move(cb));
   return 0;
 }
 
