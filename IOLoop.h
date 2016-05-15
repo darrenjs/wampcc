@@ -34,7 +34,6 @@ struct io_request
   Logger * logptr;
   socket_accept_cb on_accept;
   tcp_connect_cb on_connect;
-  t_connection_id user_conn_id = t_connection_id();
   io_request(Logger * __logptr) : logptr(__logptr) {}
 };
 
@@ -71,9 +70,7 @@ public:
 
   void add_server(int port, socket_accept_cb);
 
-  void add_connection(std::string addr, int port,
-                      t_connection_id,
-                      tcp_connect_cb);
+  void add_connection(std::string addr, int port, tcp_connect_cb);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 

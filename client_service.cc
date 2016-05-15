@@ -177,7 +177,6 @@ int router_conn::connect(const std::string & addr, int port)
                       iohandle,
                       *m_svc->get_event_loop(),
                       false,
-                      0,
                       m_realm, std::move(fn)));
       m_session->initiate_handshake();
     }
@@ -193,7 +192,7 @@ int router_conn::connect(const std::string & addr, int port)
     }
   };
 
-  m_svc->get_io()->add_connection(addr, port, 0, cb);
+  m_svc->get_io()->add_connection(addr, port, cb);
   return 0;
 }
 

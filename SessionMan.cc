@@ -30,7 +30,6 @@ SessionMan::~SessionMan()
 
 
 std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is_passive,
-                                                    t_connection_id user_conn_id,
                                                     std::string realm)
 {
   /* IO thread */
@@ -48,7 +47,6 @@ std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is
                                                iohandle,
                                                m_evl,
                                                is_passive,
-                                               user_conn_id,
                                                realm,
                                                nullptr));
 

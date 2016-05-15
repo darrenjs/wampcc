@@ -45,7 +45,6 @@ namespace XXX {
   public:
     Session(SID, Logger*, IOHandle *,
             event_loop&, bool is_passive,
-            t_connection_id user_conn_id,
             std::string realm,
             session_state_fn state_cb);
     ~Session();
@@ -214,8 +213,6 @@ namespace XXX {
     server_msg_handler m_server_handler;
 
     std::shared_ptr< t_sid > m_session_handle; // TODO
-
-    t_connection_id m_user_conn_id;
 
     session_error::error_code m_session_err = session_error::no_error;
 

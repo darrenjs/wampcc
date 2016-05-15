@@ -34,7 +34,6 @@ public:
   ~SessionMan();
 
   std::shared_ptr<Session> create_session(IOHandle *, bool is_passive,
-                                          t_connection_id user_conn_id,
                                           std::string realm);
 
   void close_all();

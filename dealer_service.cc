@@ -119,7 +119,7 @@ void dealer_service::listen(int port)
            IOHandle* hndl)
     {
       // note, we dont make use of the user connection id for passive sessions
-      auto sptr = m_sesman->create_session(hndl, true, t_connection_id(), "" /* undefined realm */);
+      auto sptr = m_sesman->create_session(hndl, true,  "" /* undefined realm */);
 
       auto handlers = server_msg_handler();
 

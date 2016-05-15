@@ -349,7 +349,6 @@ void IOLoop::add_active_handle(IOHandle * iohandle, int errcode, io_request * re
 
 void IOLoop::add_connection(std::string addr,
                             int port,
-                            t_connection_id user_conn_id,
                             tcp_connect_cb cb)
 {
   {
@@ -357,7 +356,6 @@ void IOLoop::add_connection(std::string addr,
     io_request r( __logptr );
     r.addr = addr;
     r.port = port;
-    r.user_conn_id = user_conn_id;
     r.on_connect = std::move(cb);
     m_pending_requests.push_back( r );
   }

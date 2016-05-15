@@ -28,7 +28,6 @@ Session::Session(SID s,
                  IOHandle* h,
                  event_loop & evl,
                  bool is_passive,
-                 t_connection_id __user_conn_id,
                  std::string __realm,
                  session_state_fn state_cb)
   : m_state( eInit ),
@@ -45,7 +44,6 @@ Session::Session(SID s,
     m_evl(evl),
     m_is_passive(is_passive),
     m_realm(__realm),
-    m_user_conn_id(__user_conn_id),
     m_notify_state_change_fn(state_cb)
 {
   m_handle->set_listener(this);
@@ -778,7 +776,6 @@ void Session::notify_session_state_change(bool is_open)
 {
   ev_session_state_event * e = new ev_session_state_event(is_open, m_session_err);
   e->src  = handle();
-  e->user_conn_id = m_user_conn_id;
   m_evl.push( e );
 
   // new approach -- make an EV thread call to the session state callback
