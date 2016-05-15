@@ -1179,8 +1179,8 @@ void Session::process_result(jalson::json_array & msg)
     {
       found = true;
       orig_call = std::move(iter->second);
+      m_pending_call.erase(iter);
     }
-    m_pending_call.erase(iter); // BUG
   }
 
   if (found)
