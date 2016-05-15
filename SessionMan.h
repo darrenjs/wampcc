@@ -48,8 +48,7 @@ public:
   void send_to_session(session_handle,
                        build_message_cb_v4);
 
-  void send_request(session_handle ,
-                    int request_type,
+  void send_request(session_handle,
                     unsigned int internal_req_id,
                     build_message_cb_v2);
 
@@ -70,7 +69,7 @@ private:
   {
     std::mutex lock;
     std::map<SID, std::shared_ptr<Session> > active;
-    std::vector< std::shared_ptr<Session> >   closed;
+    std::vector< std::shared_ptr<Session> >  closed;
     uint64_t m_next;
   } m_sessions;
 

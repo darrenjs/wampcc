@@ -51,8 +51,7 @@ namespace XXX {
 
     void set_server_handler(server_msg_handler);
 
-    void send_request( int request_type,
-                       unsigned int internal_req_id,
+    void send_request( unsigned int internal_req_id,
                        build_message_cb_v2 msg_builder );
 
 
@@ -159,6 +158,8 @@ namespace XXX {
 
     Logger *__logptr; /* name chosen for log macros */
 
+    uint64_t m_sid;
+
     std::mutex m_handle_lock;
     IOHandle* m_handle;
 
@@ -209,7 +210,6 @@ namespace XXX {
                std::string error_uri);
   private:
 
-    uint64_t m_sid;
     server_msg_handler m_server_handler;
 
     std::shared_ptr< t_sid > m_session_handle; // TODO

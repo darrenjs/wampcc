@@ -290,7 +290,7 @@ void event_loop::process_outbound_publish(ev_outbound_publish* ev)
 
   // TODO: instead of 0, need to have a valie intenral request id
   for (auto & sh : ev->targets)
-    m_sesman->send_request(sh, PUBLISH, 0, msg_builder2);
+    m_sesman->send_request(sh, 0, msg_builder2);
 }
 
 

@@ -19,7 +19,6 @@ struct event
   } type;
 
   session_handle src;
-  std::string realm;  // TODO: long term, replace with an ID
 
   event(Type t)
     : type(t)

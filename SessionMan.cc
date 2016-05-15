@@ -196,7 +196,6 @@ void SessionMan::send_to_session(const std::vector<session_handle>& handles,
 
 
 void SessionMan::send_request(session_handle handle_weak,
-                              int request_type,
                               unsigned int internal_req_id,
                               build_message_cb_v2 msg_builder)
 {
@@ -220,7 +219,7 @@ void SessionMan::send_request(session_handle handle_weak,
   auto it = m_sessions.active.find( dest );
   if (it != m_sessions.active.end())
   {
-    it->second->send_request( request_type, internal_req_id, msg_builder );
+    it->second->send_request( internal_req_id, msg_builder );
   }
   else
   {

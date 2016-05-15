@@ -31,8 +31,8 @@ Session::Session(SID s,
                  std::string __realm,
                  session_state_fn state_cb)
   : m_state( eInit ),
-    m_sid(s.unique_id()),
     __logptr(logptr),
+    m_sid(s.unique_id()),
     m_handle( h ),
     m_hb_intvl(2),
     m_time_create(time(NULL)),
@@ -460,8 +460,7 @@ void Session::process_message(jalson::json_value&jv)
 }
 
 
-void Session::send_request( int request_type,
-                            unsigned int /*internal_req_id*/,
+void Session::send_request(  unsigned int /*internal_req_id*/,
                             build_message_cb_v2 msg_builder )
 {
   t_request_id request_id = m_next_request_id++;
