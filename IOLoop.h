@@ -44,7 +44,6 @@ struct  tcp_server
   uv_tcp_t uvh;
   int port;
   IOLoop * ioloop;
-  char tmp[20480]; // TODO: delete me
   socket_accept_cb cb;
 };
 
@@ -73,7 +72,6 @@ public:
   void add_connection(std::string addr, int port, tcp_connect_cb);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
-
 
   Logger * logptr() const { return __logptr; }
 

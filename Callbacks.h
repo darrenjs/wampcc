@@ -1,7 +1,6 @@
 #ifndef XXX_CALLBACKS_H
 #define XXX_CALLBACKS_H
 
-
 #include <jalson/jalson.h>
 
 #include <functional>

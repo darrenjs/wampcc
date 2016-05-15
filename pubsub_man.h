@@ -13,10 +13,8 @@ namespace XXX {
 class Logger;
 class event_loop;
 class managed_topic;
-class SessionMan;
 class Session;
 class ev_session_state_event;
-class ev_inbound_message;
 
 class pubsub_man
 {

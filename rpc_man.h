@@ -17,7 +17,6 @@
 namespace XXX {
 
 class event_loop;
-class client_service;
 class Logger;
 class ev_inbound_message;
 

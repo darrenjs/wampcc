@@ -75,54 +75,54 @@ public:
 };
 
 
-  class event_loop
-  {
-  public:
-    event_loop(Logger*);
-    ~event_loop();
+class event_loop
+{
+public:
+  event_loop(Logger*);
+  ~event_loop();
 
-    void stop();
+  void stop();
 
-    void init();
+  void init();
 
-    void push(event* e);
-    void push(std::shared_ptr<event> sp);
-    void push(std::function<void()> fn);
+  void push(event* e);
+  void push(std::shared_ptr<event> sp);
+  void push(std::function<void()> fn);
 
-    void request_stop() { m_continue=false; }
-
-
-    void set_pubsub_man(pubsub_man*);
-    void set_session_man(SessionMan*);
-
-  private:
-    event_loop(const event_loop&); // no copy
-    event_loop& operator=(const event_loop&); // no assignment
+  void request_stop() { m_continue=false; }
 
 
-    void eventloop();
-    void eventmain();
+  void set_pubsub_man(pubsub_man*);
+  void set_session_man(SessionMan*);
 
-    void process_event(event* e);
-    void process_event_error(event* e, event_error&);
+private:
+  event_loop(const event_loop&); // no copy
+  event_loop& operator=(const event_loop&); // no assignment
 
-    void process_outbound_publish(ev_outbound_publish* e);
 
-    void hb_check();
+  void eventloop();
+  void eventmain();
 
-    Logger *__logptr; /* name chosen for log macros */
+  void process_event(event* e);
+  void process_event_error(event* e, event_error&);
 
-    bool m_continue;  // TODO: make atomic?
+  void process_outbound_publish(ev_outbound_publish* e);
 
-    std::vector< std::shared_ptr<event> > m_queue;
-    std::mutex m_mutex;
-    std::condition_variable m_condvar;
-    std::thread m_thread;
+  void hb_check();
 
-    pubsub_man* m_pubsubman;
-    SessionMan* m_sesman;
+  Logger *__logptr; /* name chosen for log macros */
 
-    std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
+  bool m_continue;  // TODO: make atomic?
+
+  std::vector< std::shared_ptr<event> > m_queue;
+  std::mutex m_mutex;
+  std::condition_variable m_condvar;
+  std::thread m_thread;
+
+  pubsub_man* m_pubsubman;
+  SessionMan* m_sesman;
+
+  std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
 };
 
 } // namespace XXX

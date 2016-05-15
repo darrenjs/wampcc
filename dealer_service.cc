@@ -21,8 +21,6 @@ dealer_service::dealer_service(kernel * __svc, dealer_listener* l)
   :__logptr(__svc->get_logger()),
    m_io_loop(__svc->get_io()),
    m_evl(__svc->get_event_loop()),
-   m_own_io(false),
-   m_own_ev(false),
    m_sesman( new SessionMan(__logptr, *m_evl) ),
    m_rpcman( new rpc_man(__logptr, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
    m_pubsub(new pubsub_man(__logptr, *m_evl)),
@@ -36,11 +34,6 @@ dealer_service::dealer_service(kernel * __svc, dealer_listener* l)
 
 dealer_service::~dealer_service()
 {
-  if (m_own_io) m_io_loop->stop();
-  if (m_own_ev) m_evl->stop();
-
-  if (m_own_io) delete m_io_loop;
-  if (m_own_ev) delete m_evl;
 }
 
 

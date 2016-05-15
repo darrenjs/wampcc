@@ -21,9 +21,6 @@ namespace XXX {
   class Logger;
   struct ev_session_state_event;
 
-  typedef std::function<jalson::json_array (int) > build_message_cb;
-
-
   typedef std::function<void(ev_session_state_event*) > session_state_cb;
 
 

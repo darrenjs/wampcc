@@ -23,7 +23,6 @@ namespace XXX {
   class IOLoop;
   class IOHandle;
   class event_loop;
-  class client_service;
 
 struct dealer_listener
 {
@@ -67,8 +66,6 @@ private:
   Logger *__logptr; /* name chosen for log macros */
   IOLoop*  m_io_loop;
   event_loop* m_evl;
-  bool m_own_io;
-  bool m_own_ev;
 
   std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;

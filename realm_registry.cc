@@ -17,7 +17,7 @@ namespace XXX
 
 
   realm_registry::~realm_registry()
-  {
+  { 
   }
 
 

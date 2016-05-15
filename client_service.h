@@ -5,25 +5,13 @@
 
 #include <jalson/jalson.h>
 
-#include <functional>
-#include <map>
-#include <string>
-#include <mutex>
 #include <memory>
-#include <ostream>
 #include <string>
 
 
 namespace XXX {
 
 class kernel;
-class IOLoop;
-class Logger;
-class Session;
-class event_loop;
-class topic;
-
-
 
 struct router_conn_impl;
 class router_conn

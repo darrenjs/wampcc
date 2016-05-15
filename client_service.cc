@@ -154,11 +154,11 @@ router_conn::router_conn(kernel * k,
 
 }
 
+
 router_conn::~router_conn()
 {
   m_impl->invalidate(); // prevent impl object making user callbacks
 }
-
 
 
 int router_conn::connect(const std::string & addr, int port)
