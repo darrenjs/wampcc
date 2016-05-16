@@ -108,43 +108,6 @@ void SessionMan::close_all()
 
 //----------------------------------------------------------------------
 
-
-void SessionMan::send_to_session(session_handle handle,
-                                 build_message_cb_v4 msg_builder)
-{
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-  auto sp = handle.lock();
-  if (!sp)
-  {
-    _WARN_("failed to lock the session handle");
-    return;
-  }
-  t_sid dest( sp->unique_id() );
-
-  if (dest == 0)
-  {
-    _WARN_("ignoring attempt to send to session with id 0");
-    return;
-  }
-
-  auto it = m_sessions.active.find( dest );
-
-  if (it != m_sessions.active.end())
-  {
-    it->second->send_msg( msg_builder );
-  }
-  else
-  {
-    std::ostringstream os;
-    os << "session send failed; cannot find session with id " << dest;
-    throw std::runtime_error( os.str() );
-  }
-}
-
-
-//----------------------------------------------------------------------
-
 void SessionMan::send_to_session_impl(session_handle handle,
                                       jalson::json_array& msg)
 {
@@ -193,40 +156,6 @@ void SessionMan::send_to_session(const std::vector<session_handle>& handles,
   }
 }
 
-
-void SessionMan::send_request(session_handle handle_weak,
-                              unsigned int internal_req_id,
-                              build_message_cb_v2 msg_builder)
-{
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-  auto sp = handle_weak.lock();
-  if (!sp)
-  {
-    _WARN_("failed to lock the session handle");
-    return;
-  }
-
-  t_sid dest( sp->unique_id() );
-  if (dest == 0)
-  {
-    _WARN_("ignoring attempt to send to session with id 0");
-    return;
-  }
-
-
-  auto it = m_sessions.active.find( dest );
-  if (it != m_sessions.active.end())
-  {
-    it->second->send_request( internal_req_id, msg_builder );
-  }
-  else
-  {
-    throw std::runtime_error("cannot send to session; session not found");
-  }
-}
-
-//----------------------------------------------------------------------
 
 void SessionMan::handle_event(ev_session_state_event* ev)
 {

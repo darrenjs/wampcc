@@ -28,11 +28,6 @@ namespace XXX {
     std::function<void(wamp_session*, jalson::json_array &)> inbound_subscribe;
   };
 
-
-  typedef std::function<  jalson::json_array (int) > build_message_cb_v2;
-  typedef std::function<  jalson::json_array ()    > build_message_cb_v4;
-
-
   class event_loop;
   class IOHandle;
   class SessionMan;
@@ -51,12 +46,7 @@ namespace XXX {
 
     void set_server_handler(server_msg_handler);
 
-    void send_request( unsigned int internal_req_id,
-                       build_message_cb_v2 msg_builder );
-
-
     void send_msg(jalson::json_array&, bool final=false);
-    void send_msg(build_message_cb_v4 builder);
 
     void close();
 

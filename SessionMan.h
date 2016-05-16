@@ -42,13 +42,6 @@ public:
   void send_to_session(const std::vector<session_handle>&,
                        jalson::json_array& msg);
 
-  void send_to_session(session_handle,
-                       build_message_cb_v4);
-
-  void send_request(session_handle,
-                    unsigned int internal_req_id,
-                    build_message_cb_v2);
-
   void handle_event( ev_session_state_event* );
   void handle_housekeeping_event( void );
 

@@ -468,15 +468,6 @@ void wamp_session::process_message(jalson::json_value&jv)
 }
 
 
-void wamp_session::send_request(  unsigned int /*internal_req_id*/,
-                            build_message_cb_v2 msg_builder )
-{
-  t_request_id request_id = m_next_request_id++;
-
-  jalson::json_array req = msg_builder( request_id );
-
-  this->send_msg( req );
-}
 
 //----------------------------------------------------------------------
 
@@ -511,32 +502,6 @@ void wamp_session::send_msg(jalson::json_array& jv, bool final)
   }
 }
 
-//----------------------------------------------------------------------
-
-void wamp_session::send_msg(build_message_cb_v4 builder)
-{
-  if (!m_is_closing)
-  {
-
-    jalson::json_array msg = builder();
-
-    std::string str = jalson::encode(msg);
-
-    update_state_for_outbound(msg);
-
-    // write message length prefix
-    std::pair<const char*, size_t> bufs[2];
-
-    uint32_t msglen = htonl( str.size() );
-    bufs[0].first  = (char*)&msglen;
-    bufs[0].second = sizeof(msglen);
-
-    // write message
-    bufs[1].first  = (char*)str.c_str();
-    bufs[1].second = str.size();
-    this->send_bytes( &bufs[0], 2, false );
-  }
-}
 
 //----------------------------------------------------------------------
 
