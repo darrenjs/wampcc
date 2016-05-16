@@ -39,9 +39,9 @@ namespace XXX {
   {
   public:
     wamp_session(Logger*, IOHandle *,
-            event_loop&, bool is_passive,
-            std::string realm,
-            session_state_fn state_cb);
+                 event_loop&, bool is_passive,
+                 std::string realm,
+                 session_state_fn state_cb);
     ~wamp_session();
 
     void set_server_handler(server_msg_handler);
@@ -180,6 +180,7 @@ namespace XXX {
     mutable std::mutex m_realm_lock;
 
     session_state_fn m_notify_state_change_fn;
+
   private:
 
     void process_registered(jalson::json_array &);
@@ -194,15 +195,14 @@ namespace XXX {
     void process_subscribe(jalson::json_array &);
     void process_register(jalson::json_array &);
 
-    bool reply(int callid,
-               wamp_args& the_args,
-               bool is_error,
-               std::string error_uri);
-  private:
+    void invocation_yield(int request_id,
+                          wamp_args args);
+
+    void invocation_error(int request_id,
+                          wamp_args args,
+                          std::string error_uri);
 
     server_msg_handler m_server_handler;
-
-    std::shared_ptr< t_sid > m_session_handle; // TODO
 
     session_error::error_code m_session_err = session_error::no_error;
 
