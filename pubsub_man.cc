@@ -23,7 +23,7 @@ TODO: what locking is needed around this?
 */
 struct managed_topic
 {
-  std::vector< std::weak_ptr<Session> > m_subscribers;
+  std::vector< std::weak_ptr<wamp_session> > m_subscribers;
 
   // current upto date image of the value
   jalson::json_value image;
@@ -295,7 +295,7 @@ void pubsub_man::inbound_publish(std::string realm,
   }
 }
 
-void pubsub_man::handle_inbound_subscribe(Session* sptr,
+void pubsub_man::handle_inbound_subscribe(wamp_session* sptr,
                                           jalson::json_array& msg)
 {
   /* EV thread */

@@ -3,7 +3,7 @@
 #include "event_loop.h"
 #include "kernel.h"
 #include "Logger.h"
-#include "Session.h"
+#include "wamp_session.h"
 
 #include <memory>
 
@@ -87,7 +87,7 @@ int rpc_man::register_internal_rpc_2(const std::string& realm,
   return r.registration_id;
 }
 
-int rpc_man::handle_inbound_register(Session* sptr,
+int rpc_man::handle_inbound_register(wamp_session* sptr,
                                      std::string procedure_uri,
                                      registered_fn on_registered)
 {

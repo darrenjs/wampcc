@@ -1,7 +1,7 @@
 #include "IOHandle.h"
 
 #include "IOLoop.h"
-#include "Session.h"
+#include "wamp_session.h"
 #include "io_listener.h"
 #include "Logger.h"
 
@@ -217,7 +217,7 @@ void IOHandle::init_close()
 {
   /* IO
 
-	   Note: this must not be called from the Session, because deadlock will happen.
+	   Note: this must not be called from the wamp_session, because deadlock will happen.
   */
 
   if ( m_is_closing ) return;
@@ -232,7 +232,7 @@ void IOHandle::init_close()
 
   /* Raise an async request to close the socket.  This will be the last async
    * operation requested.  I.e., there will no more requests coming from the
-   * Session object which owns this handle. */
+   * wamp_session object which owns this handle. */
   m_pending_close_handles = true;
   uv_async_send( &m_write_async );
 }

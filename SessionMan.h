@@ -4,7 +4,7 @@
 
 #include "Callbacks.h"
 
-#include "Session.h"
+#include "wamp_session.h"
 
 #include <jalson/jalson.h>
 
@@ -17,7 +17,7 @@ namespace XXX {
 
   class IOHandle;
   class kernel;
-  class Session;
+  class wamp_session;
   class Logger;
   struct ev_session_state_event;
 
@@ -30,7 +30,7 @@ public:
   SessionMan(kernel&);
   ~SessionMan();
 
-  std::shared_ptr<Session> create_session(IOHandle *, bool is_passive,
+  std::shared_ptr<wamp_session> create_session(IOHandle *, bool is_passive,
                                           std::string realm);
 
   void close_all();
@@ -64,8 +64,8 @@ private:
   mutable struct
   {
     std::mutex lock;
-    std::map<t_sid, std::shared_ptr<Session> > active;
-    std::vector< std::shared_ptr<Session> >  closed;
+    std::map<t_sid, std::shared_ptr<wamp_session> > active;
+    std::vector< std::shared_ptr<wamp_session> >  closed;
   } m_sessions;
 
   session_state_cb m_session_event_cb;

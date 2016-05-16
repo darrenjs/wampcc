@@ -13,7 +13,7 @@ namespace XXX {
 class Logger;
 class event_loop;
 class managed_topic;
-class Session;
+class wamp_session;
 class kernel;
 class ev_session_state_event;
 
@@ -25,7 +25,7 @@ public:
 
   void handle_event( ev_session_state_event* );
   void inbound_publish(std::string realm, std::string uri, jalson::json_array&);
-  void handle_inbound_subscribe(Session* ptr, jalson::json_array&);
+  void handle_inbound_subscribe(wamp_session* ptr, jalson::json_array&);
 
   t_request_id publish(const std::string& topic,
                        const std::string& realm,

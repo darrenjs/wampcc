@@ -3,7 +3,7 @@
 
 
 #include "Callbacks.h"
-#include "Session.h"
+#include "wamp_session.h"
 
 #include <jalson/jalson.h>
 
@@ -53,7 +53,7 @@ private:
 
   void rpc_registered_cb(const rpc_details&);
 
-  void handle_inbound_call(Session*,
+  void handle_inbound_call(wamp_session*,
                            const std::string&,
                            wamp_args args,
                            wamp_invocation_reply_fn);

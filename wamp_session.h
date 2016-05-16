@@ -13,7 +13,7 @@
 
 namespace XXX {
 
-  class Session;
+  class wamp_session;
 
   typedef std::function< void() > reply_fn;
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
@@ -22,10 +22,10 @@ namespace XXX {
 
   struct server_msg_handler
   {
-    std::function<void(Session*, std::string uri, wamp_args, wamp_invocation_reply_fn)> inbound_call;
-    std::function<void(Session*, std::string uri, jalson::json_array &)> handle_inbound_publish;
-    std::function<void(Session*, std::string uri, registered_fn)> inbound_register;
-    std::function<void(Session*, jalson::json_array &)> inbound_subscribe;
+    std::function<void(wamp_session*, std::string uri, wamp_args, wamp_invocation_reply_fn)> inbound_call;
+    std::function<void(wamp_session*, std::string uri, jalson::json_array &)> handle_inbound_publish;
+    std::function<void(wamp_session*, std::string uri, registered_fn)> inbound_register;
+    std::function<void(wamp_session*, jalson::json_array &)> inbound_subscribe;
   };
 
 
@@ -40,14 +40,14 @@ namespace XXX {
 
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
-  class Session : public std::enable_shared_from_this<Session>, public io_listener
+  class wamp_session : public std::enable_shared_from_this<wamp_session>, public io_listener
   {
   public:
-    Session(Logger*, IOHandle *,
+    wamp_session(Logger*, IOHandle *,
             event_loop&, bool is_passive,
             std::string realm,
             session_state_fn state_cb);
-    ~Session();
+    ~wamp_session();
 
     void set_server_handler(server_msg_handler);
 
@@ -112,8 +112,8 @@ namespace XXX {
 
   private:
 
-    Session(const Session&) = delete;
-    Session& operator=(const Session&) = delete;
+    wamp_session(const wamp_session&) = delete;
+    wamp_session& operator=(const wamp_session&) = delete;
 
     bool send_bytes(std::pair<const char*, size_t>*, size_t, bool final);
 

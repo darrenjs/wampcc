@@ -9,7 +9,7 @@
 
 namespace XXX {
 
-class Session;
+class wamp_session;
 class IOLoop;
 class IOHandle;
 class io_listener;

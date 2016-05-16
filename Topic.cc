@@ -1,6 +1,6 @@
 #include "Topic.h"
 
-#include "Session.h"
+#include "wamp_session.h"
 #include "Logger.h"
 
 #include <iostream>
@@ -47,7 +47,7 @@ void Topic::updateValue(const char* newstr)
 
 }
 
-void Topic::add_subscriber(Session* s)
+void Topic::add_subscriber(wamp_session* s)
 {
   std::lock_guard<std::mutex> guard( m_subscribers.lock );
   m_subscribers.items.insert( s );

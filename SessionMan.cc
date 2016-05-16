@@ -3,7 +3,7 @@
 
 #include "event_loop.h"
 #include "kernel.h"
-#include "Session.h"
+#include "wamp_session.h"
 
 #include "WampTypes.h"
 #include "Logger.h"
@@ -29,7 +29,7 @@ SessionMan::~SessionMan()
 }
 
 
-std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is_passive,
+std::shared_ptr<wamp_session> SessionMan::create_session(IOHandle * iohandle, bool is_passive,
                                                     std::string realm)
 {
   /* IO thread */
@@ -42,7 +42,7 @@ std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is
 
   // TODO: its not the place here to configure the newly created session .
   // That should be done by the caller of this function.
-  std::shared_ptr<Session>  sptr (new Session( __logptr,
+  std::shared_ptr<wamp_session>  sptr (new wamp_session( __logptr,
                                                iohandle,
                                                *(m_kernel.get_event_loop()),
                                                is_passive,
@@ -270,14 +270,14 @@ void SessionMan::handle_housekeeping_event()
 {
   this->heartbeat_all();
 
-  std::vector< std::shared_ptr<Session> > to_delete;
+  std::vector< std::shared_ptr<wamp_session> > to_delete;
 
   {
     std::lock_guard<std::mutex> guard(m_sessions.lock);
     to_delete.swap( m_sessions.closed );
   }
 
-  to_delete.clear(); // expected to call ~Session
+  to_delete.clear(); // expected to call ~wamp_session
 }
 
 

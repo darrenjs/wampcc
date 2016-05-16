@@ -1,5 +1,4 @@
 
-#include "Session.h"
 #include "Logger.h"
 #include "event_loop.h"
 #include "client_service.h"

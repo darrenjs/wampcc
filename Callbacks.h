@@ -14,7 +14,7 @@
 namespace XXX {
 
 
-  class Session;
+  class wamp_session;
 
 
 class session_error : public std::runtime_error
@@ -64,7 +64,7 @@ typedef uint64_t t_invoke_id;
 typedef uint64_t t_sid;
 typedef uint64_t t_subscription_id;
 
-typedef std::weak_ptr<Session> session_handle;
+typedef std::weak_ptr<wamp_session> session_handle;
 
 
 class invocation_exception : public std::runtime_error

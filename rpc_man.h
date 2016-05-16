@@ -3,7 +3,7 @@
 
 #include "WampTypes.h"
 #include "Callbacks.h"
-#include "Session.h"
+#include "wamp_session.h"
 
 #include <jalson/jalson.h>
 
@@ -45,7 +45,7 @@ public:
   rpc_man(kernel&, rpc_added_cb);
 
   // return the registion id
-  int handle_inbound_register(Session*,
+  int handle_inbound_register(wamp_session*,
                               std::string uri,
                               registered_fn on_registered);
 

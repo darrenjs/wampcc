@@ -1,4 +1,4 @@
-#include "Session.h"
+#include "wamp_session.h"
 
 #include "IOHandle.h"
 #include "rpc_man.h"
@@ -32,7 +32,7 @@ static uint64_t generate_unique_session_id()
 }
 
 /* Constructor */
-Session::Session(Logger* logptr,
+wamp_session::wamp_session(Logger* logptr,
                  IOHandle* h,
                  event_loop & evl,
                  bool is_passive,
@@ -60,19 +60,19 @@ Session::Session(Logger* logptr,
 //----------------------------------------------------------------------
 
 /* Destructor */
-Session::~Session()
+wamp_session::~wamp_session()
 {
   delete [] m_buf;
 }
 
-uint64_t Session::unique_id()
+uint64_t wamp_session::unique_id()
 {
   return m_sid;
 }
 
 //----------------------------------------------------------------------
 
-void Session::close()
+void wamp_session::close()
 {
   std::lock_guard<std::mutex> guard(m_handle_lock);
   if (m_handle) m_handle->request_close();
@@ -80,7 +80,7 @@ void Session::close()
 
 //----------------------------------------------------------------------
 
-void Session::on_close()
+void wamp_session::on_close()
 {
   /* IO thread */
 
@@ -97,7 +97,7 @@ void Session::on_close()
 }
 
 //----------------------------------------------------------------------
-void Session::on_read(char* src, size_t len)
+void wamp_session::on_read(char* src, size_t len)
 {
   /* IO thread */
 
@@ -148,7 +148,7 @@ void Session::on_read(char* src, size_t len)
 }
 
 
-void Session::on_read_impl(char* src, size_t len)
+void wamp_session::on_read_impl(char* src, size_t len)
 {
   while (len > 0)
   {
@@ -206,7 +206,7 @@ void Session::on_read_impl(char* src, size_t len)
 }
 //----------------------------------------------------------------------
 
-void Session::decode_and_process(char* ptr, size_t msglen)
+void wamp_session::decode_and_process(char* ptr, size_t msglen)
 {
   /* IO thread */
 
@@ -232,7 +232,7 @@ void Session::decode_and_process(char* ptr, size_t msglen)
   catch (const XXX::event_error& e)
   {
     // TODO: need to review handling of event_errors
-    _DEBUG_( "Session::on_read_impl  event_error" );
+    _DEBUG_( "wamp_session::on_read_impl  event_error" );
     error_uri  = e.error_uri;
     must_close_session = e.is_fatal;
     error_text = e.what();
@@ -247,7 +247,7 @@ void Session::decode_and_process(char* ptr, size_t msglen)
 
 //----------------------------------------------------------------------
 
-void Session::update_state_for_outbound(const jalson::json_array& msg)
+void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 {
   int message_type = msg[0].as_uint();
 
@@ -298,7 +298,7 @@ void Session::update_state_for_outbound(const jalson::json_array& msg)
 }
 //----------------------------------------------------------------------
 
-void Session::change_state(SessionState expected, SessionState next)
+void wamp_session::change_state(SessionState expected, SessionState next)
 {
   std::vector<std::string> names = {"eInit","eRecvHello","eSentChallenge",
                                     "eRecvAuth","eOpen","eClosed",
@@ -314,19 +314,19 @@ void Session::change_state(SessionState expected, SessionState next)
 
   if (m_state == expected)
   {
-    _INFO_("Session state: from " << names[m_state] << " to " << names[next]);
+    _INFO_("wamp_session state: from " << names[m_state] << " to " << names[next]);
     m_state = next;
   }
   else
   {
-    _ERROR_("Session state failure, cannot move from " << names[m_state] << " to " << names[next]);
+    _ERROR_("wamp_session state failure, cannot move from " << names[m_state] << " to " << names[next]);
   }
 
 }
 
 //----------------------------------------------------------------------
 
-void Session::process_message(jalson::json_value&jv)
+void wamp_session::process_message(jalson::json_value&jv)
 {
 //  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
@@ -468,7 +468,7 @@ void Session::process_message(jalson::json_value&jv)
 }
 
 
-void Session::send_request(  unsigned int /*internal_req_id*/,
+void wamp_session::send_request(  unsigned int /*internal_req_id*/,
                             build_message_cb_v2 msg_builder )
 {
   t_request_id request_id = m_next_request_id++;
@@ -481,7 +481,7 @@ void Session::send_request(  unsigned int /*internal_req_id*/,
 //----------------------------------------------------------------------
 
 
-void Session::send_msg(jalson::json_array& jv, bool final)
+void wamp_session::send_msg(jalson::json_array& jv, bool final)
 {
   if (!m_is_closing)
   {
@@ -513,7 +513,7 @@ void Session::send_msg(jalson::json_array& jv, bool final)
 
 //----------------------------------------------------------------------
 
-void Session::send_msg(build_message_cb_v4 builder)
+void wamp_session::send_msg(build_message_cb_v4 builder)
 {
   if (!m_is_closing)
   {
@@ -540,7 +540,7 @@ void Session::send_msg(build_message_cb_v4 builder)
 
 //----------------------------------------------------------------------
 
-bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count, bool final)
+bool wamp_session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count, bool final)
 {
   /* EV thread */
 
@@ -555,7 +555,7 @@ bool Session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count, boo
 //----------------------------------------------------------------------
 
 // TODO: what happens if we throw in here, ie, we are on the Socket IO thread!!!!
-void Session::handle_HELLO(jalson::json_array& ja)
+void wamp_session::handle_HELLO(jalson::json_array& ja)
 {
 
   /* WAMP:
@@ -570,7 +570,7 @@ void Session::handle_HELLO(jalson::json_array& ja)
      ]
   */
 
-  _INFO_("Session has received a session HELLO");
+  _INFO_("wamp_session has received a session HELLO");
 //  m_auth.recvHello = true;
 //  m_auth.hello_realm = msum.msg->at(1).as_string();
 //  m_auth.hello_opts  = msum.msg->at(2).as_object();
@@ -665,7 +665,7 @@ void Session::handle_HELLO(jalson::json_array& ja)
 //----------------------------------------------------------------------
 
 // TODO: what happens if we throw in here, ie, we are on the Socket IO thread!!!!
-void Session::handle_CHALLENGE(jalson::json_array& ja)
+void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 {
   /* called on IO thread */
 
@@ -708,7 +708,7 @@ void Session::handle_CHALLENGE(jalson::json_array& ja)
 //----------------------------------------------------------------------
 
 
-void Session::handle_ABORT(jalson::json_array& /*ja*/)
+void wamp_session::handle_ABORT(jalson::json_array& /*ja*/)
 {
   // TODO: prob need to escalate?
 }
@@ -717,7 +717,7 @@ void Session::handle_ABORT(jalson::json_array& /*ja*/)
  *  indicate the the session is now open. Here we will be a client that is
  *  trying to logon to a remote service.
  */
-void Session::handle_WELCOME(jalson::json_array& /*ja*/)
+void wamp_session::handle_WELCOME(jalson::json_array& /*ja*/)
 {
 
   /* */
@@ -727,9 +727,9 @@ void Session::handle_WELCOME(jalson::json_array& /*ja*/)
 //----------------------------------------------------------------------
 
 // TODO: what happens if we throw in here, ie, we are on the Socket IO thread!!!!
-void Session::handle_AUTHENTICATE(jalson::json_array& ja)
+void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 {
-  // TODO: could just store it in the Session ?
+  // TODO: could just store it in the wamp_session ?
 
   const std::string & orig_challenge = m_challenge[2]["challenge"].as_string();
 
@@ -761,7 +761,7 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
   }
   else
   {
-    _WARN_("Session CRA failed; expected '" << orig_challenge<< "', received '"<< peer_digest<<"'");
+    _WARN_("wamp_session CRA failed; expected '" << orig_challenge<< "', received '"<< peer_digest<<"'");
 
     jalson::json_array msg;
     msg.push_back( ABORT );
@@ -779,7 +779,7 @@ void Session::handle_AUTHENTICATE(jalson::json_array& ja)
  * first event the event loop should see, for a session, is the session open
  * event.
  */
-void Session::notify_session_state_change(bool is_open)
+void wamp_session::notify_session_state_change(bool is_open)
 {
   ev_session_state_event * e = new ev_session_state_event(is_open, m_session_err);
   e->src  = handle();
@@ -799,19 +799,19 @@ void Session::notify_session_state_change(bool is_open)
 
 //----------------------------------------------------------------------
 
-bool Session::is_open() const
+bool wamp_session::is_open() const
 {
   return m_state == eOpen;
 }
 
-bool Session::is_pending_open() const
+bool wamp_session::is_pending_open() const
 {
   return (m_state != eOpen && m_state != eClosed);
 }
 
 //----------------------------------------------------------------------
 
-void Session::initiate_handshake()
+void wamp_session::initiate_handshake()
 {
   /* IO thread */
 
@@ -826,12 +826,12 @@ void Session::initiate_handshake()
 }
 
 
-int Session::duration_since_last() const
+int wamp_session::duration_since_last() const
 {
   return (time(NULL) - m_time_last_msg);
 }
 
-int Session::duration_pending_open() const
+int wamp_session::duration_pending_open() const
 {
   if (is_open())
     return 0;
@@ -839,7 +839,7 @@ int Session::duration_pending_open() const
     return (time(NULL) - m_time_create);
 }
 
-const std::string&  Session::realm() const
+const std::string&  wamp_session::realm() const
 {
   // need this lock, because realm might be updated from IO thread during logon
   std::unique_lock<std::mutex> guard(m_realm_lock);
@@ -847,7 +847,7 @@ const std::string&  Session::realm() const
 }
 
 
-t_request_id Session::provide(std::string uri,
+t_request_id wamp_session::provide(std::string uri,
                               const jalson::json_object& options,
                               rpc_cb cb,
                               void * data)
@@ -884,7 +884,7 @@ t_request_id Session::provide(std::string uri,
 
 }
 
-void Session::process_registered(jalson::json_array & msg)
+void wamp_session::process_registered(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -906,7 +906,7 @@ void Session::process_registered(jalson::json_array & msg)
 
 }
 
-void Session::process_invocation(jalson::json_array & msg)
+void wamp_session::process_invocation(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -968,7 +968,7 @@ void Session::process_invocation(jalson::json_array & msg)
 }
 
 
-bool Session::reply(int request_id,
+bool wamp_session::reply(int request_id,
                     wamp_args& the_args,
                     bool is_error,
                     std::string error_uri)
@@ -999,7 +999,7 @@ bool Session::reply(int request_id,
 
 
 
-t_request_id Session::subscribe(const std::string& uri,
+t_request_id wamp_session::subscribe(const std::string& uri,
                                 const jalson::json_object& options,
                                 subscription_cb cb,
                                 void * user)
@@ -1034,7 +1034,7 @@ t_request_id Session::subscribe(const std::string& uri,
 }
 
 
-void Session::process_subscribed(jalson::json_array & msg)
+void wamp_session::process_subscribed(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1080,7 +1080,7 @@ void Session::process_subscribed(jalson::json_array & msg)
 }
 
 
-void Session::process_event(jalson::json_array & msg)
+void wamp_session::process_event(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1116,7 +1116,7 @@ void Session::process_event(jalson::json_array & msg)
 
 
 /* Initiate a CALL sequence */
-t_request_id Session::call(std::string uri,
+t_request_id wamp_session::call(std::string uri,
                            const jalson::json_object& options,
                            wamp_args args,
                            wamp_call_result_cb user_cb,
@@ -1159,7 +1159,7 @@ t_request_id Session::call(std::string uri,
 }
 
 
-void Session::process_result(jalson::json_array & msg)
+void wamp_session::process_result(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1209,7 +1209,7 @@ void Session::process_result(jalson::json_array & msg)
 }
 
 
-void Session::process_error(jalson::json_array & msg)
+void wamp_session::process_error(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1300,7 +1300,7 @@ void Session::process_error(jalson::json_array & msg)
 }
 
 
-t_request_id Session::publish(std::string uri,
+t_request_id wamp_session::publish(std::string uri,
                          const jalson::json_object& options,
                          wamp_args args)
 {
@@ -1332,7 +1332,7 @@ t_request_id Session::publish(std::string uri,
 }
 
 
-void Session::process_call(jalson::json_array & msg)
+void wamp_session::process_call(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1389,13 +1389,13 @@ void Session::process_call(jalson::json_array & msg)
 }
 
 
-void Session::set_server_handler(server_msg_handler h)
+void wamp_session::set_server_handler(server_msg_handler h)
 {
   m_server_handler = h;
 }
 
 
-t_request_id Session::invocation(uint64_t registration_id,
+t_request_id wamp_session::invocation(uint64_t registration_id,
                                  const jalson::json_object& options,
                                  wamp_args args,
                                  wamp_invocation_reply_fn fn)
@@ -1435,7 +1435,7 @@ t_request_id Session::invocation(uint64_t registration_id,
 }
 
 
-void Session::process_yield(jalson::json_array & msg)
+void wamp_session::process_yield(jalson::json_array & msg)
 {
   std::cout << __FUNCTION__ << "\n";
 
@@ -1462,7 +1462,7 @@ void Session::process_yield(jalson::json_array & msg)
 }
 
 
-void Session::process_publish(jalson::json_array & msg)
+void wamp_session::process_publish(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1479,7 +1479,7 @@ void Session::process_publish(jalson::json_array & msg)
 }
 
 
-void Session::process_subscribe(jalson::json_array & msg)
+void wamp_session::process_subscribe(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1489,7 +1489,7 @@ void Session::process_subscribe(jalson::json_array & msg)
   }
 }
 
-void Session::process_register(jalson::json_array & msg)
+void wamp_session::process_register(jalson::json_array & msg)
 {
   // TODO: add more messsage checking here
   t_request_id request_id = msg[1].as_uint();

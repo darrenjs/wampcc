@@ -1,7 +1,7 @@
 #include "client_service.h"
 
 #include "IOHandle.h"
-#include "Session.h"
+#include "wamp_session.h"
 #include "Logger.h"
 #include "utils.h"
 #include "IOLoop.h"
@@ -29,7 +29,7 @@ struct router_conn_impl
   router_conn* owner;
   std::string realm;
   router_session_connect_cb m_user_cb;
-  std::shared_ptr<Session> session;
+  std::shared_ptr<wamp_session> session;
 
   // using a recursive mutex, just in case the destructor is triggered during a
   // callback
@@ -191,8 +191,8 @@ int router_conn::connect(const std::string & addr, int port)
               sp->invoke_router_session_connect_cb(0, is_open);
           };
 
-          impl->session = std::shared_ptr<Session>
-            (new Session( impl->the_kernel->get_logger(),
+          impl->session = std::shared_ptr<wamp_session>
+            (new wamp_session( impl->the_kernel->get_logger(),
                           iohandle,
                           *impl->the_kernel->get_event_loop(),
                           false,

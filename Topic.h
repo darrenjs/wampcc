@@ -10,7 +10,7 @@
 
 namespace XXX {
 
-  class Session;
+  class wamp_session;
   class topic;
 
 // Base class for topics
@@ -88,7 +88,7 @@ class Topic
 
   void updateValue(const char* newstr);
 
-  void add_subscriber(Session*);
+  void add_subscriber(wamp_session*);
 
   jalson::json_value snapshot() const;
 
@@ -106,7 +106,7 @@ protected:
 
   struct {
     std::mutex lock;
-    std::set< Session* > items;
+    std::set< wamp_session* > items;
   } m_subscribers;
 
   // fat lock

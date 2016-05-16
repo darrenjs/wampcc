@@ -54,19 +54,19 @@ void dealer_service::listen(int port)
 
       auto handlers = server_msg_handler();
 
-      handlers.inbound_call = [this](Session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
+      handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
         this->handle_inbound_call(s,u,std::move(args),f);
       };
 
-      handlers.handle_inbound_publish  = [this](Session* sptr, std::string uri, jalson::json_array & msg ) {
+      handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, jalson::json_array & msg ) {
         m_pubsub->inbound_publish(sptr->realm(), uri, msg);
       };
 
-      handlers.inbound_subscribe  = [this](Session* sptr, jalson::json_array & msg) {
+      handlers.inbound_subscribe  = [this](wamp_session* sptr, jalson::json_array & msg) {
         m_pubsub->handle_inbound_subscribe(sptr, msg);
       };
 
-      handlers.inbound_register  = [this](Session* sptr, std::string uri, registered_fn fn) {
+      handlers.inbound_register  = [this](wamp_session* sptr, std::string uri, registered_fn fn) {
         m_rpcman->handle_inbound_register(sptr, uri, fn);
       };
 
@@ -96,7 +96,7 @@ t_request_id dealer_service::publish(const std::string& topic,
 
 
 void  dealer_service::handle_inbound_call(
-  Session* sptr, // TODO: possibly change this to a shared_ptr
+  wamp_session* sptr, // TODO: possibly change this to a shared_ptr
   const std::string& uri,
   wamp_args args,
   wamp_invocation_reply_fn fn )
