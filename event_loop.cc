@@ -204,12 +204,7 @@ void event_loop::process_event(event * ev)
 
   switch ( ev->type )
   {
-    case event::outbound_publish:
-    {
-      ev_outbound_publish* ev2 = dynamic_cast<ev_outbound_publish*>(ev);
-      process_outbound_publish(ev2);
-      break;
-    }
+
     case event::session_state_event :
     {
       ev_session_state_event * ev2 = dynamic_cast<ev_session_state_event *>(ev);
@@ -258,40 +253,6 @@ void event_loop::process_event_error(event* ev, event_error& er)
 
 }
 
-
-void event_loop::process_outbound_publish(ev_outbound_publish* ev)
-{
-  jalson::json_array msg;
-  msg.push_back( PUBLISH );
-  msg.push_back( 0 ); // set in the callback, below
-
-  if (ev->use_patch)
-  {
-    msg.push_back( jalson::json_object() );
-    msg.push_back( ev->uri );
-    msg.push_back( ev->patch );
-  }
-  else
-  {
-    msg.push_back( ev->opts );
-    msg.push_back( ev->uri );
-    msg.push_back( ev->args_list );
-    msg.push_back( ev->args_dict );
-  }
-
-  build_message_cb_v2 msg_builder2 = [&msg](int request_id)
-    {
-      msg[1] = request_id;
-
-      // TODO: I now think this is a bad idea, ie, passing cb_data back via a lambda
-      return msg;
-
-    };
-
-  // TODO: instead of 0, need to have a valie intenral request id
-  for (auto & sh : ev->targets)
-    m_sesman->send_request(sh, 0, msg_builder2);
-}
 
 
 } // namespace XXX

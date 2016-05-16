@@ -106,8 +106,6 @@ private:
   void process_event(event* e);
   void process_event_error(event* e, event_error&);
 
-  void process_outbound_publish(ev_outbound_publish* e);
-
   void hb_check();
 
   Logger *__logptr; /* name chosen for log macros */
