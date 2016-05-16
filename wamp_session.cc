@@ -33,11 +33,11 @@ static uint64_t generate_unique_session_id()
 
 /* Constructor */
 wamp_session::wamp_session(Logger* logptr,
-                 IOHandle* h,
-                 event_loop & evl,
-                 bool is_passive,
-                 std::string __realm,
-                 session_state_fn state_cb)
+                           IOHandle* h,
+                           event_loop & evl,
+                           bool is_passive,
+                           std::string __realm,
+                           session_state_fn state_cb)
   : m_state( eInit ),
     __logptr(logptr),
     m_sid( generate_unique_session_id() ),
