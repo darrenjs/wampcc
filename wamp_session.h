@@ -30,7 +30,6 @@ namespace XXX {
 
   class event_loop;
   class IOHandle;
-  class SessionMan;
   class Logger;
 
   // Needs to support needs of service providers (rpc & topics), and service
