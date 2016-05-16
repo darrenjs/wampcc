@@ -48,7 +48,6 @@ private:
   uv_stream_t* m_uv_handle;
   uv_async_t   m_write_async;
 
-  IOLoop* m_loop;
   io_listener * m_listener;
 
   std::atomic<bool> m_is_closing;

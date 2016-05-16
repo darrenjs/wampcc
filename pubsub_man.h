@@ -12,10 +12,10 @@ namespace XXX {
 
 class Logger;
 class event_loop;
-class managed_topic;
+struct managed_topic;
 class wamp_session;
 class kernel;
-class ev_session_state_event;
+struct ev_session_state_event;
 
 class pubsub_man
 {

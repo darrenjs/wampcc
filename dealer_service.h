@@ -19,7 +19,7 @@ namespace XXX {
   class rpc_man;
   class Logger;
   struct rpc_details;
-  class event;
+  struct event;
 
 
 struct dealer_listener

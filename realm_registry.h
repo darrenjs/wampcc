@@ -30,8 +30,6 @@ public:
   const std::string& null_realm() const { return m_null_realm; }
 
 private:
-  Logger * __logptr;
-
   std::string m_null_realm;
 
   mutable std::mutex m_lock;

@@ -45,7 +45,6 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
   : __logptr(logger),
     m_uv_handle(hdl),
-    m_loop(loop),
     m_listener( nullptr ),
     m_is_closing(false),
     m_closed_handles_count(0),

@@ -9,15 +9,14 @@
 namespace XXX
 {
 
-  realm_registry::realm_registry(Logger* logptr)
-    : __logptr(logptr),
-      m_next_id(1)
+  realm_registry::realm_registry(Logger* /*logptr*/)
+    : m_next_id(1)
   {
   }
 
 
   realm_registry::~realm_registry()
-  { 
+  {
   }
 
 
