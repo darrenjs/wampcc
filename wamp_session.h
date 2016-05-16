@@ -17,14 +17,13 @@ namespace XXX {
 
   typedef std::function< void() > reply_fn;
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
-  typedef std::function< void(uint64_t) > registered_fn;
   typedef std::function< void(session_handle, bool) > session_state_fn;
 
   struct server_msg_handler
   {
     std::function<void(wamp_session*, std::string uri, wamp_args, wamp_invocation_reply_fn)> inbound_call;
     std::function<void(wamp_session*, std::string uri, jalson::json_array &)> handle_inbound_publish;
-    std::function<void(wamp_session*, std::string uri, registered_fn)> inbound_register;
+    std::function<uint64_t (wamp_session*, std::string uri)> inbound_register;
     std::function<void(wamp_session*, jalson::json_array &)> inbound_subscribe;
   };
 

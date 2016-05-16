@@ -87,16 +87,17 @@ int rpc_man::register_internal_rpc_2(const std::string& realm,
   return r.registration_id;
 }
 
-int rpc_man::handle_inbound_register(wamp_session* sptr,
-                                     std::string procedure_uri,
-                                     registered_fn on_registered)
+
+uint64_t rpc_man::handle_inbound_register(wamp_session* sptr,
+                                          std::string procedure_uri)
 {
+  /* EV thread */
+
   rpc_details r;
   r.registration_id = 0;
   r.uri = procedure_uri;
   r.sesionh = sptr->handle();
   r.type = rpc_details::eRemote;
-
 
   {
     std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
@@ -124,8 +125,6 @@ int rpc_man::handle_inbound_register(wamp_session* sptr,
   }
 
   _INFO_( "Procedure "<< sptr->realm() << "::'" << procedure_uri <<"' registered with id " << r.registration_id );
-
-  on_registered(r.registration_id);
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;

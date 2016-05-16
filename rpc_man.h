@@ -45,9 +45,8 @@ public:
   rpc_man(kernel&, rpc_added_cb);
 
   // return the registion id
-  int handle_inbound_register(wamp_session*,
-                              std::string uri,
-                              registered_fn on_registered);
+  uint64_t handle_inbound_register(wamp_session*,
+                                   std::string uri);
 
   // Register and RPC that is handled by the internal session
   int register_internal_rpc_2(const std::string& realm,

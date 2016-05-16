@@ -1430,28 +1430,40 @@ void wamp_session::process_subscribe(jalson::json_array & msg)
 
 void wamp_session::process_register(jalson::json_array & msg)
 {
+  /* EV thread */
   // TODO: add more messsage checking here
   t_request_id request_id = msg[1].as_uint();
   std::string uri = std::move(msg[3].as_string());
 
-  if (m_server_handler.inbound_register)
+  try
   {
-    std::weak_ptr<wamp_session> wp = handle();
-    auto cb = [wp,request_id](uint64_t registration_id)
-      {
-        if (auto sp = wp.lock())
-        {
-          jalson::json_array msg;
-          msg.push_back(REGISTERED);
-          msg.push_back(request_id);
-          msg.push_back(registration_id);
-          sp->send_msg(msg);
-        }
-      };
+    if (m_server_handler.inbound_register)
+    {
+      uint64_t registration_id = m_server_handler.inbound_register(this, uri);
 
-    m_server_handler.inbound_register(this, uri, std::move(cb));
+      // send the response
+      jalson::json_array resp;
+      resp.push_back(REGISTERED);
+      resp.push_back(request_id);
+      resp.push_back(registration_id);
+      send_msg(resp);
+    }
+    else
+    {
+      // TODO: reply with error
+    }
   }
-
+  catch(event_error ex)
+  {
+    std::cout << "got exception \n";
+    jalson::json_array errmsg;
+    errmsg.push_back(ERROR);
+    errmsg.push_back(REGISTER);
+    errmsg.push_back(request_id);
+    errmsg.push_back(jalson::json_object());
+    errmsg.push_back(ex.error_uri);
+    send_msg(errmsg);
+  }
 }
 
 

@@ -66,8 +66,8 @@ void dealer_service::listen(int port)
         m_pubsub->handle_inbound_subscribe(sptr, msg);
       };
 
-      handlers.inbound_register  = [this](wamp_session* sptr, std::string uri, registered_fn fn) {
-        m_rpcman->handle_inbound_register(sptr, uri, fn);
+      handlers.inbound_register  = [this](wamp_session* sptr, std::string uri) {
+        return m_rpcman->handle_inbound_register(sptr, uri);
       };
 
       sptr->set_server_handler( std::move(handlers) );
