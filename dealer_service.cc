@@ -17,16 +17,16 @@
 
 namespace XXX {
 
-dealer_service::dealer_service(kernel * __svc, dealer_listener* l)
-  :__logptr(__svc->get_logger()),
+dealer_service::dealer_service(kernel & __svc, dealer_listener* l)
+  :__logptr(__svc.get_logger()),
    m_kernel(__svc),
-   m_sesman( new SessionMan(__logptr, *__svc->get_event_loop()) ),
-   m_rpcman( new rpc_man(__logptr, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
-   m_pubsub(new pubsub_man(__logptr, *__svc->get_event_loop())),
+   m_sesman( new SessionMan(__svc) ),
+   m_rpcman( new rpc_man(__svc, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
+   m_pubsub(new pubsub_man(__svc)),
    m_listener( l )
 {
-  m_kernel->get_event_loop()->set_session_man( m_sesman.get() );
-  m_kernel->get_event_loop()->set_pubsub_man( m_pubsub.get() );
+  m_kernel.get_event_loop()->set_session_man( m_sesman.get() );
+  m_kernel.get_event_loop()->set_pubsub_man( m_pubsub.get() );
 };
 
 
@@ -44,7 +44,7 @@ void dealer_service::rpc_registered_cb(const rpc_details& r)
 void dealer_service::listen(int port)
 {
 
-  m_kernel->get_io()->add_server(
+  m_kernel.get_io()->add_server(
     port,
     [this](int /* port */,
            IOHandle* hndl)

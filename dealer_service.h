@@ -30,7 +30,7 @@ struct dealer_listener
 class dealer_service
 {
 public:
-  dealer_service(kernel * __svc, dealer_listener*);
+  dealer_service(kernel & __svc, dealer_listener*);
   ~dealer_service();
 
   // publish to an internal topic
@@ -60,7 +60,7 @@ private:
 
   // essential components
   Logger *__logptr; /* name chosen for log macros */
-  kernel * m_kernel;
+  kernel & m_kernel;
 
   std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;

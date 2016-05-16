@@ -1,6 +1,7 @@
 #include "rpc_man.h"
 
 #include "event_loop.h"
+#include "kernel.h"
 #include "Logger.h"
 #include "Session.h"
 
@@ -11,8 +12,8 @@ namespace XXX {
 
 
 /* Constructor */
-rpc_man::rpc_man(Logger * logptr, rpc_added_cb cb)
-  : __logptr(logptr),
+rpc_man::rpc_man(kernel& k, rpc_added_cb cb)
+  : __logptr(k.get_logger()),
     m_rpc_added_cb(cb),
     m_next_regid(1)
 {

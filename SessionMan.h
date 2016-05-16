@@ -16,8 +16,8 @@
 namespace XXX {
 
   class IOHandle;
+  class kernel;
   class Session;
-  class event_loop;
   class Logger;
   struct ev_session_state_event;
 
@@ -27,7 +27,7 @@ namespace XXX {
 class SessionMan
 {
 public:
-  SessionMan(Logger*, event_loop&);
+  SessionMan(kernel&);
   ~SessionMan();
 
   std::shared_ptr<Session> create_session(IOHandle *, bool is_passive,
@@ -58,9 +58,8 @@ private:
                             jalson::json_array& msg);
   void heartbeat_all();
 
+  kernel& m_kernel;
   Logger *__logptr; /* name chosen for log macros */
-
-  event_loop& m_evl;
 
   mutable struct
   {

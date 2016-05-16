@@ -2,6 +2,7 @@
 #include "SessionMan.h"
 
 #include "event_loop.h"
+#include "kernel.h"
 #include "Session.h"
 
 #include "WampTypes.h"
@@ -14,11 +15,11 @@
 namespace XXX
 {
 
-SessionMan::SessionMan(Logger* logptr, event_loop& evl)
-  : __logptr(logptr),
-    m_evl(evl)
+SessionMan::SessionMan(kernel& k)
+  : m_kernel(k),
+    __logptr(k.get_logger())
 {
-  m_evl.set_session_man( this );
+  m_kernel.get_event_loop()->set_session_man( this );
 }
 
 
@@ -43,7 +44,7 @@ std::shared_ptr<Session> SessionMan::create_session(IOHandle * iohandle, bool is
   // That should be done by the caller of this function.
   std::shared_ptr<Session>  sptr (new Session( __logptr,
                                                iohandle,
-                                               m_evl,
+                                               *(m_kernel.get_event_loop()),
                                                is_passive,
                                                realm,
                                                nullptr));

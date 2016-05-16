@@ -18,7 +18,7 @@ namespace XXX {
 
 class event_loop;
 class Logger;
-class ev_inbound_message;
+class kernel;
 
 
 struct rpc_details
@@ -42,7 +42,7 @@ typedef std::function< void(const rpc_details&) > rpc_added_cb;
 class rpc_man
 {
 public:
-  rpc_man(Logger *, rpc_added_cb);
+  rpc_man(kernel&, rpc_added_cb);
 
   // return the registion id
   int handle_inbound_register(Session*,
