@@ -377,27 +377,27 @@ void wamp_session::process_message(jalson::json_value&jv)
     switch (message_type)
     {
       case CALL :
-        process_call(ja);
+        process_inbound_call(ja);
         return;
 
       case YIELD :
-        process_yield(ja);
+        process_inbound_yield(ja);
         return;
 
       case PUBLISH :
-        process_publish(ja); // TODO: have an error handling specific to the kind of session (active/passive)
+        process_inbound_publish(ja); // TODO: have an error handling specific to the kind of session (active/passive)
         return;
 
       case SUBSCRIBE :
-        process_subscribe(ja);
+        process_inbound_subscribe(ja);
         return;
 
       case REGISTER :
-        process_register(ja);
+        process_inbound_register(ja);
         return;
 
       case ERROR :
-        process_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
+        process_inbound_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
         return;
     }
   }
@@ -433,27 +433,27 @@ void wamp_session::process_message(jalson::json_value&jv)
     switch (message_type)
     {
       case REGISTERED :
-        process_registered(ja);
+        process_inbound_registered(ja);
         return;
 
       case INVOCATION :
-        process_invocation(ja);
+        process_inbound_invocation(ja);
         return;
 
       case SUBSCRIBED :
-        process_subscribed(ja);
+        process_inbound_subscribed(ja);
         return;
 
       case EVENT :
-        process_event(ja);
+        process_inbound_event(ja);
         return;
 
       case RESULT :
-        process_result(ja);
+        process_inbound_result(ja);
         return;
 
       case ERROR :
-        process_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
+        process_inbound_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
         return;
 
     }
@@ -856,7 +856,7 @@ t_request_id wamp_session::provide(std::string uri,
 }
 
 
-void wamp_session::process_registered(jalson::json_array & msg)
+void wamp_session::process_inbound_registered(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -879,7 +879,7 @@ void wamp_session::process_registered(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_invocation(jalson::json_array & msg)
+void wamp_session::process_inbound_invocation(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -974,7 +974,7 @@ t_request_id wamp_session::subscribe(const std::string& uri,
 }
 
 
-void wamp_session::process_subscribed(jalson::json_array & msg)
+void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1020,7 +1020,7 @@ void wamp_session::process_subscribed(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_event(jalson::json_array & msg)
+void wamp_session::process_inbound_event(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1097,7 +1097,7 @@ t_request_id wamp_session::call(std::string uri,
 }
 
 
-void wamp_session::process_result(jalson::json_array & msg)
+void wamp_session::process_inbound_result(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1145,7 +1145,7 @@ void wamp_session::process_result(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_error(jalson::json_array & msg)
+void wamp_session::process_inbound_error(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1272,7 +1272,7 @@ t_request_id wamp_session::publish(std::string uri,
 }
 
 
-void wamp_session::process_call(jalson::json_array & msg)
+void wamp_session::process_inbound_call(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1376,7 +1376,7 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
 }
 
 
-void wamp_session::process_yield(jalson::json_array & msg)
+void wamp_session::process_inbound_yield(jalson::json_array & msg)
 {
   // TODO: add more messsage checking here
   t_request_id request_id = msg[1].as_uint();
@@ -1400,7 +1400,7 @@ void wamp_session::process_yield(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_publish(jalson::json_array & msg)
+void wamp_session::process_inbound_publish(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1417,7 +1417,7 @@ void wamp_session::process_publish(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_subscribe(jalson::json_array & msg)
+void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 {
   /* EV thread */
 
@@ -1428,7 +1428,7 @@ void wamp_session::process_subscribe(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_register(jalson::json_array & msg)
+void wamp_session::process_inbound_register(jalson::json_array & msg)
 {
   /* EV thread */
   // TODO: add more messsage checking here
@@ -1441,7 +1441,6 @@ void wamp_session::process_register(jalson::json_array & msg)
     {
       uint64_t registration_id = m_server_handler.inbound_register(this, uri);
 
-      // send the response
       jalson::json_array resp;
       resp.push_back(REGISTERED);
       resp.push_back(request_id);

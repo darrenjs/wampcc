@@ -181,17 +181,17 @@ namespace XXX {
 
   private:
 
-    void process_registered(jalson::json_array &);
-    void process_invocation(jalson::json_array &);
-    void process_subscribed(jalson::json_array &);
-    void process_event(jalson::json_array &);
-    void process_result(jalson::json_array &);
-    void process_error(jalson::json_array &);
-    void process_call(jalson::json_array &);
-    void process_yield(jalson::json_array &);
-    void process_publish(jalson::json_array &);
-    void process_subscribe(jalson::json_array &);
-    void process_register(jalson::json_array &);
+    void process_inbound_registered(jalson::json_array &);
+    void process_inbound_invocation(jalson::json_array &);
+    void process_inbound_subscribed(jalson::json_array &);
+    void process_inbound_event(jalson::json_array &);
+    void process_inbound_result(jalson::json_array &);
+    void process_inbound_error(jalson::json_array &);
+    void process_inbound_call(jalson::json_array &);
+    void process_inbound_yield(jalson::json_array &);
+    void process_inbound_publish(jalson::json_array &);
+    void process_inbound_subscribe(jalson::json_array &);
+    void process_inbound_register(jalson::json_array &);
 
     void invocation_yield(int request_id,
                           wamp_args args);
