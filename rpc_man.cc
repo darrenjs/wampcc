@@ -90,13 +90,13 @@ int rpc_man::register_internal_rpc_2(const std::string& realm,
 
 uint64_t rpc_man::handle_inbound_register(session_handle sh,
                                           std::string realm,
-                                          std::string uri)
+                                          std::string ___uri)
 {
   /* EV thread */
 
   rpc_details r;
   r.registration_id = 0;
-  r.uri = std::move(uri);
+  r.uri = std::move(___uri);
   r.session = sh;
   r.type = rpc_details::eRemote;
 
@@ -111,21 +111,21 @@ uint64_t rpc_man::handle_inbound_register(session_handle sh,
       realm_iter = std::move(p.first);
     }
 
-    auto rpc_iter = realm_iter->second.find(uri);
+    auto rpc_iter = realm_iter->second.find(r.uri);
     if (rpc_iter != realm_iter->second.end())
     {
-      _WARN_("Ignore duplicate procedure register for " << realm << ":" << uri);
+      _WARN_("Ignore duplicate procedure register for " << realm << ":" << r.uri);
       throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
     }
 
     // create registration record
 
     r.registration_id = m_next_regid++;
-    realm_iter->second[ uri ] = r;
+    realm_iter->second[ r.uri ] = r;
 
   }
 
-  _INFO_( "Procedure "<< realm << "::'" << uri <<"' registered with id " << r.registration_id );
+  _INFO_( "Procedure "<< realm << "::'" << r.uri <<"' registered with id " << r.registration_id );
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;
