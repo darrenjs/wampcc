@@ -1439,7 +1439,9 @@ void wamp_session::process_inbound_register(jalson::json_array & msg)
   {
     if (m_server_handler.inbound_register)
     {
-      uint64_t registration_id = m_server_handler.inbound_register(this, uri);
+      uint64_t registration_id = m_server_handler.inbound_register(handle(),
+                                                                   m_realm,
+                                                                   std::move(uri));
 
       jalson::json_array resp;
       resp.push_back(REGISTERED);

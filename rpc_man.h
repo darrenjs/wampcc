@@ -31,7 +31,7 @@ struct rpc_details
 
   int         registration_id; // 0 implies invalid
   std::string uri;
-  session_handle sesionh;
+  session_handle session;
   rpc_cb user_cb; // applies only for eInternal
   void*  user_data; // applies only for eInternal
   rpc_details() : registration_id( 0 ) {}
@@ -45,7 +45,8 @@ public:
   rpc_man(kernel&, rpc_added_cb);
 
   // return the registion id
-  uint64_t handle_inbound_register(wamp_session*,
+  uint64_t handle_inbound_register(session_handle sh,
+                                   std::string realm,
                                    std::string uri);
 
   // Register and RPC that is handled by the internal session

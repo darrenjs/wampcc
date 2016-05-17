@@ -66,8 +66,10 @@ void dealer_service::listen(int port)
         m_pubsub->handle_inbound_subscribe(sptr, msg);
       };
 
-      handlers.inbound_register  = [this](wamp_session* sptr, std::string uri) {
-        return m_rpcman->handle_inbound_register(sptr, uri);
+      handlers.inbound_register  = [this](std::weak_ptr<wamp_session> h,
+                                          std::string realm,
+                                          std::string uri) {
+        return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
       };
 
       sptr->set_server_handler( std::move(handlers) );
@@ -155,7 +157,7 @@ void  dealer_service::handle_inbound_call(
     else
     {
       /* CALL request is for an external RPC */
-      if (auto sp = rpc.sesionh.lock())
+      if (auto sp = rpc.session.lock())
       {
         sp->invocation(rpc.registration_id,
                        jalson::json_object(),
