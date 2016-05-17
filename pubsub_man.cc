@@ -131,41 +131,6 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 }
 
 
-t_request_id pubsub_man::internal_publish(const std::string& /*topic*/,
-                                          const std::string& /*realm*/,
-                                          const jalson::json_object& /* options */,
-                                          wamp_args /*wamps*/)
-{
-  /* USER thread */
-
-  // TODO: this function needs implemntation.  Comes in on user thread, so need
-  // to change that to come in on the EV thread.
-
-  // this->update_topic(topic, realm, );
-  // managed_topic* mt = find_topic(topic, realm, true);
-
-  // // TODO: do we want to reply to the originating client, if we reject the
-  // // publish? Also, we can have other exceptions (below), e.g., patch
-  // // exceptions. Also, dont want to throw, if it is an internal update
-  // if (!mt) return 0;
-
-  // t_request_id publish_request_id = 717171; // TODO: generate publication ID
-
-  // // broadcast event to subscribers
-  // jalson::json_array msg;
-  // msg.push_back( EVENT );
-  // msg.push_back( mt->subscription_id );
-  // msg.push_back( publish_request_id );
-  // msg.push_back( jalson::json_value::make_object() );
-  // if (!wamps.args_list.is_null()) msg.push_back( std::move(wamps.args_list) );
-  // if (!wamps.args_list.is_null() && !wamps.args_dict.is_null()) msg.push_back( std::move(wamps.args_dict) );
-  // m_sesman.send_to_session(mt->m_subscribers, msg);
-
-  // return publish_request_id;
-  return 0;
-}
-
-
 void pubsub_man::update_topic(const std::string& topic,
                               const std::string& realm,
                               jalson::json_array& publish_msg)

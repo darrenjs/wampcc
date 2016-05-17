@@ -35,13 +35,13 @@ void dealer_service::register_procedure(const std::string& realm,
 }
 
 
-t_request_id dealer_service::publish(const std::string& topic,
-                                     const std::string& realm,
-                                     const jalson::json_object& options,
-                                     wamp_args args)
+void dealer_service::publish(const std::string& topic,
+                             const std::string& realm,
+                             const jalson::json_object& options,
+                             wamp_args args)
 {
   /* USER thread */
-  return m_impl->publish(topic, realm, options, args);
+  m_impl->publish(topic, realm, options, args);
 }
 
 } // namespace

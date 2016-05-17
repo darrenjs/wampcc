@@ -24,10 +24,10 @@ public:
   ~dealer_service();
 
   // publish to an internal topic
-  t_request_id publish(const std::string& topic,
-                       const std::string& realm,
-                       const jalson::json_object& options,
-                       wamp_args);
+  void publish(const std::string& topic,
+               const std::string& realm,
+               const jalson::json_object& options,
+               wamp_args);
 
   void listen(int port);// TODO: needs interface argument
 

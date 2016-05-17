@@ -17,7 +17,7 @@ namespace XXX {
   struct rpc_details;
 
 
-class dealer_service_impl
+class dealer_service_impl : public std::enable_shared_from_this<dealer_service_impl>
 {
 public:
   dealer_service_impl(kernel & __svc, dealer_listener* l);
@@ -27,10 +27,10 @@ public:
   dealer_service_impl& operator=(const dealer_service_impl&) = delete;
 
   // publish to an internal topic
-  t_request_id publish(const std::string& topic,
-                       const std::string& realm,
-                       const jalson::json_object& options,
-                       wamp_args);
+  void publish(const std::string& topic,
+               const std::string& realm,
+               const jalson::json_object& options,
+               wamp_args);
 
   void register_procedure(const std::string& realm,
                           const std::string& uri,

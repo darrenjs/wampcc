@@ -27,11 +27,6 @@ public:
   void inbound_publish(std::string realm, std::string uri, jalson::json_array&);
   void handle_inbound_subscribe(wamp_session* ptr, jalson::json_array&);
 
-  t_request_id internal_publish(const std::string& topic,
-                                const std::string& realm,
-                                const jalson::json_object& options,
-                                wamp_args);
-
 private:
   pubsub_man(const pubsub_man&); // no copy
   pubsub_man& operator=(const pubsub_man&); // no assignment

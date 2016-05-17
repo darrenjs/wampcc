@@ -97,13 +97,27 @@ void dealer_service_impl::listen(int port)
 }
 
 
-t_request_id dealer_service_impl::publish(const std::string& topic,
-                                          const std::string& realm,
-                                          const jalson::json_object& options,
-                                          wamp_args args)
+void dealer_service_impl::publish(const std::string& topic,
+                                  const std::string& realm,
+                                  const jalson::json_object& /*options*/,
+                                  wamp_args args)
 {
   /* USER thread */
-  return m_pubsub->internal_publish(topic, realm, options, std::move(args));
+
+  std::weak_ptr<dealer_service_impl> wp = this->shared_from_this();
+
+  m_kernel.get_event_loop()->push(
+    [wp, topic, realm, args]()
+    {
+      if (auto sp = wp.lock())
+      {
+        // TODO: fix this, need to pass in the proper args
+        jalson::json_array tmp;
+        sp->m_pubsub->inbound_publish(realm, topic, tmp);
+      }
+    }
+  );
+
 }
 
 
@@ -113,6 +127,7 @@ void dealer_service_impl::register_procedure(const std::string& realm,
                                              rpc_cb user_cb,
                                              void * user_data)
 {
+  // TODO: dispatch this on the event thread?
   m_rpcman->register_internal_rpc_2(realm, uri, options, user_cb, user_data);
 }
 
