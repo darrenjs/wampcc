@@ -47,12 +47,11 @@ void dealer_service::listen(int port)
   m_kernel.get_io()->add_server(
     port,
     [this](int /* port */,
-           IOHandle* hndl)
+           IOHandle* iohandle)
     {
-      // note, we dont make use of the user connection id for passive sessions
-      auto sptr = m_sesman->create_session(hndl, true,  "" /* undefined realm */);
+      /* IO thread */
 
-      auto handlers = server_msg_handler();
+      server_msg_handler handlers;
 
       handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
         this->handle_inbound_call(s,u,std::move(args),f);
@@ -72,7 +71,17 @@ void dealer_service::listen(int port)
         return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
       };
 
-      sptr->set_server_handler( std::move(handlers) );
+      std::shared_ptr<wamp_session> sp(new wamp_session(
+                                         __logptr,
+                                         iohandle,
+                                         *(m_kernel.get_event_loop()),
+                                         true, /* session is passive */
+                                         "" /* undefined realm */,
+                                         nullptr,
+                                         handlers));
+      m_sesman->add_session(sp);
+      _INFO_( "session created, id:" << sp->unique_id() );
+      sp->initiate_handshake();
     } );
 }
 

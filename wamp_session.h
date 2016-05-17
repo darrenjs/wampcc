@@ -39,10 +39,9 @@ namespace XXX {
     wamp_session(Logger*, IOHandle *,
                  event_loop&, bool is_passive,
                  std::string realm,
-                 session_state_fn state_cb);
+                 session_state_fn state_cb,
+                 server_msg_handler = server_msg_handler());
     ~wamp_session();
-
-    void set_server_handler(server_msg_handler);
 
     void send_msg(jalson::json_array&, bool final=false);
 

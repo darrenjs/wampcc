@@ -37,7 +37,8 @@ wamp_session::wamp_session(Logger* logptr,
                            event_loop & evl,
                            bool is_passive,
                            std::string __realm,
-                           session_state_fn state_cb)
+                           session_state_fn state_cb,
+                           server_msg_handler handler)
   : m_state( eInit ),
     __logptr(logptr),
     m_sid( generate_unique_session_id() ),
@@ -52,7 +53,8 @@ wamp_session::wamp_session(Logger* logptr,
     m_evl(evl),
     m_is_passive(is_passive),
     m_realm(__realm),
-    m_notify_state_change_fn(state_cb)
+    m_notify_state_change_fn(state_cb),
+    m_server_handler(handler)
 {
   m_handle->set_listener(this);
 }
@@ -1329,11 +1331,6 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
   m_server_handler.inbound_call(this, uri, std::move(my_wamp_args), std::move(reply_fn));
 }
 
-
-void wamp_session::set_server_handler(server_msg_handler h)
-{
-  m_server_handler = h;
-}
 
 /* perform outbound invocation request */
 t_request_id wamp_session::invocation(uint64_t registration_id,

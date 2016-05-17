@@ -27,11 +27,11 @@ namespace XXX {
 class SessionMan
 {
 public:
+
   SessionMan(kernel&);
   ~SessionMan();
 
-  std::shared_ptr<wamp_session> create_session(IOHandle *, bool is_passive,
-                                          std::string realm);
+  void add_session(std::shared_ptr<wamp_session>);
 
   void close_all();
 

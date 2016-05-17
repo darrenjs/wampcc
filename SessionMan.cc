@@ -29,35 +29,6 @@ SessionMan::~SessionMan()
 }
 
 
-std::shared_ptr<wamp_session> SessionMan::create_session(IOHandle * iohandle, bool is_passive,
-                                                    std::string realm)
-{
-  /* IO thread */
-
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-  // and chekc is not altready in the map.
-  // Need to handle case where we wrap around
-  // and have to skip zero ... actuall, to handle this, set start number to minus 1
-
-  // TODO: its not the place here to configure the newly created session .
-  // That should be done by the caller of this function.
-  std::shared_ptr<wamp_session>  sptr (new wamp_session( __logptr,
-                                               iohandle,
-                                               *(m_kernel.get_event_loop()),
-                                               is_passive,
-                                               realm,
-                                               nullptr));
-
-  m_sessions.active[ sptr->unique_id() ] = sptr;
-
-  _INFO_( "session created, id:" << sptr->unique_id() );
-  if (!is_passive) sptr->initiate_handshake();
-
-  return sptr;
-}
-
-
 void SessionMan::heartbeat_all()
 {
   jalson::json_array msg;
@@ -207,6 +178,14 @@ void SessionMan::handle_housekeeping_event()
   }
 
   to_delete.clear(); // expected to call ~wamp_session
+}
+
+
+void SessionMan::add_session(std::shared_ptr<wamp_session> sp)
+{
+  /* IO thread */
+  std::lock_guard<std::mutex> guard(m_sessions.lock);
+  m_sessions.active[ sp->unique_id() ] = sp;
 }
 
 
