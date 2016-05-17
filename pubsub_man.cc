@@ -131,10 +131,10 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 }
 
 
-  t_request_id pubsub_man::publish(const std::string& /*topic*/,
-                                   const std::string& /*realm*/,
-                                 const jalson::json_object& /* options */,
-                                   wamp_args /*wamps*/)
+t_request_id pubsub_man::internal_publish(const std::string& /*topic*/,
+                                          const std::string& /*realm*/,
+                                          const jalson::json_object& /* options */,
+                                          wamp_args /*wamps*/)
 {
   /* USER thread */
 
@@ -236,7 +236,7 @@ void pubsub_man::update_topic(const std::string& topic,
 
     for (auto item : mt->m_subscribers)
     {
-      // TODO: should this be done here, or, on the dispatch thread?
+      // TODO: try to track those sessions which are now dead?  Or, do that on the event thread?
       if (auto sp = item.lock()) sp->send_msg(msg);
     }
 

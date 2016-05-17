@@ -1,26 +1,16 @@
 #ifndef XXX_DEALER_SERVICE_H
 #define XXX_DEALER_SERVICE_H
 
-
 #include "Callbacks.h"
-#include "wamp_session.h"
 
 #include <jalson/jalson.h>
 
-#include <list>
 #include <memory>
-#include <mutex>
 
 namespace XXX {
 
   class kernel;
-  class SessionMan;
-  class pubsub_man;
-  class rpc_man;
-  class Logger;
-  struct rpc_details;
-  struct event;
-
+  class dealer_service_impl;
 
 struct dealer_listener
 {
@@ -51,22 +41,7 @@ private:
   dealer_service(const dealer_service&) = delete;
   dealer_service& operator=(const dealer_service&) = delete;
 
-  void rpc_registered_cb(const rpc_details&);
-
-  void handle_inbound_call(wamp_session*,
-                           const std::string&,
-                           wamp_args args,
-                           wamp_invocation_reply_fn);
-
-  // essential components
-  Logger *__logptr; /* name chosen for log macros */
-  kernel & m_kernel;
-
-  std::unique_ptr<SessionMan> m_sesman;
-  std::unique_ptr<rpc_man> m_rpcman;
-  std::unique_ptr<pubsub_man> m_pubsub;
-
-  dealer_listener* m_listener;
+  std::shared_ptr<dealer_service_impl> m_impl;
 };
 
 } // namespace
