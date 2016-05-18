@@ -106,7 +106,7 @@ void dealer_service_impl::publish(const std::string& topic,
 
   std::weak_ptr<dealer_service_impl> wp = this->shared_from_this();
 
-  m_kernel.get_event_loop()->push(
+  m_kernel.get_event_loop()->dispatch(
     [wp, topic, realm, args]()
     {
       if (auto sp = wp.lock())

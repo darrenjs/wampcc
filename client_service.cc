@@ -202,7 +202,7 @@ int router_conn::connect(const std::string & addr, int port)
         else
         {
           /* the tcp-connect failed, so we schedule a user callback */
-          impl->the_kernel->get_event_loop()->push(
+          impl->the_kernel->get_event_loop()->dispatch(
             [wp,err]()
             {
               if (auto sp = wp.lock())

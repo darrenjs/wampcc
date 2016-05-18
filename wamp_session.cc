@@ -94,7 +94,7 @@ void wamp_session::on_close()
 
   // perform all other notification on the event thread
   std::weak_ptr<wamp_session> wp = handle();
-  m_evl.push( [wp]() {
+  m_evl.dispatch( [wp]() {
       if (auto sp = wp.lock())
         sp->change_state(eClosed,eClosed);
     } );
@@ -232,7 +232,7 @@ void wamp_session::decode_and_process(char* ptr, size_t msglen)
         if (auto sp = wp.lock())
           sp->process_message( jv );
       };
-    m_evl.push(std::move(fn));
+    m_evl.dispatch(std::move(fn));
 
   }
   catch (const XXX::event_error& e)
@@ -761,11 +761,11 @@ void wamp_session::notify_session_state_change(bool is_open)
   {
     session_handle wp = handle();
 
-    m_evl.push( [wp, is_open]()
-                {
-                  if (auto sp = wp.lock())
-                    sp->m_notify_state_change_fn(wp, is_open);
-                } );
+    m_evl.dispatch( [wp, is_open]()
+                    {
+                      if (auto sp = wp.lock())
+                        sp->m_notify_state_change_fn(wp, is_open);
+                    } );
   }
 }
 

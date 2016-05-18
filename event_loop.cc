@@ -76,7 +76,7 @@ void event_loop::push(std::shared_ptr<event> sp)
   m_condvar.notify_one();
 }
 
-void event_loop::push(std::function<void()> fn)
+void event_loop::dispatch(std::function<void()> fn)
 {
   push( new ev_function_dispatch(std::move(fn)) );
 }

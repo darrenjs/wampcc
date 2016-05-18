@@ -87,7 +87,7 @@ public:
 
   void push(event* e);
   void push(std::shared_ptr<event> sp);
-  void push(std::function<void()> fn);
+  void dispatch(std::function<void()> fn);
 
   void request_stop() { m_continue=false; }
 
