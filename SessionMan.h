@@ -40,7 +40,7 @@ public:
 
 private:
 
-  void heartbeat_all();
+  // void heartbeat_all();
 
   kernel& m_kernel;
   Logger *__logptr; /* name chosen for log macros */

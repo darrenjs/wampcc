@@ -23,41 +23,41 @@ SessionMan::SessionMan(kernel& k)
 }
 
 
-void SessionMan::heartbeat_all()
-{
-  jalson::json_array msg;
+// void SessionMan::heartbeat_all()
+// {
+//   jalson::json_array msg;
 
-  msg.push_back(HEARTBEAT);
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
+//   msg.push_back(HEARTBEAT);
+//   std::lock_guard<std::mutex> guard(m_sessions.lock);
 
-  for (auto i : m_sessions.active)
-  {
-    if ( i.second->is_open() && i.second->hb_interval_secs())
-    {
-      // do heartbeat check on an open session
-      if (i.second->duration_since_last() > i.second->hb_interval_secs()*3)
-      {
-        // expire sessions which appear inactive
-          _WARN_("closing session due to inactivity " << i.second->hb_interval_secs() << ", " << i.second->duration_since_last());
-          i.second->close();
-      }
-      else
-      {
-        i.second->send_msg(msg);
-      }
-    }
+//   for (auto i : m_sessions.active)
+//   {
+//     if ( i.second->is_open() && i.second->hb_interval_secs())
+//     {
+//       // do heartbeat check on an open session
+//       if (i.second->duration_since_last() > i.second->hb_interval_secs()*3)
+//       {
+//         // expire sessions which appear inactive
+//           _WARN_("closing session due to inactivity " << i.second->hb_interval_secs() << ", " << i.second->duration_since_last());
+//           i.second->close();
+//       }
+//       else
+//       {
+//         i.second->send_msg(msg);
+//       }
+//     }
 
-    if (i.second->is_pending_open())
-    {
-      if (i.second->duration_pending_open() >= MAX_PENDING_OPEN_SECS )
-      {
-        // expire sessions which have spent too long in pending-open
-        _WARN_("closing session due to incomplete handshake");
-        i.second->close();
-      }
-    }
-  }
-}
+//     if (i.second->is_pending_open())
+//     {
+//       if (i.second->duration_pending_open() >= MAX_PENDING_OPEN_SECS )
+//       {
+//         // expire sessions which have spent too long in pending-open
+//         _WARN_("closing session due to incomplete handshake");
+//         i.second->close();
+//       }
+//     }
+//   }
+// }
 
 
 void SessionMan::close_all()
@@ -106,7 +106,7 @@ void SessionMan::handle_event(ev_session_state_event* ev)
 
 void SessionMan::handle_housekeeping_event()
 {
-  this->heartbeat_all();
+  // this->heartbeat_all();
 
   std::vector< std::shared_ptr<wamp_session> > to_delete;
 

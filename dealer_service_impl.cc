@@ -81,9 +81,8 @@ void dealer_service_impl::listen(int port)
 
       {
         std::shared_ptr<wamp_session> sp(new wamp_session(
-                                           __logptr,
+                                           m_kernel,
                                            iohandle,
-                                           *(m_kernel.get_event_loop()),
                                            true, /* session is passive */
                                            "" /* undefined realm */,
                                            nullptr,

@@ -156,7 +156,6 @@ router_conn::router_conn(kernel * k,
   : user(__user),
     m_impl(std::make_shared<router_conn_impl>(k, this, std::move(realm), std::move(__cb)))
 {
-
 }
 
 
@@ -192,11 +191,10 @@ int router_conn::connect(const std::string & addr, int port)
           };
 
           impl->session = std::shared_ptr<wamp_session>
-            (new wamp_session( impl->the_kernel->get_logger(),
-                          iohandle,
-                          *impl->the_kernel->get_event_loop(),
-                          false,
-                          impl->realm, std::move(fn)));
+            (new wamp_session( *impl->the_kernel,
+                               iohandle,
+                               false,
+                               impl->realm, std::move(fn)));
           impl->session->initiate_handshake();
         }
         else

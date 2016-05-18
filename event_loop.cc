@@ -6,7 +6,6 @@
 #include "Logger.h"
 #include "utils.h"
 
-
 namespace XXX {
 
 struct ev_function_dispatch : event
@@ -20,7 +19,7 @@ struct ev_function_dispatch : event
 };
 
 // TODO: set to 1000; for testing, set to 1 ms
-#define SYSTEM_HEARTBEAT_MS 100000
+#define SYSTEM_HEARTBEAT_MS 1000
 
 /* Constructor */
 event_loop::event_loop(Logger *logptr)
@@ -86,10 +85,26 @@ void event_loop::hb_check()
 {
   auto tnow = std::chrono::steady_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tnow - m_last_hb);
+
   if (elapsed.count() >= SYSTEM_HEARTBEAT_MS)
   {
     m_last_hb = tnow;
     if (m_sesman) m_sesman->handle_housekeeping_event();
+
+    std::list< hb_func > hb_tmp;
+    {
+      std::unique_lock<std::mutex> guard(m_hb_targets_mutex);
+      hb_tmp.swap( m_hb_targets );
+    }
+
+    for (auto fn : hb_tmp)
+    {
+      try
+      {
+        bool continue_hb = fn();
+        if (continue_hb) add_hb_target( std::move(fn) );
+      } catch (...) {}
+    }
   }
 }
 
@@ -254,5 +269,10 @@ void event_loop::process_event_error(event* ev, event_error& er)
 }
 
 
+void event_loop::add_hb_target(hb_func f)
+{
+  std::unique_lock<std::mutex> guard(m_hb_targets_mutex);
+  m_hb_targets.push_back(std::move(f));
+}
 
 } // namespace XXX

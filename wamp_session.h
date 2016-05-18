@@ -28,6 +28,7 @@ namespace XXX {
   };
 
   class event_loop;
+  class kernel;
   class IOHandle;
   class Logger;
 
@@ -36,8 +37,9 @@ namespace XXX {
   class wamp_session : public std::enable_shared_from_this<wamp_session>, public io_listener
   {
   public:
-    wamp_session(Logger*, IOHandle *,
-                 event_loop&, bool is_passive,
+    wamp_session(kernel&,
+                 IOHandle *,
+                 bool is_passive,
                  std::string realm,
                  session_state_fn state_cb,
                  server_msg_handler = server_msg_handler());
@@ -144,6 +146,7 @@ namespace XXX {
 
 
     Logger *__logptr; /* name chosen for log macros */
+    kernel& m_kernel;
 
     uint64_t m_sid;
 
@@ -166,7 +169,7 @@ namespace XXX {
 
     bool m_is_closing;
 
-    event_loop & m_evl;
+
 
     bool m_is_passive;
 

@@ -12,6 +12,7 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <list>
 
 namespace XXX {
 
@@ -19,6 +20,9 @@ namespace XXX {
   class pubsub_man;
   class SessionMan;
   class Logger;
+
+
+  using hb_func = std::function< bool(void) >;
 
 class event_error : public std::runtime_error
 {
@@ -95,6 +99,9 @@ public:
   void set_pubsub_man(pubsub_man*);
   void set_session_man(SessionMan*);
 
+
+  void add_hb_target(hb_func);
+
 private:
   event_loop(const event_loop&); // no copy
   event_loop& operator=(const event_loop&); // no assignment
@@ -121,6 +128,9 @@ private:
   SessionMan* m_sesman;
 
   std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
+
+  std::list< hb_func > m_hb_targets;
+  std::mutex           m_hb_targets_mutex;
 };
 
 } // namespace XXX

@@ -6,6 +6,7 @@
 #include "event_loop.h"
 #include "Logger.h"
 #include "utils.h"
+#include "kernel.h"
 
 #include <jalson/jalson.h>
 
@@ -32,25 +33,24 @@ static uint64_t generate_unique_session_id()
 }
 
 /* Constructor */
-wamp_session::wamp_session(Logger* logptr,
+  wamp_session::wamp_session(kernel& __kernel,
                            IOHandle* h,
-                           event_loop & evl,
                            bool is_passive,
                            std::string __realm,
                            session_state_fn state_cb,
                            server_msg_handler handler)
   : m_state( eInit ),
-    __logptr(logptr),
+    __logptr(__kernel.get_logger()),
+    m_kernel(__kernel),
     m_sid( generate_unique_session_id() ),
     m_handle( h ),
-    m_hb_intvl(2),
+    m_hb_intvl(2),  // TODO HB's are not being sent at this rate
     m_time_create(time(NULL)),
     m_time_last_msg(time(NULL)),
     m_next_request_id(1),
     m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
     m_bytes_avail(0),
     m_is_closing(false),
-    m_evl(evl),
     m_is_passive(is_passive),
     m_realm(__realm),
     m_notify_state_change_fn(state_cb),
@@ -94,7 +94,7 @@ void wamp_session::on_close()
 
   // perform all other notification on the event thread
   std::weak_ptr<wamp_session> wp = handle();
-  m_evl.dispatch( [wp]() {
+  m_kernel.get_event_loop()->dispatch( [wp]() {
       if (auto sp = wp.lock())
         sp->change_state(eClosed,eClosed);
     } );
@@ -232,7 +232,7 @@ void wamp_session::decode_and_process(char* ptr, size_t msglen)
         if (auto sp = wp.lock())
           sp->process_message( jv );
       };
-    m_evl.dispatch(std::move(fn));
+    m_kernel.get_event_loop()->dispatch(std::move(fn));
 
   }
   catch (const XXX::event_error& e)
@@ -322,6 +322,29 @@ void wamp_session::change_state(SessionState expected, SessionState next)
   {
     _INFO_("wamp_session state: from " << names[m_state] << " to " << names[next]);
     m_state = next;
+
+    if (m_state == eOpen)
+    {
+      // register for housekeeping
+      std::weak_ptr<wamp_session> wp = handle();
+      hb_func fn = [wp]()
+        {
+          if (auto sp = wp.lock())
+          {
+            if (sp->is_open())
+            {
+              std::cout << "sending hb\n";
+              jalson::json_array msg;
+              msg.push_back(HEARTBEAT);
+              sp->send_msg(msg);
+              return true;
+            }
+          }
+          return false; /* remove HB timer */
+        };
+      m_kernel.get_event_loop()->add_hb_target(std::move(fn));
+    }
+
   }
   else
   {
@@ -754,18 +777,19 @@ void wamp_session::notify_session_state_change(bool is_open)
 {
   ev_session_state_event * e = new ev_session_state_event(is_open, m_session_err);
   e->src  = handle();
-  m_evl.push( e );
+  m_kernel.get_event_loop()->push( e );
 
   // new approach -- make an EV thread call to the session state callback
   if (m_notify_state_change_fn)
   {
     session_handle wp = handle();
 
-    m_evl.dispatch( [wp, is_open]()
-                    {
-                      if (auto sp = wp.lock())
-                        sp->m_notify_state_change_fn(wp, is_open);
-                    } );
+    m_kernel.get_event_loop()->dispatch(
+      [wp, is_open]()
+      {
+        if (auto sp = wp.lock())
+          sp->m_notify_state_change_fn(wp, is_open);
+      } );
   }
 }
 
