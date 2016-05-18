@@ -15,7 +15,7 @@
 
 namespace XXX {
 
-  class IOHandle;
+
   class kernel;
   class wamp_session;
   class Logger;
@@ -29,26 +29,17 @@ class SessionMan
 public:
 
   SessionMan(kernel&);
-  ~SessionMan();
 
   void add_session(std::shared_ptr<wamp_session>);
 
   void close_all();
 
-  void set_session_event_listener(session_state_cb);
-
-
-  /* Can be called on the EV thread */
-  void send_to_session(const std::vector<session_handle>&,
-                       jalson::json_array& msg);
 
   void handle_event( ev_session_state_event* );
   void handle_housekeeping_event( void );
 
 private:
 
-  void send_to_session_impl(session_handle,
-                            jalson::json_array& msg);
   void heartbeat_all();
 
   kernel& m_kernel;

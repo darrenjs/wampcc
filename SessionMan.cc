@@ -23,12 +23,6 @@ SessionMan::SessionMan(kernel& k)
 }
 
 
-SessionMan::~SessionMan()
-{
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-}
-
-
 void SessionMan::heartbeat_all()
 {
   jalson::json_array msg;
@@ -77,55 +71,6 @@ void SessionMan::close_all()
 }
 
 
-//----------------------------------------------------------------------
-
-void SessionMan::send_to_session_impl(session_handle handle,
-                                      jalson::json_array& msg)
-{
-  auto sp = handle.lock();
-  if (!sp)
-  {
-    _WARN_("failed to lock the session handle");
-    return;
-  }
-
-  t_sid dest( sp->unique_id() );
-  if (dest == 0)
-  {
-    _WARN_("ignoring attempt to send to session with id 0");
-    return;
-  }
-
-  bool is_final = false;
-
-  auto it = m_sessions.active.find( dest );
-  if (it != m_sessions.active.end())
-  {
-    it->second->send_msg(msg, is_final);
-  }
-  else
-  {
-    _WARN_("session send failed; cannot find session with id " << dest);
-  }
-}
-
-
-void SessionMan::send_to_session(const std::vector<session_handle>& handles,
-                                 jalson::json_array& msg)
-{
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-  for (auto & handle : handles)
-  {
-    try {
-      send_to_session_impl(handle, msg);
-    }
-    catch (const std::exception& e)
-    {
-      _ERROR_("exception during msg send: " << e.what());
-    }
-  }
-}
 
 
 void SessionMan::handle_event(ev_session_state_event* ev)
@@ -155,13 +100,6 @@ void SessionMan::handle_event(ev_session_state_event* ev)
   }
 
   if (m_session_event_cb) m_session_event_cb(ev);
-}
-
-//----------------------------------------------------------------------
-
-void SessionMan::set_session_event_listener(session_state_cb cb)
-{
-  m_session_event_cb = cb;
 }
 
 //----------------------------------------------------------------------
