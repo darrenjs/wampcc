@@ -65,8 +65,8 @@ void dealer_service_impl::listen(int port)
         this->handle_inbound_call(s,u,std::move(args),f);
       };
 
-      handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, jalson::json_array & msg ) {
-        m_pubsub->inbound_publish(sptr->realm(), uri, msg);
+      handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, wamp_args args) {
+        m_pubsub->inbound_publish(sptr->realm(), uri, std::move(args));
       };
 
       handlers.inbound_subscribe  = [this](wamp_session* sptr, jalson::json_array & msg) {
@@ -110,9 +110,7 @@ void dealer_service_impl::publish(const std::string& topic,
     {
       if (auto sp = wp.lock())
       {
-        // TODO: fix this, need to pass in the proper args
-        jalson::json_array tmp;
-        sp->m_pubsub->inbound_publish(realm, topic, tmp);
+        sp->m_pubsub->inbound_publish(realm, topic, args);
       }
     }
   );

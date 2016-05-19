@@ -1429,11 +1429,11 @@ void wamp_session::process_inbound_publish(jalson::json_array & msg)
   {
     // TODO: add more messsage checking here
     jalson::json_string & uri = msg[3].as_string();
-    // wamp_args args;
-    // if ( msg.size() > 4 ) args.args_list = msg[4];
-    // if ( msg.size() > 5 ) args.args_dict = msg[5];
+    wamp_args args;
+    if ( msg.size() > 4 ) args.args_list = std::move(msg[4]);
+    if ( msg.size() > 5 ) args.args_dict = std::move(msg[5]);
 
-    m_server_handler.handle_inbound_publish(this, uri, msg);
+    m_server_handler.handle_inbound_publish(this, uri, args);
   }
 }
 

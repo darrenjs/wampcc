@@ -29,8 +29,8 @@ struct managed_topic
   jalson::json_value image;
 
 
-  std::pair<bool,jalson::json_array>  image_list;
-  std::pair<bool,jalson::json_object> image_dict;
+  std::pair<bool,jalson::json_value>  image_list;
+  std::pair<bool,jalson::json_value> image_dict;
 
   // Note, we are tieing the subscription ID direct to the topic.  WAMP does
   // allow this, and it has the benefit that we can perform a single message
@@ -133,7 +133,7 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 
 void pubsub_man::update_topic(const std::string& topic,
                               const std::string& realm,
-                              jalson::json_array& publish_msg)
+                              wamp_args args)
 {
   /* EVENT thread */
 
@@ -150,43 +150,19 @@ void pubsub_man::update_topic(const std::string& topic,
   bool is_patch = false;  // TODO: add support for patch
   if (!is_patch)
   {
-    jalson::json_array  * args_list = nullptr;
-    jalson::json_object * args_dict = nullptr;
-
-    jalson::json_value* jvptr;
-    if ((jvptr = jalson::get_ptr(publish_msg, 4)))
-    {
-      if (jvptr->is_array())
-      {
-        args_list = &(jvptr->as_array());
-      }
-      else
-      {
-        _WARN_("ignoring malformed publish message");
-      }
-    }
-    if ((jvptr = jalson::get_ptr(publish_msg, 5)))
-    {
-      if (jvptr->is_object())
-      {
-        args_dict = &(jvptr->as_object());
-      }
-      else
-      {
-        _WARN_("ignoring malformed publish message");
-      }
-    }
 
     // apply the new value
-    if (args_list)
+    if (args.args_list.is_null() == false)
     {
       mt->image_list.first  = true;
-      mt->image_list.second = *args_list;
-    }
-    if (args_dict)
-    {
-      mt->image_dict.first  = true;
-      mt->image_dict.second = *args_dict;
+      mt->image_list.second = args.args_list;
+
+
+      if (args.args_dict.is_null() == false)
+      {
+        mt->image_dict.first  = true;
+        mt->image_dict.second = args.args_dict;
+      }
     }
 
     // broadcast event to subscribers
@@ -195,8 +171,11 @@ void pubsub_man::update_topic(const std::string& topic,
     msg.push_back( mt->subscription_id );
     msg.push_back( 2 ); // TODO: generate publication ID
     msg.push_back( jalson::json_value::make_object() );
-    if (args_list) msg.push_back( *args_list );
-    if (args_list && args_dict) msg.push_back( *args_dict );
+    if (!args.args_list.is_null())
+    {
+      msg.push_back( args.args_list );
+      if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+    }
 
 
     for (auto item : mt->m_subscribers)
@@ -238,7 +217,7 @@ void pubsub_man::update_topic(const std::string& topic,
 /* Handle arrival of the a PUBLISH event, targeted at a topic. */
 void pubsub_man::inbound_publish(std::string realm,
                                  std::string topic,
-                                 jalson::json_array & msg)
+                                 wamp_args args)
 {
   /* EV thread */
 
@@ -256,7 +235,7 @@ void pubsub_man::inbound_publish(std::string realm,
   else
   {
     // parse message
-    update_topic(topic, realm, msg);
+    update_topic(topic, realm, args);
   }
 }
 

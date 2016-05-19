@@ -24,7 +24,7 @@ public:
   ~pubsub_man();
 
   void handle_event( ev_session_state_event* );
-  void inbound_publish(std::string realm, std::string uri, jalson::json_array&);
+  void inbound_publish(std::string realm, std::string uri, wamp_args);
   void handle_inbound_subscribe(wamp_session* ptr, jalson::json_array&);
 
 private:
@@ -38,7 +38,7 @@ private:
 
   void update_topic(const std::string& topic,
                     const std::string& realm,
-                    jalson::json_array& publish_msg);
+                    wamp_args args);
 
   Logger *__logptr; /* name chosen for log macros */
 
