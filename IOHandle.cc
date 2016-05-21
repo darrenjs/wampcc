@@ -28,8 +28,13 @@ struct write_req
 
   ~write_req()
   {
+    for (size_t i = 0; i < nbufs; i++)
+      delete bufs[i].base;
     delete [] bufs;
   }
+
+  write_req(const write_req&) = delete;
+  write_req& operator=(const write_req&) = delete;
 };
 
 
