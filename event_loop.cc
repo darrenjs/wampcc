@@ -90,19 +90,34 @@ void event_loop::hb_check()
 
 void event_loop::eventloop()
 {
-  const auto timeout = std::chrono::milliseconds( SYSTEM_HEARTBEAT_MS );
-
   /* A note on memory management of the event objects.  Once they are pushed,
    * they are stored as shared pointers.  This allows other parts of the code to
    * take ownership of the resource, if they so wish.
    */
+  std::vector< std::shared_ptr<event> > to_process;
   while (m_continue)
   {
-    std::vector< std::shared_ptr<event> > to_process;
+    to_process.clear();
+
+    // calculate the sleep interval
+    auto tnow = std::chrono::steady_clock::now();
+    int interval_since_hb_ms = std::chrono::duration_cast<std::chrono::milliseconds>(tnow - m_last_hb).count();
+    if (interval_since_hb_ms < 0) interval_since_hb_ms = SYSTEM_HEARTBEAT_MS;
+
+    // use max so that if we missed a HB, then we set timeout to 0
+    std::chrono::milliseconds sleep_interval (
+      std::max(0, SYSTEM_HEARTBEAT_MS - interval_since_hb_ms));
+
+    if (sleep_interval.count() == 0)
+    {
+      sleep_interval = std::chrono::milliseconds(SYSTEM_HEARTBEAT_MS);
+      hb_check();
+    }
+
     {
       std::unique_lock<std::mutex> guard(m_mutex);
       m_condvar.wait_for(guard,
-                         timeout,
+                         sleep_interval,
                          [this](){ return !m_queue.empty() && m_queue.size()>0; } );
       to_process.swap( m_queue );
     }
@@ -156,18 +171,11 @@ void event_loop::eventloop()
         }
         catch ( ... )
         {
-
           // TODO: cannot do much in here, because might throw
         }
       }
 
     } // loop end
-
-
-    to_process.clear();
-
-    // for when we simply timed out and never went into the loop
-    hb_check();
   }
 }
 

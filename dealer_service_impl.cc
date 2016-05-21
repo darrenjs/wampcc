@@ -227,6 +227,7 @@ void dealer_service_impl::handle_session_state_change(session_handle sh, bool is
 
 bool dealer_service_impl::on_timer()
 {
+  /* EV thread */
   m_sesman->handle_housekeeping_event();
   return true;
 }
