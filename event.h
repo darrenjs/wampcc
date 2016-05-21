@@ -13,7 +13,7 @@ struct event
 {
   enum Type
   {
-    session_state_event = 0,
+    e_null = 0,
     function_dispatch
   } type;
 
@@ -24,20 +24,6 @@ struct event
   {}
 
   virtual ~event(){}
-};
-
-
-struct ev_session_state_event : public event
-{
-  bool is_open;
-  session_error::error_code err;
-
-  ev_session_state_event(bool __session_open,
-                         session_error::error_code e)
-  : event( event::session_state_event ),
-    is_open( __session_open ),
-    err( e )
-  {}
 };
 
 } // namespace xxx

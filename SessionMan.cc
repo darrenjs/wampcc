@@ -61,9 +61,9 @@ SessionMan::SessionMan(kernel& k)
 
 
 
-void SessionMan::handle_event(ev_session_state_event* ev)
+void SessionMan::session_closed(session_handle sh)
 {
-  auto sp = ev->src.lock();
+  auto sp = sh.lock();
   if (!sp) return;
 
   {
@@ -73,21 +73,12 @@ void SessionMan::handle_event(ev_session_state_event* ev)
 
     auto it = m_sessions.active.find( sid );
 
-    if (it == m_sessions.active.end())
-    {
-      _ERROR_("ignoring session state event for non active session sid:" << sid);
-      return;
-    }
-
-
-    if (ev->is_open == false)
+    if (it != m_sessions.active.end())
     {
       m_sessions.active.erase( it );
       m_sessions.closed.push_back(sp);
     }
   }
-
-  if (m_session_event_cb) m_session_event_cb(ev);
 }
 
 //----------------------------------------------------------------------

@@ -19,10 +19,6 @@ namespace XXX {
   class kernel;
   class wamp_session;
   class Logger;
-  struct ev_session_state_event;
-
-  typedef std::function<void(ev_session_state_event*) > session_state_cb;
-
 
 class SessionMan
 {
@@ -31,8 +27,9 @@ public:
   SessionMan(kernel&);
 
   void add_session(std::shared_ptr<wamp_session>);
+  void session_closed(session_handle sh);
 
-  void handle_event( ev_session_state_event* );
+
   void handle_housekeeping_event( void );
 
 private:
@@ -48,8 +45,6 @@ private:
     std::map<t_sid, std::shared_ptr<wamp_session> > active;
     std::vector< std::shared_ptr<wamp_session> >  closed;
   } m_sessions;
-
-  session_state_cb m_session_event_cb;
 
 };
 

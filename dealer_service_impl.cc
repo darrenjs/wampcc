@@ -212,6 +212,7 @@ void dealer_service_impl::handle_session_state_change(session_handle sh, bool is
   if (!is_open)
   {
     m_pubsub->session_closed(sh);
+    m_sesman->session_closed(sh);
   }
 }
 

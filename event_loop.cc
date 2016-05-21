@@ -214,13 +214,6 @@ void event_loop::process_event(event * ev)
 
   switch ( ev->type )
   {
-
-    case event::session_state_event :
-    {
-      ev_session_state_event * ev2 = dynamic_cast<ev_session_state_event *>(ev);
-      if (m_sesman) m_sesman->handle_event( ev2 );
-      break;
-    }
     case event::function_dispatch :
     {
       ev_function_dispatch * ev2 =  dynamic_cast<ev_function_dispatch*>(ev);
