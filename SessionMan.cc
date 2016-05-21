@@ -60,18 +60,6 @@ SessionMan::SessionMan(kernel& k)
 // }
 
 
-void SessionMan::close_all()
-{
-  std::lock_guard<std::mutex> guard(m_sessions.lock);
-
-  for (auto i : m_sessions.active)
-  {
-    i.second->close();
-  }
-}
-
-
-
 
 void SessionMan::handle_event(ev_session_state_event* ev)
 {

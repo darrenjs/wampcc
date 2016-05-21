@@ -32,9 +32,6 @@ public:
 
   void add_session(std::shared_ptr<wamp_session>);
 
-  void close_all();
-
-
   void handle_event( ev_session_state_event* );
   void handle_housekeeping_event( void );
 
