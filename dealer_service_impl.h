@@ -52,6 +52,8 @@ private:
 
   void handle_session_state_change(session_handle s, bool b);
 
+  bool on_timer();
+
   // essential components
   Logger *__logptr; /* name chosen for log macros */
   kernel & m_kernel;

@@ -17,7 +17,7 @@ struct event
     function_dispatch
   } type;
 
-  session_handle src;
+  session_handle src; // TODO: need to remove
 
   event(Type t)
     : type(t)

@@ -36,7 +36,6 @@ private:
 
   // void heartbeat_all();
 
-  kernel& m_kernel;
   Logger *__logptr; /* name chosen for log macros */
 
   mutable struct

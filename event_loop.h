@@ -16,13 +16,10 @@
 
 namespace XXX {
 
+class Logger;
 
 
-  class SessionMan;
-  class Logger;
-
-
-  using hb_func = std::function< bool(void) >;
+using hb_func = std::function< bool(void) >;
 
 class event_error : public std::runtime_error
 {
@@ -93,8 +90,6 @@ public:
 
   void request_stop() { m_continue=false; }
 
-  void set_session_man(SessionMan*);
-
   void add_hb_target(hb_func);
 
 private:
@@ -120,9 +115,6 @@ private:
   std::mutex m_mutex;
   std::condition_variable m_condvar;
   std::thread m_thread;
-
-
-  SessionMan* m_sesman;
 
   std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
 

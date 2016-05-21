@@ -16,10 +16,8 @@ namespace XXX
 {
 
 SessionMan::SessionMan(kernel& k)
-  : m_kernel(k),
-    __logptr(k.get_logger())
+  : __logptr(k.get_logger())
 {
-  m_kernel.get_event_loop()->set_session_man( this );
 }
 
 
@@ -85,7 +83,7 @@ void SessionMan::session_closed(session_handle sh)
 
 void SessionMan::handle_housekeeping_event()
 {
-  // this->heartbeat_all();
+  _INFO_("sm hb");
 
   std::vector< std::shared_ptr<wamp_session> > to_delete;
 

@@ -1,7 +1,6 @@
 #include "event_loop.h"
 #include "rpc_man.h"
 #include "pubsub_man.h"
-#include "SessionMan.h"
 #include "WampTypes.h"
 #include "Logger.h"
 #include "utils.h"
@@ -26,7 +25,6 @@ event_loop::event_loop(Logger *logptr)
   : __logptr(logptr),
     m_continue(true),
     m_thread(&event_loop::eventmain, this),
-    m_sesman(nullptr),
     m_last_hb( std::chrono::steady_clock::now() )
 {
 }
@@ -43,13 +41,6 @@ void event_loop::stop()
   push( 0 );
   if (m_thread.joinable()) m_thread.join();
 }
-
-
-void event_loop::set_session_man(SessionMan* sm)
-{
-  m_sesman = sm;
-}
-
 
 
 // TODO: general threading concner here.  How do I enqure that any users of this
@@ -78,7 +69,6 @@ void event_loop::hb_check()
   if (elapsed.count() >= SYSTEM_HEARTBEAT_MS)
   {
     m_last_hb = tnow;
-    if (m_sesman) m_sesman->handle_housekeeping_event();
 
     std::list< hb_func > hb_tmp;
     {
