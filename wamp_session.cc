@@ -775,6 +775,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
  */
 void wamp_session::notify_session_state_change(bool is_open)
 {
+  /* IO thread */
   ev_session_state_event * e = new ev_session_state_event(is_open, m_session_err);
   e->src  = handle();
   m_kernel.get_event_loop()->push( e );
