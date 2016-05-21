@@ -11,11 +11,9 @@
 namespace XXX {
 
 class Logger;
-class event_loop;
 struct managed_topic;
 class wamp_session;
 class kernel;
-struct ev_session_state_event;
 
 class pubsub_man
 {
@@ -23,9 +21,9 @@ public:
   pubsub_man(kernel&);
   ~pubsub_man();
 
-  void handle_event( ev_session_state_event* );
   void inbound_publish(std::string realm, std::string uri, wamp_args);
-  void handle_inbound_subscribe(wamp_session* ptr, jalson::json_array&);
+  void inbound_subscribe(wamp_session* ptr, jalson::json_array&);
+  void session_closed(session_handle sh);
 
 private:
   pubsub_man(const pubsub_man&); // no copy

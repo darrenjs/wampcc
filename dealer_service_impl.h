@@ -50,6 +50,7 @@ private:
                            wamp_args args,
                            wamp_invocation_reply_fn);
 
+  void handle_session_state_change(session_handle s, bool b);
 
   // essential components
   Logger *__logptr; /* name chosen for log macros */

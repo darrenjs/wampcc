@@ -17,7 +17,7 @@
 namespace XXX {
 
 
-  class pubsub_man;
+
   class SessionMan;
   class Logger;
 
@@ -95,10 +95,7 @@ public:
 
   void request_stop() { m_continue=false; }
 
-
-  void set_pubsub_man(pubsub_man*);
   void set_session_man(SessionMan*);
-
 
   void add_hb_target(hb_func);
 
@@ -124,7 +121,7 @@ private:
   std::condition_variable m_condvar;
   std::thread m_thread;
 
-  pubsub_man* m_pubsubman;
+
   SessionMan* m_sesman;
 
   std::chrono::time_point<std::chrono::steady_clock> m_last_hb;

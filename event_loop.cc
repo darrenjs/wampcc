@@ -26,7 +26,6 @@ event_loop::event_loop(Logger *logptr)
   : __logptr(logptr),
     m_continue(true),
     m_thread(&event_loop::eventmain, this),
-    m_pubsubman(nullptr),
     m_sesman(nullptr),
     m_last_hb( std::chrono::steady_clock::now() )
 {
@@ -45,10 +44,6 @@ void event_loop::stop()
   if (m_thread.joinable()) m_thread.join();
 }
 
-void event_loop::set_pubsub_man(pubsub_man* p)
-{
-  m_pubsubman = p;
-}
 
 void event_loop::set_session_man(SessionMan* sm)
 {
@@ -224,7 +219,6 @@ void event_loop::process_event(event * ev)
     {
       ev_session_state_event * ev2 = dynamic_cast<ev_session_state_event *>(ev);
       if (m_sesman) m_sesman->handle_event( ev2 );
-      if (m_pubsubman) m_pubsubman->handle_event( ev2 );
       break;
     }
     case event::function_dispatch :

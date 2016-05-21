@@ -25,7 +25,6 @@ dealer_service_impl::dealer_service_impl(kernel & __svc, dealer_listener* l)
    m_listener( l )
 {
   m_kernel.get_event_loop()->set_session_man( m_sesman.get() );
-  m_kernel.get_event_loop()->set_pubsub_man( m_pubsub.get() );
 }
 
 
@@ -70,7 +69,7 @@ void dealer_service_impl::listen(int port)
       };
 
       handlers.inbound_subscribe  = [this](wamp_session* sptr, jalson::json_array & msg) {
-        m_pubsub->handle_inbound_subscribe(sptr, msg);
+        m_pubsub->inbound_subscribe(sptr, msg);
       };
 
       handlers.inbound_register  = [this](std::weak_ptr<wamp_session> h,
@@ -85,7 +84,7 @@ void dealer_service_impl::listen(int port)
                                            iohandle,
                                            true, /* session is passive */
                                            "" /* undefined realm */,
-                                           nullptr,
+                                           [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
                                            handlers));
         m_sesman->add_session(sp);
         _INFO_( "session created, id:" << sp->unique_id() );
@@ -207,6 +206,15 @@ void dealer_service_impl::handle_inbound_call(
   }
 
 }
+
+void dealer_service_impl::handle_session_state_change(session_handle sh, bool is_open)
+{
+  if (!is_open)
+  {
+    m_pubsub->session_closed(sh);
+  }
+}
+
 
 
 } // namespace XXX

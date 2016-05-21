@@ -75,29 +75,6 @@ static bool compare_session(const session_handle& p1, const session_handle& p2)
   return ( !p1.owner_before(p2) && !p2.owner_before(p1) );
 }
 
-void pubsub_man::handle_event(ev_session_state_event* ev)
-{
-  /* EV loop */
-
-  // TODO: design of this can be improved, ie, we should track what topics a
-  // session has subscribed too, rather than searching every topic.
-  for (auto & realm_iter : m_topics)
-    for (auto & item : realm_iter.second)
-    {
-
-      for (auto it = item.second->m_subscribers.begin();
-           it != item.second->m_subscribers.end(); it++)
-      {
-        if (compare_session( *it, ev->src))
-        {
-          item.second->m_subscribers.erase( it );
-          break;
-        }
-      }
-
-    }
-}
-
 
 managed_topic* pubsub_man::find_topic(const std::string& topic,
                                       const std::string& realm,
@@ -239,8 +216,8 @@ void pubsub_man::inbound_publish(std::string realm,
   }
 }
 
-void pubsub_man::handle_inbound_subscribe(wamp_session* sptr,
-                                          jalson::json_array& msg)
+void pubsub_man::inbound_subscribe(wamp_session* sptr,
+                                   jalson::json_array& msg)
 {
   /* EV thread */
 
@@ -271,6 +248,30 @@ void pubsub_man::handle_inbound_subscribe(wamp_session* sptr,
     sptr->send_msg(out);
   }
 
+}
+
+
+void pubsub_man::session_closed(session_handle sh)
+{
+  /* EV loop */
+
+  // TODO: design of this can be improved, ie, we should track what topics a
+  // session has subscribed too, rather than searching every topic.
+  for (auto & realm_iter : m_topics)
+    for (auto & item : realm_iter.second)
+    {
+
+      for (auto it = item.second->m_subscribers.begin();
+           it != item.second->m_subscribers.end(); it++)
+      {
+        if (compare_session( *it, sh))
+        {
+          item.second->m_subscribers.erase( it );
+          break;
+        }
+      }
+
+    }
 }
 
 } // namespace XXX
