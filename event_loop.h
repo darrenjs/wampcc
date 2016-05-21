@@ -89,8 +89,6 @@ public:
 
   void init();
 
-  void push(event* e);
-  void push(std::shared_ptr<event> sp);
   void dispatch(std::function<void()> fn);
 
   void request_stop() { m_continue=false; }
@@ -111,6 +109,8 @@ private:
   void process_event_error(event* e, event_error&);
 
   void hb_check();
+
+  void push(event* ev);
 
   Logger *__logptr; /* name chosen for log macros */
 

@@ -63,12 +63,6 @@ void event_loop::push(event* ev)
   m_condvar.notify_one();
 }
 
-void event_loop::push(std::shared_ptr<event> sp)
-{
-  std::unique_lock<std::mutex> guard(m_mutex);
-  m_queue.push_back( sp );
-  m_condvar.notify_one();
-}
 
 void event_loop::dispatch(std::function<void()> fn)
 {
