@@ -76,7 +76,7 @@ static uint64_t generate_unique_session_id()
     m_handle( h ),
     m_hb_intvl(2),  // TODO HB's are not being sent at this rate
     m_time_create(time(NULL)),
-    m_time_last_msg(time(NULL)),
+    m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
     m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
     m_bytes_avail(0),
@@ -145,7 +145,7 @@ void wamp_session::on_read(char* src, size_t len)
 
   try
   {
-    on_read_impl(src, len);
+    io_on_read_impl(src, len);
   }
   catch ( session_error& e )
   {
@@ -190,8 +190,10 @@ void wamp_session::on_read(char* src, size_t len)
 }
 
 
-void wamp_session::on_read_impl(char* src, size_t len)
+void wamp_session::io_on_read_impl(char* src, size_t len)
 {
+  /* IO thread */
+
   while (len > 0)
   {
     size_t buf_space_avail = INBOUND_BUFFER_SIZE - m_bytes_avail;
@@ -252,41 +254,36 @@ void wamp_session::decode_and_process(char* ptr, size_t msglen)
 {
   /* IO thread */
 
-  bool must_close_session = false;
-  std::string error_uri;
-  std::string error_text;
-  session_error::error_code my_session_error = session_error::unknown;
-
   try
   {
     jalson::json_value jv;
     jalson::decode(jv, ptr, msglen);
 
-    // process on the EV thread
+    /* sanity check message */
+    jalson::json_array& msg = jv.as_array();
+
+    if (msg.size() == 0)
+      throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol, "json array empty");
+
+    if (!msg[0].is_uint())
+      throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol, "message type must be uint");
+    unsigned int messasge_type = msg[0].as_uint();
+
+    /* process on the EV thread */
     std::weak_ptr<wamp_session> wp = handle();
-    std::function<void()> fn = [wp,jv]() mutable
+    std::function<void()> fn = [wp,msg,messasge_type]() mutable
       {
         // TODO: need to handle exceptions from process_message
         if (auto sp = wp.lock())
-          sp->process_message( jv );
+          sp->process_message(messasge_type, msg);
       };
     m_kernel.get_event_loop()->dispatch(std::move(fn));
 
   }
-  catch (const XXX::event_error& e)
-  {
-    // TODO: need to review handling of event_errors
-    _DEBUG_( "wamp_session::on_read_impl  event_error" );
-    error_uri  = e.error_uri;
-    must_close_session = e.is_fatal;
-    error_text = e.what();
-  }
   catch( const jalson::json_error& e)
   {
-    throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_json, e.what() );
+    throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_json, e.what());
   }
-
-  if (must_close_session) throw my_session_error;
 }
 
 //----------------------------------------------------------------------
@@ -393,24 +390,15 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 
 //----------------------------------------------------------------------
 
-void wamp_session::process_message(jalson::json_value&jv)
+void wamp_session::process_message(unsigned int message_type,
+                                   jalson::json_array& ja)
 {
 //  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
-  jalson::json_array & ja = jv.as_array();
-
-  if (ja.size() == 0)
-    throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol);
-
-  int const message_type = jv.as_array()[0].as_int();
-
-  m_time_last_msg = time(NULL);
+  m_time_last_msg_recv = time(NULL);
 
   /* session state validation */
 
-  // TODO: eventually I need to refactor this code to move all the dealer
-  // specific or client specific, to it own location.
-  bool fail_session = false;
   if (m_is_passive)
   {
     if (message_type == HELLO)
@@ -436,7 +424,6 @@ void wamp_session::process_message(jalson::json_value&jv)
       if (m_state != eOpen) this->close();
     }
 
-    // New style
     switch (message_type)
     {
       case CALL :
@@ -466,7 +453,7 @@ void wamp_session::process_message(jalson::json_value&jv)
   }
   else
   {
-    /* session is for a client */
+
     if (message_type == CHALLENGE)
     {
       change_state(eSentHello, eRecvChallenge);
@@ -492,7 +479,6 @@ void wamp_session::process_message(jalson::json_value&jv)
       if (m_state != eOpen) this->close();
     }
 
-    // New style
     switch (message_type)
     {
       case REGISTERED :
@@ -518,22 +504,10 @@ void wamp_session::process_message(jalson::json_value&jv)
       case ERROR :
         process_inbound_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
         return;
-
     }
   }
 
-
-
-  if (fail_session)
-  {
-    _ERROR_("session has been failed ... skipping message " << message_type);
-    return;
-  }
-
-
-  // TODO: if here, could be an unsupported message type
 }
-
 
 
 //----------------------------------------------------------------------
@@ -859,7 +833,7 @@ void wamp_session::initiate_handshake()
 
 int wamp_session::duration_since_last() const
 {
-  return (time(NULL) - m_time_last_msg);
+  return (time(NULL) - m_time_last_msg_recv);
 }
 
 

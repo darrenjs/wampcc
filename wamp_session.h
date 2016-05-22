@@ -108,9 +108,10 @@ namespace XXX {
 
     void on_close() override;
     void on_read(char*, size_t) override;
-    void on_read_impl(char*, size_t);
+    void io_on_read_impl(char*, size_t);
     void decode_and_process(char*, size_t len);
-    void process_message(jalson::json_value&);
+    void process_message(unsigned intmessage_type,
+                         jalson::json_array&);
 
 
     void update_state_for_outbound(const jalson::json_array& msg);
@@ -159,7 +160,7 @@ namespace XXX {
     int m_hb_intvl;
     time_t m_time_create;
 
-    time_t m_time_last_msg;
+    time_t m_time_last_msg_recv;
 
     mutable std::mutex m_request_lock;
     t_request_id m_next_request_id;
