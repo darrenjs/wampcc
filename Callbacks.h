@@ -14,42 +14,7 @@
 namespace XXX {
 
 
-  class wamp_session;
-
-
-class session_error : public std::runtime_error
-{
-public:
-  enum error_code
-  {
-    no_error = 0,
-    msgbuf_full,
-    bad_protocol,
-    unknown,
-    bad_json,
-  };
-
-
-  std::string uri;
-  error_code err;
-
-  session_error(const std::string& __uri,
-                error_code __e = unknown)
-  : std::runtime_error( __uri ),
-    uri( __uri ),
-    err( __e )
-  {
-  }
-
-  session_error(const std::string& __uri,
-                const std::string& __text,
-                error_code __e = session_error::unknown)
-  : std::runtime_error( __text ),
-    uri( __uri ),
-    err( __e )
-  {
-  }
-};
+class wamp_session;
 
 struct wamp_args
 {

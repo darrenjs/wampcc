@@ -204,9 +204,6 @@ namespace XXX {
 
     server_msg_handler m_server_handler;
 
-    session_error::error_code m_session_err = session_error::no_error;
-
-
     struct procedure
     {
       std::string uri;

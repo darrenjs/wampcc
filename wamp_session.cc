@@ -26,11 +26,41 @@
 
 namespace XXX {
 
+/* exception that represents a protocol level error, and will result in
+ * termination of the connection */
+class session_error : public std::runtime_error
+{
+public:
+  enum error_code
+  {
+    no_error = 0,
+    msgbuf_full,
+    bad_protocol,
+    unknown,
+    bad_json,
+  };
+
+  std::string uri;
+  error_code err;
+
+  session_error(const std::string& __uri,
+                error_code __e,
+                const std::string& __text="")
+  : std::runtime_error( __text ),
+    uri( __uri ),
+    err( __e )
+  {
+  }
+};
+
+
+
 static std::atomic<uint64_t> m_next_id(1); // start at 1, so that 0 implies invalid ID
 static uint64_t generate_unique_session_id()
 {
   return m_next_id++;
 }
+
 
 /* Constructor */
   wamp_session::wamp_session(kernel& __kernel,
@@ -107,30 +137,39 @@ void wamp_session::on_read(char* src, size_t len)
 
   std::string temp(src,len);
   std::cout << "recv: bytes " << len << ": " << temp << "\n";
-  session_error se ( "", session_error::no_error );
+
+
+  session_error::error_code err_code = session_error::no_error;
+  std::string err_uri;
+  std::string err_text;
+
   try
   {
     on_read_impl(src, len);
   }
-  catch ( const session_error& e )
+  catch ( session_error& e )
   {
-    se = e;
-    _ERROR_("session_error exception : " << e.what());
+    err_code = e.err;
+    err_uri  = std::move(e.uri);
+    err_text = e.what();
   }
-  catch ( const std::exception& ev )
+  catch ( std::exception& e )
   {
-    se.err = session_error::unknown;
-    _ERROR_("exception : " << ev.what());
+    err_code = session_error::unknown;
+    err_uri = WAMP_RUNTIME_ERROR;
+    err_text = e.what();
   }
   catch (...)
   {
-    se.err = session_error::unknown;
+    err_code = session_error::unknown;
+    err_uri = WAMP_RUNTIME_ERROR;
   }
 
-  if (se.err != session_error::no_error)
+  if (err_code != session_error::no_error)
   {
-    m_session_err = se.err;
-
+    _ERROR_("session_error: err_code " << err_code
+            << ", uri=" << err_uri
+            << ", text=" << err_text);
     try
     {
       // TODO: this does not seem to get sent.  Probably the socket is getting
@@ -139,10 +178,9 @@ void wamp_session::on_read(char* src, size_t len)
       jalson::json_object error_dict;
       msg.push_back( GOODBYE );
       msg.push_back( jalson::json_object() );
-      msg.push_back( se.uri );
+      msg.push_back( err_uri );
       this->send_msg( msg );
     } catch (...){}
-
 
     m_is_closing = true;
 
@@ -185,7 +223,7 @@ void wamp_session::on_read_impl(char* src, size_t len)
         {
           char firstchar = *(ptr + HEADERLEN);
           if (firstchar != '[')
-            throw session_error(WAMP_RUNTIME_ERROR, "bad json message", session_error::bad_protocol);
+            throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol, "bad json message");
         }
 
         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
@@ -204,7 +242,7 @@ void wamp_session::on_read_impl(char* src, size_t len)
     }
     else
     {
-      throw session_error(WAMP_RUNTIME_ERROR, "msg buffer full", session_error::msgbuf_full);
+      throw session_error(WAMP_RUNTIME_ERROR, session_error::msgbuf_full, "msg buffer full");
     }
   }
 }
@@ -245,7 +283,7 @@ void wamp_session::decode_and_process(char* ptr, size_t msglen)
   }
   catch( const jalson::json_error& e)
   {
-    throw session_error(WAMP_RUNTIME_ERROR, e.what(), session_error::bad_json);
+    throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_json, e.what() );
   }
 
   if (must_close_session) throw my_session_error;
@@ -1184,14 +1222,12 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
     case INVOCATION:
     {
       wamp_invocation orig_request;
-      bool found = false;
 
       {
         std::unique_lock<std::mutex> guard(m_pending_lock);
         auto iter = m_pending_invocation.find( request_id );
         if (iter != m_pending_invocation.end())
         {
-          found = true;
           orig_request = std::move(iter->second);
           m_pending_invocation.erase(iter);
         }
