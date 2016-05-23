@@ -921,11 +921,14 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
   t_request_id request_id = msg[1].as_uint();
   uint64_t registration_id = msg[2].as_uint();
 
-
   // find the procedure
-  auto iter = m_procedures.find(registration_id);
-  if (iter != m_procedures.end())
+  try
   {
+    auto iter = m_procedures.find(registration_id);
+
+    if (iter == m_procedures.end())
+      throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
+
     wamp_args my_wamp_args;
     if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
     if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
@@ -947,29 +950,23 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
     invoke.error_fn = [wp,request_id](wamp_args args, std::string error_uri)
       {
         if (auto sp = wp.lock())
-          sp->invocation_error(request_id, std::move(args), std::move(error_uri));
+          sp->reply_with_error(INVOCATION, request_id, std::move(args), std::move(error_uri));
       };
 
-    try
-    {
-      iter->second.user_cb(invoke);
-    }
-    catch (XXX::invocation_exception& ex)
-    {
-      invocation_error(request_id, ex.args(), ex.what());
-    }
-    catch (std::exception& ex)
-    {
-      invocation_error(request_id, wamp_args(), ex.what());
-    }
-    catch (...)
-    {
-      invocation_error(request_id, wamp_args(), WAMP_RUNTIME_ERROR);
-    }
+    iter->second.user_cb(invoke);
+
   }
-  else
+  catch (XXX::wamp_error& ex)
   {
-    invocation_error(request_id, wamp_args(), WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
+    reply_with_error(INVOCATION, request_id, ex.args(), ex.what());
+  }
+  catch (std::exception& ex)
+  {
+    reply_with_error(INVOCATION, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
+  }
+  catch (...)
+  {
+    reply_with_error(INVOCATION, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
   }
 }
 
@@ -1309,12 +1306,17 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
 {
   /* EV thread */
 
+
+  // TODO: any errors here, and we abort the connections, ie, its a bad message
+
   // TODO: add more messsage checking here
   t_request_id request_id = msg[1].as_uint();
   std::string& uri = msg[3].as_string();
   wamp_args my_wamp_args;
   if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
   if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
+
+
 
 
   session_handle wp = this->handle();
@@ -1459,41 +1461,37 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 void wamp_session::process_inbound_register(jalson::json_array & msg)
 {
   /* EV thread */
+
   // TODO: add more messsage checking here
   t_request_id request_id = msg[1].as_uint();
   std::string uri = std::move(msg[3].as_string());
 
   try
   {
-    if (m_server_handler.inbound_register)
-    {
-      uint64_t registration_id = m_server_handler.inbound_register(handle(),
-                                                                   m_realm,
-                                                                   std::move(uri));
+    uint64_t registration_id = m_server_handler.inbound_register(handle(),
+                                                                 m_realm,
+                                                                 std::move(uri));
 
-      jalson::json_array resp;
-      resp.push_back(REGISTERED);
-      resp.push_back(request_id);
-      resp.push_back(registration_id);
-      send_msg(resp);
-    }
-    else
-    {
-      // TODO: reply with error
-    }
+    jalson::json_array resp;
+    resp.push_back(REGISTERED);
+    resp.push_back(request_id);
+    resp.push_back(registration_id);
+    send_msg(resp);
   }
-  catch(event_error ex)
+  catch(wamp_error ex)
   {
-    std::cout << "got exception \n";
-    jalson::json_array errmsg;
-    errmsg.push_back(ERROR);
-    errmsg.push_back(REGISTER);
-    errmsg.push_back(request_id);
-    errmsg.push_back(jalson::json_object());
-    errmsg.push_back(ex.error_uri);
-    send_msg(errmsg);
+    reply_with_error(REGISTER, request_id, ex.args(), ex.what());
+  }
+  catch (std::exception& ex)
+  {
+    reply_with_error(REGISTER, request_id, wamp_args(), ex.what());
+  }
+  catch (...)
+  {
+    reply_with_error(REGISTER, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
   }
 }
+
 
 
 /* reply to an invocation with a yield message */
@@ -1516,15 +1514,16 @@ void wamp_session::invocation_yield(int request_id,
 }
 
 
-/* reply to an invocation with an error message */
-void wamp_session::invocation_error(int request_id,
-                                    wamp_args args,
-                                    std::string error_uri)
+void wamp_session::reply_with_error(
+  int request_type,
+  int request_id,
+  wamp_args args,
+  std::string error_uri)
 {
   jalson::json_array msg;
 
   msg.push_back(ERROR);
-  msg.push_back(INVOCATION);
+  msg.push_back(request_type);
   msg.push_back(request_id);
   msg.push_back(jalson::json_object());
   msg.push_back(error_uri);
@@ -1537,5 +1536,4 @@ void wamp_session::invocation_error(int request_id,
 
   send_msg(msg);
 }
-
 } // namespace XXX

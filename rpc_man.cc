@@ -115,7 +115,7 @@ uint64_t rpc_man::handle_inbound_register(session_handle sh,
     if (rpc_iter != realm_iter->second.end())
     {
       _WARN_("Ignore duplicate procedure register for " << realm << ":" << r.uri);
-      throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
+      throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
     }
 
     // create registration record

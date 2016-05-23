@@ -32,16 +32,11 @@ typedef uint64_t t_subscription_id;
 typedef std::weak_ptr<wamp_session> session_handle;
 
 
-class invocation_exception : public std::runtime_error
+class wamp_error : public std::runtime_error
 {
 public:
-
-  invocation_exception(const char* error)
-  : std::runtime_error(error)
-  {  }
-
-  invocation_exception(const char* error, wamp_args wa)
-    : std::runtime_error(error),
+  wamp_error(const char* error_uri, wamp_args wa = wamp_args())
+    : std::runtime_error(error_uri),
       m_args(wa)
   {  }
 
@@ -51,6 +46,7 @@ public:
 private:
   wamp_args m_args;
 };
+
 
 struct invoke_details // TODO: rename
 {

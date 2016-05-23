@@ -199,7 +199,8 @@ namespace XXX {
     void invocation_yield(int request_id,
                           wamp_args args);
 
-    void invocation_error(int request_id,
+    void reply_with_error(int request_type,
+                          int request_id,
                           wamp_args args,
                           std::string error_uri);
 

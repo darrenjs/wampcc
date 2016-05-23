@@ -73,10 +73,12 @@ void dealer_service_impl::listen(int port)
       };
 
       handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, wamp_args args) {
+        // TODO: break this out into a separte method, and handle error
         m_pubsub->inbound_publish(sptr->realm(), uri, std::move(args));
       };
 
       handlers.inbound_subscribe  = [this](wamp_session* sptr, jalson::json_array & msg) {
+        // TODO: break this out into a separte method, and handle error
         m_pubsub->inbound_subscribe(sptr, msg);
       };
 
@@ -145,75 +147,78 @@ void dealer_service_impl::handle_inbound_call(
   /* EV thread */
 
   // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
-  rpc_details rpc = m_rpcman->get_rpc_details(uri, sptr->realm());
-  if (rpc.registration_id)
+  try
   {
-    if (rpc.type == rpc_details::eInternal)
+    rpc_details rpc = m_rpcman->get_rpc_details(uri, sptr->realm());
+    if (rpc.registration_id)
     {
-      /* CALL request is for an internal procedure */
-
-      if (rpc.user_cb)
+      if (rpc.type == rpc_details::eInternal)
       {
-        invoke_details invoke;
-        invoke.uri = uri;
-        invoke.user = rpc.user_data;
-        invoke.args = std::move(args);
+        /* CALL request is for an internal procedure */
 
-        invoke.yield_fn = [fn](wamp_args args)
-          {
-            if (fn)
-              fn(args, std::unique_ptr<std::string>());
-          };
-
-        invoke.error_fn = [fn](wamp_args args, std::string error_uri)
-          {
-            if (fn)
-              fn(args, std::unique_ptr<std::string>(new std::string(error_uri)));
-          };
-
-        try
+        if (rpc.user_cb)
         {
+          invoke_details invoke;
+          invoke.uri = uri;
+          invoke.user = rpc.user_data;
+          invoke.args = std::move(args);
+
+          invoke.yield_fn = [fn](wamp_args args)
+            {
+              if (fn)
+                fn(args, std::unique_ptr<std::string>());
+            };
+
+          invoke.error_fn = [fn](wamp_args args, std::string error_uri)
+            {
+              if (fn)
+                fn(args, std::unique_ptr<std::string>(new std::string(error_uri)));
+            };
+
           rpc.user_cb(invoke);
-        }
-        catch (XXX::invocation_exception& ex)
-        {
-          if (fn)
-            fn(ex.args(), std::unique_ptr<std::string>(new std::string(ex.what())));
-        }
-        catch (std::exception& ex)
-        {
-          if (fn)
-            fn(wamp_args(), std::unique_ptr<std::string>(new std::string(ex.what())));
-        }
-        catch (...)
-        {
-          if (fn)
-            fn(wamp_args(), std::unique_ptr<std::string>(new std::string(WAMP_RUNTIME_ERROR)));
-        }
-      }
 
+        }
+        else
+          throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
+
+      }
+      else
+      {
+        /* CALL request is for an external RPC */
+        if (auto sp = rpc.session.lock())
+        {
+          sp->invocation(rpc.registration_id,
+                         jalson::json_object(),
+                         args,
+                         fn);
+        }
+        else
+          throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
+      }
     }
     else
     {
-      /* CALL request is for an external RPC */
-      if (auto sp = rpc.session.lock())
-      {
-        sp->invocation(rpc.registration_id,
-                       jalson::json_object(),
-                       args,
-                       fn);
-      }
+      /* RPC uri lookup failed */
+      throw wamp_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
     }
   }
-  else
+  catch (XXX::wamp_error& ex)
   {
-    /* RPC uri lookup failed */
-    _WARN_("call request failed, procuedure uri not found: " << sptr->realm() << "::" << rpc.uri);
     if (fn)
-      fn(wamp_args(), std::unique_ptr<std::string>(new std::string(WAMP_ERROR_URI_NO_SUCH_PROCEDURE)));
+      fn(ex.args(), std::unique_ptr<std::string>(new std::string(ex.what())));
   }
-
+  catch (std::exception& ex)
+  {
+    if (fn)
+      fn(wamp_args(), std::unique_ptr<std::string>(new std::string(ex.what())));
+  }
+  catch (...)
+  {
+    if (fn)
+      fn(wamp_args(), std::unique_ptr<std::string>(new std::string(WAMP_RUNTIME_ERROR)));
+  }
 }
+
 
 void dealer_service_impl::handle_session_state_change(session_handle sh, bool is_open)
 {
