@@ -83,7 +83,6 @@ void SessionMan::session_closed(session_handle sh)
 
 void SessionMan::handle_housekeeping_event()
 {
-  _INFO_("sm hb");
 
   std::vector< std::shared_ptr<wamp_session> > to_delete;
 
