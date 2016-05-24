@@ -22,7 +22,9 @@ public:
   ~pubsub_man();
 
   void inbound_publish(std::string realm, std::string uri, wamp_args);
-  void inbound_subscribe(wamp_session* ptr, jalson::json_array&);
+  uint64_t subscribe(wamp_session* ptr,
+                     std::string uri);
+
   void session_closed(session_handle sh);
 
 private:

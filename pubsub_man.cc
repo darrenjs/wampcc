@@ -216,38 +216,33 @@ void pubsub_man::inbound_publish(std::string realm,
   }
 }
 
-void pubsub_man::inbound_subscribe(wamp_session* sptr,
-                                   jalson::json_array& msg)
+uint64_t pubsub_man::subscribe(wamp_session* sptr,
+                               std::string uri)
 {
   /* EV thread */
 
   /* We have received an external request to subscribe to a top */
 
 
-  // TODO: improve this parsing
-  t_request_id request_id = msg[1].as_uint();
-  jalson::json_string uri = msg[3].as_string();
+  // validate the URI
+  // TODO: implement Strict URIs
+
+  if (uri.empty())
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "URI zero length");
+
 
   // find or create a topic
   _INFO_("SUBSCRIBE for " << sptr->realm() << "::" << uri);
   managed_topic* mt = find_topic(uri, sptr->realm(), true);
 
-  // TODO: test that this causes an error response
   if (!mt)
-    throw event_error::request_error(WAMP_ERROR_INVALID_URI,
-                                     SUBSCRIBE, request_id);
-  {
-    mt->m_subscribers.push_back(sptr->handle());
-    _INFO_("session " << sptr->unique_id() << " subscribed to topic '"<< uri<< "'");
+    throw wamp_error(WAMP_ERROR_INVALID_URI);
 
-    // TODO: maybe building and sending message here is not best approach. Possibly use a callback?
-    jalson::json_array out;
-    out.push_back(SUBSCRIBED);
-    out.push_back(request_id);
-    out.push_back(mt->subscription_id);
-    sptr->send_msg(out);
-  }
 
+  mt->m_subscribers.push_back(sptr->handle());
+  _INFO_("session " << sptr->unique_id() << " subscribed to topic '"<< uri<< "'");
+
+  return mt->subscription_id;
 }
 
 

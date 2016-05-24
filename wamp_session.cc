@@ -958,7 +958,7 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
   }
   catch (XXX::wamp_error& ex)
   {
-    reply_with_error(INVOCATION, request_id, ex.args(), ex.what());
+    reply_with_error(INVOCATION, request_id, ex.args(), ex.error_uri());
   }
   catch (std::exception& ex)
   {
@@ -1317,8 +1317,6 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
   if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
 
 
-
-
   session_handle wp = this->handle();
   auto reply_fn = [wp, request_id](wamp_args args,
                                    std::unique_ptr<std::string> error_uri)
@@ -1451,9 +1449,36 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 {
   /* EV thread */
 
-  if (m_server_handler.inbound_subscribe)
+  // TODO: any errors here, and we abort the connections, ie, its a bad message
+
+  // TODO: add more messsage checking here
+  t_request_id request_id = msg[1].as_uint();
+  std::string uri = std::move( msg[3].as_string() );
+  wamp_args my_wamp_args;
+  if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
+  if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
+
+  try
   {
-    m_server_handler.inbound_subscribe(this, msg);
+    uint64_t subscription_id = m_server_handler.inbound_subscribe(this, uri, my_wamp_args);
+
+    jalson::json_array out;
+    out.push_back(SUBSCRIBED);
+    out.push_back(request_id);
+    out.push_back(subscription_id);
+    send_msg(out);
+  }
+  catch(wamp_error ex)
+  {
+    reply_with_error(SUBSCRIBE, request_id, ex.args(), ex.error_uri());
+  }
+  catch (std::exception& ex)
+  {
+    reply_with_error(SUBSCRIBE, request_id, wamp_args(), ex.what());
+  }
+  catch (...)
+  {
+    reply_with_error(SUBSCRIBE, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
   }
 }
 
@@ -1480,7 +1505,7 @@ void wamp_session::process_inbound_register(jalson::json_array & msg)
   }
   catch(wamp_error ex)
   {
-    reply_with_error(REGISTER, request_id, ex.args(), ex.what());
+    reply_with_error(REGISTER, request_id, ex.args(), ex.error_uri());
   }
   catch (std::exception& ex)
   {

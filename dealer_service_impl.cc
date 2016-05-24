@@ -77,9 +77,8 @@ void dealer_service_impl::listen(int port)
         m_pubsub->inbound_publish(sptr->realm(), uri, std::move(args));
       };
 
-      handlers.inbound_subscribe  = [this](wamp_session* sptr, jalson::json_array & msg) {
-        // TODO: break this out into a separte method, and handle error
-        m_pubsub->inbound_subscribe(sptr, msg);
+      handlers.inbound_subscribe  = [this](wamp_session* p, std::string uri, wamp_args args) {
+        return this->m_pubsub->subscribe(p, uri);
       };
 
       handlers.inbound_register  = [this](std::weak_ptr<wamp_session> h,

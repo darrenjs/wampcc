@@ -35,15 +35,25 @@ typedef std::weak_ptr<wamp_session> session_handle;
 class wamp_error : public std::runtime_error
 {
 public:
+  wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
+    : std::runtime_error(what),
+      m_uri(error_uri),
+      m_args(wa)
+  {  }
+
   wamp_error(const char* error_uri, wamp_args wa = wamp_args())
     : std::runtime_error(error_uri),
+      m_uri(error_uri),
       m_args(wa)
   {  }
 
   wamp_args& args() { return m_args; }
   const wamp_args& args() const { return m_args; }
 
+  const std::string & error_uri() { return m_uri; }
+
 private:
+  std::string m_uri;
   wamp_args m_args;
 };
 
