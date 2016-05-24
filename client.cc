@@ -41,7 +41,7 @@ void procedure_error_cb(XXX::invoke_details& invocation)
   _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
-  throw XXX::invocation_exception("opps, cannot fulfill RPC");
+  throw XXX::wamp_error("user.error.rpc_failed");
 
 }
 
