@@ -106,6 +106,7 @@ uint64_t wamp_session::unique_id()
 
 void wamp_session::close()
 {
+  change_state(eClosing, eClosing);
   std::lock_guard<std::mutex> guard(m_handle_lock);
   if (m_handle) m_handle->request_close();
 }
@@ -273,7 +274,6 @@ void wamp_session::decode_and_process(char* ptr, size_t msglen)
     std::weak_ptr<wamp_session> wp = handle();
     std::function<void()> fn = [wp,msg,messasge_type]() mutable
       {
-        // TODO: need to handle exceptions from process_message
         if (auto sp = wp.lock())
           sp->process_message(messasge_type, msg);
       };
@@ -342,14 +342,21 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 void wamp_session::change_state(SessionState expected, SessionState next)
 {
   std::vector<std::string> names = {"eInit","eRecvHello","eSentChallenge",
-                                    "eRecvAuth","eOpen","eClosed",
+                                    "eRecvAuth","eOpen","eClosing", "eClosed",
                                     "eSentHello","eRecvChallenge","eSentAuth" } ;
+
 
   if (next == eClosed && m_state != eClosed)
   {
     _INFO_("session closed #" << m_sid);
     m_state = eClosed;
     notify_session_state_change( false );
+    return;
+  }
+
+  if (next == eClosing)
+  {
+    m_state = eClosing;
     return;
   }
 
@@ -395,118 +402,154 @@ void wamp_session::process_message(unsigned int message_type,
 {
 //  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
+  if (m_state == eClosing || m_state == eClosed) return;
+
   m_time_last_msg_recv = time(NULL);
 
-  /* session state validation */
-
-  if (m_is_passive)
+  try
   {
-    if (message_type == HELLO)
+    /* session state validation */
+
+    if (m_is_passive)
     {
-      change_state(eInit, eRecvHello);
-      handle_HELLO(ja);
-      return;
-    }
-    else if (message_type == AUTHENTICATE)
-    {
-      change_state(eSentChallenge, eRecvAuth);
-      handle_AUTHENTICATE(ja);
-      return;
-    }
-    else if (message_type == ABORT)
-    {
-      change_state(eClosed, eClosed);
-      handle_ABORT(ja);
-      return;
+      if (message_type == HELLO)
+      {
+        change_state(eInit, eRecvHello);
+        handle_HELLO(ja);
+        return;
+      }
+      else if (message_type == AUTHENTICATE)
+      {
+        change_state(eSentChallenge, eRecvAuth);
+        handle_AUTHENTICATE(ja);
+        return;
+      }
+      else if (message_type == ABORT)
+      {
+        change_state(eClosed, eClosed);
+        handle_ABORT(ja);
+        return;
+      }
+      else
+      {
+        if (m_state != eOpen) throw session_error(WAMP_RUNTIME_ERROR,
+                                                  session_error::bad_protocol,
+                                                  "received request but handshake incomplete");
+      }
+
+      switch (message_type)
+      {
+        case CALL :
+          process_inbound_call(ja);
+          return;
+
+        case YIELD :
+          process_inbound_yield(ja);
+          return;
+
+        case PUBLISH :
+          process_inbound_publish(ja); // TODO: have an error handling specific to the kind of session (active/passive)
+          return;
+
+        case SUBSCRIBE :
+          process_inbound_subscribe(ja);
+          return;
+
+        case REGISTER :
+          process_inbound_register(ja);
+          return;
+
+        case ERROR :
+          process_inbound_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
+          return;
+
+        default:
+          std::ostringstream os;
+          os << "unknown message type " << (int)message_type;
+          throw session_error(WAMP_RUNTIME_ERROR,
+                              session_error::bad_protocol,
+                              os.str());
+      }
     }
     else
     {
-      if (m_state != eOpen) this->close();
+
+      if (message_type == CHALLENGE)
+      {
+        change_state(eSentHello, eRecvChallenge);
+        handle_CHALLENGE(ja);
+        return;
+      }
+      else if (message_type == WELCOME)
+      {
+        change_state(eSentAuth, eOpen);
+        handle_WELCOME(ja);
+        if (m_state == eOpen) notify_session_state_change(true);
+        return;
+      }
+      else if (message_type == ABORT)
+      {
+        _INFO_("recv ABORT from peer");
+        change_state(eClosed, eClosed);
+        handle_ABORT(ja);
+        return;
+      }
+      else
+      {
+        if (m_state != eOpen) throw session_error(WAMP_RUNTIME_ERROR,
+                                                  session_error::bad_protocol,
+                                                  "received request but handshake incomplete");
+      }
+
+      switch (message_type)
+      {
+        case REGISTERED :
+          process_inbound_registered(ja);
+          return;
+
+        case INVOCATION :
+          process_inbound_invocation(ja);
+          return;
+
+        case SUBSCRIBED :
+          process_inbound_subscribed(ja);
+          return;
+
+        case EVENT :
+          process_inbound_event(ja);
+          return;
+
+        case RESULT :
+          process_inbound_result(ja);
+          return;
+
+        case ERROR :
+          process_inbound_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
+          return;
+
+        default:
+          std::ostringstream os;
+          os << "unknown message type " << (int)message_type;
+          throw session_error(WAMP_RUNTIME_ERROR,
+                              session_error::bad_protocol,
+                              os.str());
+      }
     }
-
-    switch (message_type)
-    {
-      case CALL :
-        process_inbound_call(ja);
-        return;
-
-      case YIELD :
-        process_inbound_yield(ja);
-        return;
-
-      case PUBLISH :
-        process_inbound_publish(ja); // TODO: have an error handling specific to the kind of session (active/passive)
-        return;
-
-      case SUBSCRIBE :
-        process_inbound_subscribe(ja);
-        return;
-
-      case REGISTER :
-        process_inbound_register(ja);
-        return;
-
-      case ERROR :
-        process_inbound_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
-        return;
-    }
+    return; // message handled okay
   }
-  else
+  catch (session_error & e)
   {
-
-    if (message_type == CHALLENGE)
-    {
-      change_state(eSentHello, eRecvChallenge);
-      handle_CHALLENGE(ja);
-      return;
-    }
-    else if (message_type == WELCOME)
-    {
-      change_state(eSentAuth, eOpen);
-      handle_WELCOME(ja);
-      if (m_state == eOpen) notify_session_state_change(true);
-      return;
-    }
-    else if (message_type == ABORT)
-    {
-      _INFO_("recv ABORT from peer");
-      change_state(eClosed, eClosed);
-      handle_ABORT(ja);
-      return;
-    }
-    else
-    {
-      if (m_state != eOpen) this->close();
-    }
-
-    switch (message_type)
-    {
-      case REGISTERED :
-        process_inbound_registered(ja);
-        return;
-
-      case INVOCATION :
-        process_inbound_invocation(ja);
-        return;
-
-      case SUBSCRIBED :
-        process_inbound_subscribed(ja);
-        return;
-
-      case EVENT :
-        process_inbound_event(ja);
-        return;
-
-      case RESULT :
-        process_inbound_result(ja);
-        return;
-
-      case ERROR :
-        process_inbound_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
-        return;
-    }
+    _WARN_("aborting session due to error, uri: " << e.uri << ", what: " << e.what());
   }
-
+  catch (std::exception & e)
+  {
+    _WARN_("closing session due to exception, what: " << e.what());
+  }
+  catch (...)
+  {
+    _WARN_("closing session due to unknown exception");
+  }
+  this->close();
 }
 
 
@@ -576,7 +619,6 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
      ]
   */
 
-  _INFO_("wamp_session has received a session HELLO");
 //  m_auth.recvHello = true;
 //  m_auth.hello_realm = msum.msg->at(1).as_string();
 //  m_auth.hello_opts  = msum.msg->at(2).as_object();
@@ -811,7 +853,7 @@ bool wamp_session::is_open() const
 
 bool wamp_session::is_pending_open() const
 {
-  return (m_state != eOpen && m_state != eClosed);
+  return (m_state != eOpen && m_state != eClosed && m_state != eClosing);
 }
 
 //----------------------------------------------------------------------

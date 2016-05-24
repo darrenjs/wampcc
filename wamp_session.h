@@ -125,7 +125,9 @@ namespace XXX {
       eSentChallenge,
       eRecvAuth,
       eOpen,
+      eClosing,
       eClosed,
+
 
       // next are client state values
       eSentHello,
