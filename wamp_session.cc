@@ -1598,4 +1598,12 @@ void wamp_session::reply_with_error(
 
   send_msg(msg);
 }
+
+
+  bool wamp_session::uses_heartbeats() const
+
+  {
+    return m_hb_intvl > 0;
+  }
+
 } // namespace XXX

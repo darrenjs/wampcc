@@ -64,6 +64,9 @@ namespace XXX {
     /* Time since last message */
     int duration_since_last() const;
 
+    /* Does this session use heartbeats? */
+    bool uses_heartbeats() const;
+
     /* return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a passive session */
     const std::string& realm() const;
