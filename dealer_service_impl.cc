@@ -99,7 +99,6 @@ void dealer_service_impl::listen(int port)
         _INFO_( "session created, id:" << sp->unique_id() );
       }
 
-      std::cout << "new session logic completed\n";
     } );
 }
 

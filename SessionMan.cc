@@ -10,7 +10,7 @@
 
 #include <string.h>
 
-#define MAX_PENDING_OPEN_SECS 3
+#define MAX_PENDING_OPEN_SECS 5
 
 namespace XXX
 {
@@ -92,6 +92,23 @@ void SessionMan::handle_housekeeping_event()
   }
 
   to_delete.clear(); // expected to call ~wamp_session
+
+  // scan for sessions that failed to complete the handshake
+  {
+    std::lock_guard<std::mutex> guard(m_sessions.lock);
+    for (auto i : m_sessions.active)
+    {
+
+      if (i.second->is_pending_open() &&
+          i.second->duration_since_creation() >= MAX_PENDING_OPEN_SECS)
+      {
+        // expire sessions which have spent too long in pending-open
+        _WARN_("timeout during handshake, closing session #" << i.second->unique_id());
+        i.second->close();
+      }
+    }
+
+  }
 }
 
 

@@ -58,9 +58,8 @@ namespace XXX {
 
     void initiate_handshake();
 
-    /* If session is not open, then return number of milliseconds since
-     * creation.  Else return 0/  */
-    int duration_pending_open() const;
+    /* Number of seconds since session constructed  */
+    int duration_since_creation() const;
 
     /* Time since last message */
     int duration_since_last() const;
@@ -121,18 +120,21 @@ namespace XXX {
     enum SessionState
     {
       eInit = 0,
+
+      // for active client
       eRecvHello,
       eSentChallenge,
       eRecvAuth,
-      eOpen,
-      eClosing,
-      eClosed,
-
 
       // next are client state values
       eSentHello,
       eRecvChallenge,
       eSentAuth,
+
+      // main states
+      eOpen,
+      eClosing,
+      eClosed,
 
       eStateMax
     } m_state;   // TODO: this is my experiment with makeing a session specific to a session owned by a delare
@@ -170,9 +172,7 @@ namespace XXX {
     char *  m_buf;
     size_t  m_bytes_avail;
 
-    bool m_is_closing;
-
-
+    bool m_is_closing; // TODO: remove
 
     bool m_is_passive;
 

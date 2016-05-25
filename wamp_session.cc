@@ -317,7 +317,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen) this->close();
+      if (m_state != eOpen) this->close(); // TODO: these need to log errors, just like on the inbound
     }
   }
   else
@@ -332,7 +332,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen) this->close();
+      if (m_state != eOpen) this->close();// TODO: these need to log errors, just like on the inbound
     }
   }
 
@@ -375,7 +375,6 @@ void wamp_session::change_state(SessionState expected, SessionState next)
           {
             if (sp->is_open())
             {
-              std::cout << "sending hb\n";
               jalson::json_array msg;
               msg.push_back(HEARTBEAT);
               sp->send_msg(msg);
@@ -448,7 +447,7 @@ void wamp_session::process_message(unsigned int message_type,
           return;
 
         case PUBLISH :
-          process_inbound_publish(ja); // TODO: have an error handling specific to the kind of session (active/passive)
+          process_inbound_publish(ja);
           return;
 
         case SUBSCRIBE :
@@ -829,7 +828,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
  */
 void wamp_session::notify_session_state_change(bool is_open)
 {
-  /* IO thread */
+  /* IO thread */    // <------ TODO?? doesn't need to be?
 
   if (m_notify_state_change_fn)
   {
@@ -879,12 +878,9 @@ int wamp_session::duration_since_last() const
 }
 
 
-int wamp_session::duration_pending_open() const
+int wamp_session::duration_since_creation() const
 {
-  if (is_open())
-    return 0;
-  else
-    return (time(NULL) - m_time_create);
+  return (time(NULL) - m_time_create);
 }
 
 
@@ -1347,7 +1343,6 @@ t_request_id wamp_session::publish(std::string uri,
 void wamp_session::process_inbound_call(jalson::json_array & msg)
 {
   /* EV thread */
-
 
   // TODO: any errors here, and we abort the connections, ie, its a bad message
 

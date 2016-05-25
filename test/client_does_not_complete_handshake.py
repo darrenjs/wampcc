@@ -5,10 +5,10 @@ import ctypes
 import hashlib
 import hmac
 import json
+import pprint as pp
 import socket
 import struct
 import time
-import pprint as pp
 
 def onWampChallenge(msg):
 
@@ -62,11 +62,15 @@ send_json(s, wamp_hello);
 # receive CRA challenge
 jsonmsg = recv_json(s)
 
-# Opps, send a subscribe out of order
-wamp_subscribe=json.dumps([32, 1, {}, "xxx"])
-send_json(s, wamp_subscribe);
+
+while True:
+    print "going to sleep..."
+    jsonmsg = recv_json(s)
+    time.sleep(1)  # sleep 1
+
 
 # Send authentication
+print "sending auth ..."
 wamp_auth = onWampChallenge(jsonmsg[2] )
 send_json(s, wamp_auth)
 
@@ -79,34 +83,5 @@ if (jsonmsg[0]==2):
 
 while (session_state==session_states.open):
     jsonmsg = recv_json(s)
-
-s.close
-
-
-
-# wamp_authenticate=json.dumps([5, "8BZkFPz2yVGRvCqK7EKK6NLhVnDiqXr4+0+32QX0gzc=", {}])
-# send_json(s, wamp_authenticate);
-
-
-
-# print "connecting ... not doing anything"
-
-# while True:
-#     time.sleep(60)  # sleep 1 minute
-
-# print s.recv(1024)
-# s.close
-
-recv_msg = s.recv(2048)
-print "recv: " + recv_msg
-
-
-
-while True:
-    recv_msg = s.recv(2048)
-    if not recv_msg:
-        print "closed by peer"
-        break
-    print "recv: " + recv_msg
 
 s.close
