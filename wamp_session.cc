@@ -462,6 +462,8 @@ void wamp_session::process_message(unsigned int message_type,
           process_inbound_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
           return;
 
+        case HEARTBEAT: return;
+
         default:
           std::ostringstream os;
           os << "unknown message type " << (int)message_type;
@@ -525,6 +527,8 @@ void wamp_session::process_message(unsigned int message_type,
         case ERROR :
           process_inbound_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
           return;
+
+        case HEARTBEAT: return;
 
         default:
           std::ostringstream os;
