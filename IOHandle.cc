@@ -50,7 +50,6 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
   : __logptr(logger),
     m_uv_handle(hdl),
-    m_listener( nullptr ),
     m_is_closing(false),
     m_closed_handles_count(0),
     m_bytes_pending(0),
@@ -231,8 +230,8 @@ void IOHandle::init_close()
 
   // Instruct listener/owner never to call us again, to prevent it sending new
   // output requests after the close request.
-  if (m_listener) m_listener->on_close();
-  m_listener = nullptr;
+  if (auto sp = m_listener.lock()) sp->io_on_close();
+  m_listener.reset();
 
   /* Raise an async request to close the socket.  This will be the last async
    * operation requested.  I.e., there will no more requests coming from the
@@ -289,7 +288,7 @@ void IOHandle::on_read_cb(uv_stream_t*  /*uvh*/,
     else if (nread > 0)
     {
       m_bytes_read += nread;
-      if (m_listener) m_listener->on_read(buf->base, nread);
+      if (auto sp = m_listener.lock()) sp->io_on_read(buf->base, nread);
     }
     else if (nread == 0)
     {

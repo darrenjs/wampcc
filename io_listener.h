@@ -10,8 +10,10 @@ class io_listener
 public:
   virtual ~io_listener() {}
 
-  virtual void on_close() = 0; // on this call, the handle is invalidated
-  virtual void on_read(char*, size_t)  = 0;
+  /* Following this call, IO handle is invalidated and must not be used again */
+  virtual void io_on_close() = 0;
+
+  virtual void io_on_read(char*, size_t)  = 0;
 };
 
 } // namespace

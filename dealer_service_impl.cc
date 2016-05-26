@@ -77,7 +77,7 @@ void dealer_service_impl::listen(int port)
         m_pubsub->inbound_publish(sptr->realm(), uri, std::move(args));
       };
 
-      handlers.inbound_subscribe  = [this](wamp_session* p, std::string uri, wamp_args args) {
+      handlers.inbound_subscribe  = [this](wamp_session* p, std::string uri, wamp_args /*args*/) {
         return this->m_pubsub->subscribe(p, uri);
       };
 
@@ -88,13 +88,13 @@ void dealer_service_impl::listen(int port)
       };
 
       {
-        std::shared_ptr<wamp_session> sp(new wamp_session(
-                                           m_kernel,
-                                           iohandle,
-                                           true, /* session is passive */
-                                           "" /* undefined realm */,
-                                           [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
-                                           handlers));
+        std::shared_ptr<wamp_session> sp =
+          wamp_session::create( m_kernel,
+                                iohandle,
+                                true, /* session is passive */
+                                "" /* undefined realm */,
+                                [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
+                                handlers);
         m_sesman->add_session(sp);
         _INFO_( "session created, id:" << sp->unique_id() );
       }

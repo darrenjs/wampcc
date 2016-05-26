@@ -64,11 +64,12 @@ static uint64_t generate_unique_session_id()
 
 /* Constructor */
   wamp_session::wamp_session(kernel& __kernel,
-                           IOHandle* h,
-                           bool is_passive,
-                           std::string __realm,
-                           session_state_fn state_cb,
-                           server_msg_handler handler)
+                             IOHandle* h,
+                             bool is_passive,
+                             std::string __realm,
+                             session_state_fn state_cb,
+                             std::shared_ptr<wamp_session>& outref,
+                             server_msg_handler handler)
   : m_state( eInit ),
     __logptr(__kernel.get_logger()),
     m_kernel(__kernel),
@@ -86,10 +87,24 @@ static uint64_t generate_unique_session_id()
     m_notify_state_change_fn(state_cb),
     m_server_handler(handler)
 {
-  m_handle->set_listener(this);
+  // need to create a sp<> before can use shared_from_this()
+  outref = std::shared_ptr<wamp_session>(this);
+  m_handle->set_listener( shared_from_this() );
 }
 
-//----------------------------------------------------------------------
+
+std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
+                                                   IOHandle * ioh,
+                                                   bool is_passive,
+                                                   std::string realm,
+                                                   session_state_fn state_cb,
+                                                   server_msg_handler handler)
+{
+  std::shared_ptr<wamp_session> sp;
+  new wamp_session(k, ioh, is_passive, realm, state_cb, sp, handler);
+  return sp;
+}
+
 
 /* Destructor */
 wamp_session::~wamp_session()
@@ -113,7 +128,7 @@ void wamp_session::close()
 
 //----------------------------------------------------------------------
 
-void wamp_session::on_close()
+void wamp_session::io_on_close()
 {
   /* IO thread */
 
@@ -132,7 +147,7 @@ void wamp_session::on_close()
 }
 
 //----------------------------------------------------------------------
-void wamp_session::on_read(char* src, size_t len)
+void wamp_session::io_on_read(char* src, size_t len)
 {
   /* IO thread */
 

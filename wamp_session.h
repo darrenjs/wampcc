@@ -37,12 +37,14 @@ namespace XXX {
   class wamp_session : public std::enable_shared_from_this<wamp_session>, public io_listener
   {
   public:
-    wamp_session(kernel&,
-                 IOHandle *,
-                 bool is_passive,
-                 std::string realm,
-                 session_state_fn state_cb,
-                 server_msg_handler = server_msg_handler());
+    // wamp_session can only be created as shared_ptr
+    static std::shared_ptr<wamp_session> create(kernel&,
+                                                IOHandle *,
+                                                bool is_passive,
+                                                std::string realm,
+                                                session_state_fn state_cb,
+                                                server_msg_handler = server_msg_handler());
+
     ~wamp_session();
 
     void send_msg(jalson::json_array&, bool final=false);
@@ -103,13 +105,21 @@ namespace XXX {
 
   private:
 
+    wamp_session(kernel&,
+                 IOHandle *,
+                 bool is_passive,
+                 std::string realm,
+                 session_state_fn state_cb,
+                 std::shared_ptr<wamp_session>& outref,
+                 server_msg_handler);
+
     wamp_session(const wamp_session&) = delete;
     wamp_session& operator=(const wamp_session&) = delete;
 
     bool send_bytes(std::pair<const char*, size_t>*, size_t, bool final);
 
-    void on_close() override;
-    void on_read(char*, size_t) override;
+    void io_on_close() override;
+    void io_on_read(char*, size_t) override;
     void io_on_read_impl(char*, size_t);
     void decode_and_process(char*, size_t len);
     void process_message(unsigned intmessage_type,

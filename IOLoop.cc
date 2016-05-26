@@ -275,10 +275,13 @@ void IOLoop::run_loop()
       // if r == 0, there are no more handles; implies we are shutting down.
       if (r == 0) return;
     }
+    catch(std::exception & e)
+    {
+      _ERROR_("exception in io_loop: " << e.what());
+    }
     catch(...)
     {
-      // TODO: log me properly, and test these can come here
-      std::cout << "exception in IOLoop thread\n";
+      _ERROR_("exception in io_loop: uknown");
     }
   }
 }

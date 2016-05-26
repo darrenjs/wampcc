@@ -6,6 +6,7 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
+#include <memory>
 
 namespace XXX {
 
@@ -14,7 +15,6 @@ class IOLoop;
 class IOHandle;
 class io_listener;
 class Logger;
-
 
 class IOHandle
 {
@@ -25,7 +25,7 @@ public:
   IOHandle(const IOHandle&) = delete;
   IOHandle& operator=(const IOHandle&) = delete;
 
-  void set_listener(io_listener* l ) { m_listener = l; }
+  void set_listener(std::shared_ptr<io_listener> p) { m_listener = p; }
 
   /* Enqueue bytes to be sent */
   void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool close);
@@ -48,7 +48,7 @@ private:
   uv_stream_t* m_uv_handle;
   uv_async_t   m_write_async;
 
-  io_listener * m_listener;
+  std::weak_ptr<io_listener> m_listener;
 
   std::atomic<bool> m_is_closing;
   int m_closed_handles_count;

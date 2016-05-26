@@ -63,33 +63,9 @@ send_json(s, wamp_hello);
 jsonmsg = recv_json(s)
 
 # Send abort
-#print "sending abort ..."
-#wamp_abort =  json.dumps( [3, {}, "error.abort"] )
-#send_json(s, wamp_abort)
+print "sending abort ..."
+wamp_abort =  json.dumps( [3, {}, "error.abort"] )
+send_json(s, wamp_abort)
 
-
-# Send authentication
-print "sending auth ..."
-wamp_auth = onWampChallenge(jsonmsg[2] )
-send_json(s, wamp_auth)
-
-# Accept welcome message
-jsonmsg = recv_json(s)
-
-
-# Send subscribption
-print "sending subscribe ..."
-wamp_subscribe =  json.dumps( [32, 1, {}, "USERHB"] )
-send_json(s, wamp_subscribe)
-
-
-
-
-if (jsonmsg[0]==2):
-    session_state=session_states.open
-    print "wamp session open, session id:" , jsonmsg[1]
-
-while (session_state==session_states.open):
-    jsonmsg = recv_json(s)
-
+time.sleep(1)
 s.close

@@ -190,11 +190,13 @@ int router_conn::connect(const std::string & addr, int port)
               sp->invoke_router_session_connect_cb(0, is_open);
           };
 
-          impl->session = std::shared_ptr<wamp_session>
-            (new wamp_session( *impl->the_kernel,
-                               iohandle,
-                               false,
-                               impl->realm, std::move(fn)));
+          std::shared_ptr<wamp_session> sp =
+            wamp_session::create( *impl->the_kernel,
+                                  iohandle,
+                                  false,
+                                  impl->realm,
+                                  std::move(fn) );
+          impl->session = sp;
           impl->session->initiate_handshake();
         }
         else
