@@ -19,9 +19,9 @@ dealer_service::~dealer_service()
 }
 
 
-void dealer_service::listen(int port)
+std::future<int> dealer_service::listen(int port)
 {
-  m_impl->listen(port);
+  return m_impl->listen(port);
 }
 
 

@@ -105,15 +105,34 @@ void publisher_tep()
 
 }
 
-
-
 int main(int /* argc */, char** /* argv */)
 {
   std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(logger) );
+  mycs->start();
 
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);
   g_dealer = dealer;
-  dealer->listen(55555);
+
+
+  // start listening for sessions 
+  std::future<int> fut_listen_err = dealer->listen(55555);
+  std::future_status status = fut_listen_err.wait_for(std::chrono::seconds(2));
+
+  if (status == std::future_status::ready)
+  {
+    int err = fut_listen_err.get();
+    if (err)
+    {
+      std::cout << "listen failed, error " << err << ", " << strerror(err) <<  "\n";
+      return err;
+    }
+  }
+  else
+  {
+    std::cout << "timeout waiting for listen socket\n";
+    return 1;
+  }
+
 
   // std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_hello") );
   // std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_start") );
@@ -125,7 +144,6 @@ int main(int /* argc */, char** /* argv */)
 
   // mycs->add_topic( &topic );
 
-  mycs->start();
 
   std::thread publisher( publisher_tep );
 

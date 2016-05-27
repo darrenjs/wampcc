@@ -56,14 +56,17 @@ void dealer_service_impl::rpc_registered_cb(const rpc_details& r)
 }
 
 
-void dealer_service_impl::listen(int port)
+std::future<int> dealer_service_impl::listen(int port)
 {
+  std::promise<int> intPromise;
+  std::future<int> fut = intPromise.get_future();
+
   m_kernel.get_io()->add_server(
     port,
+    std::move(intPromise),
     [this](int /* port */, IOHandle* iohandle)
     {
       /* IO thread */
-      std::cout << "got new io connection\n";
 
       // TODO: this should be a local member
       server_msg_handler handlers;
@@ -100,6 +103,8 @@ void dealer_service_impl::listen(int port)
       }
 
     } );
+
+  return fut;
 }
 
 

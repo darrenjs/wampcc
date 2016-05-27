@@ -93,6 +93,18 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 }
 
 
+io_request::io_request(Logger * __logptr,
+                       int __port,
+                       std::promise<int> listen_err,
+                       socket_accept_cb __on_accept)
+  : logptr( __logptr ),
+    port( __port ),
+    listener_err( new std::promise<int>(std::move(listen_err) ) ),
+    on_accept( std::move(__on_accept) )
+{
+}
+
+
 IOLoop::IOLoop(Logger * logptr)
   : __logptr( logptr),
     m_uv_loop( new uv_loop_t() ),
@@ -146,8 +158,8 @@ IOLoop::~IOLoop()
 }
 
 void IOLoop::create_tcp_server_socket(int port,
-                                      socket_accept_cb cb
-  )
+                                      socket_accept_cb cb,
+                                      std::unique_ptr< std::promise<int> > listener_err )
 {
   /* UV Loop */
 
@@ -163,12 +175,12 @@ void IOLoop::create_tcp_server_socket(int port,
   uv_ip4_addr("0.0.0.0", port, &addr);
 
   unsigned flags = 0;
-  uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
-  int r = uv_listen((uv_stream_t *) &myserver->uvh, 5, __on_tcp_connect);
-  if (!r)
-  {
-    // TODO: handle listen failure
-  }
+  int r;
+
+  r = uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
+  if (r == 0)
+    r = uv_listen((uv_stream_t *) &myserver->uvh, 5, __on_tcp_connect);
+  listener_err->set_value(std::abs(r));
 
   m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
 }
@@ -178,7 +190,7 @@ void IOLoop::on_async()
 {
   /* IO thread */
 
-  std::vector< io_request > work;
+  std::vector< std::unique_ptr<io_request> > work;
   int pending_flags = eNone;
 
   {
@@ -204,16 +216,16 @@ void IOLoop::on_async()
     return;
   }
 
-  for (auto & item : work)
+  for (auto & user_req : work)
   {
-    if (item.addr.empty())
+    if (user_req->addr.empty())
     {
-      // TODO: check we dont already have port on this.
-      create_tcp_server_socket(item.port, item.on_accept);
+      create_tcp_server_socket(user_req->port, user_req->on_accept,
+                               std::move(user_req->listener_err));
     }
     else
     {
-      std::unique_ptr<io_request> req( new io_request( item ) );
+      std::unique_ptr<io_request> req( std::move(user_req) );
 
       // use C++ allocator for the uv objects, so we can use vanilla unique_ptr
 
@@ -225,9 +237,9 @@ void IOLoop::on_async()
 
       struct sockaddr_in dest;
       memset(&dest, 0, sizeof(sockaddr_in));
-      uv_ip4_addr(item.addr.c_str(), item.port, &dest);
+      uv_ip4_addr(req->addr.c_str(), req->port, &dest);
 
-      _INFO_("making TCP connection to " << item.addr.c_str() <<  ":" << item.port);
+      _INFO_("making tcp connection to " << req->addr.c_str() <<  ":" << req->port);
       int r = uv_tcp_connect(connect_req,
                              req->tcp_handle,
                              (const struct sockaddr*) &dest,
@@ -310,14 +322,19 @@ void IOLoop::on_timer()
   if (need_remove) m_handles.remove( nullptr );
 }
 
-void IOLoop::add_server(int port, socket_accept_cb cb)
+
+void IOLoop::add_server(int port,
+                        std::promise<int> listen_err,
+                        socket_accept_cb cb)
 {
+  std::unique_ptr<io_request> r( new io_request( __logptr,
+                                                 port,
+                                                 std::move(listen_err),
+                                                 std::move(cb) ) );
+
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
-    io_request r( __logptr );
-    r.port = port;
-    r.on_accept = cb;
-    m_pending_requests.push_back( r );
+    m_pending_requests.push_back( std::move(r) );
   }
 
   this->async_send();
@@ -354,13 +371,14 @@ void IOLoop::add_connection(std::string addr,
                             int port,
                             tcp_connect_cb cb)
 {
+  std::unique_ptr<io_request> r( new io_request( __logptr ) );
+  r->addr = addr;
+  r->port = port;
+  r->on_connect = std::move(cb);
+
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
-    io_request r( __logptr );
-    r.addr = addr;
-    r.port = port;
-    r.on_connect = std::move(cb);
-    m_pending_requests.push_back( r );
+    m_pending_requests.push_back( std::move(r) );
   }
 
   this->async_send();

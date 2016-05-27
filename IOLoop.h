@@ -10,6 +10,7 @@
 #include <list>
 #include <memory>
 #include <set>
+#include <future>
 
 // TODO: try and use pointers & forward decls in order to move the uv.h into the
 // .cc file.
@@ -28,13 +29,19 @@ typedef std::function<void(IOHandle*, int)> tcp_connect_cb;
 // TODO: try to move to impl file
 struct io_request
 {
+  Logger * logptr;
   std::string addr;
   int port = 0;
+  std::unique_ptr< std::promise<int> > listener_err;
   uv_tcp_t * tcp_handle = nullptr;
-  Logger * logptr;
   socket_accept_cb on_accept;
   tcp_connect_cb on_connect;
   io_request(Logger * __logptr) : logptr(__logptr) {}
+
+  io_request(Logger * __logptr,
+             int port,
+             std::promise<int> p,
+             socket_accept_cb );
 };
 
 
@@ -67,7 +74,7 @@ public:
   void add_passive_handle(tcp_server* server, IOHandle* iohandle);
   void add_active_handle(IOHandle* iohandle, int status, io_request*);
 
-  void add_server(int port, socket_accept_cb);
+  void add_server(int port, std::promise<int> listener_err, socket_accept_cb);
 
   void add_connection(std::string addr, int port, tcp_connect_cb);
 
@@ -85,10 +92,11 @@ private:
 
 private:
 
-  void create_tcp_server_socket(int port, socket_accept_cb cb);
+  void create_tcp_server_socket(int port, socket_accept_cb cb,
+                                std::unique_ptr< std::promise<int> > );
 
-  std::vector< io_request > m_pending_requests;
-  std::mutex                m_pending_requests_lock;
+  std::vector< std::unique_ptr<io_request> > m_pending_requests;
+  std::mutex                                 m_pending_requests_lock;
 
   enum PendingFlags
   {

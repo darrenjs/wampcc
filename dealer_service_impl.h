@@ -5,6 +5,7 @@
 #include "wamp_session.h"
 
 #include <memory>
+#include <future>
 
 namespace XXX {
 
@@ -38,7 +39,9 @@ public:
                           rpc_cb cb,
                           void * data);
 
-  void listen(int port);
+  /* Asynchronously begin accepting connections on the given port. If the bind
+   * and or listen fails, a non-zero error code is returned in the future. */
+  std::future<int> listen(int port);
 
   void disown();
 
