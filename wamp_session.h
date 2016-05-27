@@ -187,8 +187,6 @@ namespace XXX {
     char *  m_buf;
     size_t  m_bytes_avail;
 
-    bool m_is_closing; // TODO: remove
-
     bool m_is_passive;
 
     jalson::json_value m_challenge; // full message

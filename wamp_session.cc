@@ -81,7 +81,6 @@ static uint64_t generate_unique_session_id()
     m_next_request_id(1),
     m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
     m_bytes_avail(0),
-    m_is_closing(false),
     m_is_passive(is_passive),
     m_realm(__realm),
     m_notify_state_change_fn(state_cb),
@@ -110,7 +109,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
 /* Destructor */
 wamp_session::~wamp_session()
 {
-  _DEBUG_("wamp_session::~wamp_session");
+  // note: dont log in here, just in case logger has been deleted
   delete [] m_buf;
 }
 
@@ -201,9 +200,7 @@ void wamp_session::io_on_read(char* src, size_t len)
       msg.push_back( jalson::json_object() );
       msg.push_back( err_uri );
       this->send_msg( msg );
-    } catch (...){}
-
-    m_is_closing = true;
+    } catch (...){ log_exception(__logptr, "send_msg for outbound goodbye"); }
 
     this->close();
   }
@@ -582,7 +579,7 @@ void wamp_session::process_message(unsigned int message_type,
 
 void wamp_session::send_msg(jalson::json_array& jv, bool final)
 {
-  if (!m_is_closing)
+  if (m_state != eClosed && m_state != eClosing)
   {
     std::pair<const char*, size_t> bufs[2];
 
@@ -617,7 +614,7 @@ bool wamp_session::send_bytes(std::pair<const char*, size_t>* bufs, size_t count
 {
   /* EV thread */
 
-  if (!m_is_closing)
+  if (m_state != eClosed && m_state != eClosing)
   {
     std::lock_guard<std::mutex> guard(m_handle_lock);
     if (m_handle) m_handle->write_bufs(bufs, count, final);

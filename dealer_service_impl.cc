@@ -96,7 +96,7 @@ void dealer_service_impl::listen(int port)
                                 [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
                                 handlers);
         m_sesman->add_session(sp);
-        _INFO_( "session created, id:" << sp->unique_id() );
+        _INFO_( "session created #" << sp->unique_id() );
       }
 
     } );
