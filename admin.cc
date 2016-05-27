@@ -23,6 +23,7 @@
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
 
+std::shared_ptr<XXX::router_conn> rconn;
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eAll,
@@ -119,6 +120,9 @@ void procedure_cb(XXX::invoke_details& invocation)
   _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
+  // example of making a call back into the connection object during a callback
+  rconn->publish("call", jalson::json_object(), XXX::wamp_args());
+
   auto my_args =  invocation.args;
 
   my_args.args_list = jalson::json_array();
@@ -127,6 +131,10 @@ void procedure_cb(XXX::invoke_details& invocation)
   arr.push_back("back");
 
   invocation.yield_fn(my_args);
+
+  // now delete
+  // std::cout << "deleting this connection from user space\n";
+  // rconn.reset();
 }
 
 void call_cb(XXX::wamp_call_result r)
@@ -176,9 +184,16 @@ void router_connection_cb(XXX::router_conn* /*router_session*/,
   auto __logptr = logger;
   _INFO_ ("router connection is " << (is_open? "open" : "closed") << ", errcode " << errcode);
 
+
   g_connect_status = errcode;
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
+
+  if (!is_open)
+  {
+    _INFO_("Deleting the router-connection object");
+    rconn.reset();
+  }
 }
 
 
@@ -301,9 +316,11 @@ int main(int argc, char** argv)
 
   g_client->start();
 
-  XXX::router_conn rconn( g_client.get(),  "default_realm", router_connection_cb, nullptr );
+  rconn.reset(
+    new XXX::router_conn(g_client.get(),  "default_realm", router_connection_cb, nullptr )
+    );
 
-  rconn.connect("127.0.0.1", 55555);
+  rconn->connect("127.0.0.1", 55555);
 //  rconn.connect("10.255.255.1", 55555);
 
   // wait for a connection attempt to complete
@@ -343,16 +360,16 @@ int main(int argc, char** argv)
   // subscribe
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
-    rconn.subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
+    rconn->subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
 
   // register
   std::unique_ptr<callback_t> cb1( new callback_t(g_client.get(),"my_hello") );
   if (!uopts.register_procedure.empty())
   {
-    rconn.provide(uopts.register_procedure,
-                  jalson::json_object(),
+    rconn->provide(uopts.register_procedure,
+                   jalson::json_object(),
                   procedure_cb,
-                  (void*) cb1.get());
+                   (void*) cb1.get());
     long_wait = true;
   }
 
@@ -362,20 +379,20 @@ int main(int argc, char** argv)
     XXX::wamp_args pub_args;
     pub_args.args_list = jalson::json_value::make_array();
     pub_args.args_list.as_array().push_back(uopts.publish_message);
-    rconn.publish(uopts.publish_topic,
-                  jalson::json_object(),
-                  pub_args);
+    rconn->publish(uopts.publish_topic,
+                   jalson::json_object(),
+                   pub_args);
   }
 
   // call
   if (!uopts.call_procedure.empty())
   {
-    rconn.call(uopts.call_procedure,
-               jalson::json_object(),
-               args,
-               [](XXX::wamp_call_result r)
-               { call_cb(r);},
-               (void*)"I_called_the_proc");
+    rconn->call(uopts.call_procedure,
+                jalson::json_object(),
+                args,
+                [](XXX::wamp_call_result r)
+                { call_cb(r);},
+                (void*)"I_called_the_proc");
     wait_reply = true;
   }
 
