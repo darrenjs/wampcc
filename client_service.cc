@@ -29,7 +29,6 @@ struct router_conn_impl
   router_conn* owner;
   std::string realm;
   router_session_connect_cb m_user_cb;
-  std::shared_ptr<wamp_session> session;
 
   // using a recursive mutex, just in case the destructor is triggered during a
   // callback
@@ -46,8 +45,22 @@ struct router_conn_impl
   {
   }
 
+  void set_session(std::shared_ptr<wamp_session> sp)
+  {
+    m_session = std::move(sp);
+  }
+
+  const std::shared_ptr<wamp_session> & session() const
+  {
+    return m_session;
+  }
+
   ~router_conn_impl()
   {
+    // even though this class is the prime owner of the wamp_session, we need to
+    // check its existence here just in case the connect attempt failed, and a
+    // session was never created.
+    if (m_session) m_session->disable_callback();
     invalidate();
   }
 
@@ -59,6 +72,8 @@ struct router_conn_impl
     owner = nullptr;
   }
 
+  // TODO: how does this invocation of a callback, and locking, interact with
+  // the callbacks that come via the wamp_session?
   void invoke_router_session_connect_cb(int errorcode, bool is_open)
   {
     std::unique_lock<std::recursive_mutex> guard(lock);
@@ -67,6 +82,9 @@ struct router_conn_impl
         m_user_cb(owner, errorcode, is_open);
       } catch (...) {};
   }
+
+private:
+  std::shared_ptr<wamp_session> m_session;
 };
 
 
@@ -196,8 +214,8 @@ int router_conn::connect(const std::string & addr, int port)
                                   false,
                                   impl->realm,
                                   std::move(fn) );
-          impl->session = sp;
-          impl->session->initiate_handshake();
+          impl->set_session(sp);
+          impl->session()->initiate_handshake();
         }
         else
         {
@@ -232,8 +250,8 @@ t_request_id router_conn::call(std::string uri,
                                wamp_call_result_cb user_cb,
                                void* user_data)
 {
-  if (m_impl->session)
-    return m_impl->session->call(uri, options, args, user_cb, user_data);
+  if (m_impl->session())
+    return m_impl->session()->call(uri, options, args, user_cb, user_data);
   else
     return 0;
 }
@@ -244,8 +262,8 @@ t_request_id router_conn::subscribe(const std::string& uri,
                                     void * user_data)
 {
 
-  if (m_impl->session)
-    return m_impl->session->subscribe(uri, options, user_cb, user_data);
+  if (m_impl->session())
+    return m_impl->session()->subscribe(uri, options, user_cb, user_data);
   else
     return 0;
 }
@@ -256,8 +274,8 @@ t_request_id router_conn::publish(const std::string& uri,
                                   wamp_args args)
 {
 
-  if (m_impl->session)
-    return m_impl->session->publish(uri, options, args);
+  if (m_impl->session())
+    return m_impl->session()->publish(uri, options, args);
   else
     return 0;
 }
@@ -269,8 +287,8 @@ t_request_id router_conn::provide(const std::string& uri,
                                   rpc_cb user_cb,
                                   void * user_data)
 {
-  if (m_impl->session)
-    return m_impl->session->provide(uri, options, user_cb, user_data);
+  if (m_impl->session())
+    return m_impl->session()->provide(uri, options, user_cb, user_data);
   else
     return 0;
 }

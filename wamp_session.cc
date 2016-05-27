@@ -85,7 +85,8 @@ static uint64_t generate_unique_session_id()
     m_is_passive(is_passive),
     m_realm(__realm),
     m_notify_state_change_fn(state_cb),
-    m_server_handler(handler)
+    m_server_handler(handler),
+    m_user_cb_allowed(true)
 {
   // need to create a sp<> before can use shared_from_this()
   outref = std::shared_ptr<wamp_session>(this);
@@ -109,6 +110,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
 /* Destructor */
 wamp_session::~wamp_session()
 {
+  _DEBUG_("wamp_session::~wamp_session");
   delete [] m_buf;
 }
 
@@ -121,6 +123,7 @@ uint64_t wamp_session::unique_id()
 
 void wamp_session::close()
 {
+  // ANY thread
   change_state(eClosing, eClosing);
   std::lock_guard<std::mutex> guard(m_handle_lock);
   if (m_handle) m_handle->request_close();
@@ -131,6 +134,8 @@ void wamp_session::close()
 void wamp_session::io_on_close()
 {
   /* IO thread */
+
+  _DEBUG_("wamp_session::io_on_close");
 
   // following the call of this callback, we must not call the IO handle again
   {
@@ -360,8 +365,9 @@ void wamp_session::change_state(SessionState expected, SessionState next)
                                     "eRecvAuth","eOpen","eClosing", "eClosed",
                                     "eSentHello","eRecvChallenge","eSentAuth" } ;
 
+  if (m_state == eClosed) return;
 
-  if (next == eClosed && m_state != eClosed)
+  if (next == eClosed)
   {
     _INFO_("session closed #" << m_sid);
     m_state = eClosed;
@@ -1010,7 +1016,10 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
           sp->reply_with_error(INVOCATION, request_id, std::move(args), std::move(error_uri));
       };
 
-    iter->second.user_cb(invoke);
+    {
+      std::unique_lock<std::recursive_mutex> guard(m_user_cb_lock);
+      if (m_user_cb_allowed) iter->second.user_cb(invoke);
+    }
 
   }
   catch (XXX::wamp_error& ex)
@@ -1097,13 +1106,16 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
     if (temp.user_cb)
       try
       {
-        temp.user_cb(XXX::e_sub_start,
-                     temp.uri,
-                     jalson::json_object(),
-                     jalson::json_array(),
-                     jalson::json_object(),
-                     temp.user_data);
-      } catch(...){}
+        std::unique_lock<std::recursive_mutex> guard(m_user_cb_lock);
+        if (m_user_cb_allowed)
+          temp.user_cb(XXX::e_sub_start,
+                       temp.uri,
+                       jalson::json_object(),
+                       jalson::json_array(),
+                       jalson::json_object(),
+                       temp.user_data);
+
+      } catch(...){ log_exception(__logptr, "inbound subscribed user callback"); }
 
   }
 }
@@ -1127,13 +1139,15 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
   if (iter !=m_subscriptions.end())
   {
     try {
-      iter->second.user_cb(e_sub_update,
-                           iter->second.uri,
-                           details,
-                           args_list,
-                           args_dict,
-                           iter->second.user_data);
-    } catch (...){}
+      std::unique_lock<std::recursive_mutex> guard(m_user_cb_lock);
+      if (m_user_cb_allowed)
+        iter->second.user_cb(e_sub_update,
+                             iter->second.uri,
+                             details,
+                             args_list,
+                             args_dict,
+                             iter->second.user_data);
+    } catch (...){ log_exception(__logptr, "inbound event user callback"); }
 
   }
   else
@@ -1210,7 +1224,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
 
   if (found)
   {
-    if (orig_call.user_cb)
+    if (orig_call.user_cb && m_user_cb_allowed)
     {
       wamp_call_result r;
       r.was_error = false;
@@ -1221,9 +1235,10 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
       r.details = options;
 
       try {
-        orig_call.user_cb(std::move(r));
+        std::unique_lock<std::recursive_mutex> guard(m_user_cb_lock);
+        if (m_user_cb_allowed) orig_call.user_cb(std::move(r));
       }
-      catch(...){}
+      catch(...){ log_exception(__logptr, "inbound result user callback"); }
     }
   }
   else
@@ -1233,7 +1248,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
 
 }
 
-
+// TODO: split this into two error function, once for client role, other for active roll
 void wamp_session::process_inbound_error(jalson::json_array & msg)
 {
   /* EV thread */
@@ -1270,7 +1285,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
       try
       {
         orig_request.reply_fn(args, std::move(error_ptr));
-      } catch (...){}
+      } catch (...){ log_exception(__logptr, "inbound invocation error user callback"); }
 
       break;
     }
@@ -1292,7 +1307,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
 
       if (found)
       {
-        if (orig_call.user_cb)
+        if (orig_call.user_cb && m_user_cb_allowed)
         {
           wamp_call_result r;
           r.was_error = true;
@@ -1304,9 +1319,10 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
           r.details = details;
 
           try {
-            orig_call.user_cb(std::move(r));
+            std::unique_lock<std::recursive_mutex> guard(m_user_cb_lock);
+            if (m_user_cb_allowed) orig_call.user_cb(std::move(r));
           }
-          catch(...){}
+          catch(...){ log_exception(__logptr, "inbound call error user callback");}
         }
       }
       else
@@ -1619,10 +1635,18 @@ void wamp_session::reply_with_error(
 }
 
 
-  bool wamp_session::uses_heartbeats() const
+bool wamp_session::uses_heartbeats() const
+{
+  return m_hb_intvl > 0;
+}
 
-  {
-    return m_hb_intvl > 0;
-  }
+
+void wamp_session::disable_callback()
+{
+  // ANY thread
+
+  std::unique_lock<std::recursive_mutex> guard(m_user_cb_lock);
+  m_user_cb_allowed = false;
+}
 
 } // namespace XXX

@@ -51,7 +51,9 @@ namespace XXX {
 
     void close();
 
-    void remove_listener();
+    /* After this is called, no more calls will be made from wamp_session into
+     * the user space (e.g. to deliver invocation requests, etc) */
+    void disable_callback();
 
     session_handle handle() { return shared_from_this(); }
 
@@ -259,6 +261,10 @@ namespace XXX {
     // unprovide() is added, and if it is implemented synchronously.
     std::map<t_request_id, procedure> m_procedures;
     std::map<t_subscription_id, subscription> m_subscriptions;
+
+    // control when callbacks are allowed into user code
+    std::recursive_mutex m_user_cb_lock;
+    bool                 m_user_cb_allowed;
   };
 
 } // namespace XXX
