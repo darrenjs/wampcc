@@ -7,6 +7,23 @@
 
 namespace XXX {
 
+
+static void log_exception(Logger *__logptr, const char* callsite)
+{
+  try {
+    throw;
+  }
+  catch (std::exception& e)
+  {
+    _WARN_("exception thrown for " << callsite << " : " << e.what());
+  }
+  catch (...)
+  {
+    _WARN_("exception thrown for " << callsite << " : unknown");
+  }
+}
+
+
 struct ev_function_dispatch : event
 {
   ev_function_dispatch(std::function<void()> __fn) :
@@ -76,13 +93,14 @@ void event_loop::hb_check()
       hb_tmp.swap( m_hb_targets );
     }
 
-    for (auto fn : hb_tmp)
+    for (auto hb_fn : hb_tmp)
     {
       try
       {
-        bool continue_hb = fn();
-        if (continue_hb) add_hb_target( std::move(fn) );
-      } catch (...) {}
+        bool continue_hb = hb_fn();
+        if (continue_hb) add_hb_target( std::move(hb_fn) );
+      }
+      catch (...)  { log_exception(__logptr, "heartbeat callback"); }
     }
   }
 }
