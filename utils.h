@@ -1,6 +1,8 @@
 #ifndef XXX_UTILS_H
 #define XXX_UTILS_H
 
+#include "Logger.h"
+
 #include <sstream>
 
 
@@ -18,6 +20,8 @@
 
 namespace XXX {
 
+class Logger;
+
 int compute_HMACSHA256(const char* key,
                        int keylen,
                        const char* msg,
@@ -25,6 +29,10 @@ int compute_HMACSHA256(const char* key,
                        char * dest,
                        unsigned int * destlen,
                        int output_mode);
+
+
+/* must be called with an active exception */
+void log_exception(Logger *__logptr, const char* callsite);
 
 
 } // namespace XXX

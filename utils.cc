@@ -131,6 +131,20 @@ int compute_HMACSHA256(const char* key,
   return retval;
 }
 
+void log_exception(Logger *__logptr, const char* callsite)
+{
+  try {
+    throw;
+  }
+  catch (std::exception& e)
+  {
+    _WARN_("exception thrown for " << callsite << " : " << e.what());
+  }
+  catch (...)
+  {
+    _WARN_("exception thrown for " << callsite << " : unknown");
+  }
+}
 
 
 } // namespace XXX
