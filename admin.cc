@@ -430,6 +430,10 @@ int main(int argc, char** argv)
   }
 
   sleep(1); // TODO: think I need this, to give publish time to complete
+  rconn.reset();
+
+  // remember to free the kernel and logger after all sessions are closed
+  // (sessions might attempt logging during their destruction)
   g_client.reset();
   delete logger;
   return 0;
