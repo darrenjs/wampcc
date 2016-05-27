@@ -8,22 +8,6 @@
 namespace XXX {
 
 
-static void log_exception(Logger *__logptr, const char* callsite)
-{
-  try {
-    throw;
-  }
-  catch (std::exception& e)
-  {
-    _WARN_("exception thrown for " << callsite << " : " << e.what());
-  }
-  catch (...)
-  {
-    _WARN_("exception thrown for " << callsite << " : unknown");
-  }
-}
-
-
 struct ev_function_dispatch : event
 {
   ev_function_dispatch(std::function<void()> __fn) :
