@@ -60,7 +60,12 @@ struct router_conn_impl
     // even though this class is the prime owner of the wamp_session, we need to
     // check its existence here just in case the connect attempt failed, and a
     // session was never created.
-    if (m_session) m_session->disable_callback();
+    if (m_session)
+    {
+      m_session->close();
+      m_session->disable_callback();
+    }
+
     invalidate();
   }
 
@@ -201,7 +206,7 @@ int router_conn::connect(const std::string & addr, int port)
         if (iohandle)
         {
           // The availability of an iohandle means the connect was
-          // successful. Next stage is to perform the handshake.
+          // successful. Next stage is to initiate the handshake.
 
           session_state_fn fn = [wp](session_handle, bool is_open){
             if (auto sp = wp.lock())
@@ -291,6 +296,13 @@ t_request_id router_conn::provide(const std::string& uri,
     return m_impl->session()->provide(uri, options, user_cb, user_data);
   else
     return 0;
+}
+
+
+void router_conn::close()
+{
+  if (m_impl->session())
+    m_impl->session()->close();
 }
 
 

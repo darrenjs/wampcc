@@ -110,6 +110,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
 wamp_session::~wamp_session()
 {
   // note: dont log in here, just in case logger has been deleted
+  std::cout << "wamp_session::~wamp_session\n";
   delete [] m_buf;
 }
 
@@ -354,14 +355,30 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
   }
 
 }
-//----------------------------------------------------------------------
+
+
+const char* wamp_session::state_to_str(wamp_session::SessionState s)
+{
+  switch (s) {
+    case wamp_session::eInit : return "eInit";
+    case wamp_session::eRecvHello : return "eRecvHello";
+    case wamp_session::eSentChallenge : return "eSentChallenge";
+    case wamp_session::eRecvAuth : return "eRecvAuth";
+    case wamp_session::eSentHello : return "eSentHello";
+    case wamp_session::eRecvChallenge : return "eRecvChallenge";
+    case wamp_session::eSentAuth : return "eSentAuth";
+    case wamp_session::eOpen : return "eOpen";
+    case wamp_session::eClosing : return "eClosing";
+    case wamp_session::eClosed : return "eClosed";
+    case wamp_session::eStateMax : return "eStateMax";
+    default: return "unknown_state";
+  };
+
+}
+
 
 void wamp_session::change_state(SessionState expected, SessionState next)
 {
-  std::vector<std::string> names = {"eInit","eRecvHello","eSentChallenge",
-                                    "eRecvAuth","eOpen","eClosing", "eClosed",
-                                    "eSentHello","eRecvChallenge","eSentAuth" } ;
-
   if (m_state == eClosed) return;
 
   if (next == eClosed)
@@ -380,7 +397,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 
   if (m_state == expected)
   {
-    _INFO_("wamp_session state: from " << names[m_state] << " to " << names[next]);
+    _INFO_("wamp_session state: from " << state_to_str(m_state) << " to " << state_to_str(next));
     m_state = next;
 
     if (m_state == eOpen)
@@ -407,7 +424,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
   }
   else
   {
-    _ERROR_("wamp_session state failure, cannot move from " << names[m_state] << " to " << names[next]);
+    _ERROR_("wamp_session state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
   }
 
 }
@@ -417,6 +434,8 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 void wamp_session::process_message(unsigned int message_type,
                                    jalson::json_array& ja)
 {
+  // IO thread
+
 //  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
 
   if (m_state == eClosing || m_state == eClosed) return;
@@ -1641,7 +1660,7 @@ bool wamp_session::uses_heartbeats() const
 void wamp_session::disable_callback()
 {
   // ANY thread
-
+  std::cout << "wamp_session::disable_callback\n";
   std::unique_lock<std::recursive_mutex> guard(m_user_cb_lock);
   m_user_cb_allowed = false;
 }

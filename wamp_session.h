@@ -152,7 +152,7 @@ namespace XXX {
       eClosed,
 
       eStateMax
-    } m_state;   // TODO: this is my experiment with makeing a session specific to a session owned by a delare
+    } m_state;
 
     void change_state(SessionState expected, SessionState next);
 
@@ -163,6 +163,7 @@ namespace XXX {
     void handle_WELCOME(jalson::json_array& ja);
 
     void notify_session_state_change(bool is_open);
+    static const char* state_to_str(wamp_session::SessionState);
 
 
     Logger *__logptr; /* name chosen for log macros */

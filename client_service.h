@@ -29,6 +29,9 @@ public:
 
   int connect(const std::string & addr, int port);
 
+  /* request close */
+  void close();
+
   // Register a procedure with a remote dealer
   t_request_id provide(const std::string& uri,
                        const jalson::json_object& options,
