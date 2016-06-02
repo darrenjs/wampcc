@@ -22,8 +22,23 @@ class Logger;
 class IOLoop;
 class IOHandle;
 
+/* Represents the asynchronous task of creating an active socket connection */
+class io_connector
+{
+public:
+  io_connector(std::string __addr, int __port, IOLoop* __io_loop);
 
-typedef std::function<void(int port, IOHandle*)> socket_accept_cb;
+  // TODO: tidy this up
+  std::future< std::unique_ptr<IOHandle> > get_future() { return iohandle_promise.get_future(); }
+  std::string addr;
+  int port;
+  IOLoop * io_loop;
+  uv_tcp_t * tcp_handle;
+  std::promise< std::unique_ptr<IOHandle> > iohandle_promise;
+};
+
+
+typedef std::function<void(int port, std::unique_ptr<IOHandle>)> socket_accept_cb;
 typedef std::function<void(IOHandle*, int)> tcp_connect_cb;
 
 // TODO: try to move to impl file
@@ -35,7 +50,10 @@ struct io_request
   std::unique_ptr< std::promise<int> > listener_err;
   uv_tcp_t * tcp_handle = nullptr;
   socket_accept_cb on_accept;
-  tcp_connect_cb on_connect;
+
+  std::shared_ptr<io_connector> connector;
+
+
   io_request(Logger * __logptr) : logptr(__logptr) {}
 
   io_request(Logger * __logptr,
@@ -72,11 +90,11 @@ public:
   void async_send();
 
   void add_passive_handle(tcp_server* server, IOHandle* iohandle);
-  void add_active_handle(IOHandle* iohandle, int status, io_request*);
 
   void add_server(int port, std::promise<int> listener_err, socket_accept_cb);
 
-  void add_connection(std::string addr, int port, tcp_connect_cb);
+
+  std::shared_ptr<io_connector> add_connection(std::string addr, int port);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
@@ -85,7 +103,6 @@ public:
 private:
   Logger * __logptr;
   uv_loop_t*   m_uv_loop;
-  std::unique_ptr<uv_timer_t> m_timer;
   std::unique_ptr<uv_async_t> m_async;
   std::thread  m_thread;
   bool m_async_closed = false;

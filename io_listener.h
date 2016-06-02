@@ -1,6 +1,8 @@
 #ifndef XXX_IO_LISTENER_H
 #define XXX_IO_LISTENER_H
 
+#include <cstddef>
+
 namespace XXX {
 
 class IOHandle;

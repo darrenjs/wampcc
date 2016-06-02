@@ -8,6 +8,7 @@
 #include "pubsub_man.h"
 #include "event_loop.h"
 #include "IOLoop.h"
+#include "IOHandle.h"
 #include "Logger.h"
 
 
@@ -56,6 +57,12 @@ void dealer_service_impl::rpc_registered_cb(const rpc_details& r)
 }
 
 
+static void session_closed(wamp_session*)
+{
+  std::cout << "session_closed new cb\n";
+}
+
+
 std::future<int> dealer_service_impl::listen(int port)
 {
   std::promise<int> intPromise;
@@ -64,7 +71,7 @@ std::future<int> dealer_service_impl::listen(int port)
   m_kernel.get_io()->add_server(
     port,
     std::move(intPromise),
-    [this](int /* port */, IOHandle* iohandle)
+    [this](int /* port */, std::unique_ptr<IOHandle> ioh)
     {
       /* IO thread */
 
@@ -93,10 +100,11 @@ std::future<int> dealer_service_impl::listen(int port)
       {
         std::shared_ptr<wamp_session> sp =
           wamp_session::create( m_kernel,
-                                iohandle,
+                                std::move(ioh),
                                 true, /* session is passive */
                                 "" /* undefined realm */,
                                 [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
+                                session_closed,
                                 handlers);
         m_sesman->add_session(sp);
         _INFO_( "session created #" << sp->unique_id() );

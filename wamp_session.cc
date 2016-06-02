@@ -64,17 +64,18 @@ static uint64_t generate_unique_session_id()
 
 /* Constructor */
   wamp_session::wamp_session(kernel& __kernel,
-                             IOHandle* h,
+                             std::unique_ptr<IOHandle> h,
                              bool is_passive,
                              std::string __realm,
                              session_state_fn state_cb,
                              std::shared_ptr<wamp_session>& outref,
-                             server_msg_handler handler)
+                             server_msg_handler handler,
+                             session_closed_cb closed_cb)
   : m_state( eInit ),
     __logptr(__kernel.get_logger()),
     m_kernel(__kernel),
     m_sid( generate_unique_session_id() ),
-    m_handle( h ),
+    m_handle( std::move(h) ),
     m_hb_intvl(2),  // TODO HB's are not being sent at this rate
     m_time_create(time(NULL)),
     m_time_last_msg_recv(time(NULL)),
@@ -85,7 +86,9 @@ static uint64_t generate_unique_session_id()
     m_realm(__realm),
     m_notify_state_change_fn(state_cb),
     m_server_handler(handler),
-    m_user_cb_allowed(true)
+    m_user_cb_allowed(true),
+    m_closed_cb(closed_cb),
+    m_invoke_final_ev(false)
 {
   // need to create a sp<> before can use shared_from_this()
   outref = std::shared_ptr<wamp_session>(this);
@@ -94,14 +97,15 @@ static uint64_t generate_unique_session_id()
 
 
 std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
-                                                   IOHandle * ioh,
+                                                   std::unique_ptr<IOHandle> ioh,
                                                    bool is_passive,
                                                    std::string realm,
                                                    session_state_fn state_cb,
+                                                   session_closed_cb  closed_cb,
                                                    server_msg_handler handler)
 {
   std::shared_ptr<wamp_session> sp;
-  new wamp_session(k, ioh, is_passive, realm, state_cb, sp, handler);
+  new wamp_session(k, std::move(ioh), is_passive, realm, state_cb, sp, handler, closed_cb);
   return sp;
 }
 
@@ -128,6 +132,48 @@ void wamp_session::close()
   std::lock_guard<std::mutex> guard(m_handle_lock);
   if (m_handle) m_handle->request_close();
 }
+
+void wamp_session::new_request_close()
+{
+  // ANY thread
+
+  // change_state(eClosing, eClosing);
+
+  // std::lock_guard<std::mutex> guard(m_handle_lock);
+  // if (m_handle)
+  // {
+  //   // so here, the IO closure has not yet happened, so we want to schedule it
+  //   // later
+  //   m_invoke_final_ev = true;
+  //   std::cout << "wamp_session::new_request_close making call to IO handle request close, m_invoke_final_ev=" << m_invoke_final_ev << "\n";
+  //   m_handle->request_close();
+  // }
+  // else
+  // {
+  //   std::cout << "IO already closed" << "\n";
+  //   //schedule_final_event();
+  // }
+
+}
+
+// void wamp_session::schedule_final_event()
+// {
+//   std::cout << "wamp_session::schedule_final_event, m_invoke_final_ev=" << m_invoke_final_ev << "\n";
+//   std::lock_guard<std::mutex> guard(m_allow_ev_lock);
+//   if (m_allow_ev)
+//   {
+//     m_allow_ev = false;
+//     std::weak_ptr<wamp_session> wp = handle();
+//     m_kernel.get_event_loop()->dispatch( [ this, wp ]() {
+//       if (auto sp = wp.lock())
+//         sp->m_closed_cb(this);
+//     } );
+//   }
+//   else
+//   {
+//     _WARN_("request shutdown called multiple times");
+//   }
+// }
 
 //----------------------------------------------------------------------
 

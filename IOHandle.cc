@@ -1,15 +1,16 @@
 #include "IOHandle.h"
 
 #include "IOLoop.h"
-#include "wamp_session.h"
 #include "io_listener.h"
 #include "Logger.h"
+#include "utils.h"
 
-#include <iostream>
+
 #include <memory>
 #include <sstream>
 
 #include <string.h>
+#include <unistd.h>
 
 namespace XXX {
 
@@ -42,7 +43,7 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
                                   size_t suggested_size,
                                   uv_buf_t* buf )
 {
-  // TODO: not the most efficient
+  // improve memory efficiency
   *buf = uv_buf_init((char *) new char[suggested_size], suggested_size);
 }
 
@@ -50,14 +51,16 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
   : __logptr(logger),
     m_uv_handle(hdl),
-    m_is_closing(false),
     m_closed_handles_count(0),
     m_bytes_pending(0),
     m_bytes_written(0),
     m_bytes_read(0),
     m_pending_close_handles(false),
-    m_pending_call_close(false)
+    m_shfut_io_closed(m_io_has_closed.get_future()),
+    m_state(eOpen)
 {
+  /* IO thread */
+
   m_uv_handle->data = this;
 
   // set up the async handler
@@ -67,21 +70,22 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
     });
   m_write_async.data = this;
 
-  // enable for reading
+  // enable for reading - TODO: delay until wamp_session ready
   uv_read_start(m_uv_handle, iohandle_alloc_buffer,
                 [](uv_stream_t*  uvh, ssize_t nread, const uv_buf_t* buf)
                 {
                   IOHandle * iohandle = (IOHandle *) uvh->data;
-                  iohandle->on_read_cb(uvh, nread, buf);
+                  iohandle->on_read_cb(nread, buf);
                 });
 }
 
 
-/* Destructor */
 IOHandle::~IOHandle()
 {
-  // Note, the assumption in here is that the socket will already have been
-  // closed before this object is deleted.
+  // If this object we can still be called by the IO thread, then a core dump or
+  // other undefined behaviour will happen shortly.  Remove that uncertainty by
+  // performing an immediate exit.
+  if (m_state != eClosed) std::terminate();
 
   delete m_uv_handle;
 
@@ -96,14 +100,20 @@ void IOHandle::on_close_cb()
 {
   /* IO thread */
 
-  m_closed_handles_count++ ;
-}
+  if (++m_closed_handles_count == 2)
+  {
+    // all our handles have been closed, so no more callbacks are due from the
+    // IO service
+    m_state = eClosed;
 
+    if (auto sp = m_listener.lock())
+    {
+      sp->io_on_close();
+      m_listener.reset();
+    }
 
-bool IOHandle::can_be_deleted() const
-{
-  // we are ready for deletion once all our internal libuv handles are closed
-  return m_closed_handles_count >= 2;
+    m_io_has_closed.set_value();
+  }
 }
 
 
@@ -128,14 +138,7 @@ void IOHandle::write_async()
   }
 
 
-  // handle user request to close
-  if (m_pending_call_close)
-  {
-    init_close();
-    return;
-  }
-
-  std::vector< uv_buf_t >  copy;
+  std::vector< uv_buf_t > copy;
   {
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
     m_pending_write.swap( copy );
@@ -146,7 +149,7 @@ void IOHandle::write_async()
 
   static size_t PENDING_MAX = 1 * 1000000;
 
-  if (!m_is_closing && !copy.empty())
+  if (m_state==eOpen && !copy.empty())
   {
     if (bytes_to_send > (PENDING_MAX - m_bytes_pending))
     {
@@ -178,15 +181,17 @@ void IOHandle::write_async()
 }
 
 
-// TODO: need to use the close variable
+
 void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
 {
   /* ANY thread */
 
+  if (m_state != eOpen) return;
+
   std::vector< uv_buf_t > bufs;
   bufs.reserve(count);
 
-  // TODO: this is not an efficient way to manage buffer memory
+  // improve memory usage here
   for (size_t i = 0; i < count ; i++)
   {
     uv_buf_t buf = uv_buf_init( new char[ srcbuf->second ], srcbuf->second);
@@ -195,59 +200,56 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
     bufs.push_back(buf);
   }
 
+
   {
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
-    m_pending_write.insert(m_pending_write.end(), bufs.begin(), bufs.end());
+    if (m_state == eOpen)
+    {
+      m_pending_write.insert(m_pending_write.end(), bufs.begin(), bufs.end());
+      bufs.clear();
+      uv_async_send( &m_write_async );
+    }
   }
 
-  uv_async_send( &m_write_async );
+  if (!bufs.empty())
+    for (auto & i : bufs ) delete [] i.base;
 }
 
 
-void IOHandle::request_close()
+/* User wants to initiate closure of the IO handle */
+std::shared_future<void> IOHandle::request_close()
 {
   /* ANY thread */
 
-  {
-    std::lock_guard<std::mutex> guard(m_pending_write_lock);
-    m_pending_call_close = true;
-  }
+  init_close();
 
-  uv_async_send( &m_write_async );
+  return m_shfut_io_closed;
 }
+
 
 void IOHandle::init_close()
 {
-  /* IO
+  /* IO thread */
 
-	   Note: this must not be called from the wamp_session, because deadlock will happen.
-  */
+  std::lock_guard<std::mutex> guard(m_pending_write_lock);
 
-  if ( m_is_closing ) return;
+  if (m_state == eOpen)
+  {
+    m_state = eClosing;
 
-  // indicate we are closed at earliest oppurtunity
-  m_is_closing = true;
-
-  // Instruct listener/owner never to call us again, to prevent it sending new
-  // output requests after the close request.
-  if (auto sp = m_listener.lock()) sp->io_on_close();
-  m_listener.reset();
-
-  /* Raise an async request to close the socket.  This will be the last async
-   * operation requested.  I.e., there will no more requests coming from the
-   * wamp_session object which owns this handle. */
-  m_pending_close_handles = true;
-  uv_async_send( &m_write_async );
+    m_pending_close_handles = true;
+    uv_async_send( &m_write_async );
+  }
 }
 
 
 void IOHandle::on_write_cb(uv_write_t * req, int status)
 {
   /* IO thread */
+  std::unique_ptr<write_req> wr ((write_req*) req); // ensure deletion
 
   try
   {
-
     if (status == 0)
     {
       size_t total = 0;
@@ -266,15 +268,11 @@ void IOHandle::on_write_cb(uv_write_t * req, int status)
       init_close();
     }
   }
-  catch (...){}
-
-  write_req* wr = (write_req*) req;
-  delete wr;
+  catch (...){log_exception(__logptr, "IO thread in on_write_cb");}
 }
 
 
-void IOHandle::on_read_cb(uv_stream_t*  /*uvh*/,
-                          ssize_t nread ,
+void IOHandle::on_read_cb(ssize_t nread ,
                           const uv_buf_t* buf)
 {
   /* IO thread */
@@ -297,14 +295,12 @@ void IOHandle::on_read_cb(uv_stream_t*  /*uvh*/,
   }
   catch (...)
   {
+    log_exception(__logptr, "IO thread in on_read_cb");
     init_close();
   }
 
   delete [] buf->base;
 }
-
-
-
 
 
 } // namespace XXX

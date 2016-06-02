@@ -2,8 +2,10 @@
 
 #include "Logger.h"
 #include "IOHandle.h"
+#include "io_handle.h"
 
 #include <iostream>
+#include <system_error>
 
 #include <unistd.h>
 #include <string.h>
@@ -24,27 +26,26 @@ static void __on_tcp_connect_cb(uv_connect_t* __req, int status )
   IOLoop * ioloop = static_cast<IOLoop* >(__req->handle->loop->data);
 
   // get the user object
-  std::unique_ptr<io_request> ioreq  ((io_request*) connect_req->data );
+  std::unique_ptr<io_request> ioreq ((io_request*) connect_req->data );
   Logger * __logptr = ioreq->logptr;
 
   if (status < 0)
   {
-    // libuv, the status is the negative of the errno (on linux)
-    _WARN_( "connect error, " <<  uv_strerror(status) );
-
-    ioloop->add_active_handle(nullptr, abs(status), ioreq.get());
-
-    delete ioreq->tcp_handle;
+    ioreq->connector->iohandle_promise.set_exception(
+      std::make_exception_ptr( std::system_error(abs(status), std::system_category()) )
+      );
   }
   else
   {
-    IOHandle* ioh = new IOHandle( __logptr,
-                                  (uv_stream_t *) ioreq->tcp_handle,
-                                  ioloop );
-    ioloop->add_active_handle(ioh, 0, ioreq.get());
+    std::unique_ptr< IOHandle > hndl (
+      new IOHandle( __logptr,
+                    (uv_stream_t *) ioreq->connector->tcp_handle,
+                    ioloop ) );
+    ioreq->connector->iohandle_promise.set_value( std::move(hndl) );
   }
 
 }
+
 
 static void __on_tcp_connect(uv_stream_t* server, int status)
 {
@@ -93,6 +94,10 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 }
 
 
+
+
+
+
 io_request::io_request(Logger * __logptr,
                        int __port,
                        std::promise<int> listen_err,
@@ -108,7 +113,7 @@ io_request::io_request(Logger * __logptr,
 IOLoop::IOLoop(Logger * logptr)
   : __logptr( logptr),
     m_uv_loop( new uv_loop_t() ),
-    m_timer( new uv_timer_t() ),
+
     m_async( new uv_async_t() ),
     m_pending_flags( eNone )
 {
@@ -121,15 +126,6 @@ IOLoop::IOLoop(Logger * logptr)
       p->on_async();
     });
   m_async->data = this;
-
-  // set up timer
-
-  uv_timer_init(m_uv_loop, m_timer.get());
-  m_timer->data = this;
-  uv_timer_start(m_timer.get(), [](uv_timer_t* h){
-      IOLoop* p = static_cast<IOLoop*>( h->data );
-      p->on_timer();
-    }, SYSTEM_HEARTBEAT_MS, SYSTEM_HEARTBEAT_MS);
 
   // TODO: I prefer to not have to do this.  Need to review what is the correct
   // policy for handling sigpipe using libuv.
@@ -149,9 +145,6 @@ void IOLoop::stop()
 
 IOLoop::~IOLoop()
 {
-  for (auto & item : m_handles) delete item;
-  m_handles.clear();
-
   // uv_loop kept as raw pointer, because need to pass to several uv functions
   uv_loop_close(m_uv_loop);
   delete m_uv_loop;
@@ -189,7 +182,6 @@ void IOLoop::create_tcp_server_socket(int port,
 void IOLoop::on_async()
 {
   /* IO thread */
-
   std::vector< std::unique_ptr<io_request> > work;
   int pending_flags = eNone;
 
@@ -209,7 +201,6 @@ void IOLoop::on_async()
     for (auto & i : m_server_handles)
       uv_close((uv_handle_t*)i.get(), 0);
 
-    uv_close((uv_handle_t*) m_timer.get(), 0);
     uv_close((uv_handle_t*) m_async.get(), 0);
 
     m_async_closed = true;
@@ -218,19 +209,10 @@ void IOLoop::on_async()
 
   for (auto & user_req : work)
   {
-    if (user_req->addr.empty())
+    if (user_req->connector)
     {
-      create_tcp_server_socket(user_req->port, user_req->on_accept,
-                               std::move(user_req->listener_err));
-    }
-    else
-    {
-      std::unique_ptr<io_request> req( std::move(user_req) );
-
-      // use C++ allocator for the uv objects, so we can use vanilla unique_ptr
-
-      req->tcp_handle = new uv_tcp_t();
-      uv_tcp_init(m_uv_loop, req->tcp_handle);
+      // create the request
+      std::unique_ptr<io_request> req( std::move(user_req) );  // <--- the sp<connector> is here now
 
       uv_connect_t * connect_req = new uv_connect_t();
       connect_req->data = (void*) req.get();
@@ -239,28 +221,31 @@ void IOLoop::on_async()
       memset(&dest, 0, sizeof(sockaddr_in));
       uv_ip4_addr(req->addr.c_str(), req->port, &dest);
 
-      _INFO_("making tcp connection to " << req->addr.c_str() <<  ":" << req->port);
+      _INFO_("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
       int r = uv_tcp_connect(connect_req,
-                             req->tcp_handle,
+                             req->connector->tcp_handle,
                              (const struct sockaddr*) &dest,
                              __on_tcp_connect_cb);
+
       if (r == 0)
       {
         req.release(); // owner transfered to UV callback
       }
       else
       {
-        if (req->on_connect)
-        {
-          try {
-            req->on_connect(nullptr, abs(r));
-          } catch (...){}
-        }
-
         delete connect_req;
         delete req->tcp_handle;
 
+        req->connector->iohandle_promise.set_exception(
+          std::make_exception_ptr( std::system_error(abs(r), std::system_category()) )
+          );
       }
+
+    }
+    else if (user_req->addr.empty())
+    {
+      create_tcp_server_socket(user_req->port, user_req->on_accept,
+                               std::move(user_req->listener_err));
     }
   }
 
@@ -304,25 +289,6 @@ void IOLoop::start()
 }
 
 
-
-void IOLoop::on_timer()
-{
-
-
-  bool need_remove = false;
-  for (auto & item  : m_handles)
-  {
-    if (item->can_be_deleted())
-    {
-      delete item;
-      item = nullptr;
-      need_remove = true;
-    }
-  }
-  if (need_remove) m_handles.remove( nullptr );
-}
-
-
 void IOLoop::add_server(int port,
                         std::promise<int> listen_err,
                         socket_accept_cb cb)
@@ -345,36 +311,25 @@ void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 {
   m_handles.push_back( iohandle );
 
-  if (myserver->cb) myserver->cb(myserver->port, iohandle);
+  if (myserver->cb) myserver->cb(myserver->port, std::unique_ptr<IOHandle>(iohandle));
 }
 
 
-/* Here we have completed a tcp connect attempt (either successfully or
- * unsuccessfully).  Next we shall escalate the result upto the handler.
- */
-void IOLoop::add_active_handle(IOHandle * iohandle, int errcode, io_request * req)
+std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr, int port)
 {
-  /* IO thread */
+  // create the handle, need it here, so that the caller can later request
+  // cancellation
+  uv_tcp_t * tcp_handle = new uv_tcp_t();
+  uv_tcp_init(m_uv_loop, tcp_handle);
 
-  if (iohandle) m_handles.push_back( iohandle );
-
-  if (req->on_connect)
-  {
-    try {
-      req->on_connect(iohandle, errcode);
-    } catch (...){}
-  }
-}
+  std::shared_ptr<io_connector> conn ( new io_connector(addr,port,this) );
+  conn->tcp_handle = tcp_handle;
 
 
-void IOLoop::add_connection(std::string addr,
-                            int port,
-                            tcp_connect_cb cb)
-{
-  std::unique_ptr<io_request> r( new io_request( __logptr ) );
+  std::unique_ptr<io_request> r( new io_request(__logptr ) );
+  r->connector = conn;
   r->addr = addr;
   r->port = port;
-  r->on_connect = std::move(cb);
 
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
@@ -382,8 +337,16 @@ void IOLoop::add_connection(std::string addr,
   }
 
   this->async_send();
+
+  return conn;
 }
 
 
+io_connector::io_connector(std::string __addr, int __port, IOLoop* __io_loop)
+  : addr(__addr),
+    port(__port),
+    io_loop(__io_loop)
+{
+}
 
 } // namespace XXX

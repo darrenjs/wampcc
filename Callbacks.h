@@ -30,6 +30,7 @@ typedef uint64_t t_sid;
 typedef uint64_t t_subscription_id;
 
 typedef std::weak_ptr<wamp_session> session_handle;
+typedef std::function<void(wamp_session*)> session_closed_cb;
 
 
 class wamp_error : public std::runtime_error

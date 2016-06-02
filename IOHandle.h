@@ -7,10 +7,10 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <future>
 
 namespace XXX {
 
-class wamp_session;
 class IOLoop;
 class IOHandle;
 class io_listener;
@@ -28,19 +28,20 @@ public:
   void set_listener(std::shared_ptr<io_listener> p) { m_listener = p; }
 
   /* Enqueue bytes to be sent */
-  void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool close);
+  void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool final);
 
-  void request_close();
+  std::shared_future<void> request_close();
 
-  bool can_be_deleted() const;
+  bool is_open() const { return m_state == eOpen; }
 
 private:
   void write_async();
+
   void init_close();
 
   void on_write_cb(uv_write_t * req, int status);
   void on_close_cb();
-  void on_read_cb(uv_stream_t*, ssize_t, const uv_buf_t*);
+  void on_read_cb(ssize_t, const uv_buf_t*);
 
 private:
   Logger * __logptr;
@@ -50,7 +51,6 @@ private:
 
   std::weak_ptr<io_listener> m_listener;
 
-  std::atomic<bool> m_is_closing;
   int m_closed_handles_count;
 
   std::atomic<size_t> m_bytes_pending; // pending written
@@ -60,7 +60,18 @@ private:
   std::mutex              m_pending_write_lock;
   std::vector< uv_buf_t > m_pending_write;
   bool                    m_pending_close_handles;
-  std::atomic<bool>       m_pending_call_close;
+
+  std::promise<void>       m_io_has_closed;
+  std::shared_future<void> m_shfut_io_closed;
+
+  enum State
+  {
+    eOpen,
+    eClosing,
+    eClosed
+  };
+  State m_state;
+
 };
 
 } // namespace XXX

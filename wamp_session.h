@@ -10,6 +10,7 @@
 #include <map>
 #include <mutex>
 #include <memory>
+#include <future>
 
 namespace XXX {
 
@@ -39,15 +40,18 @@ namespace XXX {
   public:
     // wamp_session can only be created as shared_ptr
     static std::shared_ptr<wamp_session> create(kernel&,
-                                                IOHandle *,
+                                                std::unique_ptr<IOHandle>,
                                                 bool is_passive,
                                                 std::string realm,
                                                 session_state_fn state_cb,
+                                                session_closed_cb  closed_cb,
                                                 server_msg_handler = server_msg_handler());
 
     ~wamp_session();
 
     void send_msg(jalson::json_array&, bool final=false);
+
+    void new_request_close(); // perform asynchronous close
 
     void close();
 
@@ -108,12 +112,13 @@ namespace XXX {
   private:
 
     wamp_session(kernel&,
-                 IOHandle *,
+                 std::unique_ptr<IOHandle>,
                  bool is_passive,
                  std::string realm,
                  session_state_fn state_cb,
                  std::shared_ptr<wamp_session>& outref,
-                 server_msg_handler);
+                 server_msg_handler,
+                 session_closed_cb closed_cb);
 
     wamp_session(const wamp_session&) = delete;
     wamp_session& operator=(const wamp_session&) = delete;
@@ -172,7 +177,7 @@ namespace XXX {
     uint64_t m_sid;
 
     std::mutex m_handle_lock;
-    IOHandle* m_handle;
+    std::unique_ptr<IOHandle> m_handle;
 
     /* Interval, in secs, at which to send heartbeats. Values below 30 seconds
         might not be too reliable, because the underlying housekeeping timer has
@@ -264,6 +269,11 @@ namespace XXX {
     // control when callbacks are allowed into user code
     std::recursive_mutex m_user_cb_lock;
     bool                 m_user_cb_allowed;
+
+
+    session_closed_cb  m_closed_cb;
+    bool m_invoke_final_ev;
+
   };
 
 } // namespace XXX

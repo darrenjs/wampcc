@@ -171,81 +171,42 @@ private:
 //   }
 // }
 
+static void session_closed(wamp_session*)
+{
+  std::cout << "session_closed new cb\n";
+}
+
 
 router_conn::router_conn(kernel * k,
                          std::string realm,
                          router_session_connect_cb __cb,
+                         std::unique_ptr<IOHandle> ioh,
                          void * __user)
   : user(__user),
-    m_impl(std::make_shared<router_conn_impl>(k, this, std::move(realm), std::move(__cb)))
+    m_impl(std::make_shared<router_conn_impl>(k, this, realm, std::move(__cb)))
 {
+  std::weak_ptr<router_conn_impl> wp = m_impl;
+  session_state_fn fn = [wp](session_handle, bool is_open){
+    if (auto sp = wp.lock())
+      sp->invoke_router_session_connect_cb(0, is_open);
+  };
+
+  std::shared_ptr<wamp_session> sp =
+    wamp_session::create( *m_impl->the_kernel,
+                          std::move(ioh),
+                          false,
+                          realm,
+                          std::move(fn),
+                          session_closed);
+  m_impl->set_session(sp);
+  m_impl->session()->initiate_handshake();
+
 }
 
 
 router_conn::~router_conn()
 {
   m_impl->invalidate(); // prevent impl object making user callbacks
-}
-
-
-int router_conn::connect(const std::string & addr, int port)
-{
-  std::weak_ptr<router_conn_impl> wp = m_impl;
-
-  // create the tcp-connect callback
-  tcp_connect_cb cb = [wp](IOHandle* iohandle, int err)
-    {
-      /* IO thread */
-
-      std::shared_ptr<router_conn_impl> impl = wp.lock();
-      if (impl)
-      {
-        /* the router session impl is still around, so here we can give it the
-         * iohandle just created */
-
-        if (iohandle)
-        {
-          // The availability of an iohandle means the connect was
-          // successful. Next stage is to initiate the handshake.
-
-          session_state_fn fn = [wp](session_handle, bool is_open){
-            if (auto sp = wp.lock())
-              sp->invoke_router_session_connect_cb(0, is_open);
-          };
-
-          std::shared_ptr<wamp_session> sp =
-            wamp_session::create( *impl->the_kernel,
-                                  iohandle,
-                                  false,
-                                  impl->realm,
-                                  std::move(fn) );
-          impl->set_session(sp);
-          impl->session()->initiate_handshake();
-        }
-        else
-        {
-          /* the tcp-connect failed, so we schedule a user callback */
-          impl->the_kernel->get_event_loop()->dispatch(
-            [wp,err]()
-            {
-              if (auto sp = wp.lock())
-                sp->invoke_router_session_connect_cb(err, false);
-            });
-        }
-      }
-      else
-      {
-        // TODO: need to be able to log in here
-       //  std::cout << "router impl has been deleted; iohandle=" << iohandle <<"\n";
-        /* The router session implementation has already been deleted, so close
-         * the handle if available. Note that its lifetime is managed
-         * elsewhere. */
-        if (iohandle) iohandle->request_close();
-      }
-    };
-
-  m_impl->the_kernel->get_io()->add_connection(addr, port, std::move(cb));
-  return 0;
 }
 
 
@@ -305,5 +266,11 @@ void router_conn::close()
     m_impl->session()->close();
 }
 
+
+void router_conn::new_request_close()
+{
+  if (m_impl->session())
+    m_impl->session()->new_request_close();
+}
 
 } // namespace XXX

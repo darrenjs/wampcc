@@ -4,6 +4,9 @@
 #include "client_service.h"
 #include "kernel.h"
 #include "Topic.h"
+#include "IOLoop.h"
+#include "io_handle.h"
+#include "IOHandle.h"
 
 
 #include <Logger.h>
@@ -29,7 +32,7 @@ XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eAll,
                                               true);
 
-std::unique_ptr<XXX::kernel> g_client;
+std::unique_ptr<XXX::kernel> g_kernel;
 
 
 struct user_options
@@ -305,23 +308,62 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-  g_client.reset( new XXX::kernel(logger) );
+  g_kernel.reset( new XXX::kernel(logger) );
+  g_kernel->start();
+
+
+  // Design note: separating the connect stage, from the wamp_session stage, to
+  // have better control over the connection, eg, to introduce timeout logic,
+  // and the forget about the connection if, for example, it was not acheived in
+  // under 2 seconds or something.  Of course, doing this introduces extra
+  // complexity, but I feel it is required. Remember, this is what let exio
+  // down; poor control for active connections.  Also, I want to avoid creating
+  // a full socket layer; aim is to have something basic and flexible.
+
+  // TODO: maybe later, the io_connector could be a more simpler object, and it
+  // is only the promise which is put onto the IO thread
+
+  // TODO: need to try the cancel logic of the connector ... after all, this is
+  // way it was added
+
+
+
+  // after this, conn will immediately make an attempt to connect. Note the
+  // object is a source of async events (the connect and disconnect call back).
+
+  std::shared_ptr<XXX::io_connector> conn
+    = g_kernel->get_io()->add_connection("127.0.0.1", 55555);
+
+
+  auto connect_fut = conn->get_future();
+
+  // TODO: need to delay the IO handle read, before wamp_session is ready to
+  // receive callbacks
+
+  std::unique_ptr<XXX::IOHandle> up_handle;
+  try
+  {
+    up_handle = connect_fut.get() ;
+  }
+  catch (std::system_error e)
+  {
+    std::cout << "connect failed, error " <<
+      e.code().value() << ", " << e.what() << std::endl;
+    return e.code().value();
+  }
+
+  std::cout << "connected\n";
 
   //std::unique_ptr<XXX::text_topic> topic;
 
   // if (!uopts.publish_topic.empty())
   //   topic.reset( new XXX::text_topic( uopts.publish_topic ) );
 
-  // if (topic) g_client->add_topic( topic.get() );
-
-  g_client->start();
+  // if (topic) g_kernel->add_topic( topic.get() );
 
   rconn.reset(
-    new XXX::router_conn(g_client.get(),  "default_realm", router_connection_cb, nullptr )
+    new XXX::router_conn(g_kernel.get(),  "default_realm", router_connection_cb, std::move(up_handle), nullptr )
     );
-
-  rconn->connect("127.0.0.1", 55555);
-//  rconn.connect("10.255.255.1", 55555);
 
   // wait for a connection attempt to complete
   auto wait_interval = std::chrono::seconds(50);
@@ -341,7 +383,6 @@ int main(int argc, char** argv)
               << ": " << util_strerror(g_connect_status) << "\n";
     exit(1);
   }
-
 
   // TODO: take CALL parameters from command line
   XXX::wamp_args args;
@@ -363,7 +404,7 @@ int main(int argc, char** argv)
     rconn->subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
 
   // register
-  std::unique_ptr<callback_t> cb1( new callback_t(g_client.get(),"my_hello") );
+  std::unique_ptr<callback_t> cb1( new callback_t(g_kernel.get(),"my_hello") );
   if (!uopts.register_procedure.empty())
   {
     rconn->provide(uopts.register_procedure,
@@ -434,7 +475,7 @@ int main(int argc, char** argv)
 
   // remember to free the kernel and logger after all sessions are closed
   // (sessions might attempt logging during their destruction)
-  g_client.reset();
+  g_kernel.reset();
   delete logger;
   return 0;
 }
