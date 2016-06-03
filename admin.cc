@@ -5,7 +5,6 @@
 #include "kernel.h"
 #include "Topic.h"
 #include "IOLoop.h"
-#include "io_handle.h"
 #include "IOHandle.h"
 
 
