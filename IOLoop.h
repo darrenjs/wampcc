@@ -26,15 +26,21 @@ class IOHandle;
 class io_connector
 {
 public:
-  io_connector(std::string __addr, int __port, IOLoop* __io_loop);
+  std::future< std::unique_ptr<IOHandle> > get_future() { return m_iohandle_promise.get_future(); }
 
-  // TODO: tidy this up
-  std::future< std::unique_ptr<IOHandle> > get_future() { return iohandle_promise.get_future(); }
-  std::string addr;
-  int port;
-  IOLoop * io_loop;
-  uv_tcp_t * tcp_handle;
-  std::promise< std::unique_ptr<IOHandle> > iohandle_promise;
+  const std::string& addr() const { return m_addr; }
+  int port() const { return m_port; }
+
+private:
+  io_connector(std::string __addr, int __port, IOLoop* __io_loop, uv_tcp_t *);
+
+  IOLoop * m_io_loop;
+  uv_tcp_t * m_tcp_handle;
+  std::string m_addr;
+  int m_port;
+  std::promise< std::unique_ptr<IOHandle> > m_iohandle_promise;
+
+  friend class IOLoop;
 };
 
 
@@ -74,6 +80,7 @@ struct  tcp_server
 
 // TODO: maybe the IO loop should also do the TCP connect stuff? I.e., it all goes there?
 /* Intended to be a reusable event loop */
+
 class IOLoop
 {
 public:
@@ -112,8 +119,12 @@ private:
   void create_tcp_server_socket(int port, socket_accept_cb cb,
                                 std::unique_ptr< std::promise<int> > );
 
+  void on_tcp_connect_cb(uv_connect_t* __req, int status);
+
   std::vector< std::unique_ptr<io_request> > m_pending_requests;
   std::mutex                                 m_pending_requests_lock;
+
+  void on_tcp_connect_cb();
 
   enum PendingFlags
   {
@@ -127,7 +138,6 @@ private:
 
 
   std::list< std::unique_ptr<tcp_server> > m_server_handles;
-
 
 };
 

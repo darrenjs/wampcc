@@ -15,22 +15,16 @@
 namespace XXX {
 
 
-
-/* Called on the IO thread when a ioreq attempt has completed */
-static void __on_tcp_connect_cb(uv_connect_t* __req, int status )
+void IOLoop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 {
-  std::unique_ptr<uv_connect_t> connect_req(__req);
+  /* IO thread */
 
-  // IOLoop has set itself as the uv_loop data member
-  IOLoop * ioloop = static_cast<IOLoop* >(__req->handle->loop->data);
-
-  // get the user object
   std::unique_ptr<io_request> ioreq ((io_request*) connect_req->data );
   Logger * __logptr = ioreq->logptr;
 
   if (status < 0)
   {
-    ioreq->connector->iohandle_promise.set_exception(
+    ioreq->connector->m_iohandle_promise.set_exception(
       std::make_exception_ptr( std::system_error(abs(status), std::system_category()) )
       );
   }
@@ -38,11 +32,10 @@ static void __on_tcp_connect_cb(uv_connect_t* __req, int status )
   {
     std::unique_ptr< IOHandle > hndl (
       new IOHandle( __logptr,
-                    (uv_stream_t *) ioreq->connector->tcp_handle,
-                    ioloop ) );
-    ioreq->connector->iohandle_promise.set_value( std::move(hndl) );
+                    (uv_stream_t *) ioreq->connector->m_tcp_handle,
+                    this ) );
+    ioreq->connector->m_iohandle_promise.set_value( std::move(hndl) );
   }
-
 }
 
 
@@ -221,10 +214,20 @@ void IOLoop::on_async()
       uv_ip4_addr(req->addr.c_str(), req->port, &dest);
 
       _INFO_("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
-      int r = uv_tcp_connect(connect_req,
-                             req->connector->tcp_handle,
-                             (const struct sockaddr*) &dest,
-                             __on_tcp_connect_cb);
+      int r = uv_tcp_connect(
+        connect_req,
+        req->connector->m_tcp_handle,
+        (const struct sockaddr*) &dest,
+        [](uv_connect_t* __req, int status)
+        {
+          std::unique_ptr<uv_connect_t> connect_req(__req);
+          IOLoop * ioloop = static_cast<IOLoop* >(__req->handle->loop->data);
+          try
+          {
+            ioloop->on_tcp_connect_cb(__req, status);
+          }
+          catch (...){}
+        });
 
       if (r == 0)
       {
@@ -235,7 +238,7 @@ void IOLoop::on_async()
         delete connect_req;
         delete req->tcp_handle;
 
-        req->connector->iohandle_promise.set_exception(
+        req->connector->m_iohandle_promise.set_exception(
           std::make_exception_ptr( std::system_error(abs(r), std::system_category()) )
           );
       }
@@ -321,9 +324,7 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr, int port)
   uv_tcp_t * tcp_handle = new uv_tcp_t();
   uv_tcp_init(m_uv_loop, tcp_handle);
 
-  std::shared_ptr<io_connector> conn ( new io_connector(addr,port,this) );
-  conn->tcp_handle = tcp_handle;
-
+  std::shared_ptr<io_connector> conn ( new io_connector(addr,port,this,tcp_handle) );
 
   std::unique_ptr<io_request> r( new io_request(__logptr ) );
   r->connector = conn;
@@ -341,10 +342,13 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr, int port)
 }
 
 
-io_connector::io_connector(std::string __addr, int __port, IOLoop* __io_loop)
-  : addr(__addr),
-    port(__port),
-    io_loop(__io_loop)
+io_connector::io_connector(std::string __addr, int __port, IOLoop* __io_loop,
+                           uv_tcp_t * h)
+  : m_io_loop(__io_loop),
+    m_tcp_handle(h),
+    m_addr(__addr),
+    m_port(__port)
+
 {
 }
 
