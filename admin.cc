@@ -6,6 +6,7 @@
 #include "Topic.h"
 #include "IOLoop.h"
 #include "IOHandle.h"
+#include "io_connector.h"
 
 
 #include <Logger.h>
@@ -310,29 +311,11 @@ int main(int argc, char** argv)
   g_kernel.reset( new XXX::kernel(logger) );
   g_kernel->start();
 
-
-  // Design note: separating the connect stage, from the wamp_session stage, to
-  // have better control over the connection, eg, to introduce timeout logic,
-  // and the forget about the connection if, for example, it was not acheived in
-  // under 2 seconds or something.  Of course, doing this introduces extra
-  // complexity, but I feel it is required. Remember, this is what let exio
-  // down; poor control for active connections.  Also, I want to avoid creating
-  // a full socket layer; aim is to have something basic and flexible.
-
-  // TODO: maybe later, the io_connector could be a more simpler object, and it
-  // is only the promise which is put onto the IO thread
-
-  // TODO: need to try the cancel logic of the connector ... after all, this is
-  // way it was added
-
-
-
   // after this, conn will immediately make an attempt to connect. Note the
   // object is a source of async events (the connect and disconnect call back).
 
   std::shared_ptr<XXX::io_connector> conn
     = g_kernel->get_io()->add_connection("127.0.0.1", 55555);
-
 
   auto connect_fut = conn->get_future();
 
@@ -342,7 +325,25 @@ int main(int argc, char** argv)
   std::unique_ptr<XXX::IOHandle> up_handle;
   try
   {
-    up_handle = connect_fut.get() ;
+    std::future_status status;
+    do
+    {
+      status = connect_fut.wait_for(std::chrono::seconds(5));
+
+      if (status == std::future_status::timeout)
+      {
+        std::cout << "timed out when trying to connect, cancelling" << std::endl;
+        conn->async_cancel();
+      }
+    } while (status != std::future_status::ready);
+
+
+    up_handle = connect_fut.get();
+    if (!up_handle)
+    {
+      std::cout << "connect failed\n";
+      return 1;
+    }
   }
   catch (std::system_error e)
   {
@@ -351,7 +352,6 @@ int main(int argc, char** argv)
     return e.code().value();
   }
 
-  std::cout << "connected\n";
 
   //std::unique_ptr<XXX::text_topic> topic;
 
@@ -470,7 +470,13 @@ int main(int argc, char** argv)
   }
 
   sleep(1); // TODO: think I need this, to give publish time to complete
-  rconn.reset();
+
+
+
+  while (1) sleep(10);
+
+  std::cout << "dong rconn reset\n";
+  rconn.reset();  // TODO: this now causes core dump
 
   // remember to free the kernel and logger after all sessions are closed
   // (sessions might attempt logging during their destruction)

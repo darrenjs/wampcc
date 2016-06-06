@@ -18,30 +18,13 @@
 
 namespace XXX {
 
+class kernel;
 class Logger;
 class IOLoop;
 class IOHandle;
+class io_connector;
 
-/* Represents the asynchronous task of creating an active socket connection */
-class io_connector
-{
-public:
-  std::future< std::unique_ptr<IOHandle> > get_future() { return m_iohandle_promise.get_future(); }
 
-  const std::string& addr() const { return m_addr; }
-  int port() const { return m_port; }
-
-private:
-  io_connector(std::string __addr, int __port, IOLoop* __io_loop, uv_tcp_t *);
-
-  IOLoop * m_io_loop;
-  uv_tcp_t * m_tcp_handle;
-  std::string m_addr;
-  int m_port;
-  std::promise< std::unique_ptr<IOHandle> > m_iohandle_promise;
-
-  friend class IOLoop;
-};
 
 
 typedef std::function<void(int port, std::unique_ptr<IOHandle>)> socket_accept_cb;
@@ -55,9 +38,11 @@ struct io_request
   int port = 0;
   std::unique_ptr< std::promise<int> > listener_err;
   uv_tcp_t * tcp_handle = nullptr;
+  uv_close_cb on_close_cb = nullptr;
   socket_accept_cb on_accept;
 
   std::shared_ptr<io_connector> connector;
+
 
 
   io_request(Logger * __logptr) : logptr(__logptr) {}
@@ -66,6 +51,12 @@ struct io_request
              int port,
              std::promise<int> p,
              socket_accept_cb );
+
+  enum
+  {
+    eNone = 0,
+    eCancelHandle,
+  } request_type;
 };
 
 
@@ -84,7 +75,7 @@ struct  tcp_server
 class IOLoop
 {
 public:
-  IOLoop(Logger * logger);
+  IOLoop(kernel&);
   ~IOLoop();
 
   void start();
@@ -103,11 +94,15 @@ public:
 
   std::shared_ptr<io_connector> add_connection(std::string addr, int port);
 
+
+  void request_cancel(uv_tcp_t*, uv_close_cb);
+
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
   Logger * logptr() const { return __logptr; }
 
 private:
+  kernel & m_kernel;
   Logger * __logptr;
   uv_loop_t*   m_uv_loop;
   std::unique_ptr<uv_async_t> m_async;

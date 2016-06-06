@@ -1,7 +1,9 @@
 #include "IOLoop.h"
 
+#include "io_connector.h"
 #include "Logger.h"
 #include "IOHandle.h"
+#include "kernel.h"
 
 #include <iostream>
 #include <system_error>
@@ -20,21 +22,16 @@ void IOLoop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
   /* IO thread */
 
   std::unique_ptr<io_request> ioreq ((io_request*) connect_req->data );
-  Logger * __logptr = ioreq->logptr;
 
   if (status < 0)
   {
-    ioreq->connector->m_iohandle_promise.set_exception(
+    ioreq->connector->io_on_connect_exception(
       std::make_exception_ptr( std::system_error(abs(status), std::system_category()) )
       );
   }
   else
   {
-    std::unique_ptr< IOHandle > hndl (
-      new IOHandle( __logptr,
-                    (uv_stream_t *) ioreq->connector->m_tcp_handle,
-                    this ) );
-    ioreq->connector->m_iohandle_promise.set_value( std::move(hndl) );
+    ioreq->connector->io_on_connect_success();
   }
 }
 
@@ -90,20 +87,22 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
 
 
-io_request::io_request(Logger * __logptr,
+io_request::io_request(Logger * lp,
                        int __port,
                        std::promise<int> listen_err,
                        socket_accept_cb __on_accept)
-  : logptr( __logptr ),
+  : logptr( lp ),
     port( __port ),
     listener_err( new std::promise<int>(std::move(listen_err) ) ),
-    on_accept( std::move(__on_accept) )
+    on_accept( std::move(__on_accept) ),
+    request_type( eNone )
 {
 }
 
 
-IOLoop::IOLoop(Logger * logptr)
-  : __logptr( logptr),
+IOLoop::IOLoop(kernel& k)
+  :  m_kernel(k),
+     __logptr( k.get_logger() ),
     m_uv_loop( new uv_loop_t() ),
 
     m_async( new uv_async_t() ),
@@ -130,7 +129,6 @@ void IOLoop::stop()
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     m_pending_flags |= eFinal;
   }
-
   async_send();
   if (m_thread.joinable()) m_thread.join();
 }
@@ -201,10 +199,16 @@ void IOLoop::on_async()
 
   for (auto & user_req : work)
   {
-    if (user_req->connector)
+    if (user_req->request_type == io_request::eCancelHandle)
+    {
+      uv_close((uv_handle_t*) user_req->tcp_handle, user_req->on_close_cb);
+    }
+    else if (user_req->connector)
     {
       // create the request
       std::unique_ptr<io_request> req( std::move(user_req) );  // <--- the sp<connector> is here now
+
+      // TODO: check connect_req * req are both freed correctly
 
       uv_connect_t * connect_req = new uv_connect_t();
       connect_req->data = (void*) req.get();
@@ -216,7 +220,7 @@ void IOLoop::on_async()
       _INFO_("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
       int r = uv_tcp_connect(
         connect_req,
-        req->connector->m_tcp_handle,
+        req->connector->get_handle(),
         (const struct sockaddr*) &dest,
         [](uv_connect_t* __req, int status)
         {
@@ -236,9 +240,8 @@ void IOLoop::on_async()
       else
       {
         delete connect_req;
-        delete req->tcp_handle;
 
-        req->connector->m_iohandle_promise.set_exception(
+        req->connector->io_on_connect_exception(
           std::make_exception_ptr( std::system_error(abs(r), std::system_category()) )
           );
       }
@@ -324,7 +327,7 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr, int port)
   uv_tcp_t * tcp_handle = new uv_tcp_t();
   uv_tcp_init(m_uv_loop, tcp_handle);
 
-  std::shared_ptr<io_connector> conn ( new io_connector(addr,port,this,tcp_handle) );
+  std::shared_ptr<io_connector> conn ( new io_connector(m_kernel, tcp_handle) );
 
   std::unique_ptr<io_request> r( new io_request(__logptr ) );
   r->connector = conn;
@@ -342,14 +345,22 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr, int port)
 }
 
 
-io_connector::io_connector(std::string __addr, int __port, IOLoop* __io_loop,
-                           uv_tcp_t * h)
-  : m_io_loop(__io_loop),
-    m_tcp_handle(h),
-    m_addr(__addr),
-    m_port(__port)
 
+
+void IOLoop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
 {
+  std::unique_ptr<io_request> r( new io_request(__logptr ) );
+  r->request_type = io_request::eCancelHandle;
+  r->tcp_handle = h;
+  r->on_close_cb = cb;
+
+  {
+    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
+    m_pending_requests.push_back( std::move(r) );
+  }
+  this->async_send();
 }
+
+
 
 } // namespace XXX

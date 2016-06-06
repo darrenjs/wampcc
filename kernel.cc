@@ -9,7 +9,7 @@ namespace XXX {
 /* Constructor */
 kernel::kernel(Logger* logptr)
   : __logptr(logptr),
-    m_io_loop( new IOLoop(logptr) ),
+    m_io_loop( new IOLoop(*this) ),
     m_evl( new event_loop(logptr) )
 {
 }

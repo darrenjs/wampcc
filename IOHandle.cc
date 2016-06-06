@@ -85,7 +85,11 @@ IOHandle::~IOHandle()
   // If this object we can still be called by the IO thread, then a core dump or
   // other undefined behaviour will happen shortly.  Remove that uncertainty by
   // performing an immediate exit.
-  if (m_state != eClosed) std::terminate();
+  if (m_state != eClosed)
+  {
+    _ERROR_("iohandle destructing without pior orderly shutdown - calling std::terminate");
+    std::terminate();
+  }
 
   delete m_uv_handle;
 
