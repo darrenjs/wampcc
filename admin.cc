@@ -315,7 +315,7 @@ int main(int argc, char** argv)
   // object is a source of async events (the connect and disconnect call back).
 
   std::shared_ptr<XXX::io_connector> conn
-    = g_kernel->get_io()->add_connection("127.0.0.1", 55555);
+    = g_kernel->get_io()->add_connection("t420", "55555", false);
 
   auto connect_fut = conn->get_future();
 
@@ -345,11 +345,10 @@ int main(int argc, char** argv)
       return 1;
     }
   }
-  catch (std::system_error e)
+  catch (std::exception & e)
   {
-    std::cout << "connect failed, error " <<
-      e.code().value() << ", " << e.what() << std::endl;
-    return e.code().value();
+    std::cout << "connect failed : " << e.what() << std::endl;
+    return 1;
   }
 
 

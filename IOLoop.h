@@ -35,7 +35,8 @@ struct io_request
 {
   Logger * logptr;
   std::string addr;
-  int port = 0;
+  std::string port;
+  bool resolve_hostname;
   std::unique_ptr< std::promise<int> > listener_err;
   uv_tcp_t * tcp_handle = nullptr;
   uv_close_cb on_close_cb = nullptr;
@@ -48,7 +49,7 @@ struct io_request
   io_request(Logger * __logptr) : logptr(__logptr) {}
 
   io_request(Logger * __logptr,
-             int port,
+             std::string port,
              std::promise<int> p,
              socket_accept_cb );
 
@@ -92,7 +93,9 @@ public:
   void add_server(int port, std::promise<int> listener_err, socket_accept_cb);
 
 
-  std::shared_ptr<io_connector> add_connection(std::string addr, int port);
+  std::shared_ptr<io_connector> add_connection(std::string addr,
+                                               std::string port,
+                                               bool resolve_hostname);
 
 
   void request_cancel(uv_tcp_t*, uv_close_cb);

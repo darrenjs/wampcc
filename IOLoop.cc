@@ -14,6 +14,11 @@
 
 #define SYSTEM_HEARTBEAT_MS 10
 
+static const char* safe_str(const char* s)
+{
+  return s? s : "null";
+}
+
 namespace XXX {
 
 
@@ -25,8 +30,11 @@ void IOLoop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 
   if (status < 0)
   {
+    std::ostringstream oss;
+    oss << "uv_connect: " << status << ", " << safe_str(uv_err_name(status))
+        << ", " << safe_str(uv_strerror(status));
     ioreq->connector->io_on_connect_exception(
-      std::make_exception_ptr( std::system_error(abs(status), std::system_category()) )
+      std::make_exception_ptr( std::runtime_error(oss.str()) )
       );
   }
   else
@@ -88,7 +96,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
 
 io_request::io_request(Logger * lp,
-                       int __port,
+                       std::string __port,
                        std::promise<int> listen_err,
                        socket_accept_cb __on_accept)
   : logptr( lp ),
@@ -208,20 +216,61 @@ void IOLoop::on_async()
       // create the request
       std::unique_ptr<io_request> req( std::move(user_req) );  // <--- the sp<connector> is here now
 
-      // TODO: check connect_req * req are both freed correctly
+      // TODO: check connect_req * req are both freed correctly, and the socket linked list
+
+      const struct sockaddr* addrptr;
+      struct sockaddr_in inetaddr;
+      memset(&inetaddr, 0, sizeof(inetaddr));
+
+      int r = 0;
+      uv_getaddrinfo_t resolver;
+      memset(&resolver, 0, sizeof(resolver));
+
+      if (req->resolve_hostname)
+      {
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = PF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
+        hints.ai_flags = 0;
+
+        r = uv_getaddrinfo(m_uv_loop, &resolver, nullptr,
+                           req->addr.c_str(), req->port.c_str(),
+                           &hints);
+
+        std::cout << "r=" << r << "\n";
+        if (r<0)
+        {
+          std::ostringstream oss;
+          oss << "uv_getaddrinfo: " << r << ", " << safe_str(uv_err_name(r))
+              << ", " << safe_str(uv_strerror(r));
+          req->connector->io_on_connect_exception(
+            std::make_exception_ptr( std::runtime_error(oss.str()) )
+            );
+          return;
+        }
+
+        char addr[17] = {'\0'};
+        uv_ip4_name((struct sockaddr_in*) resolver.addrinfo->ai_addr, addr, 16);
+        fprintf(stderr, "%s\n", addr);
+      }
+      else
+      {
+        // use inet_pton functions
+        uv_ip4_addr(req->addr.c_str(), atoi(req->port.c_str()), &inetaddr);
+        addrptr = (const struct sockaddr*) &inetaddr;
+      }
 
       uv_connect_t * connect_req = new uv_connect_t();
       connect_req->data = (void*) req.get();
 
-      struct sockaddr_in dest;
-      memset(&dest, 0, sizeof(sockaddr_in));
-      uv_ip4_addr(req->addr.c_str(), req->port, &dest);
-
       _INFO_("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
-      int r = uv_tcp_connect(
+
+      r = uv_tcp_connect(
         connect_req,
         req->connector->get_handle(),
-        (const struct sockaddr*) &dest,
+        addrptr,
         [](uv_connect_t* __req, int status)
         {
           std::unique_ptr<uv_connect_t> connect_req(__req);
@@ -241,15 +290,21 @@ void IOLoop::on_async()
       {
         delete connect_req;
 
+        std::ostringstream oss;
+
+        oss << "uv_tcp_connect: " << r << ", " << safe_str(uv_err_name(r))
+            << ", " << safe_str(uv_strerror(r));
         req->connector->io_on_connect_exception(
-          std::make_exception_ptr( std::system_error(abs(r), std::system_category()) )
+          std::make_exception_ptr( std::runtime_error(oss.str()) )
           );
+
       }
 
     }
     else if (user_req->addr.empty())
     {
-      create_tcp_server_socket(user_req->port, user_req->on_accept,
+      create_tcp_server_socket(atoi(user_req->port.c_str()),
+                               user_req->on_accept,
                                std::move(user_req->listener_err));
     }
   }
@@ -298,8 +353,11 @@ void IOLoop::add_server(int port,
                         std::promise<int> listen_err,
                         socket_accept_cb cb)
 {
+  std::ostringstream oss;
+  oss << port;
+
   std::unique_ptr<io_request> r( new io_request( __logptr,
-                                                 port,
+                                                 oss.str(),
                                                  std::move(listen_err),
                                                  std::move(cb) ) );
 
@@ -320,7 +378,9 @@ void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 }
 
 
-std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr, int port)
+std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr,
+                                                     std::string port,
+                                                     bool resolve_hostname)
 {
   // create the handle, need it here, so that the caller can later request
   // cancellation
@@ -333,6 +393,7 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr, int port)
   r->connector = conn;
   r->addr = addr;
   r->port = port;
+  r->resolve_hostname = resolve_hostname;
 
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
