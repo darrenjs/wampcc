@@ -183,12 +183,6 @@ void wamp_session::io_on_close()
 
   _DEBUG_("wamp_session::io_on_close");
 
-  // following the call of this callback, we must not call the IO handle again
-  {
-    std::lock_guard<std::mutex> guard(m_handle_lock);
-    m_handle = nullptr;
-  }
-
   // perform all other notification on the event thread
   std::weak_ptr<wamp_session> wp = handle();
   m_kernel.get_event_loop()->dispatch( [wp]() {
