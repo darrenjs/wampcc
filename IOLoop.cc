@@ -251,9 +251,13 @@ void IOLoop::on_async()
           return;
         }
 
+        addrptr = resolver.addrinfo->ai_addr;
+
+        /*
         char addr[17] = {'\0'};
         uv_ip4_name((struct sockaddr_in*) resolver.addrinfo->ai_addr, addr, 16);
         fprintf(stderr, "%s\n", addr);
+        */
       }
       else
       {
