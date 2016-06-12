@@ -185,7 +185,9 @@ void router_connection_cb(XXX::router_conn* /*router_session*/,
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
   auto __logptr = logger;
-  _INFO_ ("router connection is " << (is_open? "open" : "closed") << ", errcode " << errcode);
+
+  if (!is_open)
+    std::cout << "WAMP session closed, errcode " << errcode << std::endl;
 
 
   g_connect_status = errcode;
@@ -305,20 +307,21 @@ int main(int argc, char** argv)
   g_kernel.reset( new XXX::kernel(logger) );
   g_kernel->start();
 
-  // after this, conn will immediately make an attempt to connect. Note the
-  // object is a source of async events (the connect and disconnect call back).
-
+  /* Create a socket connector.  This will immediately make an attempt to
+   * connect to the target end point.  The connector object is a source of async
+   * events (the connect and disconnect call back), and so must be managed
+   * asynchronously. */
   std::shared_ptr<XXX::io_connector> conn
     = g_kernel->get_io()->add_connection("t420", "55555", false);
 
   auto connect_fut = conn->get_future();
 
-  // TODO: need to delay the IO handle read, before wamp_session is ready to
-  // receive callbacks
-
   std::unique_ptr<XXX::IOHandle> up_handle;
   try
   {
+    /* Wait until the connector has got a result. The result can be successful,
+     * in which case a socket is available, or result could be a failure, in
+     * which case either an exception will be available or a null pointer. */
     std::future_status status;
     do
     {
@@ -331,7 +334,7 @@ int main(int argc, char** argv)
       }
     } while (status != std::future_status::ready);
 
-
+    /* A result is available; our socket connection could be available. */
     up_handle = connect_fut.get();
     if (!up_handle)
     {
@@ -345,20 +348,16 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  /* if we reached here, the io handle is available */
-
-  //std::unique_ptr<XXX::text_topic> topic;
-
-  // if (!uopts.publish_topic.empty())
-  //   topic.reset( new XXX::text_topic( uopts.publish_topic ) );
-
-  // if (topic) g_kernel->add_topic( topic.get() );
+  /* We have obtained a socket. It's not yet being read from. We now create a
+   * wamp_session that takes ownership of the socket, and initiates socket read
+   * events. The wamp_session will commence the WAMP handshake; connection
+   * success is delivered via the callback. */
 
   rconn.reset(
     new XXX::router_conn(g_kernel.get(),  "default_realm", router_connection_cb, std::move(up_handle), nullptr )
     );
 
-  // wait for a connection attempt to complete
+  /* Wait for the WAMP session to authenticate and become open */
   auto wait_interval = std::chrono::seconds(50);
   {
     std::unique_lock<std::mutex> guard(g_active_session_mutex);
@@ -377,6 +376,10 @@ int main(int argc, char** argv)
     exit(1);
   }
 
+  /* WAMP session is now open  */
+
+  std::cout << "WAMP session open\n";
+
   // TODO: take CALL parameters from command line
   XXX::wamp_args args;
   jalson::json_array ja;
@@ -386,9 +389,6 @@ int main(int argc, char** argv)
 
   bool long_wait = false;
   bool wait_reply = false;
-
-
-  // now that we are connected, make our requests
 
 
   // subscribe
@@ -468,21 +468,26 @@ int main(int argc, char** argv)
   sleep(sleep_time); // TODO: think I need this, to give publish time to complete
 
 
-  // orderly shutdown of the wamp_session
+  /* Commence orderly shutdown of the wamp_session.  Shutdown is an asychronous
+   * operation so we start the request and then wait for the request to
+   * complete.  Once complete, we shall not receive anymore events from the
+   * wamp_session object (and thus is safe to delete). */
+
   std::cout << "requesting wamp_session closure\n";
   auto fut_closed = rconn->close();
   fut_closed.wait();
-
-
 
 //  while (1) sleep(10);
 
   std::cout << "dong rconn reset\n";
   rconn.reset();  // TODO: this now causes core dump
 
-  // remember to free the kernel and logger after all sessions are closed
-  // (sessions might attempt logging during their destruction)
+  /* We must be mindful to free the kernel and logger only after all sessions
+     are closed (e.g. sessions might attempt logging during their
+     destruction) */
+
   g_kernel.reset();
   delete logger;
+
   return 0;
 }
