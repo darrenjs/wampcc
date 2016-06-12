@@ -103,7 +103,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
   // can't put this initialisation step inside wamp_sesssion constructor,
   // because the shared pointer wont be created & available inside the
   // constructor
-  sp->m_handle->set_listener( sp );
+  sp->m_handle->start_read( sp );
 
   return sp;
 }

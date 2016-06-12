@@ -70,7 +70,13 @@ IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
     });
   m_write_async.data = this;
 
-  // enable for reading - TODO: delay until wamp_session ready
+}
+
+
+void IOHandle::start_read(std::shared_ptr<io_listener> p)
+{
+  m_listener = p;
+
   uv_read_start(m_uv_handle, iohandle_alloc_buffer,
                 [](uv_stream_t*  uvh, ssize_t nread, const uv_buf_t* buf)
                 {
@@ -157,7 +163,6 @@ void IOHandle::write_async()
   {
     if (bytes_to_send > (PENDING_MAX - m_bytes_pending))
     {
-      // oh dear, we have to now close this connection
       _WARN_("pending bytes limit reached; closing connection");
       init_close();
       return;

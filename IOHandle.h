@@ -25,14 +25,15 @@ public:
   IOHandle(const IOHandle&) = delete;
   IOHandle& operator=(const IOHandle&) = delete;
 
-  void set_listener(std::shared_ptr<io_listener> p) { m_listener = p; }
-
   /* Enqueue bytes to be sent */
   void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool final);
 
   std::shared_future<void> request_close();
 
   bool is_open() const { return m_state == eOpen; }
+
+  /** Starting from socket. This should only be called once. */
+  void start_read(std::shared_ptr<io_listener> p);
 
 private:
   void write_async();
