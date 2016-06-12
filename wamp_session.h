@@ -32,6 +32,15 @@ namespace XXX {
   class IOHandle;
   class Logger;
 
+
+  struct client_credentials
+  {
+    std::string realm;
+    std::string authid;
+    std::vector< std::string > authmethods;
+    std::function< std::string() > secret_fn;
+  };
+
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
   class wamp_session : public std::enable_shared_from_this<wamp_session>,
@@ -42,7 +51,6 @@ namespace XXX {
     static std::shared_ptr<wamp_session> create(kernel&,
                                                 std::unique_ptr<IOHandle>,
                                                 bool is_passive,
-                                                std::string realm,
                                                 session_state_fn state_cb,
                                                 server_msg_handler = server_msg_handler());
 
@@ -58,7 +66,7 @@ namespace XXX {
     bool is_open() const;
     bool is_pending_open() const;
 
-    void initiate_handshake();
+    void initiate_handshake(client_credentials);
 
     /* Number of seconds since session constructed  */
     int duration_since_creation() const;
@@ -109,7 +117,6 @@ namespace XXX {
     wamp_session(kernel&,
                  std::unique_ptr<IOHandle>,
                  bool is_passive,
-                 std::string realm,
                  session_state_fn state_cb,
                  server_msg_handler);
 
@@ -186,7 +193,7 @@ namespace XXX {
     bool m_is_passive;
 
     jalson::json_value m_challenge; // full message
-
+    std::function< std::string() > m_client_secret_fn;
 
     std::string m_realm;
     mutable std::mutex m_realm_lock;
@@ -255,6 +262,7 @@ namespace XXX {
     // unprovide() is added, and if it is implemented synchronously.
     std::map<t_request_id, procedure> m_procedures;
     std::map<t_subscription_id, subscription> m_subscriptions;
+
 
   };
 

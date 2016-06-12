@@ -97,7 +97,6 @@ std::future<int> dealer_service_impl::listen(int port)
           wamp_session::create( m_kernel,
                                 std::move(ioh),
                                 true, /* session is passive */
-                                "" /* undefined realm */,
                                 [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
                                 handlers);
         m_sesman->add_session(sp);

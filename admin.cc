@@ -184,11 +184,8 @@ void router_connection_cb(XXX::router_conn* /*router_session*/,
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
-  auto __logptr = logger;
-
   if (!is_open)
     std::cout << "WAMP session closed, errcode " << errcode << std::endl;
-
 
   g_connect_status = errcode;
   g_active_session_notifed = true;
@@ -348,13 +345,21 @@ int main(int argc, char** argv)
     return 1;
   }
 
+
+  XXX::client_credentials credentials;
+  credentials.realm="default_realm";
+  credentials.authid="peter";
+  credentials.authmethods = {"wampcra"};
+  credentials.secret_fn = []() -> std::string { return "secret2"; };
+
   /* We have obtained a socket. It's not yet being read from. We now create a
    * wamp_session that takes ownership of the socket, and initiates socket read
    * events. The wamp_session will commence the WAMP handshake; connection
    * success is delivered via the callback. */
 
   rconn.reset(
-    new XXX::router_conn(g_kernel.get(),  "default_realm", router_connection_cb, std::move(up_handle), nullptr )
+    new XXX::router_conn(g_kernel.get(), std::move(credentials), router_connection_cb,
+                         std::move(up_handle), nullptr )
     );
 
   /* Wait for the WAMP session to authenticate and become open */

@@ -27,7 +27,6 @@ struct router_conn_impl
 {
   kernel * the_kernel;
   router_conn* owner;
-  std::string realm;
   router_session_connect_cb m_user_cb;
 
   // using a recursive mutex, just in case the destructor is triggered during a
@@ -36,11 +35,9 @@ struct router_conn_impl
 
   router_conn_impl(kernel * k,
                    router_conn* r,
-                   std::string __realm,
                    router_session_connect_cb cb)
     : the_kernel(k),
       owner(r),
-      realm(std::move(__realm)),
       m_user_cb(cb)
   {
   }
@@ -172,12 +169,12 @@ private:
 
 
 router_conn::router_conn(kernel * k,
-                         std::string realm,
+                         client_credentials cc,
                          router_session_connect_cb __cb,
                          std::unique_ptr<IOHandle> ioh,
                          void * __user)
   : user(__user),
-    m_impl(std::make_shared<router_conn_impl>(k, this, realm, std::move(__cb)))
+    m_impl(std::make_shared<router_conn_impl>(k, this, std::move(__cb)))
 {
   std::weak_ptr<router_conn_impl> wp = m_impl;
   session_state_fn fn = [wp](session_handle, bool is_open){
@@ -189,11 +186,9 @@ router_conn::router_conn(kernel * k,
     wamp_session::create( *m_impl->the_kernel,
                           std::move(ioh),
                           false,
-                          realm,
                           std::move(fn));
   m_impl->set_session(sp);
-  m_impl->session()->initiate_handshake();
-
+  m_impl->session()->initiate_handshake(std::move(cc));
 }
 
 

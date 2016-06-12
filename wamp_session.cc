@@ -66,7 +66,6 @@ static uint64_t generate_unique_session_id()
   wamp_session::wamp_session(kernel& __kernel,
                              std::unique_ptr<IOHandle> h,
                              bool is_passive,
-                             std::string __realm,
                              session_state_fn state_cb,
                              server_msg_handler handler)
   : m_state( eInit ),
@@ -82,7 +81,6 @@ static uint64_t generate_unique_session_id()
     m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
     m_bytes_avail(0),
     m_is_passive(is_passive),
-    m_realm(__realm),
     m_notify_state_change_fn(state_cb),
     m_server_handler(handler)
 {
@@ -92,12 +90,11 @@ static uint64_t generate_unique_session_id()
 std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
                                                    std::unique_ptr<IOHandle> ioh,
                                                    bool is_passive,
-                                                   std::string realm,
                                                    session_state_fn state_cb,
                                                    server_msg_handler handler)
 {
   std::shared_ptr<wamp_session> sp(
-    new wamp_session(k, std::move(ioh), is_passive, realm, state_cb, handler)
+    new wamp_session(k, std::move(ioh), is_passive, state_cb, handler)
       );
 
   // can't put this initialisation step inside wamp_sesssion constructor,
@@ -775,8 +772,7 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 
   /* generate the authentication digest */
 
-  // TODO: the secret needs to come from somewhere, and, will probably be salted.
-  std::string key ="secret2";
+  std::string key = m_client_secret_fn();
 
   char digest[256];
   unsigned int digestlen = sizeof(digest)-1;
@@ -884,17 +880,29 @@ bool wamp_session::is_pending_open() const
 
 //----------------------------------------------------------------------
 
-void wamp_session::initiate_handshake()
+void wamp_session::initiate_handshake(client_credentials cc)
 {
-  /* IO thread */
+  if (!cc.secret_fn)
+    throw std::runtime_error("user-secret function cannot be undefined");
+
+  {
+    std::unique_lock<std::mutex> guard(m_realm_lock);
+    if (m_realm.empty()) m_realm = cc.realm;
+  }
+
+  m_client_secret_fn = std::move( cc.secret_fn );
 
   jalson::json_array msg;
   msg.push_back( HELLO );
-  msg.push_back( m_realm );
+  msg.push_back( cc.realm );
   jalson::json_object& opt = jalson::append_object( msg );
   opt[ "roles" ] = jalson::json_object();
-  opt[ "authid"] = "peter";
-  opt[ "authmethods"] = jalson::json_array({"wampcra"});
+  opt[ "authid"] = std::move(cc.authid);
+
+  jalson::json_array& ja = jalson::insert_array(opt, "authmethods");
+  for (auto item : cc.authmethods)
+    ja.push_back( std::move(item) );
+
   this->send_msg( msg );
 }
 

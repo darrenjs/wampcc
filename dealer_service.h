@@ -29,6 +29,7 @@ public:
                const std::string& realm,
                const jalson::json_object& options,
                wamp_args);
+
   /* Asynchronously begin accepting connections on the given port. If the bind
    * and or listen fails, a non-zero error code is returned in the future. */
   std::future<int> listen(int port); // TODO: needs interface argument

@@ -2,6 +2,7 @@
 #define XXX_CLIENT_SERVICE_H
 
 #include "Callbacks.h"
+#include "wamp_session.h"
 
 #include <jalson/jalson.h>
 
@@ -22,7 +23,7 @@ public:
   void * user;
 
   router_conn(kernel * __svc,
-              std::string realm,
+              client_credentials cc,
               router_session_connect_cb,
               std::unique_ptr<IOHandle> up_handle,
               void * __user);
