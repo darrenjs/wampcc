@@ -457,9 +457,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 void wamp_session::process_message(unsigned int message_type,
                                    jalson::json_array& ja)
 {
-  // IO thread
-
-//  _DEBUG_( "recv msg: " <<  jv  << ", is_passive: " << m_is_passive);
+  /* EV thread */
 
   if (m_state == eClosing || m_state == eClosed) return;
 
@@ -757,7 +755,7 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
 // TODO: what happens if we throw in here, ie, we are on the Socket IO thread!!!!
 void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 {
-  /* called on IO thread */
+  /* EV thread */
 
   // TODO: parsing code be better. Especially the extraction of 'challenge',
   // this is an example where I want the API to be more expressive.
@@ -778,20 +776,29 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
   unsigned int digestlen = sizeof(digest)-1;
   memset(digest, 0, sizeof(digest));
 
-  // TODO: check return value
-  compute_HMACSHA256(key.c_str(), key.size(),
-                     challmsg.c_str(), challmsg.size(),
-                     digest, &digestlen,
-                     HMACSHA256_BASE64);
+  int err = compute_HMACSHA256(key.c_str(), key.size(),
+                               challmsg.c_str(), challmsg.size(),
+                               digest, &digestlen,
+                               HMACSHA256_BASE64);
 
-  /* build the reply */
+  if (err == 0)
+  {
+    jalson::json_array msg;
+    msg.push_back( AUTHENTICATE );
+    msg.push_back( digest );
+    msg.push_back( jalson::json_object()  );
+    send_msg( msg );
+  }
+  else
+  {
+    _ERROR_("failed to compute HMAC SHA256 diget");
+    jalson::json_array msg;
+    msg.push_back( ABORT );
+    msg.push_back( jalson::json_object() );
+    msg.push_back( "wamp.error.authentication_failed" );
+    send_msg( msg, true );
+  }
 
-  jalson::json_array msg;
-  msg.push_back( AUTHENTICATE );
-  msg.push_back( digest );
-  msg.push_back( jalson::json_object()  );
-
-  send_msg( msg );
 }
 
 //----------------------------------------------------------------------
@@ -837,7 +844,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
     msg.push_back( ABORT );
     msg.push_back( jalson::json_object() );
     msg.push_back( "wamp.error.authentication_failed" );
-    send_msg( msg );
+    send_msg( msg, true );
   }
 }
 
@@ -872,6 +879,7 @@ bool wamp_session::is_open() const
 {
   return m_state == eOpen;
 }
+
 
 bool wamp_session::is_pending_open() const
 {
