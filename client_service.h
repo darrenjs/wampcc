@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <future>
 
 
 namespace XXX {
@@ -31,8 +32,7 @@ public:
 
 
   /* request close */
-  void close();
-  void new_request_close();
+  std::shared_future<void> close();
 
   // Register a procedure with a remote dealer
   t_request_id provide(const std::string& uri,

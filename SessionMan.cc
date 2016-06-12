@@ -74,7 +74,7 @@ void SessionMan::session_closed(session_handle sh)
     if (it != m_sessions.active.end())
     {
       m_sessions.active.erase( it );
-      m_sessions.closed.push_back(sp);
+      //m_sessions.closed.push_back(sp);
     }
   }
 }

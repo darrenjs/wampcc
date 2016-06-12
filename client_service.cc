@@ -63,7 +63,6 @@ struct router_conn_impl
     if (m_session)
     {
       m_session->close();
-      m_session->disable_callback();
     }
 
     invalidate();
@@ -171,11 +170,6 @@ private:
 //   }
 // }
 
-static void session_closed(wamp_session*)
-{
-  std::cout << "session_closed new cb\n";
-}
-
 
 router_conn::router_conn(kernel * k,
                          std::string realm,
@@ -196,8 +190,7 @@ router_conn::router_conn(kernel * k,
                           std::move(ioh),
                           false,
                           realm,
-                          std::move(fn),
-                          session_closed);
+                          std::move(fn));
   m_impl->set_session(sp);
   m_impl->session()->initiate_handshake();
 
@@ -216,10 +209,7 @@ t_request_id router_conn::call(std::string uri,
                                wamp_call_result_cb user_cb,
                                void* user_data)
 {
-  if (m_impl->session())
-    return m_impl->session()->call(uri, options, args, user_cb, user_data);
-  else
-    return 0;
+  return m_impl->session()->call(uri, options, args, user_cb, user_data);
 }
 
 t_request_id router_conn::subscribe(const std::string& uri,
@@ -227,11 +217,7 @@ t_request_id router_conn::subscribe(const std::string& uri,
                                     subscription_cb user_cb,
                                     void * user_data)
 {
-
-  if (m_impl->session())
-    return m_impl->session()->subscribe(uri, options, user_cb, user_data);
-  else
-    return 0;
+  return m_impl->session()->subscribe(uri, options, user_cb, user_data);
 }
 
 
@@ -239,11 +225,7 @@ t_request_id router_conn::publish(const std::string& uri,
                                   const jalson::json_object& options,
                                   wamp_args args)
 {
-
-  if (m_impl->session())
-    return m_impl->session()->publish(uri, options, args);
-  else
-    return 0;
+  return m_impl->session()->publish(uri, options, args);
 }
 
 
@@ -253,24 +235,14 @@ t_request_id router_conn::provide(const std::string& uri,
                                   rpc_cb user_cb,
                                   void * user_data)
 {
-  if (m_impl->session())
-    return m_impl->session()->provide(uri, options, user_cb, user_data);
-  else
-    return 0;
+  return m_impl->session()->provide(uri, options, user_cb, user_data);
 }
 
 
-void router_conn::close()
+std::shared_future<void> router_conn::close()
 {
-  if (m_impl->session())
-    m_impl->session()->close();
+  return m_impl->session()->close();
 }
 
-
-void router_conn::new_request_close()
-{
-  if (m_impl->session())
-    m_impl->session()->new_request_close();
-}
 
 } // namespace XXX

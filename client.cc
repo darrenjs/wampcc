@@ -16,7 +16,7 @@
 #include <sys/time.h>
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eInfo,
+                                              XXX::Logger::eAll,
                                               true);
 
 struct callback_t
@@ -114,7 +114,7 @@ int main(int /* argc */, char** /* argv */)
   g_dealer = dealer;
 
 
-  // start listening for sessions 
+  // start listening for sessions
   std::future<int> fut_listen_err = dealer->listen(55555);
   std::future_status status = fut_listen_err.wait_for(std::chrono::seconds(2));
 

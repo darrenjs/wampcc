@@ -28,14 +28,14 @@ namespace XXX {
     std::function<uint64_t (wamp_session*, std::string uri, wamp_args)> inbound_subscribe;
   };
 
-  class event_loop;
   class kernel;
   class IOHandle;
   class Logger;
 
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
-  class wamp_session : public std::enable_shared_from_this<wamp_session>, public io_listener
+  class wamp_session : public std::enable_shared_from_this<wamp_session>,
+                       public io_listener
   {
   public:
     // wamp_session can only be created as shared_ptr
@@ -44,20 +44,14 @@ namespace XXX {
                                                 bool is_passive,
                                                 std::string realm,
                                                 session_state_fn state_cb,
-                                                session_closed_cb  closed_cb,
                                                 server_msg_handler = server_msg_handler());
 
     ~wamp_session();
 
     void send_msg(jalson::json_array&, bool final=false);
 
-    void new_request_close(); // perform asynchronous close
-
-    void close();
-
-    /* After this is called, no more calls will be made from wamp_session into
-     * the user space (e.g. to deliver invocation requests, etc) */
-    void disable_callback();
+    /** Request asynchronous close of the session */
+    std::shared_future<void> close();
 
     session_handle handle() { return shared_from_this(); }
 
@@ -75,9 +69,10 @@ namespace XXX {
     /* Does this session use heartbeats? */
     bool uses_heartbeats() const;
 
-    /* return the realm, or empty string if a realm has not yet been provided,
-     * eg, in case of a passive session */
-    const std::string& realm() const;
+    /** Return the realm, or empty string if a realm has not yet been provided,
+     * eg, in case of a passive session that receives the realm from remote
+     * peer. */
+    std::string realm() const;
 
     int hb_interval_secs() const { return m_hb_intvl; }
 
@@ -116,14 +111,10 @@ namespace XXX {
                  bool is_passive,
                  std::string realm,
                  session_state_fn state_cb,
-                 std::shared_ptr<wamp_session>& outref,
-                 server_msg_handler,
-                 session_closed_cb closed_cb);
+                 server_msg_handler);
 
     wamp_session(const wamp_session&) = delete;
     wamp_session& operator=(const wamp_session&) = delete;
-
-    bool send_bytes(std::pair<const char*, size_t>*, size_t, bool final);
 
     void io_on_close() override;
     void io_on_read(char*, size_t) override;
@@ -131,7 +122,6 @@ namespace XXX {
     void decode_and_process(char*, size_t len);
     void process_message(unsigned intmessage_type,
                          jalson::json_array&);
-
 
     void update_state_for_outbound(const jalson::json_array& msg);
 
@@ -164,8 +154,6 @@ namespace XXX {
     void handle_HELLO(jalson::json_array& ja);
     void handle_CHALLENGE(jalson::json_array& ja);
     void handle_AUTHENTICATE(jalson::json_array& ja);
-    void handle_ABORT(jalson::json_array& ja);
-    void handle_WELCOME(jalson::json_array& ja);
 
     void notify_session_state_change(bool is_open);
     static const char* state_to_str(wamp_session::SessionState);
@@ -176,8 +164,10 @@ namespace XXX {
 
     uint64_t m_sid;
 
-    std::mutex m_handle_lock;
     std::unique_ptr<IOHandle> m_handle;
+
+    std::promise<void> m_has_closed;
+    std::shared_future<void> m_shfut_has_closed;
 
     /* Interval, in secs, at which to send heartbeats. Values below 30 seconds
         might not be too reliable, because the underlying housekeeping timer has
@@ -203,8 +193,6 @@ namespace XXX {
 
     session_state_fn m_notify_state_change_fn;
 
-  private:
-
     void process_inbound_registered(jalson::json_array &);
     void process_inbound_invocation(jalson::json_array &);
     void process_inbound_subscribed(jalson::json_array &);
@@ -224,6 +212,8 @@ namespace XXX {
                           int request_id,
                           wamp_args args,
                           std::string error_uri);
+
+    bool user_cb_allowed() const { return m_state != eClosed; }
 
     server_msg_handler m_server_handler;
 
@@ -265,14 +255,6 @@ namespace XXX {
     // unprovide() is added, and if it is implemented synchronously.
     std::map<t_request_id, procedure> m_procedures;
     std::map<t_subscription_id, subscription> m_subscriptions;
-
-    // control when callbacks are allowed into user code
-    std::recursive_mutex m_user_cb_lock;
-    bool                 m_user_cb_allowed;
-
-
-    session_closed_cb  m_closed_cb;
-    bool m_invoke_final_ev;
 
   };
 

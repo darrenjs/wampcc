@@ -57,11 +57,6 @@ void dealer_service_impl::rpc_registered_cb(const rpc_details& r)
 }
 
 
-static void session_closed(wamp_session*)
-{
-  std::cout << "session_closed new cb\n";
-}
-
 
 std::future<int> dealer_service_impl::listen(int port)
 {
@@ -104,7 +99,6 @@ std::future<int> dealer_service_impl::listen(int port)
                                 true, /* session is passive */
                                 "" /* undefined realm */,
                                 [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
-                                session_closed,
                                 handlers);
         m_sesman->add_session(sp);
         _INFO_( "session created #" << sp->unique_id() );
@@ -233,6 +227,7 @@ void dealer_service_impl::handle_inbound_call(
 
 void dealer_service_impl::handle_session_state_change(session_handle sh, bool is_open)
 {
+  /* EV thread */
   if (!is_open)
   {
     m_pubsub->session_closed(sh);

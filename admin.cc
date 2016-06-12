@@ -191,12 +191,6 @@ void router_connection_cb(XXX::router_conn* /*router_session*/,
   g_connect_status = errcode;
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
-
-  if (!is_open)
-  {
-    _INFO_("Deleting the router-connection object");
-    rconn.reset();
-  }
 }
 
 
@@ -351,6 +345,7 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  /* if we reached here, the io handle is available */
 
   //std::unique_ptr<XXX::text_topic> topic;
 
@@ -468,11 +463,19 @@ int main(int argc, char** argv)
 
   }
 
-  sleep(1); // TODO: think I need this, to give publish time to complete
+  int sleep_time = 3;
+  std::cout << "sleeping for " << sleep_time << " before shutdown\n";
+  sleep(sleep_time); // TODO: think I need this, to give publish time to complete
+
+
+  // orderly shutdown of the wamp_session
+  std::cout << "requesting wamp_session closure\n";
+  auto fut_closed = rconn->close();
+  fut_closed.wait();
 
 
 
-  while (1) sleep(10);
+//  while (1) sleep(10);
 
   std::cout << "dong rconn reset\n";
   rconn.reset();  // TODO: this now causes core dump
