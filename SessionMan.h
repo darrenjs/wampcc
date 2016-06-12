@@ -3,15 +3,10 @@
 
 
 #include "Callbacks.h"
-
 #include "wamp_session.h"
 
-#include <jalson/jalson.h>
-
-#include <functional>
 #include <map>
 #include <mutex>
-#include <vector>
 
 namespace XXX {
 
@@ -34,15 +29,12 @@ public:
 
 private:
 
-  // void heartbeat_all();
-
   Logger *__logptr; /* name chosen for log macros */
 
   mutable struct
   {
     std::mutex lock;
     std::map<t_sid, std::shared_ptr<wamp_session> > active;
-    std::vector< std::shared_ptr<wamp_session> >  closed;
   } m_sessions;
 
 };
