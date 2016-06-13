@@ -26,7 +26,7 @@
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
 
-std::shared_ptr<XXX::router_conn> rconn;
+
 
 XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
                                               XXX::Logger::eAll,
@@ -123,8 +123,10 @@ void procedure_cb(XXX::invoke_details& invocation)
   _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
-  // example of making a call back into the connection object during a callback
-  rconn->publish("call", jalson::json_object(), XXX::wamp_args());
+  // TODO: put back in test of making a call back into the connection object
+  // during a callback
+
+  // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
 
   auto my_args =  invocation.args;
 
@@ -135,9 +137,7 @@ void procedure_cb(XXX::invoke_details& invocation)
 
   invocation.yield_fn(my_args);
 
-  // now delete
-  // std::cout << "deleting this connection from user space\n";
-  // rconn.reset();
+  // TODO: try deleting the conneciton object from the callback
 }
 
 void call_cb(XXX::wamp_call_result r)
@@ -178,8 +178,7 @@ void subscribe_cb(XXX::subscription_event_type evtype,
 int g_connect_status = 0;
 
 
-void router_connection_cb(XXX::router_conn* /*router_session*/,
-                          int errcode,
+void router_connection_cb(int errcode,
                           bool is_open)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
@@ -357,10 +356,18 @@ int main(int argc, char** argv)
    * events. The wamp_session will commence the WAMP handshake; connection
    * success is delivered via the callback. */
 
-  rconn.reset(
-    new XXX::router_conn(g_kernel.get(), std::move(credentials), router_connection_cb,
-                         std::move(up_handle), nullptr )
-    );
+
+  auto fn = [](XXX::session_handle wp, bool is_open){
+    if (auto sp = wp.lock())
+      router_connection_cb(0, is_open);
+  };
+
+  std::shared_ptr<XXX::wamp_session> ws
+    = XXX::wamp_session::create(*g_kernel.get(),
+                                std::move(up_handle),
+                                false,
+                                fn);
+  ws->initiate_handshake(credentials);
 
   /* Wait for the WAMP session to authenticate and become open */
   auto wait_interval = std::chrono::seconds(50);
@@ -399,13 +406,13 @@ int main(int argc, char** argv)
   // subscribe
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
-    rconn->subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
+    ws->subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
 
   // register
   std::unique_ptr<callback_t> cb1( new callback_t(g_kernel.get(),"my_hello") );
   if (!uopts.register_procedure.empty())
   {
-    rconn->provide(uopts.register_procedure,
+    ws->provide(uopts.register_procedure,
                    jalson::json_object(),
                   procedure_cb,
                    (void*) cb1.get());
@@ -418,20 +425,20 @@ int main(int argc, char** argv)
     XXX::wamp_args pub_args;
     pub_args.args_list = jalson::json_value::make_array();
     pub_args.args_list.as_array().push_back(uopts.publish_message);
-    rconn->publish(uopts.publish_topic,
-                   jalson::json_object(),
-                   pub_args);
+    ws->publish(uopts.publish_topic,
+                jalson::json_object(),
+                pub_args);
   }
 
   // call
   if (!uopts.call_procedure.empty())
   {
-    rconn->call(uopts.call_procedure,
-                jalson::json_object(),
-                args,
-                [](XXX::wamp_call_result r)
-                { call_cb(r);},
-                (void*)"I_called_the_proc");
+    ws->call(uopts.call_procedure,
+             jalson::json_object(),
+             args,
+             [](XXX::wamp_call_result r)
+             { call_cb(r);},
+             (void*)"I_called_the_proc");
     wait_reply = true;
   }
 
@@ -479,13 +486,11 @@ int main(int argc, char** argv)
    * wamp_session object (and thus is safe to delete). */
 
   std::cout << "requesting wamp_session closure\n";
-  auto fut_closed = rconn->close();
+  auto fut_closed = ws->close();
   fut_closed.wait();
 
 //  while (1) sleep(10);
 
-  std::cout << "dong rconn reset\n";
-  rconn.reset();  // TODO: this now causes core dump
 
   /* We must be mindful to free the kernel and logger only after all sessions
      are closed (e.g. sessions might attempt logging during their
