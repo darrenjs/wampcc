@@ -4,7 +4,6 @@
 
 #include <jalson/jalson.h>
 #include "WampTypes.h"
-#include "event.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -17,7 +16,7 @@
 namespace XXX {
 
 class Logger;
-
+struct event;
 
 using hb_func = std::function< bool(void) >;
 

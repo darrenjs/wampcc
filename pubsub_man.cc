@@ -1,6 +1,5 @@
 #include "pubsub_man.h"
 
-#include "event.h"
 #include "event_loop.h"
 #include "Logger.h"
 #include "WampTypes.h"

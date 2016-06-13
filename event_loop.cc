@@ -1,4 +1,6 @@
 #include "event_loop.h"
+
+#include "Callbacks.h"
 #include "rpc_man.h"
 #include "pubsub_man.h"
 #include "WampTypes.h"
@@ -6,6 +8,25 @@
 #include "utils.h"
 
 namespace XXX {
+
+struct event
+{
+  enum Type
+  {
+    e_null = 0,
+    e_kill,
+    function_dispatch
+  } type;
+
+  session_handle src; // TODO: need to remove
+
+  event(Type t)
+    : type(t)
+  {}
+
+  virtual ~event(){}
+};
+
 
 struct ev_function_dispatch : event
 {
