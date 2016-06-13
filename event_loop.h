@@ -111,6 +111,7 @@ private:
 
   bool m_continue;  // TODO: make atomic?
 
+  std::shared_ptr<event> m_kill_event;
   std::vector< std::shared_ptr<event> > m_queue;
   std::mutex m_mutex;
   std::condition_variable m_condvar;

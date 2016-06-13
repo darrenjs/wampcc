@@ -7,7 +7,6 @@
 
 namespace XXX {
 
-
 struct ev_function_dispatch : event
 {
   ev_function_dispatch(std::function<void()> __fn) :
@@ -25,6 +24,7 @@ struct ev_function_dispatch : event
 event_loop::event_loop(Logger *logptr)
   : __logptr(logptr),
     m_continue(true),
+    m_kill_event( std::make_shared< event > (event::e_kill) ),
     m_thread(&event_loop::eventmain, this),
     m_last_hb( std::chrono::steady_clock::now() )
 {
@@ -39,7 +39,13 @@ event_loop::~event_loop()
 void event_loop::stop()
 {
   m_continue = false;
-  push( 0 );
+
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_queue.push_back(m_kill_event);
+    m_condvar.notify_one();
+  }
+
   if (m_thread.joinable()) m_thread.join();
 }
 
@@ -129,7 +135,7 @@ void event_loop::eventloop()
     for (auto & ev : to_process)
     {
       if (!m_continue) return;
-      if (ev == 0) continue; // TODO: use a proper sentinel event
+      if (ev == m_kill_event) continue;
 
       hb_check(); // check for when there are many items work through
 

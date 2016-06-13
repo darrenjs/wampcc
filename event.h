@@ -14,6 +14,7 @@ struct event
   enum Type
   {
     e_null = 0,
+    e_kill,
     function_dispatch
   } type;
 
