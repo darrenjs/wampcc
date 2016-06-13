@@ -16,7 +16,7 @@ namespace XXX {
 
   class wamp_session;
 
-  typedef std::function< void() > reply_fn;
+
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
   typedef std::function< void(session_handle, bool) > session_state_fn;
 

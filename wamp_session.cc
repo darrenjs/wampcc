@@ -895,6 +895,8 @@ void wamp_session::initiate_handshake(client_credentials cc)
 
   {
     std::unique_lock<std::mutex> guard(m_realm_lock);
+    if (cc.realm.empty())
+      throw std::runtime_error("realm cannot be empty string");
     if (m_realm.empty()) m_realm = cc.realm;
   }
 
@@ -1579,7 +1581,7 @@ void wamp_session::process_inbound_register(jalson::json_array & msg)
   try
   {
     uint64_t registration_id = m_server_handler.inbound_register(handle(),
-                                                                 m_realm,
+                                                                 realm(),
                                                                  std::move(uri));
 
     jalson::json_array resp;
