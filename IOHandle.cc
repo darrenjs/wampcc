@@ -5,7 +5,6 @@
 #include "Logger.h"
 #include "utils.h"
 
-
 #include <memory>
 #include <sstream>
 
@@ -88,6 +87,12 @@ void IOHandle::start_read(std::shared_ptr<io_listener> p)
 
 IOHandle::~IOHandle()
 {
+  // Shutdown mutex has two purposes. [1] ensure shutdown-notifcation is fully
+  // complete before commencing deletion, and [2] deterministically catch
+  // attempt to delete self from the io_on_close callback (it will cause
+  // deadlock).
+  std::lock_guard<std::mutex> guard(m_shutdown_mtx);
+
   // If this object we can still be called by the IO thread, then a core dump or
   // other undefined behaviour will happen shortly.  Remove that uncertainty by
   // performing an immediate exit.
@@ -103,6 +108,7 @@ IOHandle::~IOHandle()
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
     for (auto &i :m_pending_write ) delete [] i.base;
   }
+
 }
 
 
@@ -112,17 +118,30 @@ void IOHandle::on_close_cb()
 
   if (++m_closed_handles_count == 2)
   {
-    // all our handles have been closed, so no more callbacks are due from the
-    // IO service
-    m_state = eClosed;
+    // while code still uses a shared_ptr to the observer (probably not the
+    // right thing to do), make sure the target destructor (and hence self
+    // destructor) does not get invoked during the shutdown critical section.
+    auto sp = m_listener.lock();
 
-    if (auto sp = m_listener.lock())
     {
-      sp->io_on_close();
-      m_listener.reset();
-    }
+      std::lock_guard<std::mutex> guard(m_shutdown_mtx);
 
-    m_io_has_closed.set_value();
+      // All our handles have been closed, so no more callbacks are due from the
+      // IO service
+      m_state = eClosed;
+
+      if (sp)
+      {
+	      // Notify owning session about end of file event. The owner must not try
+        // to delete this object from the current thread.
+        sp->io_on_close();
+        m_listener.reset();
+      }
+
+      // This must be final code in this method, because once called, this
+      // object can be deleted immediately by another thread.
+      m_io_has_closed.set_value();
+    }
   }
 }
 

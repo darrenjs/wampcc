@@ -73,6 +73,7 @@ private:
   };
   State m_state;
 
+  std::mutex m_shutdown_mtx;
 };
 
 } // namespace XXX
