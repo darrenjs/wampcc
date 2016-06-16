@@ -19,9 +19,10 @@ dealer_service::~dealer_service()
 }
 
 
-std::future<int> dealer_service::listen(int port)
+std::future<int> dealer_service::listen(int port,
+                                        auth_provider auth)
 {
-  return m_impl->listen(port);
+  return m_impl->listen(port, auth);
 }
 
 

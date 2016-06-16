@@ -113,9 +113,12 @@ int main(int /* argc */, char** /* argv */)
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);
   g_dealer = dealer;
 
+  XXX::auth_provider server_auth;
+  server_auth.permit_user_realm = [](const std::string& /*user*/, const std::string& /*realm*/){ return true; };
+  server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
 
   // start listening for sessions
-  std::future<int> fut_listen_err = dealer->listen(55555);
+  std::future<int> fut_listen_err = dealer->listen(55555, server_auth);
   std::future_status status = fut_listen_err.wait_for(std::chrono::seconds(2));
 
   if (status == std::future_status::ready)

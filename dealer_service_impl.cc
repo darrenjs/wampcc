@@ -58,7 +58,8 @@ void dealer_service_impl::rpc_registered_cb(const rpc_details& r)
 
 
 
-std::future<int> dealer_service_impl::listen(int port)
+std::future<int> dealer_service_impl::listen(int port,
+                                             auth_provider auth)
 {
   std::promise<int> intPromise;
   std::future<int> fut = intPromise.get_future();
@@ -66,7 +67,7 @@ std::future<int> dealer_service_impl::listen(int port)
   m_kernel.get_io()->add_server(
     port,
     std::move(intPromise),
-    [this](int /* port */, std::unique_ptr<IOHandle> ioh)
+    [this, auth](int /* port */, std::unique_ptr<IOHandle> ioh)
     {
       /* IO thread */
 
@@ -98,7 +99,8 @@ std::future<int> dealer_service_impl::listen(int port)
                                 std::move(ioh),
                                 true, /* session is passive */
                                 [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
-                                handlers);
+                                handlers,
+                                auth);
         m_sesman->add_session(sp);
         _INFO_( "session created #" << sp->unique_id() );
       }

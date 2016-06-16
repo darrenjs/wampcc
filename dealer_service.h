@@ -2,6 +2,7 @@
 #define XXX_DEALER_SERVICE_H
 
 #include "Callbacks.h"
+#include "wamp_session.h"
 
 #include <jalson/jalson.h>
 
@@ -32,7 +33,8 @@ public:
 
   /* Asynchronously begin accepting connections on the given port. If the bind
    * and or listen fails, a non-zero error code is returned in the future. */
-  std::future<int> listen(int port); // TODO: needs interface argument
+  std::future<int> listen(int port,
+                          auth_provider auth); // TODO: needs interface argument
 
   void register_procedure(const std::string& realm,
                           const std::string& uri,

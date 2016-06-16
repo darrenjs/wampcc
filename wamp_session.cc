@@ -38,6 +38,7 @@ public:
     bad_protocol,
     unknown,
     bad_json,
+    auth_failure
   };
 
   std::string uri;
@@ -67,7 +68,8 @@ static uint64_t generate_unique_session_id()
                              std::unique_ptr<IOHandle> h,
                              bool is_passive,
                              session_state_fn state_cb,
-                             server_msg_handler handler)
+                             server_msg_handler handler,
+                             auth_provider auth)
   : m_state( eInit ),
     __logptr(__kernel.get_logger()),
     m_kernel(__kernel),
@@ -81,6 +83,7 @@ static uint64_t generate_unique_session_id()
     m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
     m_bytes_avail(0),
     m_is_passive(is_passive),
+    m_auth_proivder(std::move(auth)),
     m_notify_state_change_fn(state_cb),
     m_server_handler(handler)
 {
@@ -91,10 +94,11 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
                                                    std::unique_ptr<IOHandle> ioh,
                                                    bool is_passive,
                                                    session_state_fn state_cb,
-                                                   server_msg_handler handler)
+                                                   server_msg_handler handler,
+                                                   auth_provider auth)
 {
   std::shared_ptr<wamp_session> sp(
-    new wamp_session(k, std::move(ioh), is_passive, state_cb, handler)
+    new wamp_session(k, std::move(ioh), is_passive, state_cb, handler, auth)
       );
 
   // can't put this initialisation step inside wamp_sesssion constructor,
@@ -649,61 +653,30 @@ void wamp_session::send_msg(jalson::json_array& jv, bool final)
 
 }
 
-//----------------------------------------------------------------------
 
-// TODO: what happens if we throw in here, ie, we are on the Socket IO thread!!!!
 void wamp_session::handle_HELLO(jalson::json_array& ja)
 {
-
-  /* WAMP:
-
-     [ (0) "HELLO",
-       (1) "realm1",
-       (2) {
-            "roles": {},
-            "authid": "peter",
-            "authmethods": ["wampcra"]
-           }
-     ]
-  */
-
-//  m_auth.recvHello = true;
-//  m_auth.hello_realm = msum.msg->at(1).as_string();
-//  m_auth.hello_opts  = msum.msg->at(2).as_object();
-
-  // m_sid = m_auth.hello_opts["authid"].as_string().value();
-  // m_sid = m_auth.hello_opts["agentid"].as_string().value();
+  /* EV thread */
 
   std::string realm = ja.at(1).as_string();
+  const jalson::json_object & authopts = ja.at(2).as_object();
+  std::string authid = jalson::get_copy(authopts, "authid", "").as_string();
 
   if (realm.empty())
     throw event_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed", true);
 
   {
-    // update the realm, and protect from multiple assignments to the value, so
-    // that it cannot be changed once set
+    // update the realm & authid, and protect from multiple assignments to the
+    // value, so that it cannot be changed once set
     std::unique_lock<std::mutex> guard(m_realm_lock);
-    if (m_realm.empty()) m_realm = realm;
+    if (m_realm.empty())  m_realm = realm;
+    if (m_authid.empty()) m_authid = authid;
   }
 
-  const jalson::json_object & authopts = ja.at(2).as_object();
-
-  /* TODO: verify the realm */
-
-  // Realm* realm = m_sessman->getRealm(m_auth.hello_realm);
-  // if ( realm == NULL)
-  // {
-  //   _ERROR_("Rejecting HELLO for unknown realm [" << m_auth.hello_realm << "]");
-  //   // TODO: abort
-  //   abort_authentication("authentication failed",
-  //                        "wamp.error.no_such_realm");
-  //   return;
-  // }
-
-  /* verify the user */
-
-  // get the user id
-  std::string authid = jalson::get_copy(authopts, "authid", "").as_string();
+  if (m_auth_proivder.permit_user_realm(authid, realm) == false)
+    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                        session_error::auth_failure,
+                        "auth_provider rejected user/realm");
 
   /* verify the supported auth methods */
 
@@ -719,47 +692,33 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
     }
   }
 
-  if (wampcra_found)
-  {
-    // TODO: authentication?
-  }
-  else
-  {
-    // TODO: need to abort the session
-  }
-
+  if (!wampcra_found)
+    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                        session_error::auth_failure,
+                        "no supported auth method advertised during logon");
 
   /* Construct the challenge */
 
-  // TODO: next, we need issue a challenge to the peer
-
-  // TODO: need to serialise this object.  This is mandated by the WAMP spec.
+  // TODO: remove hardcoding from each of these values
   jalson::json_object challenge;
   challenge["nonce"] = "LHRTC9zeOIrt_9U3";
   challenge["authprovider"] = "userdb";
-  challenge["authid"] = "peter";
+  challenge["authid"] = authid;
   challenge["timestamp"] = "2014-06-22T16:36:25.448Z";
   challenge["authrole"] = "user";
   challenge["authmethod"] = "wampcra";
   challenge["session"] = "3251278072152162";
-  std::string challengestr = jalson::encode( challenge );   // memleak?
+  std::string challengestr = jalson::encode( challenge );
 
-  /*
-      [  CHALLENGE,
-         AuthMethod|string,
-         Extra|dict]
-  */
   jalson::json_array msg;
   msg.push_back( CHALLENGE );
   msg.push_back( "wampcra" );
-  jalson::append_object(msg)["challenge"] = challengestr;
+  jalson::append_object(msg)["challenge"] = std::move(challengestr);
 
   send_msg( msg );
 }
 
-//----------------------------------------------------------------------
 
-// TODO: what happens if we throw in here, ie, we are on the Socket IO thread!!!!
 void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 {
   /* EV thread */
@@ -808,27 +767,31 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 
 }
 
-//----------------------------------------------------------------------
 
-// TODO: what happens if we throw in here, ie, we are on the Socket IO thread!!!!
 void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 {
-  // TODO: could just store it in the wamp_session ?
+  /* EV thread */
 
+  // TODO: could just store only the challenge str  ?
   const std::string & orig_challenge = m_challenge[2]["challenge"].as_string();
 
-  // TODO: the secret needs to come from somewhere, and, will probably be salted.
-  std::string key ="secret2";
+  std::string key = m_auth_proivder.get_user_secret(m_authid, m_realm);
 
   char digest[256];
   unsigned int digestlen = sizeof(digest)-1;
   memset(digest, 0, sizeof(digest));
 
-  // TODO: check return value
-  compute_HMACSHA256(key.c_str(), key.size(),
-                     orig_challenge.c_str(), orig_challenge.size(),
-                     digest, &digestlen,
-                     HMACSHA256_BASE64);
+  int r = compute_HMACSHA256(key.c_str(), key.size(),
+                             orig_challenge.c_str(), orig_challenge.size(),
+                             digest, &digestlen,
+                             HMACSHA256_BASE64);
+  for (size_t i = 0; i < key.size(); i++) key[i]='\0';
+  if (r == -1)
+  {
+    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                        session_error::auth_failure,
+                        "HMACSHA256 failed");
+  }
 
   // the digest generated by the peer
   const std::string & peer_digest = ja[1].as_string();
@@ -1662,5 +1625,14 @@ bool wamp_session::uses_heartbeats() const
   return m_hb_intvl > 0;
 }
 
+
+void wamp_session::abort_connection(std::string errmsg)
+{
+  jalson::json_array msg;
+  msg.push_back( ABORT );
+  msg.push_back( jalson::json_object() );
+  msg.push_back( std::move(errmsg) );
+  send_msg( msg, true );
+}
 
 } // namespace XXX

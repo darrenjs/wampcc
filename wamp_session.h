@@ -20,6 +20,12 @@ namespace XXX {
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
   typedef std::function< void(session_handle, bool) > session_state_fn;
 
+  struct auth_provider
+  {
+    std::function<bool(const std::string& user, const std::string& realm)> permit_user_realm;
+    std::function<std::string(const std::string& user, const std::string& realm)> get_user_secret;
+  };
+
   struct server_msg_handler
   {
     std::function<void(wamp_session*, std::string uri, wamp_args, wamp_invocation_reply_fn)> inbound_call;
@@ -52,7 +58,8 @@ namespace XXX {
                                                 std::unique_ptr<IOHandle>,
                                                 bool is_passive,
                                                 session_state_fn state_cb,
-                                                server_msg_handler = server_msg_handler());
+                                                server_msg_handler = server_msg_handler(),
+                                                auth_provider auth = auth_provider() );
 
     ~wamp_session();
 
@@ -118,7 +125,8 @@ namespace XXX {
                  std::unique_ptr<IOHandle>,
                  bool is_passive,
                  session_state_fn state_cb,
-                 server_msg_handler);
+                 server_msg_handler,
+                 auth_provider);
 
     wamp_session(const wamp_session&) = delete;
     wamp_session& operator=(const wamp_session&) = delete;
@@ -196,7 +204,10 @@ namespace XXX {
     std::function< std::string() > m_client_secret_fn;
 
     std::string m_realm;
+    std::string m_authid;
     mutable std::mutex m_realm_lock;
+
+    auth_provider m_auth_proivder;
 
     session_state_fn m_notify_state_change_fn;
 
@@ -219,6 +230,9 @@ namespace XXX {
                           int request_id,
                           wamp_args args,
                           std::string error_uri);
+
+
+    void abort_connection(std::string);
 
     bool user_cb_allowed() const { return m_state != eClosed; }
 
