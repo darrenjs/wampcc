@@ -5,6 +5,7 @@
 #include "WampTypes.h"
 #include "SessionMan.h"
 #include "kernel.h"
+#include "wamp_utils.h"
 
 #include <list>
 
@@ -37,10 +38,16 @@ struct managed_topic
   // complex subscription features are supported.
   size_t subscription_id;
 
+
   managed_topic(size_t __subscription_id)
   : subscription_id(__subscription_id)
   {
   }
+
+  uint64_t next_publication_id() { return m_id_gen.next(); }
+
+private:
+  global_scope_id_generator m_id_gen;
 };
 
 /* Constructor */
@@ -68,12 +75,12 @@ pubsub_man::~pubsub_man()
 
 
 
-
+/*
 static bool compare_session(const session_handle& p1, const session_handle& p2)
 {
   return ( !p1.owner_before(p2) && !p2.owner_before(p1) );
 }
-
+*/
 
 managed_topic* pubsub_man::find_topic(const std::string& topic,
                                       const std::string& realm,
@@ -142,10 +149,12 @@ void pubsub_man::update_topic(const std::string& topic,
     }
 
     // broadcast event to subscribers
+
     jalson::json_array msg;
+    msg.reserve(6);
     msg.push_back( EVENT );
     msg.push_back( mt->subscription_id );
-    msg.push_back( 2 ); // TODO: generate publication ID
+    msg.push_back( mt->next_publication_id() );
     msg.push_back( jalson::json_value::make_object() );
     if (!args.args_list.is_null())
     {
@@ -153,11 +162,28 @@ void pubsub_man::update_topic(const std::string& topic,
       if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
     }
 
-
-    for (auto item : mt->m_subscribers)
+    size_t num_active = 0;
+    for (auto & item : mt->m_subscribers)
     {
-      // TODO: try to track those sessions which are now dead?  Or, do that on the event thread?
-      if (auto sp = item.lock()) sp->send_msg(msg);
+      if (auto sp = item.lock())
+      {
+        sp->send_msg(msg);
+        num_active++;
+      }
+    }
+
+    // remove any expired sessions
+
+    if (num_active != mt->m_subscribers.size())
+    {
+      std::vector< std::weak_ptr<wamp_session> > temp;
+      temp.resize(num_active);
+      for (auto item : mt->m_subscribers)
+      {
+        if (!item.expired())
+          temp.push_back( std::move(item) );
+      }
+      mt->m_subscribers.swap( temp );
     }
 
   }
@@ -231,7 +257,6 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 
 
   // find or create a topic
-  _INFO_("SUBSCRIBE for " << sptr->realm() << "::" << uri);
   managed_topic* mt = find_topic(uri, sptr->realm(), true);
 
   if (!mt)
@@ -245,27 +270,26 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 }
 
 
-void pubsub_man::session_closed(session_handle sh)
+void pubsub_man::session_closed(session_handle /*sh*/)
 {
   /* EV loop */
 
-  // TODO: design of this can be improved, ie, we should track what topics a
-  // session has subscribed too, rather than searching every topic.
-  for (auto & realm_iter : m_topics)
-    for (auto & item : realm_iter.second)
-    {
+  // // design of this can be improved, ie, we should track what topics a session
+  // // has subscribed too, rather than searching every topic.
+  // for (auto & realm_iter : m_topics)
+  //   for (auto & item : realm_iter.second)
+  //   {
 
-      for (auto it = item.second->m_subscribers.begin();
-           it != item.second->m_subscribers.end(); it++)
-      {
-        if (compare_session( *it, sh))
-        {
-          item.second->m_subscribers.erase( it );
-          break;
-        }
-      }
-
-    }
+  //     for (auto it = item.second->m_subscribers.begin();
+  //          it != item.second->m_subscribers.end(); it++)
+  //     {
+  //       if (compare_session( *it, sh))
+  //       {
+  //         item.second->m_subscribers.erase( it );
+  //         break;
+  //       }
+  //     }
+  //   }
 }
 
 } // namespace XXX
