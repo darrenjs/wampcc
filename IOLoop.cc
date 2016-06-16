@@ -193,9 +193,6 @@ void IOLoop::on_async()
 
   if (pending_flags & eFinal)
   {
-    for (auto & i : m_handles)
-      i->request_close();
-
     for (auto & i : m_server_handles)
       uv_close((uv_handle_t*)i.get(), 0);
 
@@ -376,8 +373,6 @@ void IOLoop::add_server(int port,
 
 void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
 {
-  m_handles.push_back( iohandle );
-
   if (myserver->cb) myserver->cb(myserver->port, std::unique_ptr<IOHandle>(iohandle));
 }
 

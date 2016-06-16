@@ -131,12 +131,7 @@ private:
   };
   int m_pending_flags;
 
-
-  std::list< IOHandle* >m_handles; // TODO: need lock? No. Why not?
-
-
   std::list< std::unique_ptr<tcp_server> > m_server_handles;
-
 };
 
 } // namespace XXX
