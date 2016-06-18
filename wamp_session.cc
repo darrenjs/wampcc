@@ -63,6 +63,20 @@ static uint64_t generate_unique_session_id()
 }
 
 
+static t_request_id extract_request_id(jalson::json_array & msg, int index)
+{
+  if (!msg[index].is_uint())
+    throw bad_protocol("request ID must be unsigned int");
+  return msg[index].as_uint();
+}
+
+
+static void check_size_at_least(size_t msg_len, size_t s)
+{
+  if (msg_len < s)
+    throw bad_protocol("json message not enough elements");
+}
+
 /* Constructor */
   wamp_session::wamp_session(kernel& __kernel,
                              std::unique_ptr<IOHandle> h,
@@ -988,8 +1002,12 @@ void wamp_session::process_inbound_registered(jalson::json_array & msg)
 {
   /* EV thread */
 
-  // TODO: add more messsage checking here
-  t_request_id request_id  = msg[1].as_uint();
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id  = extract_request_id(msg, 1);
+
+  if (!msg[2].is_uint())
+    throw bad_protocol("registration ID must be unsigned int");
   uint64_t registration_id = msg[2].as_uint();
 
   std::unique_lock<std::mutex> guard(m_pending_lock);
@@ -1011,7 +1029,12 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
 {
   /* EV thread */
 
-  t_request_id request_id = msg[1].as_uint();
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[2].is_uint())
+    throw bad_protocol("registration ID must be unsigned int");
   uint64_t registration_id = msg[2].as_uint();
 
   // find the procedure
@@ -1105,8 +1128,12 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
 {
   /* EV thread */
 
-  // TODO: add more messsage checking here
-  t_request_id request_id  = msg[1].as_uint();
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id  = extract_request_id(msg, 1);
+
+  if (!msg[2].is_uint())
+      throw bad_protocol("subscription ID must be unsigned int");
   t_subscription_id subscription_id = msg[2].as_uint();
 
   subscription temp;
@@ -1231,8 +1258,12 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
 {
   /* EV thread */
 
-  // TODO: add more messsage checking here
-  t_request_id request_id  = msg[1].as_uint();
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id  = extract_request_id(msg, 1);
+
+  if (!msg[2].is_object())
+      throw bad_protocol("details must be json");
   jalson::json_object & options = msg[2].as_object();
 
   wamp_call orig_call;
@@ -1279,9 +1310,11 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
 {
   /* EV thread */
 
+  check_size_at_least(msg.size(), 4);
+
   // TODO: add more messsage checking here
   int request_type = msg[1].as_int();
-  t_request_id request_id = msg[2].as_uint();
+  t_request_id request_id = extract_request_id(msg, 2);
   jalson::json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
@@ -1404,11 +1437,13 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
 {
   /* EV thread */
 
-  // TODO: any errors here, and we abort the connections, ie, its a bad message
+  check_size_at_least(msg.size(), 4);
 
-  // TODO: add more messsage checking here
-  t_request_id request_id = msg[1].as_uint();
-  std::string& uri = msg[3].as_string();
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[3].is_string()) throw bad_protocol("procedure uri must be string");
+  std::string procedure_uri = std::move(msg[3].as_string());
+
   wamp_args my_wamp_args;
   if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
   if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
@@ -1456,7 +1491,7 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
       }
     };
 
-  m_server_handler.inbound_call(this, uri, std::move(my_wamp_args), std::move(reply_fn));
+  m_server_handler.inbound_call(this, procedure_uri, std::move(my_wamp_args), std::move(reply_fn));
 }
 
 
@@ -1503,8 +1538,11 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
 
 void wamp_session::process_inbound_yield(jalson::json_array & msg)
 {
-  // TODO: add more messsage checking here
-  t_request_id request_id = msg[1].as_uint();
+  /* EV thread */
+
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id = extract_request_id(msg, 1);
 
   wamp_args args;
   if ( msg.size() > 3 ) args.args_list = msg[3];
@@ -1531,8 +1569,11 @@ void wamp_session::process_inbound_publish(jalson::json_array & msg)
 
   if (m_server_handler.handle_inbound_publish)
   {
-    // TODO: add more messsage checking here
-    jalson::json_string & uri = msg[3].as_string();
+    check_size_at_least(msg.size(), 4);
+
+    if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
+    jalson::json_string uri = std::move(msg[3].as_string());
+
     wamp_args args;
     if ( msg.size() > 4 ) args.args_list = std::move(msg[4]);
     if ( msg.size() > 5 ) args.args_dict = std::move(msg[5]);
@@ -1546,18 +1587,20 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 {
   /* EV thread */
 
-  // TODO: any errors here, and we abort the connections, ie, its a bad message
+  check_size_at_least(msg.size(), 4);
 
-  // TODO: add more messsage checking here
-  t_request_id request_id = msg[1].as_uint();
-  std::string uri = std::move( msg[3].as_string() );
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
+  std::string topic_uri = std::move(msg[3].as_string());
+
   wamp_args my_wamp_args;
   if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
   if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
 
   try
   {
-    uint64_t subscription_id = m_server_handler.inbound_subscribe(this, uri, my_wamp_args);
+    uint64_t subscription_id = m_server_handler.inbound_subscribe(this, topic_uri, my_wamp_args);
 
     jalson::json_array out;
     out.push_back(SUBSCRIBED);
@@ -1580,12 +1623,17 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 }
 
 
+
 void wamp_session::process_inbound_register(jalson::json_array & msg)
 {
   /* EV thread */
 
-  // TODO: add more messsage checking here
-  t_request_id request_id = msg[1].as_uint();
+  check_size_at_least(msg.size(), 4);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[3].is_string())
+    throw bad_protocol("procedure uri must be string");
   std::string uri = std::move(msg[3].as_string());
 
   try

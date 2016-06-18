@@ -57,36 +57,6 @@ struct user_options
   }
 } uopts;
 
-//----------------------------------------------------------------------
-std::string util_strerror(int e)
-{
-  std::string retval;
-
-  char errbuf[256];
-  memset(errbuf, 0, sizeof(errbuf));
-
-/*
-
-TODO: here I should be using the proper feature tests for the XSI
-implementation of strerror_r .  See man page.
-
-  (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
-
-*/
-
-#ifdef _GNU_SOURCE
-  // the GNU implementation might not write to errbuf, so instead, always use
-  // the return value.
-  return ::strerror_r(e, errbuf, sizeof(errbuf)-1);
-#else
-  // XSI implementation
-  if (::strerror_r(e, errbuf, sizeof(errbuf)-1) == 0)
-    return errbuf;
-#endif
-
-  return "unknown";
-}
-
 
 std::mutex              g_active_session_mutex;
 std::condition_variable g_active_session_condition;
@@ -114,6 +84,8 @@ struct callback_t
   XXX::kernel* svc;
   const char* request;
 };
+
+
 void procedure_cb(XXX::invoke_details& invocation)
 {
   const callback_t* cbdata = (callback_t*) invocation.user;
@@ -122,9 +94,6 @@ void procedure_cb(XXX::invoke_details& invocation)
   auto __logptr = logger;
   _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
-
-  // TODO: put back in test of making a call back into the connection object
-  // during a callback
 
   // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
 
@@ -136,8 +105,6 @@ void procedure_cb(XXX::invoke_details& invocation)
   arr.push_back("back");
 
   invocation.yield_fn(my_args);
-
-  // TODO: try deleting the conneciton object from the callback
 }
 
 void call_cb(XXX::wamp_call_result r)
@@ -175,8 +142,8 @@ void subscribe_cb(XXX::subscription_event_type evtype,
   std::cout << "received topic update!!! evtype: " << evtype << ", args_list: " << args_list
             << ", args_dict:" << args_dict << "\n";
 }
-int g_connect_status = 0;
 
+bool g_handshake_success = false;
 
 void router_connection_cb(int errcode,
                           bool is_open)
@@ -185,8 +152,9 @@ void router_connection_cb(int errcode,
 
   if (!is_open)
     std::cout << "WAMP session closed, errcode " << errcode << std::endl;
+  else
+    g_handshake_success = true;
 
-  g_connect_status = errcode;
   g_active_session_notifed = true;
   g_active_session_condition.notify_all();
 }
@@ -381,16 +349,15 @@ int main(int argc, char** argv)
     if (!hasevent) die("failed to obtain remote connection");
   }
 
-  if (g_connect_status != 0)
+  if (!g_handshake_success)
   {
-    std::cout << "Unable to connect, error " << g_connect_status
-              << ": " << util_strerror(g_connect_status) << "\n";
+    std::cout << "Unable to connect" << std::endl;
     exit(1);
   }
 
   /* WAMP session is now open  */
 
-  std::cout << "WAMP session open\n";
+  std::cout << "WAMP session open" << std::endl;
 
   // TODO: take CALL parameters from command line
   XXX::wamp_args args;
@@ -450,15 +417,6 @@ int main(int argc, char** argv)
 
     /*bool hasevent =*/ event_queue_condition.wait_for(guard, wait_interval,
                                                        [](){ return !event_queue.empty(); });
-
-    // if (event_queue.empty())
-    // {
-    //   // TODO: eventually want to suppor tall kinds of errors, ie, no
-    //   // connection, no rpc, no rpc reply etc
-    //   std::cout << "timeout ... did not find the admin\n";
-
-    //   break;
-    // }
 
     while (!event_queue.empty())
     {
