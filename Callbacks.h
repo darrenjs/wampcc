@@ -9,8 +9,6 @@
 #include <stdint.h>
 
 
-// TODO: this might be come a client side for, for all types the client needs to use
-
 namespace XXX {
 
 

@@ -4,8 +4,6 @@
 #include <memory>
 #include <future>
 
-// TODO: try and use pointers & forward decls in order to move the uv.h into the
-// .cc file.
 #include <uv.h>
 
 namespace XXX {

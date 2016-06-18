@@ -22,7 +22,9 @@ namespace XXX
 #define WAMP_ERROR_URI_NO_SUCH_PROCEDURE "wamp.error.no_such_procedure"
 #define WAMP_ERROR_URI_NO_SUCH_REGISTRATION "wamp.error.no_such_registration"
 
+// protocol extensions
 #define WAMP_RUNTIME_ERROR "wamp.runtime_error"
+#define WAMP_ERROR_BAD_PROTOCOL "wamp.error.bad_protocol"
 
 
 enum WampMsgType

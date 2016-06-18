@@ -33,29 +33,27 @@ namespace XXX {
 class session_error : public std::runtime_error
 {
 public:
-  enum error_code
-  {
-    no_error = 0,
-    msgbuf_full,
-    bad_protocol,
-    unknown,
-    bad_json,
-    auth_failure
-  };
 
   std::string uri;
-  error_code err;
 
   session_error(const std::string& __uri,
-                error_code __e,
                 const std::string& __text="")
   : std::runtime_error( __text ),
-    uri( __uri ),
-    err( __e )
+    uri( __uri )
   {
   }
+
 };
 
+class bad_protocol : public session_error
+{
+public:
+  bad_protocol(std::string msg)
+    : session_error(WAMP_ERROR_BAD_PROTOCOL,
+                    std::move(msg))
+  {}
+
+};
 
 
 static std::atomic<uint64_t> m_next_id(1); // start at 1, so that 0 implies invalid ID
@@ -209,36 +207,33 @@ void wamp_session::io_on_read(char* src, size_t len)
   std::cout << "recv: bytes " << len << ": " << temp << "\n";
 
 
-  session_error::error_code err_code = session_error::no_error;
+  bool have_error = true;
   std::string err_uri;
   std::string err_text;
 
   try
   {
     io_on_read_impl(src, len);
+    have_error = false;
   }
   catch ( session_error& e )
   {
-    err_code = e.err;
     err_uri  = std::move(e.uri);
     err_text = e.what();
   }
   catch ( std::exception& e )
   {
-    err_code = session_error::unknown;
     err_uri = WAMP_RUNTIME_ERROR;
     err_text = e.what();
   }
   catch (...)
   {
-    err_code = session_error::unknown;
     err_uri = WAMP_RUNTIME_ERROR;
   }
 
-  if (err_code != session_error::no_error)
+  if (have_error)
   {
-    _ERROR_("session_error: err_code " << err_code
-            << ", uri=" << err_uri
+    _ERROR_("session_error: uri=" << err_uri
             << ", text=" << err_text);
     try
     {
@@ -293,7 +288,7 @@ void wamp_session::io_on_read_impl(char* src, size_t len)
         {
           char firstchar = *(ptr + HEADERLEN);
           if (firstchar != '[')
-            throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol, "bad json message");
+            throw bad_protocol("bad json message");
         }
 
         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
@@ -312,7 +307,7 @@ void wamp_session::io_on_read_impl(char* src, size_t len)
     }
     else
     {
-      throw session_error(WAMP_RUNTIME_ERROR, session_error::msgbuf_full, "msg buffer full");
+      throw session_error(WAMP_RUNTIME_ERROR, "msg buffer full");
     }
   }
 }
@@ -331,10 +326,10 @@ void wamp_session::decode_and_process(char* ptr, size_t msglen)
     jalson::json_array& msg = jv.as_array();
 
     if (msg.size() == 0)
-      throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol, "json array empty");
+      throw bad_protocol( "json array empty");
 
     if (!msg[0].is_uint())
-      throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_protocol, "message type must be uint");
+      throw bad_protocol("message type must be uint");
     unsigned int messasge_type = msg[0].as_uint();
 
     /* process on the EV thread */
@@ -349,7 +344,7 @@ void wamp_session::decode_and_process(char* ptr, size_t msglen)
   }
   catch( const jalson::json_error& e)
   {
-    throw session_error(WAMP_RUNTIME_ERROR, session_error::bad_json, e.what());
+    throw bad_protocol(e.what());
   }
 }
 
@@ -546,7 +541,6 @@ void wamp_session::process_message(unsigned int message_type,
       else
       {
         if (m_state != eOpen) throw session_error(WAMP_RUNTIME_ERROR,
-                                                  session_error::bad_protocol,
                                                   "received request but handshake incomplete");
       }
 
@@ -581,9 +575,7 @@ void wamp_session::process_message(unsigned int message_type,
         default:
           std::ostringstream os;
           os << "unknown message type " << (int)message_type;
-          throw session_error(WAMP_RUNTIME_ERROR,
-                              session_error::bad_protocol,
-                              os.str());
+          throw bad_protocol(os.str());
       }
     }
     else
@@ -603,9 +595,8 @@ void wamp_session::process_message(unsigned int message_type,
       }
       else
       {
-        if (m_state != eOpen) throw session_error(WAMP_RUNTIME_ERROR,
-                                                  session_error::bad_protocol,
-                                                  "received request but handshake incomplete");
+        if (m_state != eOpen)
+          throw bad_protocol("received request but handshake incomplete");
       }
 
       switch (message_type)
@@ -639,9 +630,7 @@ void wamp_session::process_message(unsigned int message_type,
         default:
           std::ostringstream os;
           os << "unknown message type " << (int)message_type;
-          throw session_error(WAMP_RUNTIME_ERROR,
-                              session_error::bad_protocol,
-                              os.str());
+          throw bad_protocol(os.str());
       }
     }
     return; // message handled okay
@@ -708,7 +697,6 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
 
   if (realm.empty())
     throw session_error(WAMP_ERROR_NO_SUCH_REALM,
-                        session_error::auth_failure,
                         "empty realm not allowed");
 
   {
@@ -721,7 +709,6 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
 
   if (m_auth_proivder.permit_user_realm(authid, realm) == false)
     throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        session_error::auth_failure,
                         "auth_provider rejected user/realm");
 
   /* verify the supported auth methods */
@@ -740,7 +727,6 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
 
   if (!wampcra_found)
     throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        session_error::auth_failure,
                         "no supported auth method advertised during logon");
 
   /* Construct the challenge */
@@ -769,16 +755,25 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 {
   /* EV thread */
 
-  // TODO: parsing code be better. Especially the extraction of 'challenge',
-  // this is an example where I want the API to be more expressive.
+  if (ja.size() < 3)
+    throw bad_protocol("message requires length 3");
 
-  // TODO: check authmethod is "wampcra"
-  //const std::string & authmethod    = ev->ja[1].as_string();
+  if (!ja[1].is_string())
+    throw bad_protocol("AuthMethod must be string");
 
+  if (!ja[2].is_object())
+    throw bad_protocol("Extra must be dict");
 
+  std::string authmethod = ja[1].as_string();
+  if (authmethod != "wampcra")
+    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                        "unknown AuthMethod  (only wampcra supported)");
 
   const jalson::json_object & extra = ja[2].as_object();
   std::string challmsg = jalson::get_copy(extra, "challenge", "").as_string();
+  if (challmsg == "")
+    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                        "challenge not found in Extra");
 
   /* generate the authentication digest */
 
@@ -835,7 +830,6 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
   if (r == -1)
   {
     throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        session_error::auth_failure,
                         "HMACSHA256 failed");
   }
 
