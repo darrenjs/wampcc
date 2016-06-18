@@ -86,10 +86,11 @@ public:
   void init();
 
   void dispatch(std::function<void()> fn);
+  void dispatch(std::chrono::milliseconds, std::function<void()> fn);
 
   void request_stop() { m_continue=false; }
 
-  void add_hb_target(hb_func);
+  // void add_hb_target(hb_func);
 
 private:
   event_loop(const event_loop&); // no copy
@@ -102,24 +103,24 @@ private:
   void process_event(event* e);
   void process_event_error(event* e, event_error&);
 
-  void hb_check();
+  // void hb_check();
 
-  void push(event* ev);
 
   Logger *__logptr; /* name chosen for log macros */
 
   bool m_continue;  // TODO: make atomic?
 
   std::shared_ptr<event> m_kill_event;
-  std::vector< std::shared_ptr<event> > m_queue;
+  std::list< std::shared_ptr<event> > m_queue;
   std::mutex m_mutex;
   std::condition_variable m_condvar;
   std::thread m_thread;
+  std::multimap< std::chrono::steady_clock::time_point, std::shared_ptr<event>  > m_schedule;
 
-  std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
+//  std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
 
-  std::list< hb_func > m_hb_targets;
-  std::mutex           m_hb_targets_mutex;
+  // std::list< hb_func > m_hb_targets;
+  // std::mutex           m_hb_targets_mutex;
 };
 
 } // namespace XXX

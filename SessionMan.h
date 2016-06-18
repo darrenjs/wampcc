@@ -25,7 +25,7 @@ public:
   void session_closed(session_handle sh);
 
 
-  void handle_housekeeping_event( void );
+  // void handle_housekeeping_event( void );
 
 private:
 

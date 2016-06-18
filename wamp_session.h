@@ -277,7 +277,7 @@ namespace XXX {
     std::map<t_request_id, procedure> m_procedures;
     std::map<t_subscription_id, subscription> m_subscriptions;
 
-
+    std::function<void()> m_hb_func;
   };
 
 } // namespace XXX

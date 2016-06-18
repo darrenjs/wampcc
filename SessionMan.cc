@@ -41,35 +41,35 @@ void SessionMan::session_closed(session_handle sh)
 
 //----------------------------------------------------------------------
 
-void SessionMan::handle_housekeeping_event()
-{
+// void SessionMan::handle_housekeeping_event()
+// {
 
-  // scan for sessions that failed to complete the handshake, or which are not
-  // sending heartbeats
-  {
-    std::lock_guard<std::mutex> guard(m_sessions.lock);
-    for (auto i : m_sessions.active)
-    {
+//   // scan for sessions that failed to complete the handshake, or which are not
+//   // sending heartbeats
+//   {
+//     std::lock_guard<std::mutex> guard(m_sessions.lock);
+//     for (auto i : m_sessions.active)
+//     {
 
-      if (i.second->is_pending_open() &&
-          i.second->duration_since_creation() >= MAX_PENDING_OPEN_SECS)
-      {
-        // expire sessions which have spent too long in pending-open
-        _WARN_("timeout during handshake, closing session #" << i.second->unique_id());
-        i.second->close();
-      }
-      else if ( i.second->is_open() &&
-                i.second->uses_heartbeats() &&
-                (i.second->duration_since_last() > i.second->hb_interval_secs()*3))
-      {
-        // expire sessions which appear inactive
-        _WARN_("missing heartbeats, closing session #" << i.second->unique_id());
-        i.second->close();
-      }
-    }
+//       if (i.second->is_pending_open() &&
+//           i.second->duration_since_creation() >= MAX_PENDING_OPEN_SECS)
+//       {
+//         // expire sessions which have spent too long in pending-open
+//         _WARN_("timeout during handshake, closing session #" << i.second->unique_id());
+//         i.second->close();
+//       }
+//       else if ( i.second->is_open() &&
+//                 i.second->uses_heartbeats() &&
+//                 (i.second->duration_since_last() > i.second->hb_interval_secs()*3))
+//       {
+//         // expire sessions which appear inactive
+//         _WARN_("missing heartbeats, closing session #" << i.second->unique_id());
+//         i.second->close();
+//       }
+//     }
 
-  }
-}
+//   }
+// }
 
 
 void SessionMan::add_session(std::shared_ptr<wamp_session> sp)

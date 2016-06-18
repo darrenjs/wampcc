@@ -25,14 +25,14 @@ dealer_service_impl::dealer_service_impl(kernel & __svc, dealer_listener* l)
    m_pubsub(new pubsub_man(__svc)),
    m_listener( l )
 {
-  hb_func fn = [this]()
-    {
-      try{
-        this->on_timer();
-      } catch(...){}
-      return true; // continue timer
-    };
-  m_kernel.get_event_loop()->add_hb_target(std::move(fn));
+  // hb_func fn = [this]()
+  //   {
+  //     try{
+  //       this->on_timer();
+  //     } catch(...){}
+  //     return true; // continue timer
+  //   };
+  // m_kernel.get_event_loop()->add_hb_target(std::move(fn));
 
 }
 
@@ -237,11 +237,11 @@ void dealer_service_impl::handle_session_state_change(session_handle sh, bool is
 }
 
 
-bool dealer_service_impl::on_timer()
-{
-  /* EV thread */
-  m_sesman->handle_housekeeping_event();
-  return true;
-}
+// bool dealer_service_impl::on_timer()
+// {
+//   /* EV thread */
+//   m_sesman->handle_housekeeping_event();
+//   return true;
+// }
 
 } // namespace XXX

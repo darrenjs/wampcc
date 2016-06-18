@@ -21,6 +21,8 @@
 #define HEADERLEN 4 /* size of uint32 */
 #define INBOUND_BUFFER_SIZE 2000 // TODO: increase
 
+#define MAX_PENDING_OPEN_MS 5000
+#define MAX_HEARTBEATS_MISSED 3
 
 
 
@@ -76,7 +78,7 @@ static uint64_t generate_unique_session_id()
     m_sid( generate_unique_session_id() ),
     m_handle( std::move(h) ),
     m_shfut_has_closed(m_has_closed.get_future()),
-    m_hb_intvl(2),  // TODO HB's are not being sent at this rate
+    m_hb_intvl(1),
     m_time_create(time(NULL)),
     m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
@@ -105,6 +107,20 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
   // because the shared pointer wont be created & available inside the
   // constructor
   sp->m_handle->start_read( sp );
+
+  // set up a timer to expire close this session if it has not been successfully
+  // opened with a maximum time duration
+  std::weak_ptr<wamp_session> wp = sp;
+  k.get_event_loop()->dispatch(
+    std::chrono::milliseconds(MAX_PENDING_OPEN_MS),
+    [wp]()
+    {
+      if (auto sp = wp.lock())
+      {
+        if (sp->is_pending_open())
+          sp->abort_connection("wamp.error.logon_timeout");
+      }
+    });
 
   return sp;
 }
@@ -436,23 +452,51 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 
     if (m_state == eOpen)
     {
-      // register for housekeeping
-      std::weak_ptr<wamp_session> wp = handle();
-      hb_func fn = [wp]()
-        {
-          if (auto sp = wp.lock())
+      // // register for housekeeping
+      // std::weak_ptr<wamp_session> wp = handle();
+      // hb_func fn = [wp]()
+      //   {
+      //     if (auto sp = wp.lock())
+      //     {
+      //       if (sp->is_open())
+      //       {
+      //         jalson::json_array msg;
+      //         msg.push_back(HEARTBEAT);
+      //         sp->send_msg(msg);
+      //         return true;
+      //       }
+      //     }
+      //     return false; /* remove HB timer */
+      //   };
+      // m_kernel.get_event_loop()->add_hb_target(std::move(fn));
+
+
+      if (uses_heartbeats())
+      {
+        std::weak_ptr<wamp_session> wp = handle();
+        m_hb_func = [wp]()
           {
-            if (sp->is_open())
+            if (auto sp = wp.lock())
             {
-              jalson::json_array msg;
-              msg.push_back(HEARTBEAT);
-              sp->send_msg(msg);
-              return true;
+              if (sp->is_open())
+              {
+                if (sp->duration_since_last() > sp->hb_interval_secs()*MAX_HEARTBEATS_MISSED)
+                {
+                  sp->abort_connection("wamp.error.session_timeout");
+                }
+                else
+                {
+                  jalson::json_array msg;
+                  msg.push_back(HEARTBEAT);
+                  sp->send_msg(msg);
+
+                  sp->m_kernel.get_event_loop()->dispatch( std::chrono::milliseconds(sp->m_hb_intvl*1000), sp->m_hb_func);
+                }
+              }
             }
-          }
-          return false; /* remove HB timer */
-        };
-      m_kernel.get_event_loop()->add_hb_target(std::move(fn));
+          };
+        m_kernel.get_event_loop()->dispatch( std::chrono::milliseconds(m_hb_intvl*1000), m_hb_func);
+      }
     }
 
   }
@@ -1628,11 +1672,21 @@ bool wamp_session::uses_heartbeats() const
 
 void wamp_session::abort_connection(std::string errmsg)
 {
+  _WARN_("aborting session #" << unique_id() << ", " << errmsg);
+
   jalson::json_array msg;
   msg.push_back( ABORT );
   msg.push_back( jalson::json_object() );
   msg.push_back( std::move(errmsg) );
   send_msg( msg, true );
+
+  std::weak_ptr<wamp_session> wp = handle();
+  m_kernel.get_event_loop()->dispatch(
+    std::chrono::milliseconds(250),
+    [wp]()
+    {
+      if (auto sp = wp.lock()) sp->close();
+    });
 }
 
 } // namespace XXX
