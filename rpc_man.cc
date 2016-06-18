@@ -71,8 +71,9 @@ int rpc_man::register_internal_rpc_2(const std::string& realm,
       // TODO: dont throw here; instead just return to the internal caller, ie
       // we are trying to register an internal RPC here, so throwing an event
       // error is not the right thing to do.
+      // TODO: check how this exception is actually used
       _WARN_("Ignoring duplicate rpc registration for " << realm << ":" << uri);
-      throw event_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
+      throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
     }
 
     // create registration record

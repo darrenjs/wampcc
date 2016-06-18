@@ -707,7 +707,9 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   std::string authid = jalson::get_copy(authopts, "authid", "").as_string();
 
   if (realm.empty())
-    throw event_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed", true);
+    throw session_error(WAMP_ERROR_NO_SUCH_REALM,
+                        session_error::auth_failure,
+                        "empty realm not allowed");
 
   {
     // update the realm & authid, and protect from multiple assignments to the

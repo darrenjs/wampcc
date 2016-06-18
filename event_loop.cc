@@ -18,8 +18,6 @@ struct event
     function_dispatch
   } type;
 
-  session_handle src; // TODO: need to remove
-
   event(Type t)
     : type(t)
   {}
@@ -210,48 +208,17 @@ void event_loop::eventloop()
 
       //hb_check(); // check for when there are many items work through
 
-      bool error_caught = true;
-      event_error wamperror("unknown");
-
       try
       {
         process_event( ev.get() );
-        error_caught = false;
-      }
-      catch ( const event_error & er)
-      {
-        _ERROR_( "caught event_error error, uri: "<< er.error_uri<< ", what:" << er.what());
-        /* only basic code in here, to remove risk of a throw while an exception
-         * is already active. */
-        wamperror = er;
       }
       catch ( const std::exception& ex)
       {
-        _WARN_( "caught exception during process_event: " << ex.what() );
-        /* only basic code in here, to remove risk of a throw while an exception
-         * is already active. */
+        _ERROR_( "exception during process_event : " << ex.what() );
       }
       catch ( ... )
       {
-        // TODO: cannot do much in here, because might throw
-        _ERROR_( "caught unknown error" );
-      }
-
-      if (error_caught)
-      {
-        try
-        {
-          // TODO: do I want all errors to result in a reply message being sent?
-          process_event_error( ev.get(), wamperror );
-        }
-        catch (std::exception& e)
-        {
-          _ERROR_( "failure while handing event error: " << e.what() );
-        }
-        catch ( ... )
-        {
-          // TODO: cannot do much in here, because might throw
-        }
+        _ERROR_( "unknown exception during process_event" );
       }
 
     } // loop end
@@ -269,11 +236,11 @@ void event_loop::eventmain()
     }
     catch (const std::exception& e)
     {
-      _ERROR_("exception in eventmain: " << e.what());
+      _ERROR_("ignoring exception in eventmain: " << e.what());
     }
     catch (...)
     {
-      _ERROR_("unknown exception in eventmain");
+      _ERROR_("ignoring unknown exception in eventmain");
     }
   }
 }
@@ -301,30 +268,7 @@ void event_loop::process_event(event * ev)
 }
 
 
-void event_loop::process_event_error(event* ev, event_error& er)
-{
 
-  if (er.msg_type != UNDEF)
-  {
-    /* new style error */
-
-    if (auto sp = ev->src.lock())
-    {
-      jalson::json_array msg;
-      msg.push_back( ERROR );
-      msg.push_back( er.msg_type );
-      msg.push_back( er.request_id );
-      msg.push_back( jalson::json_object() );
-      msg.push_back( er.error_uri );
-      msg.push_back( jalson::json_array() );
-      msg.push_back( jalson::json_object() );
-
-      sp->send_msg( msg );
-    }
-    return;
-  }
-
-}
 
 
 // void event_loop::add_hb_target(hb_func f)
