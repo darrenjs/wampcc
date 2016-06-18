@@ -18,7 +18,7 @@ int compute_HMACSHA256(const char* key,
                        int msglen,
                        char * dest,
                        unsigned int * destlen,
-                       int output_mode)
+                       HMACSHA256_Mode output_mode)
 {
   const char * hexalphabet="0123456789abcdef";
   const char * base64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -38,7 +38,7 @@ int compute_HMACSHA256(const char* key,
        (const unsigned char*) msg, msglen,
        md, &mdlen);
 
-  if (output_mode == HMACSHA256_HEX)
+  if (output_mode == HMACSHA256_Mode::HEX)
   {
     // convert to hex representation in the output buffer
     if ( (mdlen*2) > *destlen)
@@ -65,7 +65,7 @@ int compute_HMACSHA256(const char* key,
       retval = 0;
     }
   }
-  else if (output_mode == HMACSHA256_BASE64)
+  else if (output_mode == HMACSHA256_Mode::BASE64)
   {
     /* Base 64 */
     unsigned int i = 0;

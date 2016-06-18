@@ -14,13 +14,15 @@
   } while(false);
 
 
-// TODO: make an enum
-#define HMACSHA256_HEX    0
-#define HMACSHA256_BASE64 2
-
 namespace XXX {
 
 class Logger;
+
+enum class HMACSHA256_Mode
+{
+  HEX,
+  BASE64
+};
 
 int compute_HMACSHA256(const char* key,
                        int keylen,
@@ -28,7 +30,7 @@ int compute_HMACSHA256(const char* key,
                        int msglen,
                        char * dest,
                        unsigned int * destlen,
-                       int output_mode);
+                       HMACSHA256_Mode output_mode);
 
 
 /* must be called with an active exception */

@@ -64,12 +64,12 @@ TARGETS=$(BIN1) $(BIN2) $(BIN3)  $(BIN4)
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN2 = wamp_utils.cc io_connector.cc kernel.cc  realm_registry.cc utils.cc SessionMan.cc wamp_session.cc IOHandle.cc Topic.cc IOLoop.cc rpc_man.cc event_loop.cc  client_service.cc dealer_service.cc dealer_service_impl.cc Logger.cc pubsub_man.cc admin.cc
+SOURCES_BIN2 = wamp_utils.cc io_connector.cc kernel.cc  realm_registry.cc utils.cc SessionMan.cc wamp_session.cc IOHandle.cc Topic.cc IOLoop.cc rpc_man.cc event_loop.cc  dealer_service.cc dealer_service_impl.cc Logger.cc pubsub_man.cc admin.cc
 
 ##
 ## Sources that will need compiling
 ##
-SOURCES_BIN3 = wamp_utils.cc io_connector.cc kernel.cc  realm_registry.cc utils.cc  SessionMan.cc wamp_session.cc IOHandle.cc Topic.cc IOLoop.cc rpc_man.cc event_loop.cc client_service.cc dealer_service.cc dealer_service_impl.cc  Logger.cc  pubsub_man.cc client.cc
+SOURCES_BIN3 = wamp_utils.cc io_connector.cc kernel.cc  realm_registry.cc utils.cc  SessionMan.cc wamp_session.cc IOHandle.cc Topic.cc IOLoop.cc rpc_man.cc event_loop.cc dealer_service.cc dealer_service_impl.cc  Logger.cc  pubsub_man.cc client.cc
 
 ##
 ## Sources that will need compiling

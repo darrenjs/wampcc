@@ -21,6 +21,36 @@ static const char* safe_str(const char* s)
 
 namespace XXX {
 
+struct io_request
+{
+  Logger * logptr;
+  std::string addr;
+  std::string port;
+  bool resolve_hostname;
+  std::unique_ptr< std::promise<int> > listener_err;
+  uv_tcp_t * tcp_handle = nullptr;
+  uv_close_cb on_close_cb = nullptr;
+  socket_accept_cb on_accept;
+
+  std::shared_ptr<io_connector> connector;
+
+
+
+  io_request(Logger * __logptr) : logptr(__logptr) {}
+
+  io_request(Logger * __logptr,
+             std::string port,
+             std::promise<int> p,
+             socket_accept_cb );
+
+  enum
+  {
+    eNone = 0,
+    eCancelHandle,
+  } request_type;
+};
+
+
 
 void IOLoop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 {

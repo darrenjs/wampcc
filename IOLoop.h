@@ -12,8 +12,6 @@
 #include <set>
 #include <future>
 
-// TODO: try and use pointers & forward decls in order to move the uv.h into the
-// .cc file.
 #include <uv.h>
 
 namespace XXX {
@@ -23,44 +21,12 @@ class Logger;
 class IOLoop;
 class IOHandle;
 class io_connector;
-
+struct io_request;
 
 
 
 typedef std::function<void(int port, std::unique_ptr<IOHandle>)> socket_accept_cb;
 typedef std::function<void(IOHandle*, int)> tcp_connect_cb;
-
-// TODO: try to move to impl file
-struct io_request
-{
-  Logger * logptr;
-  std::string addr;
-  std::string port;
-  bool resolve_hostname;
-  std::unique_ptr< std::promise<int> > listener_err;
-  uv_tcp_t * tcp_handle = nullptr;
-  uv_close_cb on_close_cb = nullptr;
-  socket_accept_cb on_accept;
-
-  std::shared_ptr<io_connector> connector;
-
-
-
-  io_request(Logger * __logptr) : logptr(__logptr) {}
-
-  io_request(Logger * __logptr,
-             std::string port,
-             std::promise<int> p,
-             socket_accept_cb );
-
-  enum
-  {
-    eNone = 0,
-    eCancelHandle,
-  } request_type;
-};
-
-
 
 struct  tcp_server
 {

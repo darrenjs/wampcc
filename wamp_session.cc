@@ -786,7 +786,7 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
   int err = compute_HMACSHA256(key.c_str(), key.size(),
                                challmsg.c_str(), challmsg.size(),
                                digest, &digestlen,
-                               HMACSHA256_BASE64);
+                               HMACSHA256_Mode::BASE64);
 
   if (err == 0)
   {
@@ -825,7 +825,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
   int r = compute_HMACSHA256(key.c_str(), key.size(),
                              orig_challenge.c_str(), orig_challenge.size(),
                              digest, &digestlen,
-                             HMACSHA256_BASE64);
+                             HMACSHA256_Mode::BASE64);
   for (size_t i = 0; i < key.size(); i++) key[i]='\0';
   if (r == -1)
   {

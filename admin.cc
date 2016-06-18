@@ -1,12 +1,12 @@
 
 #include "Logger.h"
 #include "event_loop.h"
-#include "client_service.h"
 #include "kernel.h"
 #include "Topic.h"
 #include "IOLoop.h"
 #include "IOHandle.h"
 #include "io_connector.h"
+#include "wamp_session.h"
 
 
 #include <Logger.h>
