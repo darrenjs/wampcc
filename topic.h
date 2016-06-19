@@ -80,39 +80,6 @@ private:
   std::string m_text;
 };
 
-class Topic
-{
-  public:
-  Topic(const std::string name);
-  ~Topic();
-
-  void updateValue(const char* newstr);
-
-  void add_subscriber(wamp_session*);
-
-  jalson::json_value snapshot() const;
-
-protected:
-
-  void publish(std::list<jalson::json_array>&);
-
-  private:
-    Topic(const Topic&); // no copy
-    Topic& operator=(const Topic&); // no assignment
-
-  std::string m_name;
-
-  std::string m_string;
-
-  struct {
-    std::mutex lock;
-    std::set< wamp_session* > items;
-  } m_subscribers;
-
-  // fat lock
-  std::mutex m_lock;
-};
-
 } // namespace XXX
 
 #endif
