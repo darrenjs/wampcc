@@ -1,6 +1,6 @@
 
 
-#include <Topic.h>
+#include <topic.h>
 #include <dealer_service.h>
 #include <Logger.h>
 #include <kernel.h>
@@ -30,7 +30,7 @@ struct callback_t
   const char* request;
 };
 
-XXX::text_topic topic("topic1");
+XXX::basic_text topic("topic1");
 
 void procedure_error_cb(XXX::invoke_details& invocation)
 {

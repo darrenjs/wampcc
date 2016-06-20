@@ -2,7 +2,7 @@
 #include "Logger.h"
 #include "event_loop.h"
 #include "kernel.h"
-#include "Topic.h"
+#include "topic.h"
 #include "IOLoop.h"
 #include "IOHandle.h"
 #include "io_connector.h"
@@ -266,6 +266,7 @@ std::string get_timestamp()
 
 int main(int argc, char** argv)
 {
+
   process_options(argc, argv);
 
   g_kernel.reset( new XXX::kernel(logger) );
@@ -389,12 +390,18 @@ int main(int argc, char** argv)
   // publish
   if (!uopts.publish_topic.empty())
   {
-    XXX::wamp_args pub_args;
-    pub_args.args_list = jalson::json_value::make_array();
-    pub_args.args_list.as_array().push_back(uopts.publish_message);
-    ws->publish(uopts.publish_topic,
-                jalson::json_object(),
-                pub_args);
+    // XXX::wamp_args pub_args;
+    // pub_args.args_list = jalson::json_value::make_array();
+    // pub_args.args_list.as_array().push_back(uopts.publish_message);
+    // ws->publish(uopts.publish_topic,
+    //             jalson::json_object(),
+    //             pub_args);
+
+    XXX::basic_text_model tm;
+    XXX::topic_publisher publisher(uopts.publish_topic, &tm);
+    publisher.add_wamp_session(ws);
+
+    tm.set_value("hello world");
   }
 
   // call

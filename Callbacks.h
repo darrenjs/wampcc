@@ -20,8 +20,6 @@ struct wamp_args
   jalson::json_value  args_dict;
 };
 
-class router_conn;
-
 typedef uint64_t t_request_id;
 typedef uint64_t t_invoke_id;
 typedef uint64_t t_sid;
@@ -111,9 +109,6 @@ struct wamp_call_result
 
 typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
 
-typedef std::function<void(router_conn*,
-                           int status, /* 0 is no error */
-                           bool is_open)> router_session_connect_cb;
 
 } // namespace XXX
 
