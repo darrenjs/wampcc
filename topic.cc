@@ -2,6 +2,7 @@
 
 #include "wamp_session.h"
 #include "Logger.h"
+#include "dealer_service.h"
 
 #include <iostream>
 #include <memory>
@@ -9,43 +10,6 @@
 namespace XXX {
 
 
-void topic::add_observer(observer* ptr)
-{
-  m_observers.push_back(ptr);
-}
-
-void topic::notify(const jalson::json_value& patch)
-{
-
-  for (auto & item : m_observers2)
-  {
-    item.second(this, patch);
-  }
-
-
-}
-
-
-void basic_text::update(const char* newstr)
-{
-  // create a patch
-  jalson::json_value patch = jalson::json_value::make_array();
-  jalson::json_object& operation = patch.append_object();
-  operation["op"]   = "replace";
-  operation["path"] = "";
-  operation["value"] = newstr;
-
-  // TODO: for safety, should test the application of the patch
-
-  m_text = newstr;
-  notify( patch );
-}
-
-
-jalson::json_value basic_text::snapshot() const
-{
-  return jalson::json_value::make_string("TODO");
-}
 
 data_model_base::data_model_base(std::string model_type)
   : m_model(jalson::json_value::make_object()),
@@ -60,7 +24,7 @@ data_model_base::~data_model_base()
 {
 }
 
-void data_model_base::add_publisher(topic_publisher* tp)
+void data_model_base::add_publisher(topic* tp)
 {
   m_publishers.push_back(tp);
 }
@@ -105,7 +69,7 @@ const std::string& basic_text_model::get_value() const
 }
 
 
-topic_publisher::topic_publisher(std::string uri,
+topic::topic(std::string uri,
                                  data_model_base * model)
   : m_uri(uri),
     m_model(model)
@@ -114,15 +78,26 @@ topic_publisher::topic_publisher(std::string uri,
 }
 
 
-void topic_publisher::add_wamp_session(std::weak_ptr<wamp_session> wp)
+void topic::add_wamp_session(std::weak_ptr<wamp_session> wp)
 {
   m_sessions.push_back(wp);
 }
 
-void topic_publisher::publish_update(const jalson::json_array& patch)
+
+void topic::add_target(std::string realm,
+                                 dealer_service* dealer)
 {
+  m_dealers.push_back(  std::make_tuple(realm,dealer) );
+}
+
+
+
+void topic::publish_update(const jalson::json_array& patch)
+{
+  jalson::json_object options;
   XXX::wamp_args pub_args;
   pub_args.args_list = patch;
+
   for (auto & wp : m_sessions)
     if (auto sp = wp.lock())
     {
@@ -131,6 +106,14 @@ void topic_publisher::publish_update(const jalson::json_array& patch)
                   jalson::json_object(),
                   pub_args);
     }
+
+  for (auto & item : m_dealers)
+  {
+    std::get<1>(item)->publish(m_uri,
+                               std::get<0>(item),
+                               options,
+                               pub_args);
+  }
 }
 
 } // namespace XXX

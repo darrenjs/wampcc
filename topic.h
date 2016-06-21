@@ -13,74 +13,9 @@ namespace XXX {
 
   class wamp_session;
   class topic;
+  class dealer_service;
 
-// Base class for topics
-
-
-  typedef std::function< void(const topic*,
-                              const jalson::json_value&) >  topic_cb;
-
-
-class topic
-{
-public:
-
-  class observer
-  {
-  public:
-    virtual ~observer() {}
-    virtual void on_change() = 0;
-  };
-
-public:
-  topic(const std::string& uri)
-    : m_uri(uri)
-  {}
-
-  const std::string& uri() const { return m_uri; }
-
-
-
-  void add_observer( observer* );
-
-  void add_observer(void* key, topic_cb cb)
-  {
-    m_observers2[key]=cb;
-  }
-
-
-  virtual jalson::json_value snapshot() const = 0;
-
-protected:
-
-  void notify(const jalson::json_value& patch);
-
-private:
-  std::string m_uri;
-  // TODO: lock?
-  std::vector< observer* > m_observers;
-  std::map< void* , topic_cb > m_observers2;
-};
-
-
-class basic_text : public topic
-{
-public:
-  basic_text(const std::string& uri)
-    : topic( uri )
-  {
-  }
-
-  void update(const char* newstr);
-
-
-  jalson::json_value snapshot() const;
-
-private:
-  std::string m_text;
-};
-
-class topic_publisher;
+class topic;
 
 class data_model_base
 {
@@ -92,7 +27,7 @@ public:
   jalson::json_object & head() { return *m_head; }
   jalson::json_object & body() { return *m_body; }
 
-  void add_publisher(topic_publisher*);
+  void add_publisher(topic*);
 
 protected:
 
@@ -106,7 +41,7 @@ private:
   jalson::json_object * m_head;
   jalson::json_object * m_body;
 
-  std::vector<topic_publisher*> m_publishers;
+  std::vector<topic*> m_publishers;
 };
 
 
@@ -123,13 +58,17 @@ public:
 };
 
 
-class topic_publisher
+class topic
 {
 public:
-  topic_publisher(std::string uri,
-                  data_model_base*);
+  topic(std::string uri,
+        data_model_base*);
 
   void add_wamp_session(std::weak_ptr<wamp_session> wp);
+
+
+  void add_target(std::string realm,
+                  dealer_service*);
 
 private:
   void publish_update(const jalson::json_array&);
@@ -137,6 +76,8 @@ private:
   std::string m_uri;
   data_model_base * m_model;
   std::vector<std::weak_ptr<wamp_session>> m_sessions;
+
+  std::vector< std::tuple<std::string /* realm */, dealer_service*> > m_dealers;
 
   friend data_model_base;
 };

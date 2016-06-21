@@ -398,7 +398,7 @@ int main(int argc, char** argv)
     //             pub_args);
 
     XXX::basic_text_model tm;
-    XXX::topic_publisher publisher(uopts.publish_topic, &tm);
+    XXX::topic publisher(uopts.publish_topic, &tm);
     publisher.add_wamp_session(ws);
 
     tm.set_value("hello world");

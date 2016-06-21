@@ -30,7 +30,10 @@ struct callback_t
   const char* request;
 };
 
-XXX::basic_text topic("topic1");
+
+
+XXX::basic_text_model text_data("initial");
+XXX::topic model_publisher("topic_1", &text_data);
 
 void procedure_error_cb(XXX::invoke_details& invocation)
 {
@@ -91,7 +94,7 @@ void publisher_tep()
   {
     usleep(1000000*5);
     std::string newvalue = "0000____" + get_timestamp();
-    topic.update( newvalue.c_str() ); // Legacy ... currently not functional
+
 
     XXX::wamp_args wargs;
     wargs.args_list = jalson::json_value::make_array();
@@ -101,6 +104,8 @@ void publisher_tep()
                                     "default_realm",
                                     jalson::json_object(),
                                     wargs);
+
+    text_data.set_value(newvalue);
   }
 
 }
@@ -112,6 +117,8 @@ int main(int /* argc */, char** /* argv */)
 
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);
   g_dealer = dealer;
+
+  model_publisher.add_target("default_realm", g_dealer);
 
   XXX::auth_provider server_auth;
   server_auth.permit_user_realm = [](const std::string& /*user*/, const std::string& /*realm*/){ return true; };
