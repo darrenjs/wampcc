@@ -58,6 +58,24 @@ public:
 };
 
 
+
+class basic_list_model : public data_model_base
+{
+public:
+  basic_list_model();
+
+  void insert(size_t pos, jalson::json_value);
+  void replace(size_t pos, jalson::json_value);
+  void push_back(jalson::json_value);
+  void erase(size_t pos);
+
+  const jalson::json_array & get_value() const { return  * m_value; }
+
+private:
+  jalson::json_array * m_value;
+};
+
+
 class topic
 {
 public:

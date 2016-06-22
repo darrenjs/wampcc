@@ -116,4 +116,69 @@ void topic::publish_update(const jalson::json_array& patch)
   }
 }
 
+
+basic_list_model::basic_list_model()
+  : data_model_base("basic_list_model"),
+    m_value( & (body().insert(std::make_pair("value", jalson::json_value::make_array())).first->second.as_array()) )
+{
+}
+
+
+void basic_list_model::insert(size_t pos, jalson::json_value val)
+{
+  // create a patch
+  jalson::json_array patch;
+  jalson::json_object& operation = jalson::append_object(patch);
+  operation["op"]   = "add";
+  operation["path"] = "/body/value/" + std::to_string(pos);
+  operation["value"] = std::move(val);
+
+  apply_model_patch( patch );
+ }
+
+ void basic_list_model::push_back(jalson::json_value val)
+ {
+   // create a patch
+   jalson::json_array patch;
+   jalson::json_object& operation = jalson::append_object(patch);
+   operation["op"]   = "add";
+   operation["path"] = "/body/value/" + std::to_string(m_value->size());
+   operation["value"] = std::move(val);
+
+   apply_model_patch( patch );
+ }
+
+ void basic_list_model::erase(size_t index)
+ {
+   // create a patch
+   jalson::json_array patch;
+   jalson::json_object& operation = jalson::append_object(patch);
+   operation["op"]   = "remove";
+   operation["path"] = "/body/value/" + std::to_string(index);
+
+   apply_model_patch( patch );
+ }
+
+ void basic_list_model::replace(size_t index, jalson::json_value val)
+ {
+   // create a patch
+   jalson::json_array patch;
+   jalson::json_object& operation = jalson::append_object(patch);
+   operation["op"]    = "replace";
+   operation["path"]  = "/body/value/" + std::to_string(index);
+   operation["value"] = std::move(val);
+
+   apply_model_patch( patch );
+}
+
+
+
+
+
+
+
+
+
+
+
 } // namespace XXX

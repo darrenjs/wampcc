@@ -10,6 +10,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <random>
 
 #include <unistd.h>
 #include <string.h>
@@ -34,6 +35,9 @@ struct callback_t
 
 XXX::basic_text_model text_data("initial");
 XXX::topic model_publisher("topic_1", &text_data);
+
+XXX::basic_list_model basic_list;
+XXX::topic list_publisher("planets", &basic_list);
 
 void procedure_error_cb(XXX::invoke_details& invocation)
 {
@@ -90,9 +94,15 @@ XXX::dealer_service * g_dealer = nullptr;
 
 void publisher_tep()
 {
+  const char* const names[] = { "sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"};
+
+    std::random_device rd;
+    int seed = 0;
+    std::mt19937 gen( seed );
+    std::uniform_int_distribution<> dis(0, 9);
   while(true)
   {
-    usleep(1000000*5);
+    usleep(1000000);
     std::string newvalue = "0000____" + get_timestamp();
 
 
@@ -106,6 +116,22 @@ void publisher_tep()
                                     wargs);
 
     text_data.set_value(newvalue);
+
+
+    switch ( dis(gen) )
+    {
+      case 0 : basic_list.insert(0, names[dis(gen)]); break;
+      case 1 : if (basic_list.get_value().size()>0) basic_list.insert(basic_list.get_value().size()-1, names[dis(gen)]); break;
+      case 2 : if (basic_list.get_value().size()>0) basic_list.replace(0, names[dis(gen)]); break;
+      case 3 : if (basic_list.get_value().size()>0) basic_list.replace(basic_list.get_value().size()-1, names[dis(gen)]); break;
+      case 4 : if (basic_list.get_value().size()>0) basic_list.erase(0); break;
+      case 5 : if (basic_list.get_value().size()>0) basic_list.erase(basic_list.get_value().size()-1); break;
+      default: basic_list.push_back( names[dis(gen)] );
+    //   //   0 : basic_list.insert();
+    };
+
+
+
   }
 
 }
@@ -119,6 +145,7 @@ int main(int /* argc */, char** /* argv */)
   g_dealer = dealer;
 
   model_publisher.add_target("default_realm", g_dealer);
+  list_publisher.add_target("default_realm", g_dealer);
 
   XXX::auth_provider server_auth;
   server_auth.permit_user_realm = [](const std::string& /*user*/, const std::string& /*realm*/){ return true; };
