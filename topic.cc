@@ -70,10 +70,11 @@ const std::string& basic_text_model::get_value() const
 
 
 topic::topic(std::string uri,
-                                 data_model_base * model)
+             data_model_base * model)
   : m_uri(uri),
     m_model(model)
 {
+  m_options["_p"]=1;
   m_model->add_publisher(this);
 }
 
@@ -94,16 +95,14 @@ void topic::add_target(std::string realm,
 
 void topic::publish_update(const jalson::json_array& patch)
 {
-  jalson::json_object options;
   XXX::wamp_args pub_args;
   pub_args.args_list = patch;
 
   for (auto & wp : m_sessions)
     if (auto sp = wp.lock())
     {
-      std::cout << "sending update\n";
       sp->publish(m_uri,
-                  jalson::json_object(),
+                  m_options,
                   pub_args);
     }
 
@@ -111,7 +110,7 @@ void topic::publish_update(const jalson::json_array& patch)
   {
     std::get<1>(item)->publish(m_uri,
                                std::get<0>(item),
-                               options,
+                               m_options,
                                pub_args);
   }
 }

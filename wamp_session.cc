@@ -1263,7 +1263,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
   t_request_id request_id  = extract_request_id(msg, 1);
 
   if (!msg[2].is_object())
-      throw bad_protocol("details must be json");
+      throw bad_protocol("details must be json object");
   jalson::json_object & options = msg[2].as_object();
 
   wamp_call orig_call;
@@ -1571,14 +1571,16 @@ void wamp_session::process_inbound_publish(jalson::json_array & msg)
   {
     check_size_at_least(msg.size(), 4);
 
-    if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
-    jalson::json_string uri = std::move(msg[3].as_string());
+    if (!msg[2].is_object())
+      throw bad_protocol("options must be json object");
 
+    if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
+   
     wamp_args args;
     if ( msg.size() > 4 ) args.args_list = std::move(msg[4]);
     if ( msg.size() > 5 ) args.args_dict = std::move(msg[5]);
 
-    m_server_handler.handle_inbound_publish(this, uri, args);
+    m_server_handler.handle_inbound_publish(this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
   }
 }
 

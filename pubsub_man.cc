@@ -116,6 +116,7 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 
 void pubsub_man::update_topic(const std::string& topic,
                               const std::string& realm,
+                              jalson::json_object options,
                               wamp_args args)
 {
   /* EVENT thread */
@@ -155,7 +156,7 @@ void pubsub_man::update_topic(const std::string& topic,
     msg.push_back( EVENT );
     msg.push_back( mt->subscription_id );
     msg.push_back( mt->next_publication_id() );
-    msg.push_back( jalson::json_value::make_object() );
+    msg.push_back( std::move(options) );
     if (!args.args_list.is_null())
     {
       msg.push_back( args.args_list );
@@ -219,6 +220,7 @@ void pubsub_man::update_topic(const std::string& topic,
 /* Handle arrival of the a PUBLISH event, targeted at a topic. */
 void pubsub_man::inbound_publish(std::string realm,
                                  std::string topic,
+                                 jalson::json_object options,
                                  wamp_args args)
 {
   /* EV thread */
@@ -237,7 +239,7 @@ void pubsub_man::inbound_publish(std::string realm,
   else
   {
     // parse message
-    update_topic(topic, realm, args);
+    update_topic(topic, realm, std::move(options), args);
   }
 }
 

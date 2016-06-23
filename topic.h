@@ -94,6 +94,7 @@ private:
   std::string m_uri;
   data_model_base * m_model;
   std::vector<std::weak_ptr<wamp_session>> m_sessions;
+  jalson::json_object m_options;
 
   std::vector< std::tuple<std::string /* realm */, dealer_service*> > m_dealers;
 

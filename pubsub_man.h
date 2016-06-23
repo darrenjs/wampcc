@@ -21,7 +21,11 @@ public:
   pubsub_man(kernel&);
   ~pubsub_man();
 
-  void inbound_publish(std::string realm, std::string uri, wamp_args);
+  void inbound_publish(std::string realm,
+                       std::string uri,
+                       jalson::json_object options,
+                       wamp_args);
+
   uint64_t subscribe(wamp_session* ptr,
                      std::string uri);
 
@@ -38,6 +42,7 @@ private:
 
   void update_topic(const std::string& topic,
                     const std::string& realm,
+                    jalson::json_object options,
                     wamp_args args);
 
   Logger *__logptr; /* name chosen for log macros */

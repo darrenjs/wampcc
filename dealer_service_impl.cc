@@ -78,10 +78,11 @@ std::future<int> dealer_service_impl::listen(int port,
         this->handle_inbound_call(s,u,std::move(args),f);
       };
 
-      handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, wamp_args args) {
+      handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, jalson::json_object options, wamp_args args)
+        {
         // TODO: break this out into a separte method, and handle error
-        m_pubsub->inbound_publish(sptr->realm(), uri, std::move(args));
-      };
+          m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
+        };
 
       handlers.inbound_subscribe  = [this](wamp_session* p, std::string uri, wamp_args /*args*/) {
         return this->m_pubsub->subscribe(p, uri);
@@ -113,19 +114,20 @@ std::future<int> dealer_service_impl::listen(int port,
 
 void dealer_service_impl::publish(const std::string& topic,
                                   const std::string& realm,
-                                  const jalson::json_object& /*options*/,
+                                  const jalson::json_object& options,
                                   wamp_args args)
 {
   /* USER thread */
 
   std::weak_ptr<dealer_service_impl> wp = this->shared_from_this();
 
+  // TODO: how to use bind here, to pass options in as a move operation?
   m_kernel.get_event_loop()->dispatch(
-    [wp, topic, realm, args]()
+    [wp, topic, realm, args, options]()
     {
       if (auto sp = wp.lock())
       {
-        sp->m_pubsub->inbound_publish(realm, topic, args);
+        sp->m_pubsub->inbound_publish(realm, topic, options, args);
       }
     }
   );
