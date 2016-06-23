@@ -8,6 +8,7 @@
 #include "wamp_utils.h"
 
 #include <list>
+#include <iostream>
 
 namespace XXX {
 
@@ -27,10 +28,6 @@ struct managed_topic
 
   // current upto date image of the value
   jalson::json_value image;
-
-
-  std::pair<bool,jalson::json_value>  image_list;
-  std::pair<bool,jalson::json_value> image_dict;
 
   // Note, we are tieing the subscription ID direct to the topic.  WAMP does
   // allow this, and it has the benefit that we can perform a single message
@@ -130,90 +127,56 @@ void pubsub_man::update_topic(const std::string& topic,
   if (!mt) return;
 
 
-  // apply the patch
-  bool is_patch = false;  // TODO: add support for patch
-  if (!is_patch)
+  if (options.find("_p") != options.end() && args.args_list.is_array())
   {
-
-    // apply the new value
-    if (args.args_list.is_null() == false)
-    {
-      mt->image_list.first  = true;
-      mt->image_list.second = args.args_list;
-
-
-      if (args.args_dict.is_null() == false)
-      {
-        mt->image_dict.first  = true;
-        mt->image_dict.second = args.args_dict;
-      }
-    }
-
-    // broadcast event to subscribers
-
-    jalson::json_array msg;
-    msg.reserve(6);
-    msg.push_back( EVENT );
-    msg.push_back( mt->subscription_id );
-    msg.push_back( mt->next_publication_id() );
-    msg.push_back( std::move(options) );
-    if (!args.args_list.is_null())
-    {
-      msg.push_back( args.args_list );
-      if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
-    }
-
-    size_t num_active = 0;
-    for (auto & item : mt->m_subscribers)
-    {
-      if (auto sp = item.lock())
-      {
-        sp->send_msg(msg);
-        num_active++;
-      }
-    }
-
-    // remove any expired sessions
-
-    if (num_active != mt->m_subscribers.size())
-    {
-      std::vector< std::weak_ptr<wamp_session> > temp;
-      temp.resize(num_active);
-      for (auto item : mt->m_subscribers)
-      {
-        if (!item.expired())
-          temp.push_back( std::move(item) );
-      }
-      mt->m_subscribers.swap( temp );
-    }
-
+    // apply the patch
+    std::cout << "@" << topic << ", patch:\n";
+    std::cout << args.args_list << "\n";
+    std::cout << "applying the patch, value is now:\n";
+    mt->image.patch(args.args_list.as_array());
+    std::cout << mt->image << "\n";
   }
-  else
+
+  // broadcast event to subscribers
+
+  jalson::json_array msg;
+  msg.reserve(6);
+  msg.push_back( EVENT );
+  msg.push_back( mt->subscription_id );
+  msg.push_back( mt->next_publication_id() );
+  msg.push_back( std::move(options) );
+  if (!args.args_list.is_null())
   {
-    // try
-    // {
-    //   jalson::json_array& patch = publish_msg;
-    //   mt->image.patch(patch);
-
-    //   jalson::json_array msg;
-    //   msg.push_back( EVENT );
-    //   msg.push_back( mt->subscription_id ); // TODO: generate subscription ID
-    //   msg.push_back( 2 ); // TODO: generate publication ID
-    //   msg.push_back( jalson::json_value::make_object() );
-    //   jalson::json_array& args = jalson::append_array(msg);
-    //   msg.push_back( jalson::json_value::make_object() );
-    //   args.push_back(patch);
-
-    //   m_sesman.send_to_session(mt->m_subscribers,
-    //                            msg);
-
-
-    // }
-    // catch (const std::exception& e)
-    // {
-    //   _ERROR_("patch failed: " << e.what());
-    // }
+    msg.push_back( args.args_list );
+    if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
   }
+
+  size_t num_active = 0;
+  for (auto & item : mt->m_subscribers)
+  {
+    if (auto sp = item.lock())
+    {
+      sp->send_msg(msg);
+      num_active++;
+    }
+  }
+
+  // remove any expired sessions
+
+  if (num_active != mt->m_subscribers.size())
+  {
+    std::vector< std::weak_ptr<wamp_session> > temp;
+    temp.resize(num_active);
+    for (auto item : mt->m_subscribers)
+    {
+      if (!item.expired())
+        temp.push_back( std::move(item) );
+    }
+    mt->m_subscribers.swap( temp );
+  }
+
+
+
 }
 
 
@@ -225,22 +188,7 @@ void pubsub_man::inbound_publish(std::string realm,
 {
   /* EV thread */
 
-  bool is_patch = false;
-
-  if ( is_patch )
-  {
-    // // parse message
-    // std::string & topic = ev->ja[ 3 ].as_string();
-    // jalson::json_array & patch = ev->ja[ 4 ].as_array();
-
-    // // update
-    // update_topic(topic, ev->realm, patch);
-  }
-  else
-  {
-    // parse message
-    update_topic(topic, realm, std::move(options), args);
-  }
+  update_topic(topic, realm, std::move(options), args);
 }
 
 uint64_t pubsub_man::subscribe(wamp_session* sptr,
