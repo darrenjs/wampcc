@@ -81,14 +81,27 @@ topic::topic(std::string uri,
 
 void topic::add_wamp_session(std::weak_ptr<wamp_session> wp)
 {
+  // TODO: need to add snapshot here?
   m_sessions.push_back(wp);
 }
 
 
 void topic::add_target(std::string realm,
-                                 dealer_service* dealer)
+                       dealer_service* dealer)
 {
-  m_dealers.push_back(  std::make_tuple(realm,dealer) );
+  // generate the initial snapshot
+  XXX::wamp_args pub_args;
+  pub_args.args_list = jalson::json_array();
+  jalson::json_object& operation = jalson::append_object(pub_args.args_list.as_array());
+  operation["op"]   = "replace";
+  operation["path"] = "";  /* replace whole document */
+  operation["value"] = m_model->model();
+  dealer->publish(m_uri,
+                  realm,
+                  m_options,
+                  pub_args);
+
+  m_dealers.push_back( std::make_tuple(realm,dealer) );
 }
 
 

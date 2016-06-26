@@ -50,7 +50,7 @@ private:
 /* Constructor */
 pubsub_man::pubsub_man(kernel& k)
   : __logptr(k.get_logger()),
-    m_next_subscription_id(1)
+    m_next_subscription_id(1)  /* zero used for initial snapshot */
 {
 }
 
@@ -130,11 +130,12 @@ void pubsub_man::update_topic(const std::string& topic,
   if (options.find("_p") != options.end() && args.args_list.is_array())
   {
     // apply the patch
-    std::cout << "@" << topic << ", patch:\n";
-    std::cout << args.args_list << "\n";
-    std::cout << "applying the patch, value is now:\n";
+    std::cout << "@" << topic << ", patch\n";
+    std::cout << "BEFORE: " << mt->image << "\n";
+    std::cout << "PATCH : " << args.args_list << "\n";
     mt->image.patch(args.args_list.as_array());
-    std::cout << mt->image << "\n";
+    std::cout << "AFTER : "  << mt->image << "\n";
+    std::cout << "-------\n";
   }
 
   // broadcast event to subscribers
@@ -191,8 +192,11 @@ void pubsub_man::inbound_publish(std::string realm,
   update_topic(topic, realm, std::move(options), args);
 }
 
+
 uint64_t pubsub_man::subscribe(wamp_session* sptr,
-                               std::string uri)
+                               t_request_id request_id,
+                               std::string uri,
+                               jalson::json_object & options)
 {
   /* EV thread */
 
@@ -209,12 +213,42 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   // find or create a topic
   managed_topic* mt = find_topic(uri, sptr->realm(), true);
 
-  if (!mt)
-    throw wamp_error(WAMP_ERROR_INVALID_URI);
+  if (!mt) throw wamp_error(WAMP_ERROR_INVALID_URI);
 
+  _INFO_("session " << sptr->unique_id() << " subscribing to '"<< uri<< "'");
+
+  /* SUBSCRIBED acknowledgement */
+  jalson::json_array subscribed_msg;
+  subscribed_msg.reserve(3);
+  subscribed_msg.push_back(SUBSCRIBED);
+  subscribed_msg.push_back(request_id);
+  subscribed_msg.push_back(mt->subscription_id);
+  sptr->send_msg(subscribed_msg);
+
+  /* for stateful topic must send initial snapshot */
+  if (options.find("_p") != options.end())
+  {
+    XXX::wamp_args pub_args;
+    pub_args.args_list = jalson::json_array();
+    jalson::json_object& operation = jalson::append_object(pub_args.args_list.as_array());
+    operation["op"]    = "replace";
+    operation["path"]  = "";  /* replace whole document */
+    operation["value"] = mt->image;
+
+    jalson::json_object event_options;
+    event_options["_p"] = options["_p"];
+    event_options["_snap"] = 1;
+    jalson::json_array snapshot_msg;
+    snapshot_msg.reserve(5);
+    snapshot_msg.push_back( EVENT );
+    snapshot_msg.push_back( mt->subscription_id );
+    snapshot_msg.push_back( 0 ); // publication id
+    snapshot_msg.push_back( std::move(event_options) );
+    snapshot_msg.push_back( pub_args.args_list );
+    sptr->send_msg(snapshot_msg);
+  }
 
   mt->m_subscribers.push_back(sptr->handle());
-  _INFO_("session " << sptr->unique_id() << " subscribed to topic '"<< uri<< "'");
 
   return mt->subscription_id;
 }

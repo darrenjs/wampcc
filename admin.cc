@@ -372,9 +372,11 @@ int main(int argc, char** argv)
 
 
   // subscribe
+  jalson::json_object sub_options;
+  sub_options["_p"]=1;
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
-    ws->subscribe(topic, jalson::json_object(), subscribe_cb, nullptr);
+    ws->subscribe(topic, sub_options, subscribe_cb, nullptr);
 
   // register
   std::unique_ptr<callback_t> cb1( new callback_t(g_kernel.get(),"my_hello") );

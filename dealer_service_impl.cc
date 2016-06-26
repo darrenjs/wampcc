@@ -71,7 +71,6 @@ std::future<int> dealer_service_impl::listen(int port,
     {
       /* IO thread */
 
-      // TODO: this should be a local member
       server_msg_handler handlers;
 
       handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
@@ -84,8 +83,8 @@ std::future<int> dealer_service_impl::listen(int port,
           m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
         };
 
-      handlers.inbound_subscribe  = [this](wamp_session* p, std::string uri, wamp_args /*args*/) {
-        return this->m_pubsub->subscribe(p, uri);
+      handlers.inbound_subscribe  = [this](wamp_session* p, t_request_id request_id, std::string uri, jalson::json_object& options) {
+        return this->m_pubsub->subscribe(p, request_id, uri, options);
       };
 
       handlers.inbound_register  = [this](std::weak_ptr<wamp_session> h,

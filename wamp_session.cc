@@ -1575,7 +1575,7 @@ void wamp_session::process_inbound_publish(jalson::json_array & msg)
       throw bad_protocol("options must be json object");
 
     if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
-   
+
     wamp_args args;
     if ( msg.size() > 4 ) args.args_list = std::move(msg[4]);
     if ( msg.size() > 5 ) args.args_dict = std::move(msg[5]);
@@ -1593,22 +1593,14 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
+  if (!msg[2].is_object()) throw bad_protocol("options must be json object");
   if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
-  std::string topic_uri = std::move(msg[3].as_string());
 
-  wamp_args my_wamp_args;
-  if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
-  if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
+  std::string topic_uri = std::move(msg[3].as_string());
 
   try
   {
-    uint64_t subscription_id = m_server_handler.inbound_subscribe(this, topic_uri, my_wamp_args);
-
-    jalson::json_array out;
-    out.push_back(SUBSCRIBED);
-    out.push_back(request_id);
-    out.push_back(subscription_id);
-    send_msg(out);
+    m_server_handler.inbound_subscribe(this, request_id, topic_uri, msg[2].as_object());
   }
   catch(wamp_error ex)
   {

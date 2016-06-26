@@ -96,13 +96,13 @@ void publisher_tep()
 {
   const char* const names[] = { "sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"};
 
-    std::random_device rd;
-    int seed = 0;
-    std::mt19937 gen( seed );
-    std::uniform_int_distribution<> dis(0, 9);
+  std::random_device rd;
+  int seed = 0;
+  std::mt19937 gen( seed );
+  std::uniform_int_distribution<> dis(0, 9);
   while(true)
   {
-    usleep(1000000);
+    usleep(1000000 * 3);
     std::string newvalue = "0000____" + get_timestamp();
 
 
@@ -110,12 +110,12 @@ void publisher_tep()
     wargs.args_list = jalson::json_value::make_array();
     wargs.args_list.as_array().push_back( newvalue );
 
-    if (g_dealer) g_dealer->publish("USERHB",
-                                    "default_realm",
-                                    jalson::json_object(),
-                                    wargs);
+    // if (g_dealer) g_dealer->publish("USERHB",
+    //                                 "default_realm",
+    //                                 jalson::json_object(),
+    //                                 wargs);
 
-    text_data.set_value(newvalue);
+    //text_data.set_value(newvalue);
 
 
     switch ( dis(gen) )
@@ -127,7 +127,6 @@ void publisher_tep()
       case 4 : if (basic_list.get_value().size()>0) basic_list.erase(0); break;
       case 5 : if (basic_list.get_value().size()>0) basic_list.erase(basic_list.get_value().size()-1); break;
       default: basic_list.push_back( names[dis(gen)] );
-    //   //   0 : basic_list.insert();
     };
 
 

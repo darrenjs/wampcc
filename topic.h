@@ -11,11 +11,9 @@
 
 namespace XXX {
 
-  class wamp_session;
-  class topic;
-  class dealer_service;
-
+class dealer_service;
 class topic;
+class wamp_session;
 
 class data_model_base
 {
@@ -26,6 +24,8 @@ public:
 
   jalson::json_object & head() { return *m_head; }
   jalson::json_object & body() { return *m_body; }
+
+  const jalson::json_value & model() const { return m_model; }
 
   void add_publisher(topic*);
 
