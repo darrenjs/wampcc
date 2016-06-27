@@ -370,6 +370,10 @@ int main(int argc, char** argv)
   bool long_wait = false;
   bool wait_reply = false;
 
+  // TODO: need to subscribe with a data model
+  XXX::basic_list_model my_list_model;
+  XXX::topic_subscriber tsub("planets", &my_list_model);
+  tsub.subscribe(ws);
 
   // subscribe
   jalson::json_object sub_options;

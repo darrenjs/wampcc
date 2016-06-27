@@ -2,6 +2,7 @@
 #define XXX_TOPIC_H
 
 #include <jalson/jalson.h>
+#include "Callbacks.h"
 
 #include <string>
 #include <set>
@@ -99,6 +100,24 @@ private:
   std::vector< std::tuple<std::string /* realm */, dealer_service*> > m_dealers;
 
   friend data_model_base;
+};
+
+class topic_subscriber
+{
+public:
+  topic_subscriber(std::string uri,
+                   data_model_base*);
+
+  void subscribe(std::shared_ptr<XXX::wamp_session>);
+
+/* called upon subscribed and update events */
+  void subscribe_cb(subscription_event_type evtype,
+                    const std::string& /* uri */,
+                    const jalson::json_object& /* details */,
+                    const jalson::json_array& args_list,
+                    const jalson::json_object& args_dict,
+                    void* /*user*/);
+  data_model_base * m_model;
 };
 
 } // namespace XXX

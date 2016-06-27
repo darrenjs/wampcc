@@ -185,7 +185,44 @@ void basic_list_model::insert(size_t pos, jalson::json_value val)
 
 
 
+  topic_subscriber::topic_subscriber(std::string ,
+                                     data_model_base* m)
+    : m_model(m)
+  {
+  }
 
+  void topic_subscriber::subscribe(std::shared_ptr<XXX::wamp_session> ws)
+  {
+    jalson::json_object sub_options;
+    sub_options["_p"]=1;
+
+    auto fn = [this](XXX::subscription_event_type evtype,
+                   const std::string& uri ,
+                   const jalson::json_object& details ,
+                   const jalson::json_array& args_list,
+                   const jalson::json_object& args_dict,
+                   void* user)
+      {
+        this->subscribe_cb(evtype, uri, details, args_list, args_dict, user);
+      };
+    ws->subscribe("planets", sub_options, fn, nullptr);
+
+  }
+
+
+
+/* called upon subscribed and update events */
+void topic_subscriber::subscribe_cb(XXX::subscription_event_type evtype,
+                                   const std::string& /* uri */,
+                                   const jalson::json_object& /* details */,
+                                   const jalson::json_array& args_list,
+                                   const jalson::json_object& args_dict,
+                                   void* /*user*/)
+{
+
+  std::cout << "received topic update!!! evtype: " << evtype << ", args_list: " << args_list
+            << ", args_dict:" << args_dict << "\n";
+}
 
 
 
