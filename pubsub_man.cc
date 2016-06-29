@@ -133,7 +133,8 @@ void pubsub_man::update_topic(const std::string& topic,
     std::cout << "@" << topic << ", patch\n";
     std::cout << "BEFORE: " << mt->image << "\n";
     std::cout << "PATCH : " << args.args_list << "\n";
-    mt->image.patch(args.args_list.as_array());
+    jalson::json_array & change = args.args_list.as_array();
+    mt->image.patch(change[0].as_array());
     std::cout << "AFTER : "  << mt->image << "\n";
     std::cout << "-------\n";
   }

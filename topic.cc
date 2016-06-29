@@ -30,11 +30,12 @@ void data_model_base::add_publisher(topic* tp)
 }
 
 
-void data_model_base::apply_model_patch(const jalson::json_array& patch)
+void data_model_base::apply_model_patch(const jalson::json_array& patch,
+                                        const jalson::json_array& event)
 {
   m_model.patch( patch );
   for (auto item : m_publishers)
-    item->publish_update( patch );
+    item->publish_update( patch, event);
 }
 
 basic_text_model::basic_text_model()
@@ -58,7 +59,8 @@ void basic_text_model::set_value(std::string new_content)
   operation["path"] = "/body/value";
   operation["value"] = std::move(new_content);
 
-  apply_model_patch( patch );
+  // TODO: add event
+  apply_model_patch( patch, jalson::json_array() );
 
   m_value  = &(body()["value"].as_string());
 }
@@ -92,10 +94,16 @@ void topic::add_target(std::string realm,
   // generate the initial snapshot
   XXX::wamp_args pub_args;
   pub_args.args_list = jalson::json_array();
-  jalson::json_object& operation = jalson::append_object(pub_args.args_list.as_array());
+
+  jalson::json_array patch;
+  jalson::json_object& operation = jalson::append_object(patch);
   operation["op"]   = "replace";
   operation["path"] = "";  /* replace whole document */
   operation["value"] = m_model->model();
+
+  pub_args.args_list.as_array().push_back(std::move(patch));
+  pub_args.args_list.as_array().push_back(jalson::json_array());
+
   dealer->publish(m_uri,
                   realm,
                   m_options,
@@ -106,10 +114,13 @@ void topic::add_target(std::string realm,
 
 
 
-void topic::publish_update(const jalson::json_array& patch)
+void topic::publish_update(const jalson::json_array& patch,
+                           const jalson::json_array& event)
 {
   XXX::wamp_args pub_args;
-  pub_args.args_list = patch;
+  pub_args.args_list = jalson::json_array();
+  pub_args.args_list.as_array().push_back(patch);
+  pub_args.args_list.as_array().push_back(event);
 
   for (auto & wp : m_sessions)
     if (auto sp = wp.lock())
@@ -145,8 +156,14 @@ void basic_list_model::insert(size_t pos, jalson::json_value val)
   operation["path"] = "/body/value/" + std::to_string(pos);
   operation["value"] = std::move(val);
 
-  apply_model_patch( patch );
+  // create event
+  jalson::json_array event;
+  event.push_back("ins");
+  event.push_back(pos);
+
+  apply_model_patch( patch, event );
  }
+
 
  void basic_list_model::push_back(jalson::json_value val)
  {
@@ -157,8 +174,13 @@ void basic_list_model::insert(size_t pos, jalson::json_value val)
    operation["path"] = "/body/value/" + std::to_string(m_value->size());
    operation["value"] = std::move(val);
 
-   apply_model_patch( patch );
+  // create event
+  jalson::json_array event;
+  event.push_back("append");
+
+   apply_model_patch( patch, event );
  }
+
 
  void basic_list_model::erase(size_t index)
  {
@@ -168,8 +190,13 @@ void basic_list_model::insert(size_t pos, jalson::json_value val)
    operation["op"]   = "remove";
    operation["path"] = "/body/value/" + std::to_string(index);
 
-   apply_model_patch( patch );
+   // create event
+   jalson::json_array event;
+   event.push_back("rm");
+   event.push_back(index);
+   apply_model_patch( patch, event );
  }
+
 
  void basic_list_model::replace(size_t index, jalson::json_value val)
  {
@@ -180,7 +207,10 @@ void basic_list_model::insert(size_t pos, jalson::json_value val)
    operation["path"]  = "/body/value/" + std::to_string(index);
    operation["value"] = std::move(val);
 
-   apply_model_patch( patch );
+   // TODO: complete the event
+   jalson::json_array event;
+
+   apply_model_patch( patch, event );
 }
 
 
@@ -222,6 +252,14 @@ void topic_subscriber::subscribe_cb(XXX::subscription_event_type evtype,
 
   std::cout << "received topic update!!! evtype: " << evtype << ", args_list: " << args_list
             << ", args_dict:" << args_dict << "\n";
+
+  std::cout << "here, need to integrate\n";
+
+//  m_model->apply_model_patch(args_list);
+
+  std::cout <<  m_model->model() << "\n";
+
+
 }
 
 

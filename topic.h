@@ -30,9 +30,8 @@ public:
 
   void add_publisher(topic*);
 
-protected:
-
-  void apply_model_patch(const jalson::json_array&);
+  void apply_model_patch(const jalson::json_array&,
+                         const jalson::json_array&);
 
 private:
   data_model_base(const data_model_base&) = delete;
@@ -90,7 +89,7 @@ public:
                   dealer_service*);
 
 private:
-  void publish_update(const jalson::json_array&);
+  void publish_update(const jalson::json_array&, const jalson::json_array&);
 
   std::string m_uri;
   data_model_base * m_model;
