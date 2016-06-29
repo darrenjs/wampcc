@@ -1,7 +1,7 @@
 #include "IOLoop.h"
 
 #include "io_connector.h"
-#include "Logger.h"
+#include "logger.h"
 #include "IOHandle.h"
 #include "kernel.h"
 
@@ -23,7 +23,7 @@ namespace XXX {
 
 struct io_request
 {
-  Logger * logptr;
+  logger * logptr;
   std::string addr;
   std::string port;
   bool resolve_hostname;
@@ -36,9 +36,9 @@ struct io_request
 
 
 
-  io_request(Logger * __logptr) : logptr(__logptr) {}
+  io_request(logger * __logptr) : logptr(__logptr) {}
 
-  io_request(Logger * __logptr,
+  io_request(logger * __logptr,
              std::string port,
              std::promise<int> p,
              socket_accept_cb );
@@ -125,7 +125,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
 
 
-io_request::io_request(Logger * lp,
+io_request::io_request(logger * lp,
                        std::string __port,
                        std::promise<int> listen_err,
                        socket_accept_cb __on_accept)

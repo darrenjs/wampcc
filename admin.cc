@@ -1,5 +1,5 @@
 
-#include "Logger.h"
+#include "logger.h"
 #include "event_loop.h"
 #include "kernel.h"
 #include "topic.h"
@@ -9,7 +9,7 @@
 #include "wamp_session.h"
 
 
-#include <Logger.h>
+#include <logger.h>
 
 #include <sstream>
 #include <condition_variable>
@@ -28,8 +28,8 @@
 
 
 
-XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eAll,
+XXX::logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
+                                              XXX::logger::eAll,
                                               true);
 
 std::unique_ptr<XXX::kernel> g_kernel;

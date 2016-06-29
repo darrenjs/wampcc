@@ -13,7 +13,7 @@ namespace XXX {
   class SessionMan;
   class pubsub_man;
   class rpc_man;
-  class Logger;
+  class logger;
   struct dealer_listener;
   struct rpc_details;
 
@@ -58,7 +58,7 @@ private:
   // bool on_timer();
 
   // essential components
-  Logger *__logptr; /* name chosen for log macros */
+  logger *__logptr; /* name chosen for log macros */
   kernel & m_kernel;
 
   std::recursive_mutex m_lock;

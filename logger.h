@@ -23,6 +23,9 @@
 #include <string>
 #include <sstream>
 
+#include <functional>
+#include <memory>
+#include <mutex>
 
 
 #define _DEBUG_( X )                                           \
@@ -33,6 +36,36 @@
       __xx_oss <<  X ;                              \
       __logptr->debug( __xx_oss.str(),__FILE__,__LINE__  ) ;   \
     }                                                          \
+  } while (0)
+
+
+#define LOGIMPL( X, LEVEL )                                           \
+  do {                                                                \
+    if ( __logptr and                                                 \
+         __logptr->log_want and                                       \
+         __logptr->log_send and                                       \
+         __logptr->log_want(LEVEL) )                                  \
+    {                                                                 \
+      std::ostringstream __xx_oss;                                    \
+      __xx_oss <<  X ;                                                \
+      __logptr->info( __xx_oss.str(),__FILE__,__LINE__  ) ;           \
+    }                                                                 \
+  } while (0)
+
+#define LOGINFO2( X )                                               \
+  LOGIMPL( X, XXX::logger::eInfo )
+
+#define LOGINFO( X )                                                \
+  do {                                                              \
+    if ( __logptr and                                               \
+         __logptr->log_want and                                       \
+         __logptr->log_send and                                       \
+         __logptr->log_want(XXX::logger::eInfo) )                     \
+    {                                                               \
+      std::ostringstream __xx_oss;                                  \
+      __xx_oss <<  X ;                                              \
+      __logptr->log_send( __xx_oss.str(),__FILE__,__LINE__  ) ;     \
+    }                                                               \
   } while (0)
 
 #define _INFO_( X )                                           \
@@ -69,7 +102,8 @@
 namespace XXX
 {
 
-class Logger
+
+class logger
 {
 public:
   enum Level {eNone = 0,
@@ -79,13 +113,13 @@ public:
               eDebug,
               eAll = 255};
 
-  Logger(int l) : m_level(l) {}
-  virtual ~Logger() {}
+  logger(int l) : m_level(l) {}
+  virtual ~logger() {}
 
-  virtual void debug(const char*, const char* file, int ln) = 0;
-  virtual void info(const char*,  const char* file, int ln) = 0;
-  virtual void warn(const char*,  const char* file, int ln) = 0;
-  virtual void error(const char*, const char* file, int ln) = 0;
+  virtual void debug(const char*, const char* /*file*/, int /*ln*/) {};
+  virtual void info(const char*,  const char* /*file*/, int /*ln*/) {};
+  virtual void warn(const char*,  const char* /*file*/, int /*ln*/) {};
+  virtual void error(const char*, const char* /*file*/, int /*ln*/) {};
 
   virtual void debug(const std::string& msg, const char* file, int ln)
   {
@@ -110,13 +144,17 @@ public:
   bool want_warn()  const { return m_level >= eWarn; }
   bool want_error() const { return m_level >= eError; }
 
+  std::function<bool(Level)> log_want;
+  std::function<void(Level, const char*, const char* file, int ln)> log_send;
+
+
 protected:
   int  m_level;
 };
 
 
 class ConsoleLoggerImpl;
-class ConsoleLogger : public Logger
+class ConsoleLogger : public logger
 {
 public:
   enum StreamType { eStdout, eStderr };
@@ -130,7 +168,6 @@ public:
   virtual void info(const char*,  const char* file, int ln);
   virtual void warn(const char*,  const char* file, int ln);
   virtual void error(const char*, const char* file, int ln);
-
 
 private:
   void dolog(const char*, const char*, const char*, int);

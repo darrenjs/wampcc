@@ -2,7 +2,7 @@
 
 #include "IOLoop.h"
 #include "io_listener.h"
-#include "Logger.h"
+#include "logger.h"
 #include "utils.h"
 
 #include <memory>
@@ -47,7 +47,7 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 }
 
 /* Constructor */
-IOHandle::IOHandle(Logger * logger, uv_stream_t * hdl, IOLoop * loop)
+IOHandle::IOHandle(logger * logger, uv_stream_t * hdl, IOLoop * loop)
   : __logptr(logger),
     m_uv_handle(hdl),
     m_closed_handles_count(0),

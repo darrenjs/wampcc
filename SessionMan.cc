@@ -6,7 +6,7 @@
 #include "wamp_session.h"
 
 #include "WampTypes.h"
-#include "Logger.h"
+#include "logger.h"
 
 #include <string.h>
 

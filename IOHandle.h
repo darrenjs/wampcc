@@ -14,12 +14,12 @@ namespace XXX {
 class IOLoop;
 class IOHandle;
 class io_listener;
-class Logger;
+class logger;
 
 class IOHandle
 {
 public:
-  IOHandle(Logger * logger, uv_stream_t * h, IOLoop * loop);
+  IOHandle(logger * logger, uv_stream_t * h, IOLoop * loop);
   ~IOHandle();
 
   IOHandle(const IOHandle&) = delete;
@@ -45,7 +45,7 @@ private:
   void on_read_cb(ssize_t, const uv_buf_t*);
 
 private:
-  Logger * __logptr;
+  logger * __logptr;
 
   uv_stream_t* m_uv_handle;
   uv_async_t   m_write_async;

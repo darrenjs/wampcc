@@ -2,7 +2,7 @@
 
 #include <topic.h>
 #include <dealer_service.h>
-#include <Logger.h>
+#include <logger.h>
 #include <kernel.h>
 
 #include <condition_variable>
@@ -16,8 +16,8 @@
 #include <string.h>
 #include <sys/time.h>
 
-XXX::Logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::Logger::eAll,
+XXX::logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
+                                              XXX::logger::eAll,
                                               true);
 
 struct callback_t

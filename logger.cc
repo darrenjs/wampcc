@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with exio.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Logger.h"
+#include "logger.h"
 
 #include <iostream>
 #include <sstream>
@@ -48,7 +48,7 @@ public:
 ConsoleLogger::ConsoleLogger(StreamType __stream,
                              int __level,
                              bool __incsource)
-  : Logger(__level),
+  : logger(__level),
     m_impl(new ConsoleLoggerImpl(__stream, __incsource))
 
 {

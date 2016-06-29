@@ -131,7 +131,7 @@ int compute_HMACSHA256(const char* key,
   return retval;
 }
 
-void log_exception(Logger *__logptr, const char* callsite)
+void log_exception(logger *__logptr, const char* callsite)
 {
   try {
     throw;

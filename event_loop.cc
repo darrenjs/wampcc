@@ -4,7 +4,7 @@
 #include "rpc_man.h"
 #include "pubsub_man.h"
 #include "WampTypes.h"
-#include "Logger.h"
+#include "logger.h"
 #include "utils.h"
 
 namespace XXX {
@@ -40,7 +40,7 @@ struct ev_function_dispatch : event
 // #define SYSTEM_HEARTBEAT_MS 500
 
 /* Constructor */
-event_loop::event_loop(Logger *logptr)
+event_loop::event_loop(logger *logptr)
   : __logptr(logptr),
     m_continue(true),
     m_kill_event( std::make_shared< event > (event::e_kill) ),

@@ -1,7 +1,7 @@
 #ifndef XXX_UTILS_H
 #define XXX_UTILS_H
 
-#include "Logger.h"
+#include "logger.h"
 
 #include <sstream>
 
@@ -16,7 +16,7 @@
 
 namespace XXX {
 
-class Logger;
+class logger;
 
 enum class HMACSHA256_Mode
 {
@@ -34,7 +34,7 @@ int compute_HMACSHA256(const char* key,
 
 
 /* must be called with an active exception */
-void log_exception(Logger *__logptr, const char* callsite);
+void log_exception(logger *__logptr, const char* callsite);
 
 
 } // namespace XXX

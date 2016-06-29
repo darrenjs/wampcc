@@ -1,7 +1,7 @@
 #include "topic.h"
 
 #include "wamp_session.h"
-#include "Logger.h"
+#include "logger.h"
 #include "dealer_service.h"
 
 #include <iostream>

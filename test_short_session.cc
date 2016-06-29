@@ -1,12 +1,12 @@
 
-#include "Logger.h"
+#include "logger.h"
 #include "event_loop.h"
 #include "client_service.h"
 #include "kernel.h"
 #include "Topic.h"
 
 
-#include <Logger.h>
+#include <logger.h>
 
 #include <sstream>
 #include <condition_variable>

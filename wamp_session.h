@@ -36,7 +36,7 @@ namespace XXX {
 
   class kernel;
   class IOHandle;
-  class Logger;
+  class logger;
 
 
   struct client_credentials
@@ -174,7 +174,7 @@ namespace XXX {
     static const char* state_to_str(wamp_session::SessionState);
 
 
-    Logger *__logptr; /* name chosen for log macros */
+    logger *__logptr; /* name chosen for log macros */
     kernel& m_kernel;
 
     uint64_t m_sid;

@@ -1,7 +1,7 @@
 
 #include "realm_registry.h"
 
-#include "Logger.h"
+#include "logger.h"
 
 #include <string.h>
 

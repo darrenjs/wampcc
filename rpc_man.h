@@ -17,7 +17,7 @@
 namespace XXX {
 
 class event_loop;
-class Logger;
+class logger;
 class kernel;
 
 
@@ -65,7 +65,7 @@ private:
   rpc_man(const rpc_man&); // no copy
   rpc_man& operator=(const rpc_man&); // no assignment
 
-  Logger *__logptr; /* name chosen for log macros */
+  logger *__logptr; /* name chosen for log macros */
   rpc_added_cb m_rpc_added_cb;
 
   typedef  std::map< std::string, rpc_details >  rpc_registry;

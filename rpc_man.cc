@@ -2,7 +2,7 @@
 
 #include "event_loop.h"
 #include "kernel.h"
-#include "Logger.h"
+#include "logger.h"
 #include "wamp_session.h"
 
 #include <memory>

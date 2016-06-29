@@ -4,7 +4,7 @@
 #include "rpc_man.h"
 #include "WampTypes.h"
 #include "event_loop.h"
-#include "Logger.h"
+#include "logger.h"
 #include "utils.h"
 #include "kernel.h"
 

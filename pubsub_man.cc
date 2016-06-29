@@ -1,7 +1,7 @@
 #include "pubsub_man.h"
 
 #include "event_loop.h"
-#include "Logger.h"
+#include "logger.h"
 #include "WampTypes.h"
 #include "SessionMan.h"
 #include "kernel.h"
