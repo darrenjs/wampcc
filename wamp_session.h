@@ -47,6 +47,24 @@ namespace XXX {
     std::function< std::string() > secret_fn;
   };
 
+  enum subscription_event_type
+  {
+    e_sub_failed,
+    e_sub_start,
+    e_sub_update,
+    e_sub_end
+  };
+
+  typedef std::function<void(subscription_event_type evtype,
+                             const std::string& uri,
+                             const jalson::json_object& details,
+                             const jalson::json_array& args_list,
+                             const jalson::json_object& args_dict,
+                             void* user) > subscription_cb;
+
+
+  typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
+
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
   class wamp_session : public std::enable_shared_from_this<wamp_session>,

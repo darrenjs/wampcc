@@ -67,28 +67,6 @@ struct invoke_details // TODO: rename
 
 };
 
-
-
-enum subscription_event_type
-{
-  e_sub_failed,
-  e_sub_start,
-  e_sub_update,
-  e_sub_end
-};
-
-typedef std::function<void(subscription_event_type evtype,
-                           const std::string& uri,
-                           void* user) > subscription_status_cb;
-
-typedef std::function<void(subscription_event_type evtype,
-                           const std::string& uri,
-                           const jalson::json_object& details,
-                           const jalson::json_array& args_list,
-                           const jalson::json_object& args_dict,
-                           void* user) > subscription_cb;
-
-
 typedef std::function<void(invoke_details&) > rpc_cb;
 
 struct wamp_call_result
@@ -106,8 +84,6 @@ struct wamp_call_result
       was_error(false),
       user(0){}
 };
-
-typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
 
 
 } // namespace XXX

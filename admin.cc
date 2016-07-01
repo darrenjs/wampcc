@@ -372,8 +372,9 @@ int main(int argc, char** argv)
 
   // TODO: need to subscribe with a data model
   XXX::basic_list_model my_list_model;
-  XXX::topic_subscriber tsub("planets", &my_list_model);
-  tsub.subscribe(ws);
+
+  XXX::model_subscription<XXX::basic_list_model> sub_planets("planets", ws, &my_list_model);
+
 
   // subscribe
   jalson::json_object sub_options;

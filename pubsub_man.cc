@@ -231,10 +231,15 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   {
     XXX::wamp_args pub_args;
     pub_args.args_list = jalson::json_array();
-    jalson::json_object& operation = jalson::append_object(pub_args.args_list.as_array());
+
+    jalson::json_array patch;
+    jalson::json_object& operation = jalson::append_object(patch);
     operation["op"]    = "replace";
     operation["path"]  = "";  /* replace whole document */
     operation["value"] = mt->image;
+
+    pub_args.args_list.as_array().push_back(std::move(patch));
+    pub_args.args_list.as_array().push_back(jalson::json_array()); // empty event
 
     jalson::json_object event_options;
     event_options["_p"] = options["_p"];

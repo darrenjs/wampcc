@@ -113,7 +113,6 @@ void topic::add_target(std::string realm,
 }
 
 
-
 void topic::publish_update(const jalson::json_array& patch,
                            const jalson::json_array& event)
 {
@@ -213,58 +212,56 @@ void basic_list_model::insert(size_t pos, jalson::json_value val)
    apply_model_patch( patch, event );
 }
 
-
-
-  topic_subscriber::topic_subscriber(std::string ,
-                                     data_model_base* m)
-    : m_model(m)
-  {
-  }
-
-  void topic_subscriber::subscribe(std::shared_ptr<XXX::wamp_session> ws)
-  {
-    jalson::json_object sub_options;
-    sub_options["_p"]=1;
-
-    auto fn = [this](XXX::subscription_event_type evtype,
-                   const std::string& uri ,
-                   const jalson::json_object& details ,
-                   const jalson::json_array& args_list,
-                   const jalson::json_object& args_dict,
-                   void* user)
-      {
-        this->subscribe_cb(evtype, uri, details, args_list, args_dict, user);
-      };
-    ws->subscribe("planets", sub_options, fn, nullptr);
-
-  }
-
-
-
-/* called upon subscribed and update events */
-void topic_subscriber::subscribe_cb(XXX::subscription_event_type evtype,
-                                   const std::string& /* uri */,
-                                   const jalson::json_object& /* details */,
+void basic_list_model::apply_event(const jalson::json_object& /*details*/,
                                    const jalson::json_array& args_list,
-                                   const jalson::json_object& args_dict,
-                                   void* /*user*/)
+                                   const jalson::json_object& /*args_dict*/)
 {
+  // TODO: check presnece of both items
+  // update the model
 
-  std::cout << "received topic update!!! evtype: " << evtype << ", args_list: " << args_list
-            << ", args_dict:" << args_dict << "\n";
+  if (args_list.size() == 1 && args_list[0].is_array())
+  {
+    apply_model_patch(args_list[0].as_array(), jalson::json_array());
+  }
+  else if (args_list.size() > 1 && args_list[0].is_array() && args_list[1].is_array())
+  {
+    apply_model_patch(args_list[0].as_array(), args_list[1].as_array());
+  }
 
-  std::cout << "here, need to integrate\n";
-
-//  m_model->apply_model_patch(args_list);
-
-  std::cout <<  m_model->model() << "\n";
-
-
+  // TODO: fire events
 }
 
 
 
 
+void base_model_subscription::subscribe(std::shared_ptr<XXX::wamp_session>& ws,
+                                        model_update_fn model_fn)
+{
+  auto fn = [=](XXX::subscription_event_type evtype,
+                const std::string& /*uri*/,
+                const jalson::json_object& details,
+                const jalson::json_array& args_list,
+                const jalson::json_object& args_dict,
+                void* /*user*/)
+    {
+      std::cout << "got event: " << evtype << ": ";
+
+      if (args_list.size()>0)
+        std::cout << args_list[0];
+
+
+      std::cout << "\n";
+
+      if (evtype == e_sub_update)
+        model_fn(details, args_list, args_dict);
+    };
+
+  jalson::json_object sub_options;
+  sub_options["_p"]=1;
+
+  std::cout << "making subscription: " << m_uri << "\n";
+  ws->subscribe(m_uri, sub_options, std::move(fn), nullptr);
+}
 
 
 

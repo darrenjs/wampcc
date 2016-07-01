@@ -30,6 +30,7 @@ public:
 
   void add_publisher(topic*);
 
+protected:
   void apply_model_patch(const jalson::json_array&,
                          const jalson::json_array&);
 
@@ -54,6 +55,7 @@ public:
   void set_value(std::string);
   const std::string& get_value() const;
 
+
   jalson::json_string * m_value;
 };
 
@@ -71,6 +73,10 @@ public:
 
   const jalson::json_array & get_value() const { return  * m_value; }
 
+
+  void apply_event(const jalson::json_object& details,
+                   const jalson::json_array& args_list,
+                   const jalson::json_object& args_dict);
 private:
   jalson::json_array * m_value;
 };
@@ -101,23 +107,78 @@ private:
   friend data_model_base;
 };
 
-class topic_subscriber
-{
-public:
-  topic_subscriber(std::string uri,
-                   data_model_base*);
 
-  void subscribe(std::shared_ptr<XXX::wamp_session>);
+  class base_model_subscription
+  {
+  public:
+    base_model_subscription(std::string uri)
+      : m_uri(std::move(uri))
+    {
+    }
 
-/* called upon subscribed and update events */
-  void subscribe_cb(subscription_event_type evtype,
-                    const std::string& /* uri */,
-                    const jalson::json_object& /* details */,
-                    const jalson::json_array& args_list,
-                    const jalson::json_object& args_dict,
-                    void* /*user*/);
-  data_model_base * m_model;
-};
+  protected:
+
+    typedef std::function<void(const jalson::json_object& details,
+                               const jalson::json_array& args_list,
+                               const jalson::json_object& args_dict) >  model_update_fn;
+
+    void subscribe(std::shared_ptr<XXX::wamp_session>& ws,
+                    model_update_fn cb);
+
+    std::string m_uri;
+  };
+
+  template<typename T>
+  class model_subscription : public base_model_subscription
+  {
+
+  public:
+    model_subscription(std::string uri,
+                       std::shared_ptr<XXX::wamp_session>& ws,
+                       T* external_model)
+      : model_subscription(std::move(uri),
+                           ws,
+                           std::unique_ptr<T>(),
+                           external_model)
+    {
+    }
+
+
+    model_subscription(std::string uri,
+                       std::shared_ptr<XXX::wamp_session>& ws)
+      : model_subscription(std::move(uri),
+                           ws,
+                           m_owned_model( new T() ),
+                           nullptr)
+    {
+    }
+
+    model_subscription(const model_subscription&) = delete;
+    model_subscription& operator=(const model_subscription&) = delete;
+
+  private:
+
+    model_subscription(std::string uri,
+                       std::shared_ptr<XXX::wamp_session>& ws,
+                       std::unique_ptr<T> owned_model,
+                       T* external_model)
+      : base_model_subscription(std::move(uri)),
+        m_owned_model( std::move(owned_model) ),
+        m_model( external_model? external_model : m_owned_model.get() )
+    {
+      auto fn = [this](const jalson::json_object& details,
+                       const jalson::json_array& args_list,
+                       const jalson::json_object& args_dict)
+        {
+          m_model->apply_event(details, args_list, args_dict);
+        };
+
+      subscribe(ws, std::move(fn));
+    }
+
+    std::unique_ptr<T> m_owned_model;
+    T* m_model;
+  };
 
 } // namespace XXX
 
