@@ -52,37 +52,7 @@ int rpc_man::register_internal_rpc_2(const std::string& realm,
   r.user_data = user_data;
   r.type = rpc_details::eInternal;
 
-  {
-    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-    auto realm_iter = m_realm_to_registry.find( realm );
-
-    // TODO: all this code for inserting a new RPC is dupliacted in another part
-    // of this file.
-    if (realm_iter == m_realm_to_registry.end())
-    {
-      // insert realm
-      auto p = m_realm_to_registry.insert(std::make_pair(realm, rpc_registry()));
-      realm_iter = std::move(p.first);
-    }
-
-    auto rpc_iter = realm_iter->second.find(uri);
-    if (rpc_iter != realm_iter->second.end())
-    {
-      // TODO: dont throw here; instead just return to the internal caller, ie
-      // we are trying to register an internal RPC here, so throwing an event
-      // error is not the right thing to do.
-      // TODO: check how this exception is actually used
-      _WARN_("Ignoring duplicate rpc registration for " << realm << ":" << uri);
-      throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
-    }
-
-    // create registration record
-
-    r.registration_id = m_next_regid++;
-    realm_iter->second[ uri ] = std::move(r);
-  }
-
-  _INFO_( "Internal  "<< realm << "::'" << uri <<"' registered with id " << r.registration_id );
+  register_rpc(realm, r);
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;
@@ -101,37 +71,36 @@ uint64_t rpc_man::handle_inbound_register(session_handle sh,
   r.session = sh;
   r.type = rpc_details::eRemote;
 
-  {
-    std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-    auto realm_iter = m_realm_to_registry.find( realm );
-
-    if (realm_iter == m_realm_to_registry.end())
-    {
-      // insert realm
-      auto p = m_realm_to_registry.insert(std::make_pair(realm, rpc_registry()));
-      realm_iter = std::move(p.first);
-    }
-
-    auto rpc_iter = realm_iter->second.find(r.uri);
-    if (rpc_iter != realm_iter->second.end())
-    {
-      _WARN_("Ignore duplicate procedure register for " << realm << ":" << r.uri);
-      throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
-    }
-
-    // create registration record
-
-    r.registration_id = m_next_regid++;
-    realm_iter->second[ r.uri ] = r;
-
-  }
-
-  _INFO_( "Procedure "<< realm << "::'" << r.uri <<"' registered with id " << r.registration_id );
+  register_rpc(realm, r);
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;
 }
 
 
+void rpc_man::register_rpc(std::string realm, rpc_details& r)
+{
+  std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+  auto realm_iter = m_realm_to_registry.find( realm );
+
+  // add realm if not already present
+  if (realm_iter == m_realm_to_registry.end())
+  {
+    auto p = m_realm_to_registry.insert(std::make_pair(realm, rpc_registry()));
+    realm_iter = std::move(p.first);
+  }
+
+  auto rpc_iter = realm_iter->second.find(r.uri);
+  if (rpc_iter != realm_iter->second.end())
+  {
+    _WARN_("Ignore duplicate procedure register for " << realm << ":" << r.uri);
+    throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
+  }
+
+  r.registration_id = m_next_regid++;
+  realm_iter->second[ r.uri ] = r;
+
+  _INFO_( "Procedure "<< realm << "::'" << r.uri <<"' registered with id " << r.registration_id );
+}
 
 } // namespace XXX

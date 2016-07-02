@@ -65,6 +65,8 @@ private:
   rpc_man(const rpc_man&); // no copy
   rpc_man& operator=(const rpc_man&); // no assignment
 
+  void register_rpc(std::string realm, rpc_details& r);
+
   logger *__logptr; /* name chosen for log macros */
   rpc_added_cb m_rpc_added_cb;
 
@@ -73,7 +75,7 @@ private:
 
   std::mutex m_rpc_map_lock;
   realm_to_rpc_registry m_realm_to_registry;
-  int m_next_regid;
+  uint64_t m_next_regid;
 
 
 };
