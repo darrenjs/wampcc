@@ -80,10 +80,12 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
   tcp_server* myserver = (tcp_server*) server;
   IOLoop * myIOLoop = static_cast<IOLoop* >(server->loop->data);
 
+  logger * __logptr = myIOLoop->logptr();
+
+  // TODO: review if this is correct error handling
   if (status < 0)
   {
-    // TODO: logging
-    fprintf(stderr, "New connection error %s\n", uv_strerror(status));
+    _ERROR_("New connection error " <<  uv_strerror(status));
     return;
   }
 
@@ -96,13 +98,9 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
                                   (uv_stream_t *) client, myIOLoop);
 
     int fd = client->io_watcher.fd;
-    std::cout << "accept: type=" << client->type
-              << ", fd=" << fd << "\n";
 
-    if (client->type == UV_TCP)
-    {
-      std::cout << "got tcp fd "<<  fd<< "\n";
-    }
+    _INFO_("accept: type=" << client->type
+           << ", fd=" << fd);
 
     // register the stream before beginning read operations
     myserver->ioloop->add_passive_handle(myserver, ioh );
@@ -243,8 +241,6 @@ void IOLoop::on_async()
       // create the request
       std::unique_ptr<io_request> req( std::move(user_req) );  // <--- the sp<connector> is here now
 
-      // TODO: check connect_req * req are both freed correctly, and the socket linked list
-
       const struct sockaddr* addrptr;
       struct sockaddr_in inetaddr;
       memset(&inetaddr, 0, sizeof(inetaddr));
@@ -263,12 +259,12 @@ void IOLoop::on_async()
         hints.ai_flags = 0;
 
         r = uv_getaddrinfo(m_uv_loop, &resolver, nullptr,
-                           req->addr.c_str(), req->port.c_str(),
+                            req->addr.c_str(), req->port.c_str(),
                            &hints);
 
-        std::cout << "r=" << r << "\n";
         if (r<0)
         {
+          // address resolution failed, to set an error on the promise
           std::ostringstream oss;
           oss << "uv_getaddrinfo: " << r << ", " << safe_str(uv_err_name(r))
               << ", " << safe_str(uv_strerror(r));
@@ -279,12 +275,6 @@ void IOLoop::on_async()
         }
 
         addrptr = resolver.addrinfo->ai_addr;
-
-        /*
-        char addr[17] = {'\0'};
-        uv_ip4_name((struct sockaddr_in*) resolver.addrinfo->ai_addr, addr, 16);
-        fprintf(stderr, "%s\n", addr);
-        */
       }
       else
       {
@@ -293,13 +283,13 @@ void IOLoop::on_async()
         addrptr = (const struct sockaddr*) &inetaddr;
       }
 
-      uv_connect_t * connect_req = new uv_connect_t();
+      std::unique_ptr<uv_connect_t> connect_req ( new uv_connect_t() );
       connect_req->data = (void*) req.get();
 
       _INFO_("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
 
       r = uv_tcp_connect(
-        connect_req,
+        connect_req.get(),
         req->connector->get_handle(),
         addrptr,
         [](uv_connect_t* __req, int status)
@@ -315,12 +305,12 @@ void IOLoop::on_async()
 
       if (r == 0)
       {
-        req.release(); // owner transfered to UV callback
+        // resource  ownership transfered to UV callback
+        req.release();
+        connect_req.release();
       }
       else
       {
-        delete connect_req;
-
         std::ostringstream oss;
 
         oss << "uv_tcp_connect: " << r << ", " << safe_str(uv_err_name(r))
@@ -328,9 +318,7 @@ void IOLoop::on_async()
         req->connector->io_on_connect_exception(
           std::make_exception_ptr( std::runtime_error(oss.str()) )
           );
-
       }
-
     }
     else if (user_req->addr.empty())
     {

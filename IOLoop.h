@@ -36,9 +36,7 @@ struct  tcp_server
   socket_accept_cb cb;
 };
 
-// TODO: maybe the IO loop should also do the TCP connect stuff? I.e., it all goes there?
-/* Intended to be a reusable event loop */
-
+/* IO Thread */
 class IOLoop
 {
 public:
