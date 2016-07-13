@@ -12,8 +12,9 @@
 namespace XXX {
 
 /* Constructor */
-kernel::kernel(logger* logptr)
+kernel::kernel(logger* logptr, nlogger nlog)
   : __logptr(logptr),
+    __log(nlog),
     m_io_loop( new IOLoop(*this) ),
     m_evl( new event_loop(logptr) )
 {
@@ -53,44 +54,77 @@ event_loop* kernel::get_event_loop()
 }
 
 
-
-
-stdout_logger::stdout_logger(std::ostream& __os,
-                             int __level,
-                             bool __incsource)
-  : m_stream(__os),
-    m_level(__level),
-    m_incsource(__incsource)
-
+int nlogger::levels_upto(Level l)
 {
+  int r(0);
+  for (int i = 1; i <= l; i <<= 1) r |= i;
+  return r;
 }
 
 
-nlogger stdout_logger::create(std::ostream& stream,
-                              nlogger::Level level,
-                              bool inc_file_and_line)
+class stdout_logger
 {
-  std::shared_ptr<stdout_logger> sp(
-    new stdout_logger(stream, level, inc_file_and_line) );
+public:
 
-  nlogger the_logger;
+  stdout_logger(std::ostream& __os,
+                bool __incsource)
+    : m_stream(__os),
+      m_incsource(__incsource)
+  {
+  }
 
-  the_logger.wants = [sp](nlogger::Level l)
+  void write(nlogger::Level, const std::string&, const char*, int);
+
+private:
+
+  stdout_logger(const stdout_logger&) = delete;
+  stdout_logger& operator=(const stdout_logger&) = delete;
+
+  std::ostream&             m_stream;
+  bool                      m_incsource;
+  std::mutex                m_mutex;
+};
+
+
+nlogger nlogger::stdlog(std::ostream& ostr,
+                        int level_mask,
+                        bool inc_src)
+{
+  auto sp = std::make_shared<stdout_logger>(ostr, inc_src);
+
+  nlogger my_logger;
+
+  my_logger.wants_level = [level_mask](nlogger::Level l)
     {
-      return l <= sp->m_level;
+      return l bitand level_mask;
     };
 
-  the_logger.write = [sp](nlogger::Level l, const char* msg, const char* file, int ln)
-  {
-    if (l <= sp->m_level) sp->dolog("XXX", msg, file, ln);
-  };
+  my_logger.write = [level_mask, sp](nlogger::Level l,
+                                     const std::string& msg,
+                                     const char* file, int ln)
+    {
+      if (l bitand level_mask) sp->write(l, msg, file, ln);
+    };
 
-  return the_logger;
+  return my_logger;
 }
 
 
-void stdout_logger::stdout_logger::dolog(const char* level,
-                                         const char* s,
+static const char* level_str(nlogger::Level l)
+{
+  switch(l)
+  {
+    case nlogger::eError : return "ERROR";
+    case nlogger::eWarn  : return "WARN";
+    case nlogger::eInfo  : return "INFO";
+    case nlogger::eDebug : return "DEBUG";
+    default : return "UNKNOWN";
+  }
+}
+
+
+void stdout_logger::stdout_logger::write(nlogger::Level l,
+                                         const std::string& s,
                                          const char* file,
                                          int ln)
 {
@@ -119,7 +153,7 @@ void stdout_logger::stdout_logger::dolog(const char* level,
   std::lock_guard<std::mutex> lock( m_mutex );
   m_stream << timestamp;
   m_stream << tid << " ";
-  m_stream << level << " : ";
+  m_stream << level_str(l) << " : ";
   m_stream << s;
 
   if (m_incsource && file)
