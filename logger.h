@@ -39,35 +39,6 @@
   } while (0)
 
 
-#define LOGIMPL( X, LEVEL )                                           \
-  do {                                                                \
-    if ( __logptr and                                                 \
-         __logptr->log_want and                                       \
-         __logptr->log_send and                                       \
-         __logptr->log_want(LEVEL) )                                  \
-    {                                                                 \
-      std::ostringstream __xx_oss;                                    \
-      __xx_oss <<  X ;                                                \
-      __logptr->info( __xx_oss.str(),__FILE__,__LINE__  ) ;           \
-    }                                                                 \
-  } while (0)
-
-#define LOGINFO2( X )                                               \
-  LOGIMPL( X, XXX::logger::eInfo )
-
-#define LOGINFO( X )                                                \
-  do {                                                              \
-    if ( __logptr and                                               \
-         __logptr->log_want and                                       \
-         __logptr->log_send and                                       \
-         __logptr->log_want(XXX::logger::eInfo) )                     \
-    {                                                               \
-      std::ostringstream __xx_oss;                                  \
-      __xx_oss <<  X ;                                              \
-      __logptr->log_send( __xx_oss.str(),__FILE__,__LINE__  ) ;     \
-    }                                                               \
-  } while (0)
-
 #define _INFO_( X )                                           \
   do {                                                        \
     if ( __logptr and __logptr->want_info() )                 \
