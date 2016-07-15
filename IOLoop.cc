@@ -2,6 +2,7 @@
 
 #include "io_connector.h"
 #include "logger.h"
+#include "log_macros.h"
 #include "IOHandle.h"
 #include "kernel.h"
 
@@ -23,6 +24,14 @@ namespace XXX {
 
 struct io_request
 {
+  enum request_type
+  {
+    eNone = 0,
+    eCancelHandle,
+    eAddServer,
+    eAddConnection
+  } type;
+
   logger * logptr;
   std::string addr;
   std::string port;
@@ -34,20 +43,18 @@ struct io_request
 
   std::shared_ptr<io_connector> connector;
 
+  io_request(request_type __type,
+             logger * __logptr)
+    : type(__type),
+      logptr(__logptr)
+  {}
 
-
-  io_request(logger * __logptr) : logptr(__logptr) {}
-
-  io_request(logger * __logptr,
+  io_request(request_type __type,
+             logger * __logptr,
              std::string port,
              std::promise<int> p,
              socket_accept_cb );
 
-  enum
-  {
-    eNone = 0,
-    eCancelHandle,
-  } request_type;
 };
 
 
@@ -125,15 +132,16 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
 
 
-io_request::io_request(logger * lp,
+io_request::io_request(request_type __type,
+                       logger * lp,
                        std::string __port,
                        std::promise<int> listen_err,
                        socket_accept_cb __on_accept)
-  : logptr( lp ),
+  : type( __type),
+    logptr( lp ),
     port( __port ),
     listener_err( new std::promise<int>(std::move(listen_err) ) ),
-    on_accept( std::move(__on_accept) ),
-    request_type( eNone )
+    on_accept( std::move(__on_accept) )
 {
 }
 
@@ -141,6 +149,7 @@ io_request::io_request(logger * lp,
 IOLoop::IOLoop(kernel& k)
   :  m_kernel(k),
      __logptr( k.get_logger() ),
+     __log( k.get_log() ),
     m_uv_loop( new uv_loop_t() ),
 
     m_async( new uv_async_t() ),
@@ -234,11 +243,11 @@ void IOLoop::on_async()
 
   for (auto & user_req : work)
   {
-    if (user_req->request_type == io_request::eCancelHandle)
+    if (user_req->type == io_request::eCancelHandle)
     {
       uv_close((uv_handle_t*) user_req->tcp_handle, user_req->on_close_cb);
     }
-    else if (user_req->connector)
+    else if (user_req->type == io_request::eAddConnection)
     {
       // create the request
       std::unique_ptr<io_request> req( std::move(user_req) );  // <--- the sp<connector> is here now
@@ -328,11 +337,9 @@ void IOLoop::on_async()
         req->connector->io_on_connect_exception(
           std::make_exception_ptr( std::runtime_error(oss.str()) )
           );
-
       }
-
     }
-    else if (user_req->addr.empty())
+    else if (user_req->type == io_request::eAddServer)
     {
       create_tcp_server_socket(atoi(user_req->port.c_str()),
                                user_req->on_accept,
@@ -353,7 +360,7 @@ void IOLoop::async_send()
 
 void IOLoop::run_loop()
 {
-  _INFO_("IOLoop thread starting");
+  LOG_INFO("IOLoop thread starting");
   while ( true )
   {
     try
@@ -387,7 +394,8 @@ void IOLoop::add_server(int port,
   std::ostringstream oss;
   oss << port;
 
-  std::unique_ptr<io_request> r( new io_request( __logptr,
+  std::unique_ptr<io_request> r( new io_request( io_request::eAddServer,
+                                                 __logptr,
                                                  oss.str(),
                                                  std::move(listen_err),
                                                  std::move(cb) ) );
@@ -418,7 +426,7 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr,
 
   std::shared_ptr<io_connector> conn ( new io_connector(m_kernel, tcp_handle) );
 
-  std::unique_ptr<io_request> r( new io_request(__logptr ) );
+  std::unique_ptr<io_request> r( new io_request(io_request::eAddConnection, __logptr ) );
   r->connector = conn;
   r->addr = addr;
   r->port = port;
@@ -439,8 +447,8 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr,
 
 void IOLoop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
 {
-  std::unique_ptr<io_request> r( new io_request(__logptr ) );
-  r->request_type = io_request::eCancelHandle;
+  std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logptr ) );
+
   r->tcp_handle = h;
   r->on_close_cb = cb;
 
