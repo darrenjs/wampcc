@@ -18,6 +18,7 @@ namespace XXX {
 
 class kernel;
 class logger;
+struct nlogger;
 class IOLoop;
 class IOHandle;
 class io_connector;
@@ -71,6 +72,7 @@ public:
 private:
   kernel & m_kernel;
   logger * __logptr;
+  nlogger& __log;
   uv_loop_t*   m_uv_loop;
   std::unique_ptr<uv_async_t> m_async;
   std::thread  m_thread;
