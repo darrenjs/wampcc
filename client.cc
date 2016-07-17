@@ -121,12 +121,12 @@ void publisher_tep()
     switch ( dis(gen) )
     {
       case 0 : basic_list.insert(0, names[dis(gen)]); break;
-      case 1 : if (basic_list.get_value().size()>0) basic_list.insert(basic_list.get_value().size()-1, names[dis(gen)]); break;
-      case 2 : if (basic_list.get_value().size()>0) basic_list.replace(0, names[dis(gen)]); break;
-      case 3 : if (basic_list.get_value().size()>0) basic_list.replace(basic_list.get_value().size()-1, names[dis(gen)]); break;
-      case 4 : if (basic_list.get_value().size()>0) basic_list.erase(0); break;
-      case 5 : if (basic_list.get_value().size()>0) basic_list.erase(basic_list.get_value().size()-1); break;
-      default: basic_list.push_back( names[dis(gen)] );
+      case 1 : if (basic_list.copy_value().size()>0 && basic_list.copy_value().size()<10) basic_list.insert(basic_list.copy_value().size()-1, names[dis(gen)]); break;
+      case 2 : if (basic_list.copy_value().size()>0) basic_list.replace(0, names[dis(gen)]); break;
+      case 3 : if (basic_list.copy_value().size()>0) basic_list.replace(basic_list.copy_value().size()-1, names[dis(gen)]); break;
+      case 4 : if (basic_list.copy_value().size()>0) basic_list.erase(0); break;
+      case 5 : if (basic_list.copy_value().size()>0) basic_list.erase(basic_list.copy_value().size()-1); break;
+      default: if (basic_list.copy_value().size()<10) basic_list.push_back( names[dis(gen)] );
     };
 
 
@@ -137,7 +137,7 @@ void publisher_tep()
 
 int main(int /* argc */, char** /* argv */)
 {
-  std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(logger) );
+  std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(logger, XXX::nlogger()) );
   mycs->start();
 
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);

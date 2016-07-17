@@ -266,10 +266,9 @@ std::string get_timestamp()
 
 int main(int argc, char** argv)
 {
-
   process_options(argc, argv);
 
-  g_kernel.reset( new XXX::kernel(logger) );
+  g_kernel.reset( new XXX::kernel(logger, XXX::nlogger()));
   g_kernel->start();
 
   /* Create a socket connector.  This will immediately make an attempt to
@@ -370,10 +369,21 @@ int main(int argc, char** argv)
   bool long_wait = false;
   bool wait_reply = false;
 
-  // TODO: need to subscribe with a data model
   XXX::basic_list_model my_list_model;
 
-  XXX::model_subscription<XXX::basic_list_model> sub_planets("planets", ws, &my_list_model);
+  XXX::basic_list_model::observer ob;
+  ob.on_insert = [](int index)
+    {
+      std::cout << "list item added @ " << index << "\n";
+    };
+  my_list_model.add_observer( std::move(ob) );
+
+  // TODO: next, find a way to easily print out the list after each update
+
+  XXX::basic_list_subscription_handler<XXX::basic_list_target>  h;
+  XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list_target> >
+    sub_planets(ws, "planets", h );
+
 
 
   // subscribe
