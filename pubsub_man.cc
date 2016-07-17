@@ -60,17 +60,6 @@ pubsub_man::~pubsub_man()
   // managed_topic
 }
 
-// /* Handle arrival of an internl PUBLISH event, targeted at a topic. */
-// void pubsub_man::handle_event(ev_internal_publish* ev)
-// {
-//   /* EV thread */
-
-//   // TODO: lock me?  Or will only be the event thread?
-
-//   update_topic(ev->uri, ev->realm, ev->patch.as_array());
-// }
-
-
 
 /*
 static bool compare_session(const session_handle& p1, const session_handle& p2)
