@@ -4,6 +4,7 @@
 #include "logger.h"
 
 #include <sstream>
+#include <list>
 
 
 #define THROW(E, X )  do                        \
@@ -36,6 +37,36 @@ int compute_HMACSHA256(const char* key,
 /* must be called with an active exception */
 void log_exception(logger *__logptr, const char* callsite);
 
+
+/* Implements a general list of observers, which can be notified with a generic
+ * function with variadic arguments. Observer objects should be plain structs
+ * that consist of a set of std::function members. */
+template<typename T>
+class observer_list
+{
+public:
+  struct key {};
+
+  /* Add observer, returning a unique key used for later removal. */
+  key* add(T&& obs)
+  {
+    m_observers.emplace_back(key(), std::move(obs));
+    return &m_observers.back().first;
+  }
+
+
+  /* Notify observers, by applying a functional object, with supplied
+   * arguments. */
+  template<typename F, typename... Args>
+  void notify(const F& fn, Args&&... args)
+  {
+    for (auto & item : m_observers)
+      fn( item.second, args... );
+  }
+
+private:
+  std::list< std::pair<key, T>  > m_observers;
+};
 
 } // namespace XXX
 
