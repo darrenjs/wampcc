@@ -72,14 +72,6 @@ public:
   static const std::string key_remove;
   static const std::string key_modify;
 
-  /* receive change events */
-  struct observer
-  {
-    std::function<void(int)> on_insert;
-    std::function<void(int)> on_remove;
-    std::function<void(int)> on_modify;
-  };
-
   basic_list_model();
 
   /* generate change events */
@@ -91,15 +83,8 @@ public:
   jalson::json_array copy_value() const ;
 
 
-  void apply_event(const jalson::json_object& details,
-                   const jalson::json_array& args_list,
-                   const jalson::json_object& args_dict);
-
-  void add_observer(observer);
-
 private:
   jalson::json_array * m_value;
-  observer_list<observer> m_observers;
 };
 
 
@@ -168,44 +153,57 @@ class basic_list_target
 {
 public:
 
+  typedef std::vector< jalson::json_value > internal_repr ;
+
+  /* receive change events */
+  struct observer
+  {
+    std::function<void()>  on_reset;
+    std::function<void(int)> on_insert;
+    std::function<void(int)> on_remove;
+    std::function<void(int)> on_modify;
+  };
+
+  void add_observer(observer);
+
   void on_reset(const jalson::json_array &);
   void on_insert(int i, jalson::json_value);
   void on_remove(int i);
   void on_modify(int i, jalson::json_value);
 
-  std::vector< jalson::json_value > m_items;
+  std::vector< jalson::json_value > copy() const;
+
+
+  // Danger: direct use of the internal list must be done so with
+  // synchronisation via the internal mutex
+  std::mutex&    internal_mutex() { return m_mutex; }
+  internal_repr& internal_list()  { return m_items; }
+
+private:
+  mutable std::mutex m_mutex;
+  internal_repr  m_items;
+  observer_list<observer> m_observers;
 };
 
 
 
-/*
-  the emplate approach might take both a normal class, and, a strucre containingn lambdas
 
-    ie, due to the common way in which it is invoke
+template<typename T>
+class basic_list_subscription_handler
+{
+public:
 
-    m_target.on_insert( args );   <--- is on_sert a lamda, or, a function
-*/
-  // this should probably be a template class
-  template<typename T>
-  class basic_list_subscription_handler
+  basic_list_subscription_handler(T& t)
+  : m_target(t)
   {
-  public:
-    basic_list_subscription_handler()
-    : m_target( T() )
-    {
-    }
+  }
 
-    basic_list_subscription_handler(T t)
-    : m_target(t)
-    {
-    }
+  void on_event(const jalson::json_object& details,
+                const jalson::json_array&  args_list,
+                const jalson::json_object& args_dict);
 
-    void on_event(const jalson::json_object& details,
-                  const jalson::json_array&  args_list,
-                  const jalson::json_object& args_dict);
-
-    T  m_target;
-  };
+  T&  m_target;
+};
 
 
 

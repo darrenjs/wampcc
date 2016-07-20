@@ -235,90 +235,62 @@ void basic_list_model::insert(size_t pos, jalson::json_value val)
    apply_model_patch( patch, event );
 }
 
-void basic_list_model::apply_event(const jalson::json_object& /*details*/,
-                                   const jalson::json_array& args_list,
-                                   const jalson::json_object& /*args_dict*/)
+std::vector< jalson::json_value > basic_list_target::copy() const
 {
-  static auto fn_insert = [](observer& ob, int i){if (ob.on_insert) ob.on_insert(i);};
-  static auto fn_remove = [](observer& ob, int i){if (ob.on_remove) ob.on_remove(i);};
-  static auto fn_modify = [](observer& ob, int i){if (ob.on_modify) ob.on_modify(i);};
-
-  const jalson::json_array * patch = nullptr;
-  const jalson::json_array * event = nullptr;
-
-  if (args_list.size() > 0 && args_list[0].is_array())
-    patch = &args_list[0].as_array();
-
-  if (args_list.size()>1 && args_list[1].is_array())
-      event = &args_list[1].as_array();
-
-  if (patch)
-  {
-    apply_model_patch(*patch, event? *event : jalson::json_array());
-
-    if (event &&
-        event->size()>=2 &&
-        event->at(0).is_string() &&
-        event->at(1).is_int() &&
-        event->at(0).as_string() == basic_list_model::key_insert
-      )
-    {
-      m_observers.notify(fn_insert, event->at(1).as_int());
-    }
-    else if (event &&
-             event->size()>=2 &&
-             event->at(0).is_string() &&
-             event->at(1).is_int() &&
-             event->at(0).as_string() == basic_list_model::key_remove
-      )
-    {
-      m_observers.notify(fn_remove, event->at(1).as_int());
-    }
-    else if (event &&
-             event->size()>=2 &&
-             event->at(0).is_string() &&
-             event->at(1).is_int() &&
-             event->at(0).as_string() == basic_list_model::key_modify
-      )
-    {
-      m_observers.notify(fn_modify, event->at(1).as_int());
-    }
-  }
-}
-
-
-void basic_list_model::add_observer(observer ob)
-{
-  m_observers.add(std::move(ob));
+  std::unique_lock<std::mutex> guard(m_mutex);
+  return m_items;
 }
 
 
 void basic_list_target::on_insert(int i, jalson::json_value v)
 {
+  static auto fn = [](observer& ob, int i){if (ob.on_insert) ob.on_insert(i);};
   // TODO: check array size before action
   std::cout << "insert @" << i << " " << v << "\n";
-  m_items.insert(m_items.begin() + i, std::move(v));
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_items.insert(m_items.begin() + i, std::move(v));
+  }
+  m_observers.notify(fn, i);
 }
 
 void basic_list_target::on_remove(int i)
 {
+  static auto fn = [](observer& ob, int i){if (ob.on_remove) ob.on_remove(i);};
   // TODO: check array size before action
   std::cout << "erase @" << i << "\n";
-  m_items.erase(m_items.begin() + i);
+
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_items.erase(m_items.begin() + i);
+  }
+  m_observers.notify(fn, i);
 }
 
 void basic_list_target::on_modify(int i, jalson::json_value v)
 {
+  static auto fn = [](observer& ob, int i){if (ob.on_modify) ob.on_modify(i);};
+
   // TODO: check array size before action
   std::cout << "modify @" << i << " " << v << "\n";
-  m_items.at(i) = std::move(v);
+
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_items.at(i) = std::move(v);
+  }
+  m_observers.notify(fn, i);
+
 }
 
 void basic_list_target::on_reset(const jalson::json_array & src)
 {
-  // TODO: check array size before action
-  std::cout << "on_reset\n";
-  m_items = src;
+  static auto fn = [](observer& ob){if (ob.on_reset) ob.on_reset();};
+
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_items = src;
+  }
+  m_observers.notify(fn);
 }
 
 

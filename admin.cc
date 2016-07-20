@@ -369,18 +369,10 @@ int main(int argc, char** argv)
   bool long_wait = false;
   bool wait_reply = false;
 
-  XXX::basic_list_model my_list_model;
-
-  XXX::basic_list_model::observer ob;
-  ob.on_insert = [](int index)
-    {
-      std::cout << "list item added @ " << index << "\n";
-    };
-  my_list_model.add_observer( std::move(ob) );
-
   // TODO: next, find a way to easily print out the list after each update
 
-  XXX::basic_list_subscription_handler<XXX::basic_list_target>  h;
+  XXX::basic_list_target  basic_list;
+  XXX::basic_list_subscription_handler<XXX::basic_list_target>  h( basic_list );
   XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list_target> >
     sub_planets(ws, "planets", h );
 
