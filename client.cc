@@ -137,7 +137,11 @@ void publisher_tep()
 
 int main(int /* argc */, char** /* argv */)
 {
-  std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(logger, XXX::nlogger()) );
+  auto logfn = XXX::nlogger::stdlog(std::cout,
+                                    XXX::nlogger::levels_all(),
+                                    true);
+
+  std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(logger, logfn) );
   mycs->start();
 
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);

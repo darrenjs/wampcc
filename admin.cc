@@ -268,7 +268,10 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-  g_kernel.reset( new XXX::kernel(logger, XXX::nlogger()));
+  auto logfn = XXX::nlogger::stdlog(std::cout,
+                                    XXX::nlogger::levels_upto(XXX::nlogger::eInfo), 1);
+
+  g_kernel.reset( new XXX::kernel(logger, logfn));
   g_kernel->start();
 
   /* Create a socket connector.  This will immediately make an attempt to
