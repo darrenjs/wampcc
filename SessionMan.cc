@@ -6,7 +6,7 @@
 #include "wamp_session.h"
 
 #include "WampTypes.h"
-#include "logger.h"
+
 
 #include <string.h>
 
@@ -16,7 +16,7 @@ namespace XXX
 {
 
 SessionMan::SessionMan(kernel& k)
-  : __logptr(k.get_logger())
+  : __logger(k.get_logger())
 {
 }
 

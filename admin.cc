@@ -1,5 +1,4 @@
 
-#include "logger.h"
 #include "event_loop.h"
 #include "kernel.h"
 #include "topic.h"
@@ -7,9 +6,7 @@
 #include "IOHandle.h"
 #include "io_connector.h"
 #include "wamp_session.h"
-
-
-#include <logger.h>
+#include "log_macros.h"
 
 #include <sstream>
 #include <condition_variable>
@@ -26,11 +23,9 @@
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
 
+auto __logger = XXX::logger::stdlog(std::cout,
+                                    XXX::logger::levels_upto(XXX::logger::eInfo), 1);
 
-
-XXX::logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::logger::eAll,
-                                              true);
 
 std::unique_ptr<XXX::kernel> g_kernel;
 
@@ -91,9 +86,9 @@ void procedure_cb(XXX::invoke_details& invocation)
   const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
-  auto __logptr = logger;
-  _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
-          << ", user:" << cbdata->request );
+
+ _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
+         << ", user:" << cbdata->request );
 
   // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
 
@@ -109,7 +104,7 @@ void procedure_cb(XXX::invoke_details& invocation)
 
 void call_cb(XXX::wamp_call_result r)
 {
-  auto __logptr = logger;
+
   const char* msg = ( const char* ) r.user;
 
   if (r.was_error)
@@ -268,10 +263,7 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-  auto logfn = XXX::nlogger::stdlog(std::cout,
-                                    XXX::nlogger::levels_upto(XXX::nlogger::eInfo), 1);
-
-  g_kernel.reset( new XXX::kernel(logger, logfn));
+  g_kernel.reset( new XXX::kernel(__logger));
   g_kernel->start();
 
   /* Create a socket connector.  This will immediately make an attempt to
@@ -474,7 +466,7 @@ int main(int argc, char** argv)
      destruction) */
 
   g_kernel.reset();
-  delete logger;
+
 
   return 0;
 }

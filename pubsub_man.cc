@@ -1,7 +1,7 @@
 #include "pubsub_man.h"
 
 #include "event_loop.h"
-#include "logger.h"
+#include "log_macros.h"
 #include "WampTypes.h"
 #include "SessionMan.h"
 #include "kernel.h"
@@ -49,7 +49,7 @@ private:
 
 /* Constructor */
 pubsub_man::pubsub_man(kernel& k)
-  : __logptr(k.get_logger()),
+  : __logger(k.get_logger()),
     m_next_subscription_id(1)  /* zero used for initial snapshot */
 {
 }

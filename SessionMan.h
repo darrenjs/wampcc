@@ -11,9 +11,9 @@
 namespace XXX {
 
 
-  class kernel;
-  class wamp_session;
-  class logger;
+class kernel;
+class wamp_session;
+struct logger;
 
 class SessionMan
 {
@@ -29,7 +29,7 @@ public:
 
 private:
 
-  logger *__logptr; /* name chosen for log macros */
+  logger & __logger; /* name chosen for log macros */
 
   mutable struct
   {

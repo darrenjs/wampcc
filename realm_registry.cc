@@ -1,8 +1,6 @@
 
 #include "realm_registry.h"
 
-#include "logger.h"
-
 #include <string.h>
 
 

@@ -9,7 +9,7 @@
 #include "event_loop.h"
 #include "IOLoop.h"
 #include "IOHandle.h"
-#include "logger.h"
+#include "log_macros.h"
 
 
 #include <iostream>
@@ -18,7 +18,7 @@ namespace XXX {
 
 /* Constructor */
 dealer_service_impl::dealer_service_impl(kernel & __svc, dealer_listener* l)
-  :__logptr(__svc.get_logger()),
+  :__logger(__svc.get_logger()),
    m_kernel(__svc),
    m_sesman( new SessionMan(__svc) ),
    m_rpcman( new rpc_man(__svc, [this](const rpc_details&r){this->rpc_registered_cb(r); })),

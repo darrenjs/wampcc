@@ -4,7 +4,7 @@
 #include "rpc_man.h"
 #include "pubsub_man.h"
 #include "WampTypes.h"
-#include "logger.h"
+#include "log_macros.h"
 #include "utils.h"
 
 namespace XXX {
@@ -40,8 +40,8 @@ struct ev_function_dispatch : event
 // #define SYSTEM_HEARTBEAT_MS 500
 
 /* Constructor */
-event_loop::event_loop(logger *logptr)
-  : __logptr(logptr),
+event_loop::event_loop(logger & logptr)
+  : __logger(logptr),
     m_continue(true),
     m_kill_event( std::make_shared< event > (event::e_kill) ),
     m_thread(&event_loop::eventmain, this)
@@ -129,7 +129,7 @@ void event_loop::dispatch(std::chrono::milliseconds delay, std::function<void()>
 //         bool continue_hb = hb_fn();
 //         if (continue_hb) add_hb_target( std::move(hb_fn) );
 //       }
-//       catch (...)  { log_exception(__logptr, "heartbeat callback"); }
+//       catch (...)  { log_exception(__logger, "heartbeat callback"); }
 //     }
 //   }
 // }

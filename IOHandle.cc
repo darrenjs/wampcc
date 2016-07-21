@@ -2,7 +2,7 @@
 
 #include "IOLoop.h"
 #include "io_listener.h"
-#include "logger.h"
+#include "log_macros.h"
 #include "utils.h"
 
 #include <memory>
@@ -47,8 +47,8 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 }
 
 /* Constructor */
-IOHandle::IOHandle(logger * logger, uv_stream_t * hdl, IOLoop * loop)
-  : __logptr(logger),
+IOHandle::IOHandle(logger & logger, uv_stream_t * hdl, IOLoop * loop)
+  : __logger(logger),
     m_uv_handle(hdl),
     m_closed_handles_count(0),
     m_bytes_pending(0),
@@ -296,7 +296,7 @@ void IOHandle::on_write_cb(uv_write_t * req, int status)
       init_close();
     }
   }
-  catch (...){log_exception(__logptr, "IO thread in on_write_cb");}
+  catch (...){log_exception(__logger, "IO thread in on_write_cb");}
 }
 
 
@@ -323,7 +323,7 @@ void IOHandle::on_read_cb(ssize_t nread ,
   }
   catch (...)
   {
-    log_exception(__logptr, "IO thread in on_read_cb");
+    log_exception(__logger, "IO thread in on_read_cb");
     init_close();
   }
 

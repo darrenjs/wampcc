@@ -2,7 +2,7 @@
 
 #include "event_loop.h"
 #include "kernel.h"
-#include "logger.h"
+#include "log_macros.h"
 #include "wamp_session.h"
 
 #include <memory>
@@ -13,7 +13,7 @@ namespace XXX {
 
 /* Constructor */
 rpc_man::rpc_man(kernel& k, rpc_added_cb cb)
-  : __logptr(k.get_logger()),
+  : __logger(k.get_logger()),
     m_rpc_added_cb(cb),
     m_next_regid(1)
 {

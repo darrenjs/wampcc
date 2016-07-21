@@ -4,7 +4,7 @@
 #include "rpc_man.h"
 #include "WampTypes.h"
 #include "event_loop.h"
-#include "logger.h"
+#include "log_macros.h"
 #include "utils.h"
 #include "kernel.h"
 
@@ -85,7 +85,7 @@ static void check_size_at_least(size_t msg_len, size_t s)
                              server_msg_handler handler,
                              auth_provider auth)
   : m_state( eInit ),
-    __logptr(__kernel.get_logger()),
+    __logger(__kernel.get_logger()),
     m_kernel(__kernel),
     m_sid( generate_unique_session_id() ),
     m_handle( std::move(h) ),
@@ -259,7 +259,7 @@ void wamp_session::io_on_read(char* src, size_t len)
       msg.push_back( jalson::json_object() );
       msg.push_back( err_uri );
       this->send_msg( msg );
-    } catch (...){ log_exception(__logptr, "send_msg for outbound goodbye"); }
+    } catch (...){ log_exception(__logger, "send_msg for outbound goodbye"); }
 
     this->close();
   }
@@ -1170,7 +1170,7 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
                        jalson::json_object(),
                        temp.user_data);
 
-      } catch(...){ log_exception(__logptr, "inbound subscribed user callback"); }
+      } catch(...){ log_exception(__logger, "inbound subscribed user callback"); }
 
   }
 }
@@ -1201,7 +1201,7 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
                              args_list,
                              args_dict,
                              iter->second.user_data);
-    } catch (...){ log_exception(__logptr, "inbound event user callback"); }
+    } catch (...){ log_exception(__logger, "inbound event user callback"); }
 
   }
   else
@@ -1295,7 +1295,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
       try {
         if (user_cb_allowed()) orig_call.user_cb(std::move(r));
       }
-      catch(...){ log_exception(__logptr, "inbound result user callback"); }
+      catch(...){ log_exception(__logger, "inbound result user callback"); }
     }
   }
   else
@@ -1344,7 +1344,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
       try
       {
         orig_request.reply_fn(args, std::move(error_ptr));
-      } catch (...){ log_exception(__logptr, "inbound invocation error user callback"); }
+      } catch (...){ log_exception(__logger, "inbound invocation error user callback"); }
 
       break;
     }
@@ -1380,7 +1380,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
           try {
             if (user_cb_allowed()) orig_call.user_cb(std::move(r));
           }
-          catch(...){ log_exception(__logptr, "inbound call error user callback");}
+          catch(...){ log_exception(__logger, "inbound call error user callback");}
         }
       }
       else

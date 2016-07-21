@@ -10,7 +10,7 @@
 
 namespace XXX {
 
-class logger;
+struct logger;
 struct managed_topic;
 class wamp_session;
 class kernel;
@@ -47,7 +47,7 @@ private:
                     jalson::json_object options,
                     wamp_args args);
 
-  logger *__logptr; /* name chosen for log macros */
+  logger & __logger; /* name chosen for log macros */
 
   typedef  std::map< std::string, std::unique_ptr<managed_topic> > topic_registry;
   typedef  std::map< std::string, topic_registry >   realm_to_topicreg;

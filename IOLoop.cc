@@ -1,7 +1,6 @@
 #include "IOLoop.h"
 
 #include "io_connector.h"
-#include "logger.h"
 #include "log_macros.h"
 #include "IOHandle.h"
 #include "kernel.h"
@@ -32,7 +31,7 @@ struct io_request
     eAddConnection
   } type;
 
-  logger * logptr;
+  logger & logptr;
   std::string addr;
   std::string port;
   bool resolve_hostname;
@@ -44,13 +43,13 @@ struct io_request
   std::shared_ptr<io_connector> connector;
 
   io_request(request_type __type,
-             logger * __logptr)
+             logger & __logger)
     : type(__type),
-      logptr(__logptr)
+      logptr(__logger)
   {}
 
   io_request(request_type __type,
-             logger * __logptr,
+             logger & __logger,
              std::string port,
              std::promise<int> p,
              socket_accept_cb );
@@ -87,7 +86,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
   tcp_server* myserver = (tcp_server*) server;
   IOLoop * myIOLoop = static_cast<IOLoop* >(server->loop->data);
 
-  logger * __logptr = myIOLoop->logptr();
+  logger & __logger = myIOLoop->logger();
 
   // TODO: review if this is correct error handling
   if (status < 0)
@@ -101,7 +100,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
   if (uv_accept(server, (uv_stream_t *) client) == 0)
   {
-    IOHandle* ioh = new IOHandle( myIOLoop->logptr(),
+    IOHandle* ioh = new IOHandle( myIOLoop->logger(),
                                   (uv_stream_t *) client, myIOLoop);
 
     int fd = client->io_watcher.fd;
@@ -131,7 +130,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
 
 io_request::io_request(request_type __type,
-                       logger * lp,
+                       logger & lp,
                        std::string __port,
                        std::promise<int> listen_err,
                        socket_accept_cb __on_accept)
@@ -146,8 +145,7 @@ io_request::io_request(request_type __type,
 
 IOLoop::IOLoop(kernel& k)
   :  m_kernel(k),
-     __logptr( k.get_logger() ),
-     __log( k.get_log() ),
+     __logger( k.get_logger() ),
     m_uv_loop( new uv_loop_t() ),
 
     m_async( new uv_async_t() ),
@@ -385,7 +383,7 @@ void IOLoop::add_server(int port,
   oss << port;
 
   std::unique_ptr<io_request> r( new io_request( io_request::eAddServer,
-                                                 __logptr,
+                                                 __logger,
                                                  oss.str(),
                                                  std::move(listen_err),
                                                  std::move(cb) ) );
@@ -416,7 +414,7 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr,
 
   std::shared_ptr<io_connector> conn ( new io_connector(m_kernel, tcp_handle) );
 
-  std::unique_ptr<io_request> r( new io_request(io_request::eAddConnection, __logptr ) );
+  std::unique_ptr<io_request> r( new io_request(io_request::eAddConnection, __logger ) );
   r->connector = conn;
   r->addr = addr;
   r->port = port;
@@ -437,7 +435,7 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr,
 
 void IOLoop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
 {
-  std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logptr ) );
+  std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logger ) );
 
   r->tcp_handle = h;
   r->on_close_cb = cb;

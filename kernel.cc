@@ -1,22 +1,23 @@
 #include "kernel.h"
 
-#include "logger.h"
 #include "IOLoop.h"
 #include "event_loop.h"
+
+#include <iostream>
 
 #include <unistd.h>
 #include <sys/syscall.h>   /* For SYS_xxx definitions */
 #include <sys/time.h>
 #include <stdio.h>
 
+
 namespace XXX {
 
 /* Constructor */
-kernel::kernel(logger* logptr, nlogger nlog)
-  : __logptr(logptr),
-    __log(nlog),
+kernel::kernel(logger nlog)
+  : __logger(nlog),
     m_io_loop( new IOLoop(*this) ),
-    m_evl( new event_loop(logptr) )
+    m_evl( new event_loop(__logger) )
 {
 }
 
@@ -38,10 +39,6 @@ void kernel::start()
   m_io_loop->start(); // returns immediately
 }
 
-logger * kernel::get_logger()
-{
-  return __logptr;
-}
 
 IOLoop*  kernel::get_io()
 {
@@ -54,7 +51,7 @@ event_loop* kernel::get_event_loop()
 }
 
 
-int nlogger::levels_upto(Level l)
+int logger::levels_upto(Level l)
 {
   int r(0);
   for (int i = 1; i <= l; i <<= 1) r |= i;
@@ -73,7 +70,7 @@ public:
   {
   }
 
-  void write(nlogger::Level, const std::string&, const char*, int);
+  void write(logger::Level, const std::string&, const char*, int);
 
 private:
 
@@ -86,20 +83,20 @@ private:
 };
 
 
-nlogger nlogger::stdlog(std::ostream& ostr,
+logger logger::stdlog(std::ostream& ostr,
                         int level_mask,
                         bool inc_src)
 {
   auto sp = std::make_shared<stdout_logger>(ostr, inc_src);
 
-  nlogger my_logger;
+  logger my_logger;
 
-  my_logger.wants_level = [level_mask](nlogger::Level l)
+  my_logger.wants_level = [level_mask](logger::Level l)
     {
       return l bitand level_mask;
     };
 
-  my_logger.write = [level_mask, sp](nlogger::Level l,
+  my_logger.write = [level_mask, sp](logger::Level l,
                                      const std::string& msg,
                                      const char* file, int ln)
     {
@@ -110,20 +107,20 @@ nlogger nlogger::stdlog(std::ostream& ostr,
 }
 
 
-static const char* level_str(nlogger::Level l)
+static const char* level_str(logger::Level l)
 {
   switch(l)
   {
-    case nlogger::eError : return "ERROR";
-    case nlogger::eWarn  : return "WARN";
-    case nlogger::eInfo  : return "INFO";
-    case nlogger::eDebug : return "DEBUG";
+    case logger::eError : return "ERROR";
+    case logger::eWarn  : return "WARN";
+    case logger::eInfo  : return "INFO";
+    case logger::eDebug : return "DEBUG";
     default : return "UNKNOWN";
   }
 }
 
 
-void stdout_logger::stdout_logger::write(nlogger::Level l,
+void stdout_logger::stdout_logger::write(logger::Level l,
                                          const std::string& s,
                                          const char* file,
                                          int ln)

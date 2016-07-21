@@ -8,14 +8,13 @@
 namespace XXX {
 
 class IOLoop;
-class logger;
 class event_loop;
 
 
 /* Logging object. Provides two functionals, wants_level and write, which the
  * API uses for its logging requirements.
  */
-struct nlogger
+struct logger
 {
   enum Level {eError = 0x2,
               eWarn  = 0x4,
@@ -31,7 +30,7 @@ struct nlogger
   std::function<void(Level, const std::string&, const char* file, int ln)> write;
 
   // create a logger for stdout or stderr
-  static nlogger stdlog(std::ostream&, int level_mask, bool inc_file_line);
+  static logger stdlog(std::ostream&, int level_mask, bool inc_file_line);
 };
 
 
@@ -40,7 +39,7 @@ struct nlogger
 class kernel
 {
 public:
-  kernel(logger*, nlogger nlog);
+  kernel(logger nlog);
   ~kernel();
 
   void start();
@@ -48,14 +47,12 @@ public:
   kernel(const kernel&) = delete;
   kernel& operator=(const kernel&) = delete;
 
-  logger *     get_logger();
-  nlogger&     get_log() { return __log; }
+  logger&     get_logger() { return __logger; }
   IOLoop*      get_io();
   event_loop*  get_event_loop();
 
 private:
-  logger *__logptr; /* name chosen for log macros */
-  nlogger __log; /* name chosen for log macros */
+  logger __logger; /* name chosen for log macros */
   std::unique_ptr<IOLoop> m_io_loop;
   std::unique_ptr<event_loop> m_evl;
 };

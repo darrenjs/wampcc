@@ -2,7 +2,7 @@
 
 #include <topic.h>
 #include <dealer_service.h>
-#include <logger.h>
+#include <log_macros.h>
 #include <kernel.h>
 
 #include <condition_variable>
@@ -16,10 +16,6 @@
 #include <string.h>
 #include <sys/time.h>
 
-XXX::logger * logger = new XXX::ConsoleLogger(XXX::ConsoleLogger::eStdout,
-                                              XXX::logger::eAll,
-                                              true);
-
 struct callback_t
 {
   callback_t(XXX::kernel* s, const char* d)
@@ -30,6 +26,11 @@ struct callback_t
   XXX::kernel* svc;
   const char* request;
 };
+
+
+auto __logger = XXX::logger::stdlog(std::cout,
+                                    XXX::logger::levels_all(),
+                                    true);
 
 
 
@@ -44,7 +45,7 @@ void procedure_error_cb(XXX::invoke_details& invocation)
   const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
-  auto __logptr = logger;
+
   _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
@@ -57,7 +58,7 @@ void procedure_cb(XXX::invoke_details& invocation)
   const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
-  auto __logptr = logger;
+
   _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
@@ -129,19 +130,13 @@ void publisher_tep()
       default: if (basic_list.copy_value().size()<10) basic_list.push_back( names[dis(gen)] );
     };
 
-
-
   }
 
 }
 
 int main(int /* argc */, char** /* argv */)
 {
-  auto logfn = XXX::nlogger::stdlog(std::cout,
-                                    XXX::nlogger::levels_all(),
-                                    true);
-
-  std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(logger, logfn) );
+  std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel(__logger) );
   mycs->start();
 
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);
@@ -200,6 +195,6 @@ int main(int /* argc */, char** /* argv */)
 
   publisher.join();
   mycs.reset();
-  delete logger;
+
   return 0;
 }

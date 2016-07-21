@@ -1,10 +1,9 @@
 #ifndef XXX_UTILS_H
 #define XXX_UTILS_H
 
-#include "logger.h"
-
 #include <sstream>
 #include <list>
+
 
 
 #define THROW(E, X )  do                        \
@@ -17,7 +16,7 @@
 
 namespace XXX {
 
-class logger;
+struct logger;
 
 enum class HMACSHA256_Mode
 {
@@ -35,7 +34,7 @@ int compute_HMACSHA256(const char* key,
 
 
 /* must be called with an active exception */
-void log_exception(logger *__logptr, const char* callsite);
+void log_exception(logger &__logptr, const char* callsite);
 
 
 /* Implements a general list of observers, which can be notified with a generic

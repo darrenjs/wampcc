@@ -13,7 +13,7 @@
 
 namespace XXX {
 
-class logger;
+struct logger;
 struct event;
 
 //using hb_func = std::function< bool(void) >;
@@ -21,7 +21,7 @@ struct event;
 class event_loop
 {
 public:
-  event_loop(logger*);
+  event_loop(logger&);
   ~event_loop();
 
   void stop();
@@ -46,7 +46,7 @@ private:
   // void hb_check();
 
 
-  logger *__logptr; /* name chosen for log macros */
+  logger & __logger; /* name chosen for log macros */
 
   bool m_continue;
 

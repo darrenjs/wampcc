@@ -17,7 +17,7 @@
 namespace XXX {
 
 class event_loop;
-class logger;
+struct logger;
 class kernel;
 
 
@@ -67,7 +67,7 @@ private:
 
   void register_rpc(std::string realm, rpc_details& r);
 
-  logger *__logptr; /* name chosen for log macros */
+  logger & __logger; /* name chosen for log macros */
   rpc_added_cb m_rpc_added_cb;
 
   typedef  std::map< std::string, rpc_details >  rpc_registry;

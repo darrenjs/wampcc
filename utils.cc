@@ -1,5 +1,5 @@
 #include "utils.h"
-
+#include "log_macros.h"
 #include <openssl/hmac.h> // crypto functions
 
 #include <string.h>
@@ -131,18 +131,18 @@ int compute_HMACSHA256(const char* key,
   return retval;
 }
 
-void log_exception(logger *__logptr, const char* callsite)
+void log_exception(logger & __logger, const char* callsite)
 {
   try {
     throw;
   }
   catch (std::exception& e)
   {
-    _WARN_("exception thrown for " << callsite << " : " << e.what());
+    LOG_WARN("exception thrown for " << callsite << " : " << e.what());
   }
   catch (...)
   {
-    _WARN_("exception thrown for " << callsite << " : unknown");
+    LOG_WARN("exception thrown for " << callsite << " : unknown");
   }
 }
 
