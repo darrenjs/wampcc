@@ -98,7 +98,7 @@ IOHandle::~IOHandle()
   // performing an immediate exit.
   if (m_state != eClosed)
   {
-    _ERROR_("iohandle destructing without pior orderly shutdown - calling std::terminate");
+    LOG_ERROR("iohandle destructing without pior orderly shutdown - calling std::terminate");
     std::terminate();
   }
 
@@ -182,7 +182,7 @@ void IOHandle::write_async()
   {
     if (bytes_to_send > (PENDING_MAX - m_bytes_pending))
     {
-      _WARN_("pending bytes limit reached; closing connection");
+      LOG_WARN("pending bytes limit reached; closing connection");
       init_close();
       return;
     }

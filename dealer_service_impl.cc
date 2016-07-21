@@ -102,7 +102,7 @@ std::future<int> dealer_service_impl::listen(int port,
                                 handlers,
                                 auth);
         m_sesman->add_session(sp);
-        _INFO_( "session created #" << sp->unique_id() );
+        LOG_INFO( "session created #" << sp->unique_id() );
       }
 
     } );

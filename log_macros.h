@@ -29,17 +29,4 @@
 #define LOG_DEBUG( X )                          \
   LOGIMPL( X, XXX::logger::eDebug )
 
-
-#define _INFO_( X )                             \
-  LOGIMPL( X, XXX::logger::eInfo )
-
-#define _WARN_( X )                             \
-  LOGIMPL( X, XXX::logger::eWarn )
-
-#define _ERROR_( X )                            \
-  LOGIMPL( X, XXX::logger::eError )
-
-#define _DEBUG_( X )                            \
-  LOGIMPL( X, XXX::logger::eDebug )
-
 #endif

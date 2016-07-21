@@ -93,14 +93,14 @@ void rpc_man::register_rpc(std::string realm, rpc_details& r)
   auto rpc_iter = realm_iter->second.find(r.uri);
   if (rpc_iter != realm_iter->second.end())
   {
-    _WARN_("Ignore duplicate procedure register for " << realm << ":" << r.uri);
+    LOG_WARN("Ignore duplicate procedure register for " << realm << ":" << r.uri);
     throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
   }
 
   r.registration_id = m_next_regid++;
   realm_iter->second[ r.uri ] = r;
 
-  _INFO_( "Procedure "<< realm << "::'" << r.uri <<"' registered with id " << r.registration_id );
+  LOG_INFO( "Procedure "<< realm << "::'" << r.uri <<"' registered with id " << r.registration_id );
 }
 
 } // namespace XXX

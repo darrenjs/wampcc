@@ -82,7 +82,7 @@ void router_connection_cb(XXX::router_conn* /*router_session*/,
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
   auto __logptr = logger;
-  _INFO_ ("router connection is " << (is_open? "open" : "closed") << ", errcode " << errcode);
+  LOG_INFO ("router connection is " << (is_open? "open" : "closed") << ", errcode " << errcode);
 
   g_connect_status = errcode;
   g_active_session_notifed = true;

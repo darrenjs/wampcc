@@ -91,7 +91,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
   // TODO: review if this is correct error handling
   if (status < 0)
   {
-    _ERROR_("New connection error " <<  uv_strerror(status));
+    LOG_ERROR("New connection error " <<  uv_strerror(status));
     return;
   }
 
@@ -105,7 +105,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
     int fd = client->io_watcher.fd;
 
-    _INFO_("accept: type=" << client->type
+    LOG_INFO("accept: type=" << client->type
            << ", fd=" << fd);
 
     // register the stream before beginning read operations
@@ -293,7 +293,7 @@ void IOLoop::on_async()
       std::unique_ptr<uv_connect_t> connect_req ( new uv_connect_t() );
       connect_req->data = (void*) req.get();
 
-      _INFO_("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
+      LOG_INFO("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
 
       r = uv_tcp_connect(
         connect_req.get(),
@@ -360,11 +360,11 @@ void IOLoop::run_loop()
     }
     catch(std::exception & e)
     {
-      _ERROR_("exception in io_loop: " << e.what());
+      LOG_ERROR("exception in io_loop: " << e.what());
     }
     catch(...)
     {
-      _ERROR_("exception in io_loop: uknown");
+      LOG_ERROR("exception in io_loop: uknown");
     }
   }
 }

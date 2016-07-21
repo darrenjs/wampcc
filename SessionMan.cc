@@ -55,7 +55,7 @@ void SessionMan::session_closed(session_handle sh)
 //           i.second->duration_since_creation() >= MAX_PENDING_OPEN_SECS)
 //       {
 //         // expire sessions which have spent too long in pending-open
-//         _WARN_("timeout during handshake, closing session #" << i.second->unique_id());
+//         LOG_WARN("timeout during handshake, closing session #" << i.second->unique_id());
 //         i.second->close();
 //       }
 //       else if ( i.second->is_open() &&
@@ -63,7 +63,7 @@ void SessionMan::session_closed(session_handle sh)
 //                 (i.second->duration_since_last() > i.second->hb_interval_secs()*3))
 //       {
 //         // expire sessions which appear inactive
-//         _WARN_("missing heartbeats, closing session #" << i.second->unique_id());
+//         LOG_WARN("missing heartbeats, closing session #" << i.second->unique_id());
 //         i.second->close();
 //       }
 //     }

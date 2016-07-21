@@ -214,11 +214,11 @@ void event_loop::eventloop()
       }
       catch ( const std::exception& ex)
       {
-        _ERROR_( "exception during process_event : " << ex.what() );
+        LOG_ERROR( "exception during process_event : " << ex.what() );
       }
       catch ( ... )
       {
-        _ERROR_( "unknown exception during process_event" );
+        LOG_ERROR( "unknown exception during process_event" );
       }
 
     } // loop end
@@ -236,11 +236,11 @@ void event_loop::eventmain()
     }
     catch (const std::exception& e)
     {
-      _ERROR_("ignoring exception in eventmain: " << e.what());
+      LOG_ERROR("ignoring exception in eventmain: " << e.what());
     }
     catch (...)
     {
-      _ERROR_("ignoring unknown exception in eventmain");
+      LOG_ERROR("ignoring unknown exception in eventmain");
     }
   }
 }
@@ -261,7 +261,7 @@ void event_loop::process_event(event * ev)
 
     default:
     {
-      _ERROR_( "unsupported event type " << ev->type );
+      LOG_ERROR( "unsupported event type " << ev->type );
     }
   }
 

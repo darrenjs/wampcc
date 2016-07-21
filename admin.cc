@@ -87,7 +87,7 @@ void procedure_cb(XXX::invoke_details& invocation)
 
   /* called when a procedure within a CALLEE is triggered */
 
- _INFO_ ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
+ LOG_INFO ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
          << ", user:" << cbdata->request );
 
   // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
@@ -109,14 +109,14 @@ void call_cb(XXX::wamp_call_result r)
 
   if (r.was_error)
   {
-    _INFO_( "received error, error=" << r.error_uri << ", args="
+    LOG_INFO( "received error, error=" << r.error_uri << ", args="
             << r.args.args_list << ", cb_user_data: " << msg
             << ", reqid: " << r.reqid
             << ", proc:" << r.procedure );
   }
   else
   {
-    _INFO_( "received result, args="
+    LOG_INFO( "received result, args="
             << r.args.args_list << ", cb_user_data: " << msg
             << ", reqid: " << r.reqid
             << ", proc:" << r.procedure );

@@ -181,7 +181,7 @@ void wamp_session::io_on_close()
 {
   /* IO thread */
 
-  _DEBUG_("wamp_session::io_on_close");
+  LOG_DEBUG("wamp_session::io_on_close");
 
   change_state(eClosing,eClosing);
 
@@ -247,7 +247,7 @@ void wamp_session::io_on_read(char* src, size_t len)
 
   if (have_error)
   {
-    _ERROR_("session_error: uri=" << err_uri
+    LOG_ERROR("session_error: uri=" << err_uri
             << ", text=" << err_text);
     try
     {
@@ -443,7 +443,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 
   if (next == eClosed)
   {
-    _INFO_("session closed #" << m_sid);
+    LOG_INFO("session closed #" << m_sid);
     m_state = eClosed;
     return;
   }
@@ -456,7 +456,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 
   if (m_state == expected)
   {
-    _INFO_("wamp_session state: from " << state_to_str(m_state) << " to " << state_to_str(next));
+    LOG_INFO("wamp_session state: from " << state_to_str(m_state) << " to " << state_to_str(next));
     m_state = next;
 
     if (m_state == eOpen)
@@ -511,7 +511,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
   }
   else
   {
-    _ERROR_("wamp_session state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
+    LOG_ERROR("wamp_session state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
   }
 
 }
@@ -533,7 +533,7 @@ void wamp_session::process_message(unsigned int message_type,
 
     if (message_type == ABORT)
     {
-      _WARN_("received ABORT from peer");
+      LOG_WARN("received ABORT from peer");
       close();
       return;
     }
@@ -651,15 +651,15 @@ void wamp_session::process_message(unsigned int message_type,
   }
   catch (session_error & e)
   {
-    _WARN_("aborting session due to error, uri: " << e.uri << ", what: " << e.what());
+    LOG_WARN("aborting session due to error, uri: " << e.uri << ", what: " << e.what());
   }
   catch (std::exception & e)
   {
-    _WARN_("closing session due to exception, what: " << e.what());
+    LOG_WARN("closing session due to exception, what: " << e.what());
   }
   catch (...)
   {
-    _WARN_("closing session due to unknown exception");
+    LOG_WARN("closing session due to unknown exception");
   }
   this->close();
 }
@@ -812,7 +812,7 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
   }
   else
   {
-    _ERROR_("failed to compute HMAC SHA256 diget");
+    LOG_ERROR("failed to compute HMAC SHA256 diget");
     jalson::json_array msg;
     msg.push_back( ABORT );
     msg.push_back( jalson::json_object() );
@@ -862,7 +862,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
   }
   else
   {
-    _WARN_("wamp_session CRA failed; expected '" << orig_challenge<< "', received '"<< peer_digest<<"'");
+    LOG_WARN("wamp_session CRA failed; expected '" << orig_challenge<< "', received '"<< peer_digest<<"'");
 
     jalson::json_array msg;
     msg.push_back( ABORT );
@@ -993,7 +993,7 @@ t_request_id wamp_session::provide(std::string uri,
     send_msg( msg );
   }
 
-  _INFO_("Sending REGISTER request for proc '" << uri << "', request_id " << request_id);
+  LOG_INFO("Sending REGISTER request for proc '" << uri << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1018,7 +1018,7 @@ void wamp_session::process_inbound_registered(jalson::json_array & msg)
     m_procedures[registration_id] = iter->second;
     m_pending_register.erase(iter);
 
-    _INFO_("procedure '"<< m_procedures[registration_id].uri <<"' registered"
+    LOG_INFO("procedure '"<< m_procedures[registration_id].uri <<"' registered"
            << " with registration_id " << registration_id);
   }
 
@@ -1119,7 +1119,7 @@ t_request_id wamp_session::subscribe(const std::string& uri,
     send_msg( msg );
   }
 
-  _INFO_("Sending SUBSCRIBE request for topic '" << uri << "', request_id " << request_id);
+  LOG_INFO("Sending SUBSCRIBE request for topic '" << uri << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1155,7 +1155,7 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
 
   if (found)
   {
-    _INFO_("Subscribed to topic '"<< temp.uri <<"'"
+    LOG_INFO("Subscribed to topic '"<< temp.uri <<"'"
            << " with  subscription_id " << subscription_id);
 
     // user callback
@@ -1206,7 +1206,7 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
   }
   else
   {
-    _WARN_("Topic event ignored because subscription_id "
+    LOG_WARN("Topic event ignored because subscription_id "
            << subscription_id << " not found");
   }
 }
@@ -1249,7 +1249,7 @@ t_request_id wamp_session::call(std::string uri,
     send_msg( msg );
   }
 
-  _INFO_("Sending CALL request for  '" << uri << "', request_id " << request_id);
+  LOG_INFO("Sending CALL request for  '" << uri << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1300,7 +1300,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
   }
   else
   {
-    _WARN_("TODO: throw exception here");
+    LOG_WARN("TODO: throw exception here");
   }
 
 }
@@ -1385,7 +1385,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
       }
       else
       {
-        _WARN_("TODO: handle protocol error");
+        LOG_WARN("TODO: handle protocol error");
       }
 
       break;
@@ -1393,7 +1393,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
 
     default:
     {
-      _WARN_("TODO: handle error msg on unsupported type");
+      LOG_WARN("TODO: handle error msg on unsupported type");
     }
   }
 
@@ -1710,7 +1710,7 @@ bool wamp_session::uses_heartbeats() const
 
 void wamp_session::abort_connection(std::string errmsg)
 {
-  _WARN_("aborting session #" << unique_id() << ", " << errmsg);
+  LOG_WARN("aborting session #" << unique_id() << ", " << errmsg);
 
   jalson::json_array msg;
   msg.push_back( ABORT );
