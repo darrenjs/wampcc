@@ -71,18 +71,23 @@ public:
   class index_error : public std::runtime_error
   {
   public:
-    // TODO: add gettors, make private etc
-    size_t index;
     enum operation_type
     {
       eInsert,
       eRemove,
       eModify
-    } operation;
+    };
+
     index_error(size_t i, operation_type op)
       : runtime_error("index not valid"),
-        index(i), operation (op)
+        m_index(i), m_operation (op)
     {}
+
+    size_t index() const { return m_index; }
+
+  private:
+    size_t m_index;
+    operation_type m_operation;
   };
 
   static const std::string key_insert;
