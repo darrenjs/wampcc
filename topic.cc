@@ -241,41 +241,46 @@ std::vector< jalson::json_value > basic_list_target::copy() const
 }
 
 
-void basic_list_target::on_insert(int i, jalson::json_value v)
+void basic_list_target::on_insert(size_t i, jalson::json_value v)
 {
-  static auto fn = [](observer& ob, int i){if (ob.on_insert) ob.on_insert(i);};
-  // TODO: check array size before action
-  std::cout << "insert @" << i << " " << v << "\n";
+  static auto fn = [](observer& ob, size_t i){if (ob.on_insert) ob.on_insert(i);};
+
   {
     std::unique_lock<std::mutex> guard(m_mutex);
-    m_items.insert(m_items.begin() + i, std::move(v));
+
+    if (m_items.size() >= i )
+      m_items.insert(m_items.begin() + i, std::move(v));
+    else
+      throw basic_list_model::index_error(i, basic_list_model::index_error::eInsert);
   }
   m_observers.notify(fn, i);
 }
 
-void basic_list_target::on_remove(int i)
+void basic_list_target::on_remove(size_t i)
 {
-  static auto fn = [](observer& ob, int i){if (ob.on_remove) ob.on_remove(i);};
-  // TODO: check array size before action
-  std::cout << "erase @" << i << "\n";
+  static auto fn = [](observer& ob, size_t i){if (ob.on_remove) ob.on_remove(i);};
 
   {
     std::unique_lock<std::mutex> guard(m_mutex);
-    m_items.erase(m_items.begin() + i);
+
+    if (m_items.size() > i)
+      m_items.erase(m_items.begin() + i);
+    else
+      throw basic_list_model::index_error(i, basic_list_model::index_error::eRemove);
   }
   m_observers.notify(fn, i);
 }
 
-void basic_list_target::on_modify(int i, jalson::json_value v)
+void basic_list_target::on_modify(size_t i, jalson::json_value v)
 {
-  static auto fn = [](observer& ob, int i){if (ob.on_modify) ob.on_modify(i);};
-
-  // TODO: check array size before action
-  std::cout << "modify @" << i << " " << v << "\n";
+  static auto fn = [](observer& ob, size_t i){if (ob.on_modify) ob.on_modify(i);};
 
   {
     std::unique_lock<std::mutex> guard(m_mutex);
-    m_items.at(i) = std::move(v);
+    if (m_items.size() > i)
+      m_items.at(i) = std::move(v);
+    else
+      throw basic_list_model::index_error(i, basic_list_model::index_error::eModify);
   }
   m_observers.notify(fn, i);
 

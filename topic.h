@@ -68,6 +68,23 @@ class basic_list_model : public data_model_base
 {
 public:
 
+  class index_error : public std::runtime_error
+  {
+  public:
+    // TODO: add gettors, make private etc
+    size_t index;
+    enum operation_type
+    {
+      eInsert,
+      eRemove,
+      eModify
+    } operation;
+    index_error(size_t i, operation_type op)
+      : runtime_error("index not valid"),
+        index(i), operation (op)
+    {}
+  };
+
   static const std::string key_insert;
   static const std::string key_remove;
   static const std::string key_modify;
@@ -155,21 +172,21 @@ public:
 
   typedef std::vector< jalson::json_value > internal_repr ;
 
-  /* receive change events */
+  /* Receive change events */
   struct observer
   {
     std::function<void()>  on_reset;
-    std::function<void(int)> on_insert;
-    std::function<void(int)> on_remove;
-    std::function<void(int)> on_modify;
+    std::function<void(size_t)> on_insert;
+    std::function<void(size_t)> on_remove;
+    std::function<void(size_t)> on_modify;
   };
 
   void add_observer(observer);
 
   void on_reset(const jalson::json_array &);
-  void on_insert(int i, jalson::json_value);
-  void on_remove(int i);
-  void on_modify(int i, jalson::json_value);
+  void on_insert(size_t, jalson::json_value);
+  void on_remove(size_t);
+  void on_modify(size_t, jalson::json_value);
 
   std::vector< jalson::json_value > copy() const;
 
