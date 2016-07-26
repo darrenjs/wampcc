@@ -13,14 +13,18 @@
 namespace XXX {
 
 /*
-TODO: what locking is needed around this?
+Thread safety for pubsub.
 
-- as subs are added, they will READ.  need to sync the addition of the
-  subscriber, with the series of images and updates it sees.
+Currently the public methods:
 
-- as PUBLISH events arrive, they will write
+  - inbound_publish
 
+  - subscribe
 
+... are both called on the event loop thead, so presently no need for any
+synchronization around the managed topics.  Additionally for the addition of a
+new subscriber, the synchronization of the initially snapshot followed by
+updates is also acheived through the single threaded approach.
 */
 struct managed_topic
 {
@@ -171,7 +175,8 @@ void pubsub_man::update_topic(const std::string& topic,
 }
 
 
-/* Handle arrival of the a PUBLISH event, targeted at a topic. */
+/* Handle arrival of the a PUBLISH event, targeted at a topic. This will write
+ * to a managed topic. */
 void pubsub_man::inbound_publish(std::string realm,
                                  std::string topic,
                                  jalson::json_object options,
@@ -182,7 +187,10 @@ void pubsub_man::inbound_publish(std::string realm,
   update_topic(topic, realm, std::move(options), args);
 }
 
-
+/* Add a subscription to a managed topic.  Need to sync the addition of the
+  subscriber, with the series of images and updates it sees. This is done via
+  single threaded access to this class.
+ */
 uint64_t pubsub_man::subscribe(wamp_session* sptr,
                                t_request_id request_id,
                                std::string uri,
