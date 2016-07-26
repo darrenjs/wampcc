@@ -34,12 +34,22 @@ struct logger
 };
 
 
+struct config
+{
+  size_t socket_buffer_max_size_bytes;
+
+  config()
+    : socket_buffer_max_size_bytes(65536)
+  {
+  }
+};
+
 /* Core runtime.  Provides the IO layer, event thread, and logging.
  */
 class kernel
 {
 public:
-  kernel(logger nlog);
+  kernel(config, logger nlog);
   ~kernel();
 
   void start();
@@ -47,11 +57,14 @@ public:
   kernel(const kernel&) = delete;
   kernel& operator=(const kernel&) = delete;
 
-  logger&     get_logger() { return __logger; }
+  logger&      get_logger() { return __logger; }
   IOLoop*      get_io();
   event_loop*  get_event_loop();
 
+  const config& get_config() const { return m_config; }
+
 private:
+  config m_config;
   logger __logger; /* name chosen for log macros */
   std::unique_ptr<IOLoop> m_io_loop;
   std::unique_ptr<event_loop> m_evl;

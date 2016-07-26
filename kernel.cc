@@ -14,8 +14,9 @@
 namespace XXX {
 
 /* Constructor */
-kernel::kernel(logger nlog)
-  : __logger(nlog),
+kernel::kernel(config __conf, logger nlog)
+  : m_config(__conf),
+    __logger(nlog),
     m_io_loop( new IOLoop(*this) ),
     m_evl( new event_loop(__logger) )
 {

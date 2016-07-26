@@ -263,7 +263,7 @@ int main(int argc, char** argv)
 {
   process_options(argc, argv);
 
-  g_kernel.reset( new XXX::kernel(__logger));
+  g_kernel.reset( new XXX::kernel({}, __logger));
   g_kernel->start();
 
   /* Create a socket connector.  This will immediately make an attempt to

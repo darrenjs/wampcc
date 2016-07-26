@@ -213,6 +213,8 @@ namespace XXX {
     mutable std::mutex m_request_lock;
     t_request_id m_next_request_id;
 
+    size_t  m_buf_size;
+    size_t  m_buf_size_max;
     char *  m_buf;
     size_t  m_bytes_avail;
 

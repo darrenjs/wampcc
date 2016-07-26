@@ -19,7 +19,6 @@
 
 
 #define HEADERLEN 4 /* size of uint32 */
-#define INBOUND_BUFFER_SIZE 2000 // TODO: increase
 
 #define MAX_PENDING_OPEN_MS 5000
 #define MAX_HEARTBEATS_MISSED 3
@@ -94,7 +93,9 @@ static void check_size_at_least(size_t msg_len, size_t s)
     m_time_create(time(NULL)),
     m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
-    m_buf( new char[ INBOUND_BUFFER_SIZE ] ),
+    m_buf_size(__kernel.get_config().socket_buffer_max_size_bytes),
+    m_buf_size_max(__kernel.get_config().socket_buffer_max_size_bytes),
+    m_buf( new char[ m_buf_size ] ),
     m_bytes_avail(0),
     m_is_passive(is_passive),
     m_auth_proivder(std::move(auth)),
@@ -273,7 +274,7 @@ void wamp_session::io_on_read_impl(char* src, size_t len)
 
   while (len > 0)
   {
-    size_t buf_space_avail = INBOUND_BUFFER_SIZE - m_bytes_avail;
+    size_t buf_space_avail = m_buf_size - m_bytes_avail;
     if (buf_space_avail)
     {
       size_t bytes_to_consume = std::min(buf_space_avail, len);
