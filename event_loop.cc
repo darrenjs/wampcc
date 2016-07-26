@@ -49,11 +49,13 @@ event_loop::event_loop(logger & logptr)
 {
 }
 
+
 /* Destructor */
 event_loop::~event_loop()
 {
   stop();
 }
+
 
 void event_loop::stop()
 {
@@ -68,19 +70,6 @@ void event_loop::stop()
   if (m_thread.joinable()) m_thread.join();
 }
 
-
-// TODO: general threading concner here.  How do I enqure that any users of this
-// EVL dont make a call into here once self has started into the destructor????
-/*
-void event_loop::push(event* ev)
-{
-  auto sp = std::shared_ptr<event>(ev);
-
-  std::unique_lock<std::mutex> guard(m_mutex);
-  m_queue.push_back( std::move(sp) );
-  m_condvar.notify_one();
-}
-*/
 
 void event_loop::dispatch(std::function<void()> fn)
 {
