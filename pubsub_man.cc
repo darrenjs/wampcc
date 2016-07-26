@@ -111,14 +111,13 @@ void pubsub_man::update_topic(const std::string& topic,
 {
   /* EVENT thread */
 
-  // resolve topic
   managed_topic* mt = find_topic(topic, realm, true);
 
-  // TODO: do we want to reply to the originating client, if we reject the
-  // publish? Also, we can have other exceptions (below), e.g., patch
-  // exceptions. Also, dont want to throw, if it is an internal update
-  if (!mt) return;
-
+  if (!mt)
+  {
+    LOG_WARN("Discarding update to non existing topic '" << topic << "'");
+    return;
+  }
 
   if (options.find("_p") != options.end() && args.args_list.is_array())
   {
