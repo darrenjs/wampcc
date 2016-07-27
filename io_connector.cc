@@ -39,7 +39,7 @@ void io_connector::io_on_connect_success()
     m_state = io_connector::ePromiseSet;
 
     std::unique_ptr< IOHandle > hndl (
-      new IOHandle( m_kernel.get_logger(),
+      new IOHandle( m_kernel,
                     (uv_stream_t *) m_tcp_handle,
                     m_kernel.get_io() ) );
 

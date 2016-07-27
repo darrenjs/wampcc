@@ -15,11 +15,12 @@ class IOLoop;
 class IOHandle;
 class io_listener;
 struct logger;
+class kernel;
 
 class IOHandle
 {
 public:
-  IOHandle(logger & logger, uv_stream_t * h, IOLoop * loop);
+  IOHandle(kernel&, uv_stream_t * h, IOLoop * loop);
   ~IOHandle();
 
   IOHandle(const IOHandle&) = delete;
@@ -45,6 +46,7 @@ private:
   void on_read_cb(ssize_t, const uv_buf_t*);
 
 private:
+  kernel & m_kernel;
   logger & __logger;
 
   uv_stream_t* m_uv_handle;

@@ -86,7 +86,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
   tcp_server* myserver = (tcp_server*) server;
   IOLoop * myIOLoop = static_cast<IOLoop* >(server->loop->data);
 
-  logger & __logger = myIOLoop->logger();
+  logger & __logger = myIOLoop->get_logger();
 
   // TODO: review if this is correct error handling
   if (status < 0)
@@ -100,7 +100,7 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
   if (uv_accept(server, (uv_stream_t *) client) == 0)
   {
-    IOHandle* ioh = new IOHandle( myIOLoop->logger(),
+    IOHandle* ioh = new IOHandle( myIOLoop->get_kernel(),
                                   (uv_stream_t *) client, myIOLoop);
 
     int fd = client->io_watcher.fd;

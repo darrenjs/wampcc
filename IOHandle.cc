@@ -47,8 +47,9 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 }
 
 /* Constructor */
-IOHandle::IOHandle(logger & logger, uv_stream_t * hdl, IOLoop * loop)
-  : __logger(logger),
+IOHandle::IOHandle(kernel& k, uv_stream_t * hdl, IOLoop * loop)
+  : m_kernel(k),
+    __logger(k.get_logger()),
     m_uv_handle(hdl),
     m_closed_handles_count(0),
     m_bytes_pending(0),
@@ -176,11 +177,11 @@ void IOHandle::write_async()
   size_t bytes_to_send=0;
   for (size_t i = 0; i < copy.size(); i++) bytes_to_send += copy[i].len;
 
-  static size_t PENDING_MAX = 1 * 1000000;
+  const size_t pend_max = m_kernel.get_config().socket_max_pending_write_bytes;
 
   if (m_state==eOpen && !copy.empty())
   {
-    if (bytes_to_send > (PENDING_MAX - m_bytes_pending))
+    if (bytes_to_send > (pend_max - m_bytes_pending))
     {
       LOG_WARN("pending bytes limit reached; closing connection");
       init_close();
@@ -203,7 +204,14 @@ void IOHandle::write_async()
         iohandle->on_write_cb(req, status);
       });
 
-    if (r) delete wr; // TODO: also, close the connection?
+    if (r)
+    {
+      LOG_WARN("uv_write failed, errno " << std::abs(r)
+               << " (" <<  uv_strerror(r) <<"); closing connection");
+      delete wr;
+      init_close();
+      return;
+    };
 
   }
 }

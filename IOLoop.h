@@ -66,7 +66,8 @@ public:
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
-  logger & logger() const { return __logger; }
+  logger & get_logger() const { return __logger; }
+  kernel & get_kernel() const { return m_kernel; }
 
 private:
   kernel & m_kernel;
