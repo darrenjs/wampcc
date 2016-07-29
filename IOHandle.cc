@@ -195,9 +195,6 @@ void IOHandle::write_async()
       wr->bufs[i] = copy[i];
 
     m_bytes_pending += bytes_to_send;
-    //if (m_bytes_pending>10000)  std::cout << "PENDING: " << m_bytes_pending << "\n";
-    // TODO: need to handle these return types ... eg, if r indicates error,
-    // we need to free req here. And probably close the connection,
 
     int r = uv_write((uv_write_t*)wr, m_uv_handle, wr->bufs, wr->nbufs, [](uv_write_t * req, int status){
         IOHandle * iohandle = (IOHandle *) req->data;

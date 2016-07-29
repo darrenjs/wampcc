@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "log_macros.h"
 #include <openssl/hmac.h> // crypto functions
+#include <sys/time.h>
 
 #include <string.h>
 
@@ -146,5 +147,39 @@ void log_exception(logger & __logger, const char* callsite)
   }
 }
 
+
+std::string iso8601_utc_timestamp()
+{
+  timeval epoch;
+  gettimeofday(&epoch, nullptr);
+
+  struct tm _tm;
+  gmtime_r(&epoch.tv_sec, &_tm);
+
+  // YYYY-MM-DDThh:mm:ss.sssZ
+  char temp[32];
+  memset(temp, 0, sizeof(temp));
+
+  strftime(temp, sizeof(temp)-1, "%FT%T", &_tm);
+  sprintf(&temp[19], ".%03dZ", (int) epoch.tv_usec/1000);
+  temp[24]='\0';
+
+  return temp;
+}
+
+
+std::string generate_random_string(const size_t len,
+                                   unsigned int seed)
+{
+  char temp [len+1];
+
+  std::mt19937 engine(seed);
+  std::uniform_int_distribution<> distr('!', '~'); // asci printables
+
+  for (auto & x : temp) x = distr(engine);
+  temp[len] = '\0';
+
+  return temp;
+}
 
 } // namespace XXX

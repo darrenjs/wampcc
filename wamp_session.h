@@ -22,6 +22,7 @@ namespace XXX {
 
   struct auth_provider
   {
+    std::function<std::string(const std::string& realm)> provider_name;
     std::function<bool(const std::string& user, const std::string& realm)> permit_user_realm;
     std::function<std::string(const std::string& user, const std::string& realm)> get_user_secret;
   };
@@ -135,7 +136,7 @@ namespace XXX {
                             wamp_args args,
                             wamp_invocation_reply_fn);
 
-    t_sid unique_id();
+    t_sid unique_id() const { return m_sid; }
 
   private:
 
@@ -220,11 +221,11 @@ namespace XXX {
 
     bool m_is_passive;
 
-    jalson::json_value m_challenge; // full message
     std::function< std::string() > m_client_secret_fn;
 
     std::string m_realm;
     std::string m_authid;
+    std::string m_challenge;
     mutable std::mutex m_realm_lock;
 
     auth_provider m_auth_proivder;

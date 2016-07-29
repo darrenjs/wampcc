@@ -146,6 +146,7 @@ int main(int /* argc */, char** /* argv */)
   list_publisher.add_target("default_realm", g_dealer);
 
   XXX::auth_provider server_auth;
+  server_auth.provider_name = [](const std::string){ return "programdb"; };
   server_auth.permit_user_realm = [](const std::string& /*user*/, const std::string& /*realm*/){ return true; };
   server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
 

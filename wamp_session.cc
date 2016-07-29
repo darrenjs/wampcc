@@ -147,11 +147,6 @@ wamp_session::~wamp_session()
   delete [] m_buf;
 }
 
-uint64_t wamp_session::unique_id()
-{
-  return m_sid;
-}
-
 //----------------------------------------------------------------------
 
 std::shared_future<void> wamp_session::close()
@@ -386,9 +381,6 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     if (message_type == CHALLENGE)
     {
       change_state(eRecvHello, eSentChallenge);
-
-      // capture the outbound challenge
-      m_challenge= msg;
     }
     else if (message_type == WELCOME)
     {
@@ -746,16 +738,24 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
 
   /* Construct the challenge */
 
-  // TODO: remove hardcoding from each of these values
   jalson::json_object challenge;
-  challenge["nonce"] = "LHRTC9zeOIrt_9U3";
-  challenge["authprovider"] = "userdb";
+  challenge["nonce"] = generate_random_string(30);
+  challenge["authprovider"] = m_auth_proivder.provider_name(realm);
   challenge["authid"] = authid;
-  challenge["timestamp"] = "2014-06-22T16:36:25.448Z";
+  challenge["timestamp"] = iso8601_utc_timestamp();
   challenge["authrole"] = "user";
   challenge["authmethod"] = "wampcra";
-  challenge["session"] = "3251278072152162";
+  challenge["session"] = std::to_string( unique_id() );
   std::string challengestr = jalson::encode( challenge );
+
+  {
+    std::unique_lock<std::mutex> guard(m_realm_lock);
+    if (m_challenge.empty())
+      m_challenge = challengestr;
+    else
+      throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                          "challenge already issued");
+  }
 
   jalson::json_array msg;
   msg.push_back( CHALLENGE );
@@ -828,8 +828,11 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 {
   /* EV thread */
 
-  // TODO: could just store only the challenge str  ?
-  const std::string & orig_challenge = m_challenge[2]["challenge"].as_string();
+  std::string orig_challenge;
+  {
+    std::unique_lock<std::mutex> guard(m_realm_lock);
+    orig_challenge = m_challenge;
+  }
 
   std::string key = m_auth_proivder.get_user_secret(m_authid, m_realm);
 
