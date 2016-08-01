@@ -4,6 +4,7 @@
 #include <sys/time.h>
 
 #include <string.h>
+#include <regex.h>
 
 namespace XXX {
 
@@ -180,6 +181,45 @@ std::string generate_random_string(const size_t len,
   temp[len] = '\0';
 
   return temp;
+}
+
+
+struct regex_impl
+{
+  regex_t m_re;
+
+  regex_impl()
+  {
+    int flags = REG_EXTENDED|REG_NOSUB|REG_ICASE;
+    if (::regcomp(&m_re, "^([0-9a-z_]+\\.)*([0-9a-z_]+)$", flags) != 0)
+      throw std::runtime_error("regcomp failed");
+  }
+
+  ~regex_impl()
+  {
+    regfree(&m_re);
+  }
+
+  bool matches(const char * s) const
+  {
+    return (::regexec(&m_re, s, (size_t) 0, NULL, 0) == 0);
+  }
+};
+
+uri_regex::uri_regex()
+  : m_impl(new regex_impl)
+{
+}
+
+uri_regex::~uri_regex()
+{
+  delete m_impl;
+}
+
+
+bool uri_regex::is_strict_uri(const char* s) const
+{
+  return m_impl->matches(s);
 }
 
 } // namespace XXX

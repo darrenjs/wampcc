@@ -9,7 +9,7 @@ namespace XXX {
 
 class IOLoop;
 class event_loop;
-
+class uri_regex;
 
 /* Logging object. Provides two functionals, wants_level and write, which the
  * API uses for its logging requirements.
@@ -46,7 +46,8 @@ struct config
   }
 };
 
-/* Core runtime.  Provides the IO layer, event thread, and logging.
+/* Core runtime.  Provides the IO layer, event thread, logging and some
+ * utilities.
  */
 class kernel
 {
@@ -63,11 +64,14 @@ public:
   IOLoop*      get_io();
   event_loop*  get_event_loop();
 
+  bool         check_uri(const char* s);
+
   const config& get_config() const { return m_config; }
 
 private:
   config m_config;
   logger __logger; /* name chosen for log macros */
+  std::unique_ptr<uri_regex> m_uri_checker;
   std::unique_ptr<IOLoop> m_io_loop;
   std::unique_ptr<event_loop> m_evl;
 };

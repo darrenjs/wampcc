@@ -73,6 +73,24 @@ private:
   std::list< std::pair<key, T>  > m_observers;
 };
 
+
+struct regex_impl;
+class uri_regex
+{
+public:
+  uri_regex();
+  ~uri_regex();
+
+  uri_regex(const uri_regex &) = delete;
+  uri_regex& operator=(const uri_regex &) = delete;
+
+  bool is_strict_uri(const char*) const;
+
+private:
+  regex_impl * m_impl;
+
+};
+
 } // namespace XXX
 
 #endif

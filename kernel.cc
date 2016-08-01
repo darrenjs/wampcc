@@ -2,6 +2,7 @@
 
 #include "IOLoop.h"
 #include "event_loop.h"
+#include "utils.h"
 
 #include <iostream>
 
@@ -17,6 +18,7 @@ namespace XXX {
 kernel::kernel(config __conf, logger nlog)
   : m_config(__conf),
     __logger(nlog),
+    m_uri_checker(new uri_regex),
     m_io_loop( new IOLoop(*this) ),
     m_evl( new event_loop(__logger) )
 {
@@ -51,6 +53,10 @@ event_loop* kernel::get_event_loop()
   return m_evl.get();
 }
 
+bool kernel::check_uri(const char* s)
+{
+  return m_uri_checker->is_strict_uri(s);
+}
 
 int logger::levels_upto(Level l)
 {
