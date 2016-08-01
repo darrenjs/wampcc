@@ -739,7 +739,7 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   /* Construct the challenge */
 
   jalson::json_object challenge;
-  challenge["nonce"] = generate_random_string(30);
+  challenge["nonce"] = random_ascii_string(30);
   challenge["authprovider"] = m_auth_proivder.provider_name(realm);
   challenge["authid"] = authid;
   challenge["timestamp"] = iso8601_utc_timestamp();

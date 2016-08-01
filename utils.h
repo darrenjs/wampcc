@@ -36,12 +36,12 @@ int compute_HMACSHA256(const char* key,
 void log_exception(logger &__logptr, const char* callsite);
 
 
-/* Generate iso8601 timestamp, like YYYY-MM-DDThh:mm:ss.sssZ*/
+/* Generate iso8601 timestamp, like YYYY-MM-DDThh:mm:ss.sssZ */
 std::string iso8601_utc_timestamp();
 
 /* Generate a random string of ascii printables of length 'len' */
-std::string generate_random_string(const size_t len,
-                                   unsigned int seed = std::random_device()());
+std::string random_ascii_string(const size_t len,
+                                unsigned int seed = std::random_device()());
 
 /* Implements a general list of observers, which can be notified with a generic
  * function with variadic arguments. Observer objects should be plain structs

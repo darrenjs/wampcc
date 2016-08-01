@@ -169,8 +169,8 @@ std::string iso8601_utc_timestamp()
 }
 
 
-std::string generate_random_string(const size_t len,
-                                   unsigned int seed)
+std::string random_ascii_string(const size_t len,
+                                unsigned int seed)
 {
   char temp [len+1];
 
