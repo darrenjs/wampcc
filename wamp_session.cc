@@ -388,7 +388,11 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen) this->close(); // TODO: these need to log errors, just like on the inbound
+      if (m_state != eOpen)
+      {
+        LOG_ERROR("unexpected message while session not open");
+        this->close();
+      }
     }
   }
   else
@@ -403,7 +407,11 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen) this->close();// TODO: these need to log errors, just like on the inbound
+      if (m_state != eOpen)
+      {
+        LOG_ERROR("unexpected message while session not open");
+        this->close();
+      }
     }
   }
 
@@ -574,7 +582,7 @@ void wamp_session::process_message(unsigned int message_type,
           return;
 
         case ERROR :
-          process_inbound_error(ja); // TODO: have an error handling specific to the kind of session (active/passive)
+          process_inbound_error(ja);
           return;
 
         case HEARTBEAT: return;
@@ -629,7 +637,7 @@ void wamp_session::process_message(unsigned int message_type,
           return;
 
         case ERROR :
-          process_inbound_error(ja);  // TODO: have an error handling specific to the kind of session (active/passive)
+          process_inbound_error(ja);
           return;
 
         case HEARTBEAT: return;
@@ -1309,99 +1317,106 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
 
 }
 
-// TODO: split this into two error function, once for client role, other for active roll
+
+/* Handles errors for both active & passive sessions */
 void wamp_session::process_inbound_error(jalson::json_array & msg)
 {
   /* EV thread */
 
-  check_size_at_least(msg.size(), 4);
+  check_size_at_least(msg.size(), 5);
 
-  // TODO: add more messsage checking here
-  int request_type = msg[1].as_int();
+  int orig_request_type = msg[1].as_int();
   t_request_id request_id = extract_request_id(msg, 2);
   jalson::json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
-
-  switch (request_type)
+  if (m_is_passive)
   {
-    case INVOCATION:
+    switch (orig_request_type)
     {
-      wamp_invocation orig_request;
-
+      case INVOCATION:
       {
-        std::unique_lock<std::mutex> guard(m_pending_lock);
-        auto iter = m_pending_invocation.find( request_id );
-        if (iter != m_pending_invocation.end())
+        wamp_invocation orig_request;
+
         {
-          orig_request = std::move(iter->second);
-          m_pending_invocation.erase(iter);
-        }
-      }
-
-      std::cout << "TODO: here need to call the incoation reply_fn\n";
-      wamp_args args;
-      if ( msg.size() > 5 ) args.args_list = msg[5];
-      if ( msg.size() > 6 ) args.args_dict = msg[6];
-      std::unique_ptr<std::string> error_ptr( new std::string(error_uri) );
-
-      try
-      {
-        orig_request.reply_fn(args, std::move(error_ptr));
-      } catch (...){ log_exception(__logger, "inbound invocation error user callback"); }
-
-      break;
-    }
-    case CALL :
-    {
-      wamp_call orig_call;
-      bool found = false;
-
-      {
-        std::unique_lock<std::mutex> guard(m_pending_lock);
-        auto iter = m_pending_call.find( request_id );
-        if (iter != m_pending_call.end())
-        {
-          found = true;
-          orig_call = std::move(iter->second);
-          m_pending_call.erase(iter);
-        }
-      }
-
-      if (found)
-      {
-        if (orig_call.user_cb && user_cb_allowed())
-        {
-          wamp_call_result r;
-          r.was_error = true;
-          r.error_uri = error_uri;
-          r.procedure = orig_call.rpc;
-          r.user = orig_call.user_data;
-          // TODO: improve args handling
-          r.args.args_list  = msg[5];
-          r.details = details;
-
-          try {
-            if (user_cb_allowed()) orig_call.user_cb(std::move(r));
+          std::unique_lock<std::mutex> guard(m_pending_lock);
+          auto iter = m_pending_invocation.find( request_id );
+          if (iter != m_pending_invocation.end())
+          {
+            orig_request = std::move(iter->second);
+            m_pending_invocation.erase(iter);
           }
-          catch(...){ log_exception(__logger, "inbound call error user callback");}
         }
-      }
-      else
-      {
-        LOG_WARN("TODO: handle protocol error");
-      }
 
-      break;
-    }
+        std::cout << "TODO: here need to call the incoation reply_fn\n";
+        wamp_args args;
+        if ( msg.size() > 5 ) args.args_list = msg[5];
+        if ( msg.size() > 6 ) args.args_dict = msg[6];
+        std::unique_ptr<std::string> error_ptr( new std::string(error_uri) );
 
-    default:
-    {
-      LOG_WARN("TODO: handle error msg on unsupported type");
+        try
+        {
+          orig_request.reply_fn(args, std::move(error_ptr));
+        } catch (...){ log_exception(__logger, "inbound invocation error user callback"); }
+
+        break;
+      }
+      default:
+        LOG_WARN("wamp error response has unexpected request type " << orig_request_type);
+        break;
     }
   }
+  else
+  {
+    switch (orig_request_type)
+    {
+      case CALL :
+      {
+        wamp_call orig_call;
+        bool found = false;
 
+        {
+          std::unique_lock<std::mutex> guard(m_pending_lock);
+          auto iter = m_pending_call.find( request_id );
+          if (iter != m_pending_call.end())
+          {
+            found = true;
+            orig_call = std::move(iter->second);
+            m_pending_call.erase(iter);
+          }
+        }
 
+        if (found)
+        {
+          if (orig_call.user_cb && user_cb_allowed())
+          {
+            wamp_call_result r;
+            r.was_error = true;
+            r.error_uri = error_uri;
+            r.procedure = orig_call.rpc;
+            r.user = orig_call.user_data;
+            // TODO: improve args handling
+            r.args.args_list  = msg[5];
+            r.details = details;
+
+            try {
+              if (user_cb_allowed()) orig_call.user_cb(std::move(r));
+            }
+            catch(...){ log_exception(__logger, "inbound call error user callback");}
+          }
+        }
+        else
+        {
+          LOG_WARN("no pending call associated with call error response, for request_id "
+                   << request_id);
+        }
+        break;
+      }
+      default:
+        LOG_WARN("wamp error response has unexpected request type " << orig_request_type);
+        break;
+    }
+  }
 }
 
 
