@@ -64,14 +64,11 @@ public:
   IOLoop*      get_io();
   event_loop*  get_event_loop();
 
-  bool         check_uri(const char* s);
-
   const config& get_config() const { return m_config; }
 
 private:
   config m_config;
   logger __logger; /* name chosen for log macros */
-  std::unique_ptr<uri_regex> m_uri_checker;
   std::unique_ptr<IOLoop> m_io_loop;
   std::unique_ptr<event_loop> m_evl;
 };
