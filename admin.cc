@@ -239,6 +239,15 @@ static void process_options(int argc, char** argv)
   if (optind < argc) uopts.port = argv[optind++];
   if (optind < argc) uopts.cmd  = argv[optind++];
   while (optind < argc) uopts.cmdargs.push_back(argv[optind++]);
+
+  // check topics
+  XXX::uri_regex uri_check;
+  for (auto & i : uopts.subscribe_topics)
+    if (not uri_check.is_strict_uri(i.c_str()))
+    {
+      std::cout << "not strict uri: " << i << std::endl;
+      exit(1);
+    }
 }
 
 std::string get_timestamp()
