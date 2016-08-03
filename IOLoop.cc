@@ -5,7 +5,7 @@
 #include "IOHandle.h"
 #include "kernel.h"
 
-#include <iostream>
+
 #include <system_error>
 
 #include <unistd.h>
