@@ -44,12 +44,9 @@ struct user_options
   std::string register_procedure;
   std::string call_procedure;
 
-  int verbose;
+  int verbose = 0;
+  bool no_uri_check = false;
 
-  user_options()
-    : verbose(0)
-  {
-  }
 } uopts;
 
 
@@ -184,6 +181,11 @@ static void process_options(int argc, char** argv)
   };
 */
 
+  enum
+  {
+    NO_URI_CHECK = 1
+  };
+
 //  int digit_optind = 0;
   static struct option long_options[] = {
     {"help",      no_argument, 0, 'h'},
@@ -193,6 +195,7 @@ static void process_options(int argc, char** argv)
     {"register",  required_argument, 0, 'r'},
     {"call",      required_argument, 0, 'c'},
     {"msg",       required_argument, 0, 'm'},
+    {"no-uri-check", no_argument , 0, NO_URI_CHECK},
     {NULL, 0, NULL, 0}
   };
   const char* optstr="hvds:p:m:r:c:";
@@ -217,7 +220,8 @@ static void process_options(int argc, char** argv)
 
     switch(c)
     {
-      case  0  : /* got long option */; break;
+      case 0: /* got long option */ break;
+      case NO_URI_CHECK : uopts.no_uri_check = true; break;
       case 'd' : uopts.verbose++; break;
       case 'h' : usage();
       case 'v' : version();
@@ -241,13 +245,16 @@ static void process_options(int argc, char** argv)
   while (optind < argc) uopts.cmdargs.push_back(argv[optind++]);
 
   // check topics
-  XXX::uri_regex uri_check;
-  for (auto & i : uopts.subscribe_topics)
-    if (not uri_check.is_strict_uri(i.c_str()))
-    {
-      std::cout << "not strict uri: " << i << std::endl;
-      exit(1);
-    }
+  if (uopts.no_uri_check == false)
+  {
+    XXX::uri_regex uri_check;
+    for (auto & i : uopts.subscribe_topics)
+      if (not uri_check.is_strict_uri(i.c_str()))
+      {
+        std::cout << "not strict uri: " << i << std::endl;
+        exit(1);
+      }
+  }
 }
 
 std::string get_timestamp()
