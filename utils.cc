@@ -190,8 +190,8 @@ struct regex_impl
 
   regex_impl()
   {
-    int flags = REG_EXTENDED|REG_NOSUB|REG_ICASE;
-    if (::regcomp(&m_re, "^([0-9a-z_]+\\.)*([0-9a-z_]+)$", flags) != 0)
+    int flags = REG_EXTENDED|REG_NOSUB;
+    if (::regcomp(&m_re, R"(^([0-9a-z_]+\.)*([0-9a-z_]+)$)", flags) != 0)
       throw std::runtime_error("regcomp failed");
   }
 
