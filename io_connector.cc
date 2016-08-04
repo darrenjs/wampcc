@@ -4,13 +4,13 @@
 #include "IOHandle.h"
 #include "IOLoop.h"
 
-
 namespace XXX {
 
 
 io_connector::io_connector(kernel& k, uv_tcp_t * h)
   : m_kernel(k),
-    m_tcp_handle(h)
+    m_tcp_handle(h),
+    m_state(eInit)
 {
 }
 
@@ -34,7 +34,7 @@ void io_connector::io_on_connect_success()
 
   std::unique_lock<std::mutex> guard( m_lock );
 
-  if (m_state == io_connector::eInit)
+  if (m_state == eInit)
   {
     m_state = io_connector::ePromiseSet;
 
@@ -45,7 +45,7 @@ void io_connector::io_on_connect_success()
 
     m_iohandle_promise.set_value( std::move(hndl) );
   }
-  else if (m_state == io_connector::eCancelRequested)
+  else if (m_state == eCancelRequested)
   {
     // Dont create IOHandle, because the actual tcp handle is in the process
     // of closing. The promise will be set when the uv_close callback is
