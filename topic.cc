@@ -8,12 +8,12 @@
 
 namespace XXX {
 
+const std::string basic_text::key_reset("x");
 
-
-
-basic_text::basic_text()
-{
-}
+const std::string basic_list::key_reset("x");
+const std::string basic_list::key_insert("i");
+const std::string basic_list::key_remove("e");
+const std::string basic_list::key_modify("m");
 
 
 basic_text::basic_text(std::string s)
@@ -54,10 +54,7 @@ void basic_text::add_observer(observer)
 }
 
 
-const std::string basic_text::key_reset("e");
-
-
-void basic_text::add_observer(patch_publisher pub)
+void basic_text::add_observer(patch_observer pub)
 {
   observer ob;
 
@@ -101,9 +98,6 @@ void basic_text::add_observer(patch_publisher pub)
 }
 
 
-
-
-
 void topic::add_wamp_session(std::weak_ptr<wamp_session> wp)
 {
   // TODO: complete method
@@ -113,7 +107,7 @@ void topic::add_wamp_session(std::weak_ptr<wamp_session> wp)
 void topic::add_target(std::string realm,
                        dealer_service* dealer)
 {
-  patch_publisher pub;
+  patch_observer pub;
 
   pub.on_snapshot = [=](const jalson::json_array& patch)
     {
@@ -122,7 +116,7 @@ void topic::add_target(std::string realm,
       pub_args.args_list.as_array().push_back( patch );
       dealer->publish( m_uri,
                        realm,
-                       { {"_p", 1}, {"_snap", 1} },
+                       { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
                        pub_args );
     };
 
@@ -135,49 +129,56 @@ void topic::add_target(std::string realm,
       pub_args.args_list.as_array().push_back( event );
       dealer->publish( m_uri,
                        realm,
-                       this->m_options,
+                       { {KEY_PATCH,1} },
                        pub_args );
     };
 
-  m_attach_to_model( pub );
+  m_attach_to_model( std::move(pub) );
 }
 
-const std::string basic_list::key_reset("e");
-const std::string basic_list::key_insert("i");
-const std::string basic_list::key_remove("e");
-const std::string basic_list::key_modify("m");
+
+jalson::json_array basic_list::copy_value() const
+{
+  std::unique_lock<std::mutex> rguard(m_read_mutex);
+  return m_items;
+}
 
 
-
+void basic_list::insert(size_t pos, jalson::json_value val)
+{
+  std::lock(m_write_mutex, m_read_mutex);
+  insert_impl(pos, std::move(val));
+}
 
 
 void basic_list::push_back(jalson::json_value val)
 {
-  // TODO: needs lock?  I.e., because we are taking the length
-  insert(m_items.size(), std::move(val));
+  std::lock(m_write_mutex, m_read_mutex);
+  insert_impl(m_items.size(), std::move(val));
 }
 
-void basic_list::insert(size_t pos, jalson::json_value val)
+
+void basic_list::insert_impl(size_t pos, jalson::json_value val)
 {
   static auto fn = [](list_events& ob, size_t i, const jalson::json_value& v)
     {
       ob.on_insert(i, v);
     };
 
-  std::lock(m_write_mutex, m_read_mutex);
   std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
 
   {
     std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
     if (m_items.size() >= pos )
     {
-      // update implementation
       m_items.insert(m_items.begin() + pos, val);
-    }  //TODO: else, put throw back in
+    }
+    else throw bad_index(pos);
   }
 
   m_observers.notify( fn, pos, val );
 }
+
 
 void basic_list::replace(size_t pos, jalson::json_value val)
 {
@@ -193,12 +194,11 @@ void basic_list::replace(size_t pos, jalson::json_value val)
     std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
     if (m_items.size() > pos )
     {
-      // update implementation
       m_items[pos] = val;
-    }  //TODO: else, put throw back in
+    }
+    else throw bad_index(pos);
   }
 
-  // notify
   m_observers.notify( fn, pos, val );
 }
 
@@ -218,9 +218,9 @@ void basic_list::erase(size_t pos)
 
     if (m_items.size() > pos)
     {
-      // update implementation
       m_items.erase(m_items.begin() + pos);
-    } // TODO: put throw back in
+    }
+    else throw bad_index(pos);
   }
   m_observers.notify( fn, pos );
 }
@@ -251,7 +251,8 @@ void basic_list::add_observer(list_events h)
   m_observers.add(std::move(h));
 }
 
-void basic_list::add_observer(patch_publisher pub)
+
+void basic_list::add_observer(patch_observer pub)
 {
   list_events h;
 

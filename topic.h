@@ -1,32 +1,33 @@
 #ifndef XXX_TOPIC_H
 #define XXX_TOPIC_H
 
-#include <jalson/jalson.h>
 #include "Callbacks.h"
 #include "utils.h"
 #include "wamp_session.h"
 
-#include <iostream>
+#include <jalson/jalson.h>
+
 #include <string>
-#include <set>
 #include <mutex>
 #include <list>
-#include <memory>
+
+#define KEY_PATCH    "_p"
+#define KEY_SNAPSHOT "_snap"
 
 namespace XXX {
 
 class dealer_service;
-class topic;
 class wamp_session;
 
 
-struct patch_publisher
+struct patch_observer
 {
   std::function< void(const jalson::json_array& patch) > on_snapshot;
 
   std::function< void(const jalson::json_array& patch ,
                       const jalson::json_array& event) > on_update;
 };
+
 
 class topic
 {
@@ -35,8 +36,7 @@ public:
   template<typename T>
   topic(std::string uri, T* model)
     : m_uri(uri),
-      m_options({{"_p",1}}),
-      m_attach_to_model([model](patch_publisher pub)
+      m_attach_to_model([model](patch_observer pub)
                         {
                           model->add_observer( std::move(pub) );
                         })
@@ -51,8 +51,7 @@ public:
 private:
 
   std::string m_uri;
-  jalson::json_object m_options;
-  std::function<void(patch_publisher)> m_attach_to_model;
+  std::function<void(patch_observer)> m_attach_to_model;
   std::vector<std::weak_ptr<wamp_session>> m_sessions;
   std::vector< std::tuple<std::string /* realm */, dealer_service*> > m_dealers;
 };
@@ -70,7 +69,7 @@ public:
 
   static const std::string key_reset;
 
-  basic_text();
+  basic_text() = default;
   basic_text(std::string);
 
   std::string value() const;
@@ -78,11 +77,11 @@ public:
   void assign(std::string);
 
   void add_observer(observer);
-  void add_observer(patch_publisher);
+  void add_observer(patch_observer);
 
 private:
   internal_impl m_impl;
-  mutable std::mutex m_write_mutex;
+  std::mutex m_write_mutex;
   mutable std::mutex m_read_mutex;
   observer_list<observer> m_observers;
 };
@@ -116,7 +115,6 @@ public:
     ws->subscribe(m_uri, std::move(sub_options), std::move(fn), nullptr);
   }
 
-
 private:
   std::string  m_uri;
   T m_event_handler;
@@ -136,15 +134,12 @@ struct basic_list
     std::function< void(const internal_impl&) > on_reset;
   };
 
-  jalson::json_array copy_value() const { return m_items; } // TODO: mutex?
+  jalson::json_array copy_value() const;
 
   static const std::string key_reset;
   static const std::string key_insert;
   static const std::string key_remove;
   static const std::string key_modify;
-
-  void add_observer(list_events);
-  void add_observer(patch_publisher);
 
   void reset(const internal_impl&);
   void insert(size_t, jalson::json_value);
@@ -152,12 +147,27 @@ struct basic_list
   void replace(size_t pos, jalson::json_value);
   void erase(size_t pos);
 
-  mutable std::mutex m_write_mutex;
+  void add_observer(list_events);
+  void add_observer(patch_observer);
+
+  class bad_index : public std::runtime_error
+  {
+  public:
+    bad_index(size_t i) : std::runtime_error("bad index"), m_i(i) {}
+    size_t index() const { return m_i; }
+  private:
+    size_t m_i;
+  };
+
+private:
+
+  void insert_impl(size_t, jalson::json_value);
+
+  std::mutex m_write_mutex;
   mutable std::mutex m_read_mutex;
   internal_impl m_items;
   observer_list<list_events> m_observers;
 };
-
 
 
 
@@ -188,7 +198,7 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
                                                   const jalson::json_object& /*args_dict*/)
 {
   jalson::json_value jv = args_list;
-  std::cout << "handler::on_event, " << jv << "\n" << "details:"<< jalson::json_value( details ) << "\n";
+  //  std::cout << "handler::on_event, " << jv << "\n" << "details:"<< jalson::json_value( details ) << "\n";
   const jalson::json_array * patch = nullptr;
   const jalson::json_array * event = nullptr;
 
@@ -258,8 +268,6 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
     }
   }
 }
-
-
 
 
 } // namespace XXX
