@@ -10,292 +10,320 @@ namespace XXX {
 
 
 
-data_model_base::data_model_base(std::string model_type)
-  : m_model(jalson::json_value::make_object()),
-    m_head(&jalson::insert_object(m_model.as_object(),"head")),
-    m_body(&jalson::insert_object(m_model.as_object(),"body"))
-{
-  m_head->insert(std::make_pair("type", std::move(model_type)));
-  m_head->insert(std::make_pair("version", 0));
-}
 
-data_model_base::~data_model_base()
+basic_text::basic_text()
 {
 }
 
-jalson::json_value data_model_base::copy_document() const
+
+basic_text::basic_text(std::string s)
+  : m_impl( std::move(s) )
 {
-  std::unique_lock<std::mutex> guard(m_lock);
-  return m_model;
 }
 
 
-void data_model_base::add_publisher(topic* tp)
+std::string basic_text::value() const
 {
-  m_publishers.push_back(tp);
+  std::unique_lock<std::mutex> rguard(m_read_mutex);
+  return m_impl;
 }
 
 
-void data_model_base::apply_model_patch(const jalson::json_array& patch,
-                                        const jalson::json_array& event)
+void basic_text::assign(std::string s)
 {
+  static auto fn = [](observer& ob, const std::string& val)
+    { ob.on_change(val); };
+
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
+
   {
-    std::unique_lock<std::mutex> guard(m_lock);
-    m_model.patch( patch );
+    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
+    m_impl = std::move(s);
   }
-  for (auto item : m_publishers)
-    item->publish_update( patch, event);
+
+  m_observers.notify( fn, m_impl );
 }
 
-basic_text_model::basic_text_model()
-  : data_model_base("basic_text"),
-    m_value( & (m_body->insert(std::make_pair("value", jalson::json_value::make_string())).first->second.as_string()) )
+
+void basic_text::add_observer(observer)
 {
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
+  std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
 }
 
-basic_text_model::basic_text_model(std::string t)
-  : data_model_base("basic_text"),
-    m_value( & (m_body->insert(std::make_pair("value", jalson::json_value(std::move(t)))).first->second.as_string()) )
-{
-}
 
-void basic_text_model::set_value(std::string new_content)
+const std::string basic_text::key_reset("e");
+
+
+void basic_text::add_observer(patch_publisher pub)
 {
-  // create a patch
+  observer ob;
+
+  ob.on_change = [pub](const std::string& val)
+    {
+      jalson::json_array patch;
+      jalson::json_object& operation = jalson::append_object(patch);
+      operation["op"]    = "replace";
+      operation["path"]  = "/body/value";
+      operation["value"] = val;
+
+      pub.on_update(patch, { key_reset });
+    };
+
+
+  jalson::json_value model = jalson::json_value::make_object();
   jalson::json_array patch;
-  jalson::json_object& operation = jalson::append_object(patch);
-  operation["op"]   = "replace";
-  operation["path"] = "/body/value";
-  operation["value"] = std::move(new_content);
 
-  // TODO: add event
-  apply_model_patch( patch, jalson::json_array() );
 
-  m_value  = &(m_body->operator[]("value").as_string());
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
+
+  {
+    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
+
+    // obtain snapshot
+    jalson::json_object & head = insert_object(model.as_object(), "head");
+    jalson::json_object & body = insert_object(model.as_object(), "body");
+    head["type"] = "basic_text";
+    head["version"] = 0;
+    body["value"] = m_impl;
+
+    jalson::json_object& operation = jalson::append_object(patch);
+    operation["op"]   = "replace";
+    operation["path"] = "";  /* replace whole document */
+    operation["value"] = std::move(model);
+  }
+
+  pub.on_snapshot(patch);
+  m_observers.add(std::move(ob));
 }
 
-const std::string& basic_text_model::get_value() const
-{
-  return *m_value;
-}
 
 
-topic::topic(std::string uri,
-             data_model_base * model)
-  : m_uri(uri),
-    m_data_model(model)
-{
-  m_options["_p"]=1;
-  m_data_model->add_publisher(this);
-}
 
 
 void topic::add_wamp_session(std::weak_ptr<wamp_session> wp)
 {
-  // TODO: need to add snapshot here?
-  m_sessions.push_back(wp);
+  // TODO: complete method
 }
 
 
 void topic::add_target(std::string realm,
                        dealer_service* dealer)
 {
-  // generate the initial snapshot
-  XXX::wamp_args pub_args;
-  pub_args.args_list = jalson::json_array();
+  patch_publisher pub;
 
-  jalson::json_array patch;
-  jalson::json_object& operation = jalson::append_object(patch);
-  operation["op"]   = "replace";
-  operation["path"] = "";  /* replace whole document */
-  operation["value"] = m_data_model->copy_document();
-
-  pub_args.args_list.as_array().push_back(std::move(patch));
-  pub_args.args_list.as_array().push_back(jalson::json_array());
-
-  dealer->publish(m_uri,
-                  realm,
-                  m_options,
-                  pub_args);
-
-  m_dealers.push_back( std::make_tuple(realm,dealer) );
-}
-
-
-void topic::publish_update(const jalson::json_array& patch,
-                           const jalson::json_array& event)
-{
-  XXX::wamp_args pub_args;
-  pub_args.args_list = jalson::json_array();
-  pub_args.args_list.as_array().push_back(patch);
-  pub_args.args_list.as_array().push_back(event);
-
-  for (auto & wp : m_sessions)
-    if (auto sp = wp.lock())
+  pub.on_snapshot = [=](const jalson::json_array& patch)
     {
-      sp->publish(m_uri,
-                  m_options,
-                  pub_args);
-    }
+      XXX::wamp_args pub_args;
+      pub_args.args_list = jalson::json_array();
+      pub_args.args_list.as_array().push_back( patch );
+      dealer->publish( m_uri,
+                       realm,
+                       { {"_p", 1}, {"_snap", 1} },
+                       pub_args );
+    };
 
-  for (auto & item : m_dealers)
+  pub.on_update = [=](const jalson::json_array& patch,
+                      const jalson::json_array& event)
+    {
+      XXX::wamp_args pub_args;
+      pub_args.args_list = jalson::json_array();
+      pub_args.args_list.as_array().push_back( patch );
+      pub_args.args_list.as_array().push_back( event );
+      dealer->publish( m_uri,
+                       realm,
+                       this->m_options,
+                       pub_args );
+    };
+
+  m_attach_to_model( pub );
+}
+
+const std::string basic_list::key_reset("e");
+const std::string basic_list::key_insert("i");
+const std::string basic_list::key_remove("e");
+const std::string basic_list::key_modify("m");
+
+
+
+
+
+void basic_list::push_back(jalson::json_value val)
+{
+  // TODO: needs lock?  I.e., because we are taking the length
+  insert(m_items.size(), std::move(val));
+}
+
+void basic_list::insert(size_t pos, jalson::json_value val)
+{
+  static auto fn = [](list_events& ob, size_t i, const jalson::json_value& v)
+    {
+      ob.on_insert(i, v);
+    };
+
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
+
   {
-    std::get<1>(item)->publish(m_uri,
-                               std::get<0>(item),
-                               m_options,
-                               pub_args);
+    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
+    if (m_items.size() >= pos )
+    {
+      // update implementation
+      m_items.insert(m_items.begin() + pos, val);
+    }  //TODO: else, put throw back in
   }
+
+  m_observers.notify( fn, pos, val );
+}
+
+void basic_list::replace(size_t pos, jalson::json_value val)
+{
+  static auto fn = [](list_events& ob, size_t i, const jalson::json_value& v)
+    {
+      ob.on_replace(i, v);
+    };
+
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
+
+  {
+    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
+    if (m_items.size() > pos )
+    {
+      // update implementation
+      m_items[pos] = val;
+    }  //TODO: else, put throw back in
+  }
+
+  // notify
+  m_observers.notify( fn, pos, val );
 }
 
 
-const std::string basic_list_model::key_insert("i");
-const std::string basic_list_model::key_remove("e");
-const std::string basic_list_model::key_modify("m");
-
-
-basic_list_model::basic_list_model()
-  : data_model_base("basic_list_model"),
-    m_value( & (m_body->insert(std::make_pair("value", jalson::json_value::make_array())).first->second.as_array()) )
+void basic_list::erase(size_t pos)
 {
+  static auto fn = [](list_events& ob, size_t i)
+    {
+      ob.on_erase(i);
+    };
+
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
+
+  {
+    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
+
+    if (m_items.size() > pos)
+    {
+      // update implementation
+      m_items.erase(m_items.begin() + pos);
+    } // TODO: put throw back in
+  }
+  m_observers.notify( fn, pos );
 }
 
-jalson::json_array basic_list_model::copy_value() const
+
+void basic_list::reset(const internal_impl& value)
 {
-  std::unique_lock<std::mutex> guard(m_lock);
-  return  * m_value;
+  static auto fn = [](list_events& ob, const internal_impl& src)
+    {
+      ob.on_reset(src);
+    };
+
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
+
+  {
+    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
+    m_items = value;
+  }
+
+  m_observers.notify( fn, value );
 }
 
 
-
-
-void basic_list_model::insert(size_t pos, jalson::json_value val)
+void basic_list::add_observer(list_events h)
 {
-  // create a patch
+  std::unique_lock<std::mutex> wguard(m_write_mutex);
+  m_observers.add(std::move(h));
+}
+
+void basic_list::add_observer(patch_publisher pub)
+{
+  list_events h;
+
+  h.on_insert = [pub](size_t pos, const jalson::json_value& val)
+    {
+      jalson::json_array patch;
+      jalson::json_object& operation = jalson::append_object(patch);
+      operation["op"]    = "add";
+      operation["path"]  = "/body/value/" + std::to_string(pos);
+      operation["value"] = val;
+
+      pub.on_update(patch, { key_insert, pos });
+    };
+
+  h.on_replace = [pub](size_t pos, const jalson::json_value& val)
+    {
+      jalson::json_array patch;
+      jalson::json_object& operation = jalson::append_object(patch);
+      operation["op"]    = "replace";
+      operation["path"]  = "/body/value/" + std::to_string(pos);
+      operation["value"] = std::move(val);
+
+      pub.on_update(patch, { key_modify, pos });
+    };
+
+  h.on_erase = [pub](size_t pos)
+    {
+      jalson::json_array patch;
+      jalson::json_object& operation = jalson::append_object(patch);
+      operation["op"]   = "remove";
+      operation["path"] = "/body/value/" + std::to_string(pos);
+
+      pub.on_update(patch, { key_remove, pos });
+    };
+
+  h.on_reset = [pub](const internal_impl& value)
+    {
+      jalson::json_array patch;
+      jalson::json_object& operation = jalson::append_object(patch);
+      operation["op"]   = "replace";
+      operation["path"] = "/body/value";
+      operation["value"] = value;
+
+      pub.on_update(patch, { key_reset } );
+    };
+
+  jalson::json_value model = jalson::json_value::make_object();
   jalson::json_array patch;
-  jalson::json_object& operation = jalson::append_object(patch);
-  operation["op"]   = "add";
-  operation["path"] = "/body/value/" + std::to_string(pos);
-  operation["value"] = std::move(val);
 
-  // create event
-  jalson::json_array event;
-  event.push_back(key_insert);
-  event.push_back(pos);
-
-  apply_model_patch( patch, event );
- }
-
-
- void basic_list_model::push_back(jalson::json_value val)
- {
-   // create a patch
-   jalson::json_array patch;
-   jalson::json_object& operation = jalson::append_object(patch);
-   operation["op"]   = "add";
-   operation["path"] = "/body/value/" + std::to_string(m_value->size());
-   operation["value"] = std::move(val);
-
-  // create event
-  jalson::json_array event;
-  event.push_back( key_insert );
-  event.push_back( m_value->size() );
-
-   apply_model_patch( patch, event );
- }
-
-
- void basic_list_model::erase(size_t index)
- {
-   jalson::json_array patch;
-   jalson::json_object& operation = jalson::append_object(patch);
-   operation["op"]   = "remove";
-   operation["path"] = "/body/value/" + std::to_string(index);
-
-   jalson::json_array event;
-   event.push_back(key_remove);
-   event.push_back(index);
-
-   apply_model_patch( patch, event );
- }
-
-
- void basic_list_model::replace(size_t index, jalson::json_value val)
- {
-   jalson::json_array patch;
-   jalson::json_object& operation = jalson::append_object(patch);
-   operation["op"]    = "replace";
-   operation["path"]  = "/body/value/" + std::to_string(index);
-   operation["value"] = std::move(val);
-
-   jalson::json_array event;
-   event.push_back(key_modify);
-   event.push_back(index);
-
-   apply_model_patch( patch, event );
-}
-
-std::vector< jalson::json_value > basic_list_target::copy() const
-{
-  std::unique_lock<std::mutex> guard(m_mutex);
-  return m_items;
-}
-
-
-void basic_list_target::on_insert(size_t i, jalson::json_value v)
-{
-  static auto fn = [](observer& ob, size_t i){if (ob.on_insert) ob.on_insert(i);};
+  std::lock(m_write_mutex, m_read_mutex);
+  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
 
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
 
-    if (m_items.size() >= i )
-      m_items.insert(m_items.begin() + i, std::move(v));
-    else
-      throw basic_list_model::index_error(i, basic_list_model::index_error::eInsert);
+    // obtain snapshot
+    jalson::json_object & head = insert_object(model.as_object(), "head");
+    jalson::json_object & body = insert_object(model.as_object(), "body");
+    head["type"] = "basic_list";
+    head["version"] = 0;
+    body["value"] = m_items;
+
+    jalson::json_object& operation = jalson::append_object(patch);
+    operation["op"]   = "replace";
+    operation["path"] = "";  /* replace whole document */
+    operation["value"] = std::move(model);
   }
-  m_observers.notify(fn, i);
+
+  pub.on_snapshot(patch);
+  m_observers.add(std::move(h));
 }
 
-void basic_list_target::on_remove(size_t i)
-{
-  static auto fn = [](observer& ob, size_t i){if (ob.on_remove) ob.on_remove(i);};
-
-  {
-    std::unique_lock<std::mutex> guard(m_mutex);
-
-    if (m_items.size() > i)
-      m_items.erase(m_items.begin() + i);
-    else
-      throw basic_list_model::index_error(i, basic_list_model::index_error::eRemove);
-  }
-  m_observers.notify(fn, i);
-}
-
-void basic_list_target::on_modify(size_t i, jalson::json_value v)
-{
-  static auto fn = [](observer& ob, size_t i){if (ob.on_modify) ob.on_modify(i);};
-
-  {
-    std::unique_lock<std::mutex> guard(m_mutex);
-    if (m_items.size() > i)
-      m_items.at(i) = std::move(v);
-    else
-      throw basic_list_model::index_error(i, basic_list_model::index_error::eModify);
-  }
-  m_observers.notify(fn, i);
-
-}
-
-void basic_list_target::on_reset(const jalson::json_array & src)
-{
-  static auto fn = [](observer& ob){if (ob.on_reset) ob.on_reset();};
-
-  {
-    std::unique_lock<std::mutex> guard(m_mutex);
-    m_items = src;
-  }
-  m_observers.notify(fn);
-}
 
 
 } // namespace XXX

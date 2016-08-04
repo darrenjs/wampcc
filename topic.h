@@ -19,120 +19,72 @@ class dealer_service;
 class topic;
 class wamp_session;
 
-class data_model_base
+
+struct patch_publisher
 {
-public:
+  std::function< void(const jalson::json_array& patch) > on_snapshot;
 
-  data_model_base(std::string model_type);
-  virtual ~data_model_base();
-
-  jalson::json_value copy_document() const;
-
-  void add_publisher(topic*);
-
-protected:
-
-  void apply_model_patch(const jalson::json_array&,
-                         const jalson::json_array&);
-
-  mutable std::mutex m_lock;
-
-  jalson::json_value  m_model;
-  jalson::json_object * m_head;
-  jalson::json_object * m_body;
-
-private:
-  data_model_base(const data_model_base&) = delete;
-  data_model_base& operator=(const data_model_base&) = delete;
-
-  std::vector<topic*> m_publishers;
+  std::function< void(const jalson::json_array& patch ,
+                      const jalson::json_array& event) > on_update;
 };
-
-
-class basic_text_model : public data_model_base
-{
-public:
-  basic_text_model();
-  basic_text_model(std::string);
-
-  void set_value(std::string);
-  const std::string& get_value() const;
-
-
-  jalson::json_string * m_value;
-};
-
-
-// TODO: do I still need to inherit?
-class basic_list_model : public data_model_base
-{
-public:
-
-  class index_error : public std::runtime_error
-  {
-  public:
-    enum operation_type
-    {
-      eInsert,
-      eRemove,
-      eModify
-    };
-
-    index_error(size_t i, operation_type op)
-      : runtime_error("index not valid"),
-        m_index(i), m_operation (op)
-    {}
-
-    size_t index() const { return m_index; }
-
-  private:
-    size_t m_index;
-    operation_type m_operation;
-  };
-
-  static const std::string key_insert;
-  static const std::string key_remove;
-  static const std::string key_modify;
-
-  basic_list_model();
-
-  /* generate change events */
-  void insert(size_t pos, jalson::json_value);
-  void replace(size_t pos, jalson::json_value);
-  void push_back(jalson::json_value);
-  void erase(size_t pos);
-
-  jalson::json_array copy_value() const ;
-
-
-private:
-  jalson::json_array * m_value;
-};
-
 
 class topic
 {
 public:
-  topic(std::string uri,
-        data_model_base*);
+
+  template<typename T>
+  topic(std::string uri, T* model)
+    : m_uri(uri),
+      m_options({{"_p",1}}),
+      m_attach_to_model([model](patch_publisher pub)
+                        {
+                          model->add_observer( std::move(pub) );
+                        })
+  {
+  }
 
   void add_wamp_session(std::weak_ptr<wamp_session> wp);
-
 
   void add_target(std::string realm,
                   dealer_service*);
 
 private:
-  void publish_update(const jalson::json_array&, const jalson::json_array&);
 
   std::string m_uri;
-  data_model_base * m_data_model;
-  std::vector<std::weak_ptr<wamp_session>> m_sessions;
   jalson::json_object m_options;
-
+  std::function<void(patch_publisher)> m_attach_to_model;
+  std::vector<std::weak_ptr<wamp_session>> m_sessions;
   std::vector< std::tuple<std::string /* realm */, dealer_service*> > m_dealers;
+};
 
-  friend data_model_base;
+
+class basic_text
+{
+public:
+  typedef std::string internal_impl;
+
+  struct observer
+  {
+    std::function< void(const std::string&) > on_change;
+  };
+
+  static const std::string key_reset;
+
+  basic_text();
+  basic_text(std::string);
+
+  std::string value() const;
+
+  void assign(std::string);
+
+  void add_observer(observer);
+  void add_observer(patch_publisher);
+
+private:
+  internal_impl m_impl;
+  mutable std::mutex m_write_mutex;
+  mutable std::mutex m_read_mutex;
+  observer_list<observer> m_observers;
 };
 
 
@@ -171,45 +123,46 @@ private:
 };
 
 
-class basic_list_target
+
+struct basic_list
 {
-public:
+  typedef std::vector< jalson::json_value > internal_impl ;
 
-  typedef std::vector< jalson::json_value > internal_repr ;
-
-  /* Receive change events */
-  struct observer
+  struct list_events
   {
-    std::function<void()>  on_reset;
-    std::function<void(size_t)> on_insert;
-    std::function<void(size_t)> on_remove;
-    std::function<void(size_t)> on_modify;
+    std::function< void(size_t, const jalson::json_value& val) > on_insert;
+    std::function< void(size_t, const jalson::json_value& val) > on_replace;
+    std::function< void(size_t) > on_erase;
+    std::function< void(const internal_impl&) > on_reset;
   };
 
-  void add_observer(observer);
+  jalson::json_array copy_value() const { return m_items; } // TODO: mutex?
 
-  void on_reset(const jalson::json_array &);
-  void on_insert(size_t, jalson::json_value);
-  void on_remove(size_t);
-  void on_modify(size_t, jalson::json_value);
+  static const std::string key_reset;
+  static const std::string key_insert;
+  static const std::string key_remove;
+  static const std::string key_modify;
 
-  std::vector< jalson::json_value > copy() const;
+  void add_observer(list_events);
+  void add_observer(patch_publisher);
 
+  void reset(const internal_impl&);
+  void insert(size_t, jalson::json_value);
+  void push_back(jalson::json_value);
+  void replace(size_t pos, jalson::json_value);
+  void erase(size_t pos);
 
-  // Danger: direct use of the internal list must be done so with
-  // synchronisation via the internal mutex
-  std::mutex&    internal_mutex() { return m_mutex; }
-  internal_repr& internal_list()  { return m_items; }
-
-private:
-  mutable std::mutex m_mutex;
-  internal_repr  m_items;
-  observer_list<observer> m_observers;
+  mutable std::mutex m_write_mutex;
+  mutable std::mutex m_read_mutex;
+  internal_impl m_items;
+  observer_list<list_events> m_observers;
 };
 
 
 
 
+/* Handle a subscription to a basic list source.  Converts JSON patches into
+ * object actions.  */
 template<typename T>
 class basic_list_subscription_handler
 {
@@ -257,7 +210,7 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
     const jalson::json_object & patch_value   = jalson::get_ref(patch_replace, "value").as_object();
     const jalson::json_object & body   = jalson::get_ref(patch_value, "body").as_object();
     const jalson::json_array  & body_value = jalson::get_ref(body, "value").as_array();
-    m_target.on_reset( body_value );
+    m_target.reset( body_value );
   }
   else if (patch)
   {
@@ -265,7 +218,7 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
         event->size()>1 &&
         event->at(0).is_string() &&
         event->at(1).is_int() &&
-        event->at(0).as_string() == basic_list_model::key_insert &&
+        event->at(0).as_string() == basic_list::key_insert &&
         patch &&
         patch->size()>0 &&
         patch->at(0).is_object()
@@ -275,23 +228,23 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
       auto it = patch->at(0).as_object().find("value");
       if (it != patch->at(0).as_object().end())
       {
-        m_target.on_insert(event->at(1).as_int(), it->second);
+        m_target.insert(event->at(1).as_int(), it->second);
       }
     }
     else if (event &&
              event->size()>=2 &&
              event->at(0).is_string() &&
              event->at(1).is_int() &&
-             event->at(0).as_string() == basic_list_model::key_remove
+             event->at(0).as_string() == basic_list::key_remove
       )
     {
-      m_target.on_remove(event->at(1).as_int());
+      m_target.erase(event->at(1).as_int());
     }
     else if (event &&
              event->size()>=2 &&
              event->at(0).is_string() &&
              event->at(1).is_int() &&
-             event->at(0).as_string() == basic_list_model::key_modify &&
+             event->at(0).as_string() == basic_list::key_modify &&
              patch &&
              patch->size()>0 &&
              patch->at(0).is_object()
@@ -300,7 +253,7 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
       auto it = patch->at(0).as_object().find("value");
       if (it != patch->at(0).as_object().end())
       {
-        m_target.on_modify(event->at(1).as_int(), it->second);
+        m_target.replace(event->at(1).as_int(), it->second);
       }
     }
   }

@@ -382,10 +382,29 @@ int main(int argc, char** argv)
 
   // TODO: next, find a way to easily print out the list after each update
 
-  XXX::basic_list_target  basic_list;
-  XXX::basic_list_subscription_handler<XXX::basic_list_target>  h( basic_list );
-  XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list_target> >
-    sub_planets(ws, "planets", h );
+  XXX::basic_list my_list;
+
+
+
+  XXX::basic_list::list_events obs;
+  auto displayer = [&my_list]()
+    {
+      jalson::json_array value = my_list.copy_value();
+      std::cout << "list: ";
+      for (auto & item : value)
+        std::cout << item << ",";
+      std::cout << std::endl;
+    };
+  obs.on_insert = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
+  obs.on_replace = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
+  obs.on_erase = [&my_list, displayer](size_t) {displayer();};
+  obs.on_reset = [&my_list, displayer](const XXX::basic_list::internal_impl&) {displayer();};
+  my_list.add_observer(obs);
+
+
+  XXX::basic_list_subscription_handler<XXX::basic_list>  h2( my_list );
+  XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list> >
+    sub_planets2(ws, "planets", h2 );
 
 
 
@@ -417,11 +436,11 @@ int main(int argc, char** argv)
     //             jalson::json_object(),
     //             pub_args);
 
-    XXX::basic_text_model tm;
-    XXX::topic publisher(uopts.publish_topic, &tm);
-    publisher.add_wamp_session(ws);
+    // XXX::basic_text_model tm;
+    // XXX::topic publisher(uopts.publish_topic, &tm);
+    // publisher.add_wamp_session(ws);
 
-    tm.set_value("hello world");
+    // tm.set_value("hello world");
   }
 
   // call

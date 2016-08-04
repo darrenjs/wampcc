@@ -33,12 +33,8 @@ auto __logger = XXX::logger::stdlog(std::cout,
                                     true);
 
 
-
-XXX::basic_text_model text_data("initial");
-XXX::topic model_publisher("topic_1", &text_data);
-
-XXX::basic_list_model basic_list;
-XXX::topic list_publisher("planets", &basic_list);
+XXX::basic_list basic_list;
+XXX::topic planets_topic("planets", &basic_list);
 
 void procedure_error_cb(XXX::invoke_details& invocation)
 {
@@ -119,7 +115,8 @@ void publisher_tep()
     //text_data.set_value(newvalue);
 
 
-    switch ( dis(gen) )
+    std::cout << "PRIOR:" << basic_list.copy_value() << "\n";
+    switch ( dis(gen) % 7 )
     {
       case 0 : basic_list.insert(0, names[dis(gen)]); break;
       case 1 : if (basic_list.copy_value().size()>0 && basic_list.copy_value().size()<10) basic_list.insert(basic_list.copy_value().size()-1, names[dis(gen)]); break;
@@ -129,6 +126,7 @@ void publisher_tep()
       case 5 : if (basic_list.copy_value().size()>0) basic_list.erase(basic_list.copy_value().size()-1); break;
       default: if (basic_list.copy_value().size()<10) basic_list.push_back( names[dis(gen)] );
     };
+    std::cout << "ACTUAL:" << basic_list.copy_value() << "\n";
 
   }
 
@@ -142,8 +140,7 @@ int main(int /* argc */, char** /* argv */)
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);
   g_dealer = dealer;
 
-  model_publisher.add_target("default_realm", g_dealer);
-  list_publisher.add_target("default_realm", g_dealer);
+  planets_topic.add_target("default_realm", g_dealer);
 
   XXX::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
