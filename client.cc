@@ -4,6 +4,7 @@
 #include <dealer_service.h>
 #include <log_macros.h>
 #include <kernel.h>
+#include "example_models.h"
 
 #include <condition_variable>
 #include <iostream>
@@ -33,8 +34,8 @@ auto __logger = XXX::logger::stdlog(std::cout,
                                     true);
 
 
-XXX::basic_list basic_list;
-XXX::topic planets_topic("planets", &basic_list);
+XXX::planets_list planets;
+XXX::topic planets_topic("planets", &planets.model);
 
 void procedure_error_cb(XXX::invoke_details& invocation)
 {
@@ -89,48 +90,6 @@ std::string get_timestamp()
 
 XXX::dealer_service * g_dealer = nullptr;
 
-void publisher_tep()
-{
-  const char* const names[] = { "sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"};
-
-  std::random_device rd;
-  int seed = 0;
-  std::mt19937 gen( seed );
-  std::uniform_int_distribution<> dis(0, 9);
-  while(true)
-  {
-    usleep(1000000 * 3);
-    std::string newvalue = "0000____" + get_timestamp();
-
-
-    XXX::wamp_args wargs;
-    wargs.args_list = jalson::json_value::make_array();
-    wargs.args_list.as_array().push_back( newvalue );
-
-    // if (g_dealer) g_dealer->publish("USERHB",
-    //                                 "default_realm",
-    //                                 jalson::json_object(),
-    //                                 wargs);
-
-    //text_data.set_value(newvalue);
-
-
-    std::cout << "PRIOR:" << basic_list.copy_value() << "\n";
-    switch ( dis(gen) % 7 )
-    {
-      case 0 : basic_list.insert(0, names[dis(gen)]); break;
-      case 1 : if (basic_list.copy_value().size()>0 && basic_list.copy_value().size()<10) basic_list.insert(basic_list.copy_value().size()-1, names[dis(gen)]); break;
-      case 2 : if (basic_list.copy_value().size()>0) basic_list.replace(0, names[dis(gen)]); break;
-      case 3 : if (basic_list.copy_value().size()>0) basic_list.replace(basic_list.copy_value().size()-1, names[dis(gen)]); break;
-      case 4 : if (basic_list.copy_value().size()>0) basic_list.erase(0); break;
-      case 5 : if (basic_list.copy_value().size()>0) basic_list.erase(basic_list.copy_value().size()-1); break;
-      default: if (basic_list.copy_value().size()<10) basic_list.push_back( names[dis(gen)] );
-    };
-    std::cout << "ACTUAL:" << basic_list.copy_value() << "\n";
-
-  }
-
-}
 
 int main(int /* argc */, char** /* argv */)
 {
@@ -166,14 +125,6 @@ int main(int /* argc */, char** /* argv */)
     return 1;
   }
 
-
-  // mycs->add_topic( &topic );
-
-
-  std::thread publisher( publisher_tep );
-
-  //XXX::dealer_service* dealer = mycs->get_dealer();
-
   std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_run") );
   std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_error") );
 
@@ -191,7 +142,6 @@ int main(int /* argc */, char** /* argv */)
 
   // explicit deletion for better control
 
-  publisher.join();
   mycs.reset();
 
   return 0;

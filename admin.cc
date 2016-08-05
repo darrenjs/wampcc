@@ -380,11 +380,8 @@ int main(int argc, char** argv)
   bool long_wait = false;
   bool wait_reply = false;
 
-  // TODO: next, find a way to easily print out the list after each update
 
   XXX::basic_list my_list;
-
-
 
   XXX::basic_list::list_events obs;
   auto displayer = [&my_list]()
