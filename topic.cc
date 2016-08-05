@@ -98,18 +98,43 @@ void basic_text::add_observer(patch_observer pub)
 }
 
 
-void topic::add_wamp_session(std::weak_ptr<wamp_session> wp)
+void topic::add_publisher(std::weak_ptr<wamp_session> wp)
 {
-  // TODO: complete method
+  patch_observer obs;
+
+  obs.on_snapshot = [=](const jalson::json_array& patch)
+    {
+      XXX::wamp_args pub_args;
+      pub_args.args_list = jalson::json_array();
+      pub_args.args_list.as_array().push_back( patch );
+
+      if (auto sp = wp.lock())
+        sp->publish( m_uri, { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
+                     std::move(pub_args) );
+    };
+
+  obs.on_update = [=](const jalson::json_array& patch,
+                      const jalson::json_array& event)
+    {
+      XXX::wamp_args pub_args;
+      pub_args.args_list = jalson::json_array();
+      pub_args.args_list.as_array().push_back( patch );
+      pub_args.args_list.as_array().push_back( event );
+
+      if (auto sp = wp.lock())
+        sp->publish( m_uri, { {KEY_PATCH, 1} }, std::move(pub_args) );
+    };
+
+  m_attach_to_model( std::move(obs) );
 }
 
 
-void topic::add_target(std::string realm,
-                       dealer_service* dealer)
+void topic::add_publisher(std::string realm,
+                          dealer_service* dealer)
 {
-  patch_observer pub;
+  patch_observer obs;
 
-  pub.on_snapshot = [=](const jalson::json_array& patch)
+  obs.on_snapshot = [=](const jalson::json_array& patch)
     {
       XXX::wamp_args pub_args;
       pub_args.args_list = jalson::json_array();
@@ -117,10 +142,10 @@ void topic::add_target(std::string realm,
       dealer->publish( m_uri,
                        realm,
                        { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
-                       pub_args );
+                       std::move(pub_args) );
     };
 
-  pub.on_update = [=](const jalson::json_array& patch,
+  obs.on_update = [=](const jalson::json_array& patch,
                       const jalson::json_array& event)
     {
       XXX::wamp_args pub_args;
@@ -130,10 +155,10 @@ void topic::add_target(std::string realm,
       dealer->publish( m_uri,
                        realm,
                        { {KEY_PATCH,1} },
-                       pub_args );
+                       std::move(pub_args) );
     };
 
-  m_attach_to_model( std::move(pub) );
+  m_attach_to_model( std::move(obs) );
 }
 
 

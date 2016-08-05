@@ -43,10 +43,9 @@ public:
   {
   }
 
-  void add_wamp_session(std::weak_ptr<wamp_session> wp);
+  void add_publisher(std::weak_ptr<wamp_session> wp);
 
-  void add_target(std::string realm,
-                  dealer_service*);
+  void add_publisher(std::string realm, dealer_service*);
 
 private:
 

@@ -99,7 +99,7 @@ int main(int /* argc */, char** /* argv */)
   XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);
   g_dealer = dealer;
 
-  planets_topic.add_target("default_realm", g_dealer);
+  planets_topic.add_publisher("default_realm", g_dealer);
 
   XXX::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
