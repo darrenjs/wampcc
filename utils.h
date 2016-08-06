@@ -4,6 +4,7 @@
 #include <sstream>
 #include <list>
 #include <random>
+#include <memory>
 
 #define THROW(E, X )  do                        \
   {                                             \
@@ -55,10 +56,9 @@ public:
   /* Add observer, returning a unique key used for later removal. */
   key* add(T&& obs)
   {
-    m_observers.emplace_back(key(), std::move(obs));
-    return &m_observers.back().first;
+    m_observers.emplace_back(std::unique_ptr<key>(new key()), std::move(obs));
+    return m_observers.back().first.get();
   }
-
 
   /* Notify observers, by applying a functional object, with supplied
    * arguments. */
@@ -69,8 +69,24 @@ public:
       fn( item.second, args... );
   }
 
+  void remove(key* const k)
+  {
+    for (auto it = m_observers.begin();
+         it != m_observers.end(); ++it)
+    {
+      if (k == it->first.get())
+      {
+        m_observers.erase(it);
+        return;
+      }
+    }
+  }
+
+  size_t size()  const { return m_observers.size(); }
+  bool   empty() const { return m_observers.empty(); }
+
 private:
-  std::list< std::pair<key, T>  > m_observers;
+  std::vector<std::pair< std::unique_ptr<key>, T>> m_observers;
 };
 
 
