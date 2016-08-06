@@ -3,7 +3,7 @@
 #include "event_loop.h"
 #include "log_macros.h"
 #include "WampTypes.h"
-#include "SessionMan.h"
+#include "wamp_session.h"
 #include "kernel.h"
 #include "wamp_utils.h"
 

@@ -1,8 +1,6 @@
 #include "dealer_service_impl.h"
 
 #include "dealer_service.h"
-
-#include "SessionMan.h"
 #include "kernel.h"
 #include "rpc_man.h"
 #include "pubsub_man.h"
@@ -10,7 +8,6 @@
 #include "IOLoop.h"
 #include "IOHandle.h"
 #include "log_macros.h"
-
 
 #include <iostream>
 
@@ -20,7 +17,6 @@ namespace XXX {
 dealer_service_impl::dealer_service_impl(kernel & __svc, dealer_listener* l)
   :__logger(__svc.get_logger()),
    m_kernel(__svc),
-   m_sesman( new SessionMan(__svc) ),
    m_rpcman( new rpc_man(__svc, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
    m_pubsub(new pubsub_man(__svc)),
    m_listener( l )
@@ -101,7 +97,10 @@ std::future<int> dealer_service_impl::listen(int port,
                                 [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
                                 handlers,
                                 auth);
-        m_sesman->add_session(sp);
+        {
+          std::lock_guard<std::mutex> guard(m_sesions_lock);
+          m_sessions[ sp->unique_id() ] = sp;
+        }
         LOG_INFO( "session created #" << sp->unique_id() );
       }
 
@@ -230,10 +229,21 @@ void dealer_service_impl::handle_inbound_call(
 void dealer_service_impl::handle_session_state_change(session_handle sh, bool is_open)
 {
   /* EV thread */
+
   if (!is_open)
   {
     m_pubsub->session_closed(sh);
-    m_sesman->session_closed(sh);
+
+    if (auto sp = sh.lock())
+    {
+      std::lock_guard<std::mutex> guard(m_sesions_lock);
+
+      t_sid sid ( sp->unique_id() );
+      auto it = m_sessions.find(sid);
+
+      if (it != m_sessions.end())
+        m_sessions.erase( it );
+    }
   }
 }
 

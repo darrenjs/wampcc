@@ -10,7 +10,6 @@
 namespace XXX {
 
   class kernel;
-  class SessionMan;
   class pubsub_man;
   class rpc_man;
   struct logger;
@@ -63,9 +62,11 @@ private:
 
   std::recursive_mutex m_lock;
 
-  std::unique_ptr<SessionMan> m_sesman;
   std::unique_ptr<rpc_man> m_rpcman;
   std::unique_ptr<pubsub_man> m_pubsub;
+
+  std::mutex m_sesions_lock;
+  std::map<t_sid, std::shared_ptr<wamp_session> > m_sessions;
 
   dealer_listener* m_listener;
 };
