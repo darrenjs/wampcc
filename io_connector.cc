@@ -1,8 +1,8 @@
 #include "io_connector.h"
 
 #include "kernel.h"
-#include "IOHandle.h"
-#include "IOLoop.h"
+#include "io_handle.h"
+#include "io_loop.h"
 
 namespace XXX {
 
@@ -22,7 +22,7 @@ void io_connector::async_cancel()
 }
 
 
-std::future< std::unique_ptr<IOHandle> > io_connector::get_future()
+std::future< std::unique_ptr<io_handle> > io_connector::get_future()
 {
   return m_iohandle_promise.get_future();
 }
@@ -38,8 +38,8 @@ void io_connector::io_on_connect_success()
   {
     m_state = io_connector::ePromiseSet;
 
-    std::unique_ptr< IOHandle > hndl (
-      new IOHandle( m_kernel,
+    std::unique_ptr< io_handle > hndl (
+      new io_handle( m_kernel,
                     (uv_stream_t *) m_tcp_handle,
                     m_kernel.get_io() ) );
 
@@ -47,7 +47,7 @@ void io_connector::io_on_connect_success()
   }
   else if (m_state == eCancelRequested)
   {
-    // Dont create IOHandle, because the actual tcp handle is in the process
+    // Dont create io_handle, because the actual tcp handle is in the process
     // of closing. The promise will be set when the uv_close callback is
     // triggered.
   }

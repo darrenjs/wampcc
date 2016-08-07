@@ -18,30 +18,30 @@ namespace XXX {
 
 class kernel;
 struct logger;
-class IOLoop;
-class IOHandle;
+class io_loop;
+class io_handle;
 class io_connector;
 struct io_request;
 
 
 
-typedef std::function<void(int port, std::unique_ptr<IOHandle>)> socket_accept_cb;
-typedef std::function<void(IOHandle*, int)> tcp_connect_cb;
+typedef std::function<void(int port, std::unique_ptr<io_handle>)> socket_accept_cb;
+typedef std::function<void(io_handle*, int)> tcp_connect_cb;
 
 struct  tcp_server
 {
   uv_tcp_t uvh;
   int port;
-  IOLoop * ioloop;
+  io_loop * ioloop;
   socket_accept_cb cb;
 };
 
 /* IO Thread */
-class IOLoop
+class io_loop
 {
 public:
-  IOLoop(kernel&);
-  ~IOLoop();
+  io_loop(kernel&);
+  ~io_loop();
 
   void start();
   void stop();
@@ -52,7 +52,7 @@ public:
 
   void async_send();
 
-  void add_passive_handle(tcp_server* server, IOHandle* iohandle);
+  void add_passive_handle(tcp_server* server, io_handle* iohandle);
 
   void add_server(int port, std::promise<int> listener_err, socket_accept_cb);
 

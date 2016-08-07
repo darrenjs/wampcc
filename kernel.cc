@@ -1,6 +1,6 @@
 #include "kernel.h"
 
-#include "IOLoop.h"
+#include "io_loop.h"
 #include "event_loop.h"
 
 #include <iostream>
@@ -17,7 +17,7 @@ namespace XXX {
 kernel::kernel(config __conf, logger nlog)
   : m_config(__conf),
     __logger(nlog),
-    m_io_loop( new IOLoop(*this) ),
+    m_io_loop( new io_loop(*this) ),
     m_evl( new event_loop(__logger) )
 {
 }
@@ -41,7 +41,7 @@ void kernel::start()
 }
 
 
-IOLoop*  kernel::get_io()
+io_loop*  kernel::get_io()
 {
   return m_io_loop.get();
 }

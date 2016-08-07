@@ -4,8 +4,8 @@
 #include "rpc_man.h"
 #include "pubsub_man.h"
 #include "event_loop.h"
-#include "IOLoop.h"
-#include "IOHandle.h"
+#include "io_loop.h"
+#include "io_handle.h"
 #include "log_macros.h"
 
 #include <unistd.h>
@@ -40,7 +40,7 @@ std::future<int> dealer_service::listen(int port,
   m_kernel.get_io()->add_server(
     port,
     std::move(intPromise),
-    [this, auth](int /* port */, std::unique_ptr<IOHandle> ioh)
+    [this, auth](int /* port */, std::unique_ptr<io_handle> ioh)
     {
       /* IO thread */
 

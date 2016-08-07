@@ -2,8 +2,8 @@
 #include "event_loop.h"
 #include "kernel.h"
 #include "topic.h"
-#include "IOLoop.h"
-#include "IOHandle.h"
+#include "io_loop.h"
+#include "io_handle.h"
 #include "io_connector.h"
 #include "wamp_session.h"
 #include "log_macros.h"
@@ -291,7 +291,7 @@ int main(int argc, char** argv)
 
   auto connect_fut = conn->get_future();
 
-  std::unique_ptr<XXX::IOHandle> up_handle;
+  std::unique_ptr<XXX::io_handle> up_handle;
   try
   {
     /* Wait until the connector has got a result. The result can be successful,

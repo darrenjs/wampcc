@@ -9,13 +9,13 @@
 namespace XXX {
 
 class kernel;
-class IOHandle;
+class io_handle;
 
 /* Represents the asynchronous task of creating an active socket connection */
 class io_connector
 {
 public:
-  std::future< std::unique_ptr<IOHandle> > get_future();
+  std::future< std::unique_ptr<io_handle> > get_future();
 
   // Abort the connection attempt
   void async_cancel();
@@ -32,7 +32,7 @@ private:
 
   kernel & m_kernel;
   uv_tcp_t * m_tcp_handle;
-  std::promise< std::unique_ptr<IOHandle> > m_iohandle_promise;
+  std::promise< std::unique_ptr<io_handle> > m_iohandle_promise;
 
   std::mutex m_lock;
   std::unique_ptr<std::exception_ptr> m_exception;
@@ -43,7 +43,7 @@ private:
     ePromiseSet
   } m_state;
 
-  friend class IOLoop;
+  friend class io_loop;
 };
 
 } // namespace XXX

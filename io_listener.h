@@ -5,7 +5,7 @@
 
 namespace XXX {
 
-class IOHandle;
+class io_handle;
 
 class io_listener
 {

@@ -1,6 +1,6 @@
 #include "wamp_session.h"
 
-#include "IOHandle.h"
+#include "io_handle.h"
 #include "rpc_man.h"
 #include "WampTypes.h"
 #include "event_loop.h"
@@ -78,7 +78,7 @@ static void check_size_at_least(size_t msg_len, size_t s)
 
 /* Constructor */
   wamp_session::wamp_session(kernel& __kernel,
-                             std::unique_ptr<IOHandle> h,
+                             std::unique_ptr<io_handle> h,
                              bool is_passive,
                              session_state_fn state_cb,
                              server_msg_handler handler,
@@ -106,7 +106,7 @@ static void check_size_at_least(size_t msg_len, size_t s)
 
 
 std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
-                                                   std::unique_ptr<IOHandle> ioh,
+                                                   std::unique_ptr<io_handle> ioh,
                                                    bool is_passive,
                                                    session_state_fn state_cb,
                                                    server_msg_handler handler,

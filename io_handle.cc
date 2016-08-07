@@ -1,6 +1,6 @@
-#include "IOHandle.h"
+#include "io_handle.h"
 
-#include "IOLoop.h"
+#include "io_loop.h"
 #include "io_listener.h"
 #include "log_macros.h"
 #include "utils.h"
@@ -47,7 +47,7 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 }
 
 /* Constructor */
-IOHandle::IOHandle(kernel& k, uv_stream_t * hdl, IOLoop * loop)
+io_handle::io_handle(kernel& k, uv_stream_t * hdl, io_loop * loop)
   : m_kernel(k),
     __logger(k.get_logger()),
     m_uv_handle(hdl),
@@ -65,7 +65,7 @@ IOHandle::IOHandle(kernel& k, uv_stream_t * hdl, IOLoop * loop)
 
   // set up the async handler
   uv_async_init(loop->uv_loop(), &m_write_async, [](uv_async_t* uvh){
-      IOHandle* ioh = static_cast<IOHandle*>( uvh->data );
+      io_handle* ioh = static_cast<io_handle*>( uvh->data );
       ioh->write_async();
     });
   m_write_async.data = this;
@@ -73,20 +73,20 @@ IOHandle::IOHandle(kernel& k, uv_stream_t * hdl, IOLoop * loop)
 }
 
 
-void IOHandle::start_read(std::shared_ptr<io_listener> p)
+void io_handle::start_read(std::shared_ptr<io_listener> p)
 {
   m_listener = p;
 
   uv_read_start(m_uv_handle, iohandle_alloc_buffer,
                 [](uv_stream_t*  uvh, ssize_t nread, const uv_buf_t* buf)
                 {
-                  IOHandle * iohandle = (IOHandle *) uvh->data;
+                  io_handle * iohandle = (io_handle *) uvh->data;
                   iohandle->on_read_cb(nread, buf);
                 });
 }
 
 
-IOHandle::~IOHandle()
+io_handle::~io_handle()
 {
   // Shutdown mutex has two purposes. [1] ensure shutdown-notifcation is fully
   // complete before commencing deletion, and [2] deterministically catch
@@ -113,7 +113,7 @@ IOHandle::~IOHandle()
 }
 
 
-void IOHandle::on_close_cb()
+void io_handle::on_close_cb()
 {
   /* IO thread */
 
@@ -147,7 +147,7 @@ void IOHandle::on_close_cb()
 }
 
 
-void IOHandle::write_async()
+void io_handle::write_async()
 {
   /* IO thread */
 
@@ -156,11 +156,11 @@ void IOHandle::write_async()
   {
     // request closure of our UV handles
     uv_close((uv_handle_t*)&m_write_async, [](uv_handle_t* uvh){
-        IOHandle * h = (IOHandle *) uvh->data;
+        io_handle * h = (io_handle *) uvh->data;
         h->on_close_cb();
       });
     uv_close((uv_handle_t*)m_uv_handle,  [](uv_handle_t* uvh){
-        IOHandle * h = (IOHandle *) uvh->data;
+        io_handle * h = (io_handle *) uvh->data;
         h->on_close_cb();
       });
 
@@ -197,7 +197,7 @@ void IOHandle::write_async()
     m_bytes_pending += bytes_to_send;
 
     int r = uv_write((uv_write_t*)wr, m_uv_handle, wr->bufs, wr->nbufs, [](uv_write_t * req, int status){
-        IOHandle * iohandle = (IOHandle *) req->data;
+        io_handle * iohandle = (io_handle *) req->data;
         iohandle->on_write_cb(req, status);
       });
 
@@ -215,7 +215,7 @@ void IOHandle::write_async()
 
 
 
-void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
+void io_handle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool /*close*/)
 {
   /* ANY thread */
 
@@ -250,7 +250,7 @@ void IOHandle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count,
 
 
 /* User wants to initiate closure of the IO handle */
-std::shared_future<void> IOHandle::request_close()
+std::shared_future<void> io_handle::request_close()
 {
   /* ANY thread */
 
@@ -260,7 +260,7 @@ std::shared_future<void> IOHandle::request_close()
 }
 
 
-void IOHandle::init_close()
+void io_handle::init_close()
 {
   /* IO thread */
 
@@ -276,7 +276,7 @@ void IOHandle::init_close()
 }
 
 
-void IOHandle::on_write_cb(uv_write_t * req, int status)
+void io_handle::on_write_cb(uv_write_t * req, int status)
 {
   /* IO thread */
   std::unique_ptr<write_req> wr ((write_req*) req); // ensure deletion
@@ -305,7 +305,7 @@ void IOHandle::on_write_cb(uv_write_t * req, int status)
 }
 
 
-void IOHandle::on_read_cb(ssize_t nread ,
+void io_handle::on_read_cb(ssize_t nread ,
                           const uv_buf_t* buf)
 {
   /* IO thread */

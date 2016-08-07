@@ -11,20 +11,20 @@
 
 namespace XXX {
 
-class IOLoop;
-class IOHandle;
+class io_loop;
+class io_handle;
 class io_listener;
 struct logger;
 class kernel;
 
-class IOHandle
+class io_handle
 {
 public:
-  IOHandle(kernel&, uv_stream_t * h, IOLoop * loop);
-  ~IOHandle();
+  io_handle(kernel&, uv_stream_t * h, io_loop * loop);
+  ~io_handle();
 
-  IOHandle(const IOHandle&) = delete;
-  IOHandle& operator=(const IOHandle&) = delete;
+  io_handle(const io_handle&) = delete;
+  io_handle& operator=(const io_handle&) = delete;
 
   /* Enqueue bytes to be sent */
   void write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count, bool final);

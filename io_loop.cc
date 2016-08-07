@@ -1,8 +1,8 @@
-#include "IOLoop.h"
+#include "io_loop.h"
 
 #include "io_connector.h"
 #include "log_macros.h"
-#include "IOHandle.h"
+#include "io_handle.h"
 #include "kernel.h"
 
 
@@ -58,7 +58,7 @@ struct io_request
 
 
 
-void IOLoop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
+void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 {
   /* IO thread */
 
@@ -82,11 +82,11 @@ void IOLoop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 
 static void __on_tcp_connect(uv_stream_t* server, int status)
 {
-  // IOLoop has set itself as the uv_loop data member
+  // io_loop has set itself as the uv_loop data member
   tcp_server* myserver = (tcp_server*) server;
-  IOLoop * myIOLoop = static_cast<IOLoop* >(server->loop->data);
+  io_loop * myio_loop = static_cast<io_loop* >(server->loop->data);
 
-  logger & __logger = myIOLoop->get_logger();
+  logger & __logger = myio_loop->get_logger();
 
   // TODO: review if this is correct error handling
   if (status < 0)
@@ -96,12 +96,12 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
   }
 
   uv_tcp_t *client = new uv_tcp_t();
-  uv_tcp_init(myIOLoop->uv_loop(), client);
+  uv_tcp_init(myio_loop->uv_loop(), client);
 
   if (uv_accept(server, (uv_stream_t *) client) == 0)
   {
-    IOHandle* ioh = new IOHandle( myIOLoop->get_kernel(),
-                                  (uv_stream_t *) client, myIOLoop);
+    io_handle* ioh = new io_handle( myio_loop->get_kernel(),
+                                  (uv_stream_t *) client, myio_loop);
 
     int fd = client->io_watcher.fd;
 
@@ -139,7 +139,7 @@ io_request::io_request(request_type __type,
 }
 
 
-IOLoop::IOLoop(kernel& k)
+io_loop::io_loop(kernel& k)
   :  m_kernel(k),
      __logger( k.get_logger() ),
     m_uv_loop( new uv_loop_t() ),
@@ -152,7 +152,7 @@ IOLoop::IOLoop(kernel& k)
 
   // set up the async handler
   uv_async_init(m_uv_loop, m_async.get(), [](uv_async_t* h) {
-      IOLoop* p = static_cast<IOLoop*>( h->data );
+      io_loop* p = static_cast<io_loop*>( h->data );
       p->on_async();
     });
   m_async->data = this;
@@ -162,7 +162,7 @@ IOLoop::IOLoop(kernel& k)
   //  signal(SIGPIPE, SIG_IGN);
 }
 
-void IOLoop::stop()
+void io_loop::stop()
 {
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
@@ -172,14 +172,14 @@ void IOLoop::stop()
   if (m_thread.joinable()) m_thread.join();
 }
 
-IOLoop::~IOLoop()
+io_loop::~io_loop()
 {
   // uv_loop kept as raw pointer, because need to pass to several uv functions
   uv_loop_close(m_uv_loop);
   delete m_uv_loop;
 }
 
-void IOLoop::create_tcp_server_socket(int port,
+void io_loop::create_tcp_server_socket(int port,
                                       socket_accept_cb cb,
                                       std::unique_ptr< std::promise<int> > listener_err )
 {
@@ -208,7 +208,7 @@ void IOLoop::create_tcp_server_socket(int port,
 }
 
 
-void IOLoop::on_async()
+void io_loop::on_async()
 {
   /* IO thread */
   std::vector< std::unique_ptr<io_request> > work;
@@ -298,7 +298,7 @@ void IOLoop::on_async()
         [](uv_connect_t* __req, int status)
         {
           std::unique_ptr<uv_connect_t> connect_req(__req);
-          IOLoop * ioloop = static_cast<IOLoop* >(__req->handle->loop->data);
+          io_loop * ioloop = static_cast<io_loop* >(__req->handle->loop->data);
           try
           {
             ioloop->on_tcp_connect_cb(__req, status);
@@ -334,7 +334,7 @@ void IOLoop::on_async()
 }
 
 
-void IOLoop::async_send()
+void io_loop::async_send()
 {
   /* ANY thread */
 
@@ -342,9 +342,9 @@ void IOLoop::async_send()
   uv_async_send( m_async.get() );
 }
 
-void IOLoop::run_loop()
+void io_loop::run_loop()
 {
-  LOG_INFO("IOLoop thread starting");
+  LOG_INFO("io_loop thread starting");
   while ( true )
   {
     try
@@ -365,13 +365,13 @@ void IOLoop::run_loop()
   }
 }
 
-void IOLoop::start()
+void io_loop::start()
 {
-  m_thread = std::thread(&IOLoop::run_loop, this);
+  m_thread = std::thread(&io_loop::run_loop, this);
 }
 
 
-void IOLoop::add_server(int port,
+void io_loop::add_server(int port,
                         std::promise<int> listen_err,
                         socket_accept_cb cb)
 {
@@ -393,13 +393,13 @@ void IOLoop::add_server(int port,
 }
 
 
-void IOLoop::add_passive_handle(tcp_server* myserver, IOHandle* iohandle)
+void io_loop::add_passive_handle(tcp_server* myserver, io_handle* iohandle)
 {
-  if (myserver->cb) myserver->cb(myserver->port, std::unique_ptr<IOHandle>(iohandle));
+  if (myserver->cb) myserver->cb(myserver->port, std::unique_ptr<io_handle>(iohandle));
 }
 
 
-std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr,
+std::shared_ptr<io_connector> io_loop::add_connection(std::string addr,
                                                      std::string port,
                                                      bool resolve_hostname)
 {
@@ -429,7 +429,7 @@ std::shared_ptr<io_connector> IOLoop::add_connection(std::string addr,
 
 
 
-void IOLoop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
+void io_loop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
 {
   std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logger ) );
 

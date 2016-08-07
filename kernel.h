@@ -7,7 +7,7 @@
 
 namespace XXX {
 
-class IOLoop;
+class io_loop;
 class event_loop;
 class uri_regex;
 
@@ -61,7 +61,7 @@ public:
   kernel& operator=(const kernel&) = delete;
 
   logger&      get_logger() { return __logger; }
-  IOLoop*      get_io();
+  io_loop*      get_io();
   event_loop*  get_event_loop();
 
   const config& get_config() const { return m_config; }
@@ -69,7 +69,7 @@ public:
 private:
   config m_config;
   logger __logger; /* name chosen for log macros */
-  std::unique_ptr<IOLoop> m_io_loop;
+  std::unique_ptr<io_loop> m_io_loop;
   std::unique_ptr<event_loop> m_evl;
 };
 

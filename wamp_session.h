@@ -36,7 +36,7 @@ namespace XXX {
   };
 
   class kernel;
-  class IOHandle;
+  class io_handle;
   struct logger;
 
 
@@ -74,7 +74,7 @@ namespace XXX {
   public:
     // wamp_session can only be created as shared_ptr
     static std::shared_ptr<wamp_session> create(kernel&,
-                                                std::unique_ptr<IOHandle>,
+                                                std::unique_ptr<io_handle>,
                                                 bool is_passive,
                                                 session_state_fn state_cb,
                                                 server_msg_handler = server_msg_handler(),
@@ -141,7 +141,7 @@ namespace XXX {
   private:
 
     wamp_session(kernel&,
-                 std::unique_ptr<IOHandle>,
+                 std::unique_ptr<io_handle>,
                  bool is_passive,
                  session_state_fn state_cb,
                  server_msg_handler,
@@ -159,7 +159,7 @@ namespace XXX {
 
     void update_state_for_outbound(const jalson::json_array& msg);
 
-    friend class IOHandle;
+    friend class io_handle;
 
     enum SessionState
     {
@@ -198,7 +198,7 @@ namespace XXX {
 
     uint64_t m_sid;
 
-    std::unique_ptr<IOHandle> m_handle;
+    std::unique_ptr<io_handle> m_handle;
 
     std::promise<void> m_has_closed;
     std::shared_future<void> m_shfut_has_closed;
