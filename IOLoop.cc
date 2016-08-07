@@ -125,10 +125,6 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 }
 
 
-
-
-
-
 io_request::io_request(request_type __type,
                        logger & lp,
                        std::string __port,

@@ -278,9 +278,6 @@ void wamp_session::io_on_read_impl(char* src, size_t len)
       len -= bytes_to_consume;
       m_bytes_avail += bytes_to_consume;
 
-      if ((HEADERLEN+msglen) > m_buf_size)
-        throw session_error(WAMP_RUNTIME_ERROR, "inbound message will exceed buffer");
-
       /* process the data in the working buffer */
 
       char* ptr = m_buf;
@@ -298,6 +295,9 @@ void wamp_session::io_on_read_impl(char* src, size_t len)
 
         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
         if (m_bytes_avail < (HEADERLEN+msglen)) break; // body incomplete
+
+        if ((HEADERLEN+msglen) > m_buf_size)
+          throw session_error(WAMP_RUNTIME_ERROR, "inbound message will exceed buffer");
 
         // we have enough bytes to decode
         this->decode_and_process(ptr+HEADERLEN, msglen);

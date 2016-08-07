@@ -130,7 +130,7 @@ void topic::add_publisher(std::weak_ptr<wamp_session> wp)
 
 
 void topic::add_publisher(std::string realm,
-                          dealer_service* dealer)
+                          std::weak_ptr<dealer_service> dealer)
 {
   patch_observer obs;
 
@@ -139,10 +139,12 @@ void topic::add_publisher(std::string realm,
       XXX::wamp_args pub_args;
       pub_args.args_list = jalson::json_array();
       pub_args.args_list.as_array().push_back( patch );
-      dealer->publish( m_uri,
-                       realm,
-                       { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
-                       std::move(pub_args) );
+
+      if (auto sp=dealer.lock())
+        sp->publish( m_uri,
+                     realm,
+                     { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
+                     std::move(pub_args) );
     };
 
   obs.on_update = [=](const jalson::json_array& patch,
@@ -152,10 +154,12 @@ void topic::add_publisher(std::string realm,
       pub_args.args_list = jalson::json_array();
       pub_args.args_list.as_array().push_back( patch );
       pub_args.args_list.as_array().push_back( event );
-      dealer->publish( m_uri,
-                       realm,
-                       { {KEY_PATCH,1} },
-                       std::move(pub_args) );
+
+      if (auto sp=dealer.lock())
+        sp->publish( m_uri,
+                     realm,
+                     { {KEY_PATCH,1} },
+                     std::move(pub_args) );
     };
 
   m_attach_to_model( std::move(obs) );

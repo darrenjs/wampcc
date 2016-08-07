@@ -88,15 +88,14 @@ std::string get_timestamp()
   return os.str();
 }
 
-XXX::dealer_service * g_dealer = nullptr;
-
+std::shared_ptr<XXX::dealer_service> g_dealer;
 
 int main(int /* argc */, char** /* argv */)
 {
   std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel({},__logger) );
   mycs->start();
 
-  XXX::dealer_service * dealer = new XXX::dealer_service(*(mycs.get()), nullptr);
+  std::shared_ptr<XXX::dealer_service> dealer ( new XXX::dealer_service(*(mycs.get()), nullptr ) );
   g_dealer = dealer;
 
   planets_topic.add_publisher("default_realm", g_dealer);

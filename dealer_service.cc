@@ -1,6 +1,12 @@
 #include "dealer_service.h"
 
-#include "dealer_service_impl.h"
+#include "kernel.h"
+#include "rpc_man.h"
+#include "pubsub_man.h"
+#include "event_loop.h"
+#include "IOLoop.h"
+#include "IOHandle.h"
+#include "log_macros.h"
 
 #include <unistd.h>
 #include <string.h>
@@ -8,21 +14,76 @@
 namespace XXX {
 
 dealer_service::dealer_service(kernel & __svc, dealer_listener* l)
-  : m_impl(std::make_shared<dealer_service_impl>(__svc, l))
+  : m_kernel(__svc),
+    __logger(__svc.get_logger()),
+   m_rpcman( new rpc_man(__svc, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
+   m_pubsub(new pubsub_man(__svc)),
+   m_listener( l )
+
 {
 };
 
 
 dealer_service::~dealer_service()
 {
-  m_impl->disown(); // prevent impl object making user callbacks
+  std::unique_lock<std::recursive_mutex> guard(m_lock);
+  m_listener = nullptr;
 }
 
 
 std::future<int> dealer_service::listen(int port,
                                         auth_provider auth)
 {
-  return m_impl->listen(port, auth);
+  std::promise<int> intPromise;
+  std::future<int> fut = intPromise.get_future();
+
+  m_kernel.get_io()->add_server(
+    port,
+    std::move(intPromise),
+    [this, auth](int /* port */, std::unique_ptr<IOHandle> ioh)
+    {
+      /* IO thread */
+
+      server_msg_handler handlers;
+
+      handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
+        this->handle_inbound_call(s,u,std::move(args),f);
+      };
+
+      handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, jalson::json_object options, wamp_args args)
+        {
+        // TODO: break this out into a separte method, and handle error
+          m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
+        };
+
+      handlers.inbound_subscribe  = [this](wamp_session* p, t_request_id request_id, std::string uri, jalson::json_object& options) {
+        return this->m_pubsub->subscribe(p, request_id, uri, options);
+      };
+
+      handlers.inbound_register  = [this](std::weak_ptr<wamp_session> h,
+                                          std::string realm,
+                                          std::string uri) {
+        return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
+      };
+
+      {
+        std::shared_ptr<wamp_session> sp =
+          wamp_session::create( m_kernel,
+                                std::move(ioh),
+                                true, /* session is passive */
+                                [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
+                                handlers,
+                                auth);
+        {
+          std::lock_guard<std::mutex> guard(m_sesions_lock);
+          m_sessions[ sp->unique_id() ] = sp;
+        }
+        LOG_INFO( "session created #" << sp->unique_id() );
+      }
+
+    } );
+
+  return fut;
 }
 
 
@@ -32,7 +93,10 @@ void dealer_service::register_procedure(const std::string& realm,
                                         rpc_cb user_cb,
                                         void * user_data)
 {
-  m_impl->register_procedure(realm, uri, options, user_cb, user_data);
+
+  // TODO: dispatch this on the event thread?
+  m_rpcman->register_internal_rpc_2(realm, uri, options, user_cb, user_data);
+
 }
 
 
@@ -42,7 +106,166 @@ void dealer_service::publish(const std::string& topic,
                              wamp_args args)
 {
   /* USER thread */
-  m_impl->publish(topic, realm, options, args);
+
+  std::weak_ptr<dealer_service> wp = this->shared_from_this();
+
+  // TODO: how to use bind here, to pass options in as a move operation?
+  m_kernel.get_event_loop()->dispatch(
+    [wp, topic, realm, args, options]()
+    {
+      if (auto sp = wp.lock())
+      {
+        sp->m_pubsub->inbound_publish(realm, topic, options, args);
+      }
+    }
+  );
+
+}
+
+
+void dealer_service::rpc_registered_cb(const rpc_details& r)
+{
+  std::unique_lock<std::recursive_mutex> guard(m_lock);
+  if (m_listener) m_listener->rpc_registered( r.uri );
+}
+
+
+void dealer_service::handle_inbound_call(
+  wamp_session* sptr, // TODO: possibly change this to a shared_ptr
+  const std::string& uri,
+  wamp_args args,
+  wamp_invocation_reply_fn fn )
+{
+  /* EV thread */
+
+  // TODO: use direct lookup here, instead of that call to public function, wheich can then be deprecated
+  try
+  {
+    rpc_details rpc = m_rpcman->get_rpc_details(uri, sptr->realm());
+    if (rpc.registration_id)
+    {
+      if (rpc.type == rpc_details::eInternal)
+      {
+        /* CALL request is for an internal procedure */
+
+        if (rpc.user_cb)
+        {
+          invoke_details invoke;
+          invoke.uri = uri;
+          invoke.user = rpc.user_data;
+          invoke.args = std::move(args);
+
+          invoke.yield_fn = [fn](wamp_args args)
+            {
+              if (fn)
+                fn(args, std::unique_ptr<std::string>());
+            };
+
+          invoke.error_fn = [fn](wamp_args args, std::string error_uri)
+            {
+              if (fn)
+                fn(args, std::unique_ptr<std::string>(new std::string(error_uri)));
+            };
+
+          rpc.user_cb(invoke);
+
+        }
+        else
+          throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
+
+      }
+      else
+      {
+        /* CALL request is for an external RPC */
+        if (auto sp = rpc.session.lock())
+        {
+          sp->invocation(rpc.registration_id,
+                         jalson::json_object(),
+                         args,
+                         fn);
+        }
+        else
+          throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
+      }
+    }
+    else
+    {
+      /* RPC uri lookup failed */
+      throw wamp_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
+    }
+  }
+  catch (XXX::wamp_error& ex)
+  {
+    if (fn)
+      fn(ex.args(), std::unique_ptr<std::string>(new std::string(ex.what())));
+  }
+  catch (std::exception& ex)
+  {
+    if (fn)
+      fn(wamp_args(), std::unique_ptr<std::string>(new std::string(ex.what())));
+  }
+  catch (...)
+  {
+    if (fn)
+      fn(wamp_args(), std::unique_ptr<std::string>(new std::string(WAMP_RUNTIME_ERROR)));
+  }
+}
+
+
+void dealer_service::handle_session_state_change(session_handle sh, bool is_open)
+{
+  /* EV thread */
+
+  if (!is_open)
+  {
+    m_pubsub->session_closed(sh);
+
+    if (auto sp = sh.lock())
+    {
+      std::lock_guard<std::mutex> guard(m_sesions_lock);
+
+      t_sid sid ( sp->unique_id() );
+      auto it = m_sessions.find(sid);
+
+      if (it != m_sessions.end())
+        m_sessions.erase( it );
+    }
+  }
+}
+
+
+std::future<void> dealer_service::close()
+{
+  // ANY thread
+
+  {
+    std::lock_guard<std::mutex> guard(m_sesions_lock);
+    for (auto & item : m_sessions)
+    {
+      item.second->close();
+    }
+  }
+
+  // TODO: next, need to remove all listen sockets we have
+
+  return m_promise_on_close.get_future();
+}
+
+void dealer_service::check_has_closed()
+{
+  // TODO: perform state check to see if all resources this class is responsible
+  // for have closed, in which case we can set the close promise
+
+  size_t num_sessions;
+  {
+    std::lock_guard<std::mutex> guard(m_sesions_lock);
+    num_sessions = m_sessions.size();
+  }
+
+  if (num_sessions == 0)
+  {
+    m_promise_on_close.set_value();
+  }
 }
 
 } // namespace

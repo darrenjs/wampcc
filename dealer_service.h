@@ -12,18 +12,23 @@
 namespace XXX {
 
   class kernel;
-  class dealer_service_impl;
+  class pubsub_man;
+  class rpc_man;
+  struct rpc_details;
 
 struct dealer_listener
 {
   virtual void rpc_registered(std::string uri) = 0;
 };
 
-class dealer_service
+class dealer_service : public std::enable_shared_from_this<dealer_service>
 {
 public:
   dealer_service(kernel & __svc, dealer_listener*);
   ~dealer_service();
+
+  /** Request asynchronous close */
+  std::future<void> close();
 
   // publish to an internal topic
   void publish(const std::string& topic,
@@ -43,10 +48,34 @@ public:
                           void * data);
 
 private:
+
+  void rpc_registered_cb(const rpc_details&);
+  void handle_inbound_call(wamp_session*,
+                           const std::string&,
+                           wamp_args args,
+                           wamp_invocation_reply_fn);
+
+  void handle_session_state_change(session_handle s, bool b);
+
+  void check_has_closed();
+
   dealer_service(const dealer_service&) = delete;
   dealer_service& operator=(const dealer_service&) = delete;
 
-  std::shared_ptr<dealer_service_impl> m_impl;
+  kernel & m_kernel;
+  logger & __logger; /* name chosen for log macros */
+
+  std::recursive_mutex m_lock;
+
+  std::unique_ptr<rpc_man> m_rpcman;
+  std::unique_ptr<pubsub_man> m_pubsub;
+
+  std::mutex m_sesions_lock;
+  std::map<t_sid, std::shared_ptr<wamp_session> > m_sessions;
+
+  std::promise< void > m_promise_on_close;
+
+  dealer_listener* m_listener;
 };
 
 } // namespace
