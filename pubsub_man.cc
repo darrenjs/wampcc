@@ -6,7 +6,7 @@
 #include "wamp_types.h"
 #include "wamp_session.h"
 #include "kernel.h"
-#include "wamp_utils.h"
+#include "utils.h"
 
 #include <list>
 #include <iostream>
