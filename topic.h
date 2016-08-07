@@ -108,8 +108,7 @@ public:
           m_event_handler.on_event(details, args_list, args_dict);
       };
 
-    jalson::json_object sub_options = { {"_p", 1} };
-    ws->subscribe(m_uri, std::move(sub_options), std::move(fn), nullptr);
+    ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
   }
 
 
