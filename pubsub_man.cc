@@ -1,5 +1,6 @@
 #include "pubsub_man.h"
 
+#include "topic.h"
 #include "event_loop.h"
 #include "log_macros.h"
 #include "WampTypes.h"
@@ -119,7 +120,7 @@ void pubsub_man::update_topic(const std::string& topic,
     return;
   }
 
-  if (options.find("_p") != options.end() && args.args_list.is_array())
+  if (options.find(KEY_PATCH) != options.end() && args.args_list.is_array())
   {
     // apply the patch
     std::cout << "@" << topic << ", patch\n";
@@ -223,7 +224,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   sptr->send_msg(subscribed_msg);
 
   /* for stateful topic must send initial snapshot */
-  if (options.find("_p") != options.end())
+  if (options.find(KEY_PATCH) != options.end())
   {
     XXX::wamp_args pub_args;
     pub_args.args_list = jalson::json_array();
@@ -238,8 +239,8 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
     pub_args.args_list.as_array().push_back(jalson::json_array()); // empty event
 
     jalson::json_object event_options;
-    event_options["_p"] = options["_p"];
-    event_options["_snap"] = 1;
+    event_options[KEY_PATCH] = options[KEY_PATCH];
+    event_options[KEY_SNAPSHOT] = 1;
     jalson::json_array snapshot_msg;
     snapshot_msg.reserve(5);
     snapshot_msg.push_back( EVENT );

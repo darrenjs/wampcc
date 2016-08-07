@@ -91,13 +91,11 @@ template<typename T>
 class model_subscription
 {
 public:
-  const std::string& topic_uri() { return m_uri; }
-
   model_subscription(std::shared_ptr<XXX::wamp_session>& ws,
                      std::string uri,
                      T handler)
     : m_uri( std::move(uri) ),
-      m_event_handler( handler )
+      m_event_handler( std::move(handler) )
   {
     auto fn = [=](XXX::subscription_event_type evtype,
                   const std::string& /*uri*/,
@@ -114,15 +112,27 @@ public:
     ws->subscribe(m_uri, std::move(sub_options), std::move(fn), nullptr);
   }
 
+
+  template<typename... MArgs>
+  model_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+                     std::string uri,
+                     MArgs&... args)
+    : model_subscription( ws, uri, T( args... ) )
+  {
+  }
+
+  const std::string& topic_uri() const { return m_uri; }
+
 private:
-  std::string  m_uri;
+  std::string m_uri;
   T m_event_handler;
 };
 
 
 
-struct basic_list
+class basic_list
 {
+public:
   typedef std::vector< jalson::json_value > internal_impl ;
 
   struct list_events
@@ -172,7 +182,7 @@ private:
 
 /* Handle a subscription to a basic list source.  Converts JSON patches into
  * object actions.  */
-template<typename T>
+template<typename T = basic_list>
 class basic_list_subscription_handler
 {
 public:
@@ -186,6 +196,9 @@ public:
                 const jalson::json_array&  args_list,
                 const jalson::json_object& args_dict);
 
+  T& target() { return m_target; }
+
+private:
   T&  m_target;
 };
 
@@ -233,7 +246,6 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
         patch->at(0).is_object()
       )
     {
-
       auto it = patch->at(0).as_object().find("value");
       if (it != patch->at(0).as_object().end())
       {
