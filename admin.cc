@@ -399,15 +399,16 @@ int main(int argc, char** argv)
   my_list.add_observer(obs);
 
 
-  XXX::basic_list_subscription_handler<XXX::basic_list>  h2( my_list );
-  XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list> >
-    sub_planets2(ws, "planets", h2 );
+  // XXX::basic_list_subscription_handler<XXX::basic_list>  h2( my_list );
+  // XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list> >
+  //   sub_planets2(ws, "planets", h2 );
+
+  XXX::model_subscription< XXX::basic_list_subscription_handler<> >
+    sub_planets3(ws, "planets", my_list);
 
 
-
-  // subscribe
-  jalson::json_object sub_options;
-  sub_options["_p"]=1;
+  // subscribe to user topics
+  jalson::json_object sub_options { {KEY_PATCH, 1} };
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
     ws->subscribe(topic, sub_options, subscribe_cb, nullptr);
