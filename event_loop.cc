@@ -1,9 +1,9 @@
 #include "event_loop.h"
 
-#include "Callbacks.h"
+#include "callbacks.h"
 #include "rpc_man.h"
 #include "pubsub_man.h"
-#include "WampTypes.h"
+#include "wamp_types.h"
 #include "log_macros.h"
 #include "utils.h"
 

@@ -1,8 +1,8 @@
 #ifndef XXX_RPC_MAN_H
 #define XXX_RPC_MAN_H
 
-#include "WampTypes.h"
-#include "Callbacks.h"
+#include "wamp_types.h"
+#include "callbacks.h"
 #include "wamp_session.h"
 
 #include <jalson/jalson.h>
