@@ -278,13 +278,8 @@ void wamp_session::io_on_read_impl(char* src, size_t len)
       len -= bytes_to_consume;
       m_bytes_avail += bytes_to_consume;
 
-
-      /* TODO: a problem that might occur here is that a bad message will be
-       * recieved, like 'XXXX' for the length, and we will need to then wait until
-       * we get that many bytes until we can move onto processing the message and
-       * discovering it is a bad protocol. So need to beable to switch on some kind
-       * of logging here. */
-
+      if ((HEADERLEN+msglen) > m_buf_size)
+        throw session_error(WAMP_RUNTIME_ERROR, "inbound message will exceed buffer");
 
       /* process the data in the working buffer */
 
@@ -317,7 +312,7 @@ void wamp_session::io_on_read_impl(char* src, size_t len)
     }
     else
     {
-      throw session_error(WAMP_RUNTIME_ERROR, "msg buffer full");
+      throw session_error(WAMP_RUNTIME_ERROR, "receive message buffer full");
     }
   }
 }
