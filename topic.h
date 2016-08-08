@@ -1,7 +1,7 @@
 #ifndef XXX_TOPIC_H
 #define XXX_TOPIC_H
 
-#include "callbacks.h"
+#include "types.h"
 #include "utils.h"
 #include "wamp_session.h"
 

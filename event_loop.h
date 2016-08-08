@@ -1,7 +1,7 @@
 #ifndef XXX_EVENT_LOOP_H
 #define XXX_EVENT_LOOP_H
 
-#include "wamp_types.h"
+#include "types.h"
 
 #include <chrono>
 #include <condition_variable>

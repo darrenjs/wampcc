@@ -1,9 +1,9 @@
 #ifndef XXX_PUBSUB_MAN_H
 #define XXX_PUBSUB_MAN_H
 
-#include "callbacks.h"
+#include "types.h"
 
-#include "jalson/jalson.h"
+#include <jalson/jalson.h>
 
 #include <map>
 #include <memory>

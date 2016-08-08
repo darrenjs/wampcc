@@ -1,7 +1,7 @@
 #ifndef XXX_IOLOOP_H
 #define XXX_IOLOOP_H
 
-#include "callbacks.h"
+#include "types.h"
 
 #include <thread>
 #include <vector>

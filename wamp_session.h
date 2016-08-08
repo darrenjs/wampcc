@@ -1,7 +1,7 @@
 #ifndef XXX_SESSION_H
 #define XXX_SESSION_H
 
-#include "callbacks.h"
+#include "types.h"
 
 #include "io_listener.h"
 

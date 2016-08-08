@@ -2,7 +2,6 @@
 
 #include "io_handle.h"
 #include "rpc_man.h"
-#include "wamp_types.h"
 #include "event_loop.h"
 #include "log_macros.h"
 #include "utils.h"

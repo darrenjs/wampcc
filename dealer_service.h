@@ -1,7 +1,6 @@
 #ifndef XXX_DEALER_SERVICE_H
 #define XXX_DEALER_SERVICE_H
 
-#include "callbacks.h"
 #include "wamp_session.h"
 
 #include <jalson/jalson.h>
