@@ -1,11 +1,11 @@
-#include "wamp_session.h"
+#include "XXX/wamp_session.h"
 
-#include "io_handle.h"
-#include "rpc_man.h"
-#include "event_loop.h"
-#include "log_macros.h"
-#include "utils.h"
-#include "kernel.h"
+#include "XXX/io_handle.h"
+#include "XXX/rpc_man.h"
+#include "XXX/event_loop.h"
+#include "XXX/log_macros.h"
+#include "XXX/utils.h"
+#include "XXX/kernel.h"
 
 #include <jalson/jalson.h>
 

@@ -1,12 +1,12 @@
-#include "dealer_service.h"
+#include "XXX/dealer_service.h"
 
-#include "kernel.h"
-#include "rpc_man.h"
-#include "pubsub_man.h"
-#include "event_loop.h"
-#include "io_loop.h"
-#include "io_handle.h"
-#include "log_macros.h"
+#include "XXX/kernel.h"
+#include "XXX/rpc_man.h"
+#include "XXX/pubsub_man.h"
+#include "XXX/event_loop.h"
+#include "XXX/io_loop.h"
+#include "XXX/io_handle.h"
+#include "XXX/log_macros.h"
 
 #include <unistd.h>
 #include <string.h>

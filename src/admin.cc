@@ -1,12 +1,12 @@
 
-#include "event_loop.h"
-#include "kernel.h"
-#include "topic.h"
-#include "io_loop.h"
-#include "io_handle.h"
-#include "io_connector.h"
-#include "wamp_session.h"
-#include "log_macros.h"
+#include "XXX/event_loop.h"
+#include "XXX/kernel.h"
+#include "XXX/topic.h"
+#include "XXX/io_loop.h"
+#include "XXX/io_handle.h"
+#include "XXX/io_connector.h"
+#include "XXX/wamp_session.h"
+#include "XXX/log_macros.h"
 
 #include <sstream>
 #include <condition_variable>
@@ -17,9 +17,7 @@
 
 #include <unistd.h>
 #include <string.h>
-
 #include <sys/time.h>
-
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
 

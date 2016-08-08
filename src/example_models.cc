@@ -1,12 +1,9 @@
-#include "example_models.h"
+#include "XXX/example_models.h"
 
 #include <iostream>
 
 #include <unistd.h>
 #include <sys/time.h>
-
-
-
 
 static std::string get_timestamp()
 {

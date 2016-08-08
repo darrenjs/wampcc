@@ -1,9 +1,9 @@
-#include "rpc_man.h"
+#include "XXX/rpc_man.h"
 
-#include "event_loop.h"
-#include "kernel.h"
-#include "log_macros.h"
-#include "wamp_session.h"
+#include "XXX/event_loop.h"
+#include "XXX/kernel.h"
+#include "XXX/log_macros.h"
+#include "XXX/wamp_session.h"
 
 #include <memory>
 

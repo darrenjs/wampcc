@@ -1,11 +1,11 @@
-#include "pubsub_man.h"
+#include "XXX/pubsub_man.h"
 
-#include "topic.h"
-#include "event_loop.h"
-#include "log_macros.h"
-#include "wamp_session.h"
-#include "kernel.h"
-#include "utils.h"
+#include "XXX/topic.h"
+#include "XXX/event_loop.h"
+#include "XXX/log_macros.h"
+#include "XXX/wamp_session.h"
+#include "XXX/kernel.h"
+#include "XXX/utils.h"
 
 #include <list>
 #include <iostream>

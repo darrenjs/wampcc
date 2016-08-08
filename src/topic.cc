@@ -1,7 +1,7 @@
-#include "topic.h"
+#include "XXX/topic.h"
 
-#include "wamp_session.h"
-#include "dealer_service.h"
+#include "XXX/wamp_session.h"
+#include "XXX/dealer_service.h"
 
 #include <iostream>
 #include <memory>

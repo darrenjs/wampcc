@@ -1,10 +1,10 @@
 
 
-#include <topic.h>
-#include <dealer_service.h>
-#include <log_macros.h>
-#include <kernel.h>
-#include "example_models.h"
+#include "XXX/topic.h"
+#include "XXX/dealer_service.h"
+#include "XXX/log_macros.h"
+#include "XXX/kernel.h"
+#include "XXX/example_models.h"
 
 #include <condition_variable>
 #include <iostream>
