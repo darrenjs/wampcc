@@ -79,6 +79,7 @@ AM_CONDITIONAL([USE_ADMINSTATIC], [test x"$enable_adminstatic" = x"yes" ])
 AC_CONFIG_FILES([
 Makefile
 src/Makefile
+lib/Makefile
 ])
 
 # Trigger the generation of our makefiles
