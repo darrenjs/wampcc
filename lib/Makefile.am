@@ -36,15 +36,6 @@ AM_LDFLAGS=-lpthread
 # installed, then we should use the prefix "noinst_".
 lib_LTLIBRARIES = libXXX.la
 
-bin_PROGRAMS = admin client
-
-admin_SOURCES=admin.cc
-admin_LDADD=-lXXX -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
-
-client_SOURCES=client.cc
-client_LDADD=-lXXX -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
-
-
 # The "include_" prefix includes a list of headers to be installed.  The
 # "nobase_" additional prefix means the directory names are copied too.
 nobase_include_HEADERS = XXX/types.h XXX/kernel.h		\

@@ -20,15 +20,14 @@ AC_LANG([C++])
 
 AC_CONFIG_MACRO_DIR([m4])
 
+# AM_PROG_AR not defined on redhat6
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
 # initialise libtool support
 LT_INIT
 
 #========== Checks for programs ==========
 
-
-# AM_PROG_AR not defined on redhat6
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 
 
 AC_PROG_CXX
