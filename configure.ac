@@ -16,7 +16,7 @@ AC_CONFIG_HEADERS([config.h])
 
 AC_PROG_CXX
 AC_LANG([C++])
-AM_PROG_AR
+
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -25,6 +25,11 @@ AC_CONFIG_MACRO_DIR([m4])
 LT_INIT
 
 #========== Checks for programs ==========
+
+
+# AM_PROG_AR not defined on redhat6
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+
 
 AC_PROG_CXX
 AC_PROG_CC
@@ -78,5 +83,3 @@ src/Makefile
 
 # Trigger the generation of our makefiles
 AC_OUTPUT
-
-

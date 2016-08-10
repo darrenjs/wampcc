@@ -221,10 +221,15 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
     event = &args_list[1].as_array();
   // TODO: check details; needs to have { ... "_p": 1 ... }
 
+  if ( patch &&
+       (patch->size()==1) &&
+       ( details.find(KEY_SNAPSHOT) != details.end() ) && // is snapshot
+       patch->operator[](0).is_object()
+    )
 
   if ( patch &&
        (patch->size()==1) &&
-       ( details.find("_snap") != details.end() ) && // is snapshot
+       ( details.find(KEY_SNAPSHOT) != details.end() ) && // is snapshot
        patch->operator[](0).is_object()
     )
   {
