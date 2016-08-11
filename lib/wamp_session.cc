@@ -1273,40 +1273,37 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
   jalson::json_object & options = msg[2].as_object();
 
   wamp_call orig_call;
-  bool found = false;
 
   {
     std::unique_lock<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_call.find( request_id );
     if (iter != m_pending_call.end())
     {
-      found = true;
       orig_call = std::move(iter->second);
       m_pending_call.erase(iter);
     }
-  }
-
-  if (found)
-  {
-    if (orig_call.user_cb && user_cb_allowed())
+    else
     {
-      wamp_call_result r;
-      r.was_error = false;
-      r.procedure = orig_call.rpc;
-      r.user = orig_call.user_data;
-      if (msg.size()>3) r.args.args_list  = std::move(msg[3]);
-      if (msg.size()>4) r.args.args_dict  = msg[4];
-      r.details = options;
-
-      try {
-        if (user_cb_allowed()) orig_call.user_cb(std::move(r));
-      }
-      catch(...){ log_exception(__logger, "inbound result user callback"); }
+      LOG_WARN("ignoring result for unknown call, request_id " << request_id);
     }
   }
-  else
+
+  if (orig_call.user_cb && user_cb_allowed())
   {
-    LOG_WARN("TODO: throw exception here");
+    wamp_call_result r;
+    r.was_error = false;
+    r.procedure = orig_call.rpc;
+    r.user = orig_call.user_data;
+    if (msg.size()>3) r.args.args_list = std::move(msg[3]);
+    if (msg.size()>4) r.args.args_dict = msg[4];
+    r.details = options;
+
+    try {
+      if (user_cb_allowed()) orig_call.user_cb(std::move(r));
+    }
+    catch(...) {
+      log_exception(__logger, "inbound result user callback");
+    }
   }
 
 }
