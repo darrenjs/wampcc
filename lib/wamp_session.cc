@@ -881,14 +881,12 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 //----------------------------------------------------------------------
 
 /* In here have taken approach of doing the session open notification via the
- * event loop.  This sticks to the principle of minimising the actions tahken in
- * the IO thread. It can also be the start of a nice event model, because the
- * first event the event loop should see, for a session, is the session open
- * event.
+ * event loop.  This sticks to the principle of minimising the actions taken in
+ * the IO thread.
  */
 void wamp_session::notify_session_state_change(bool is_open)
 {
-  /* IO thread */    // <------ TODO?? doesn't need to be?
+  /* EV thread */
 
   if (m_notify_state_change_fn)
   {
@@ -1339,16 +1337,17 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
           }
         }
 
-        std::cout << "TODO: here need to call the incoation reply_fn\n";
         wamp_args args;
-        if ( msg.size() > 5 ) args.args_list = msg[5];
-        if ( msg.size() > 6 ) args.args_dict = msg[6];
+        if ( msg.size() > 5 ) args.args_list = std::move(msg[5]);
+        if ( msg.size() > 6 ) args.args_dict = std::move(msg[6]);
         std::unique_ptr<std::string> error_ptr( new std::string(error_uri) );
 
         try
         {
           orig_request.reply_fn(args, std::move(error_ptr));
-        } catch (...){ log_exception(__logger, "inbound invocation error user callback"); }
+        } catch (...) {
+          log_exception(__logger, "inbound invocation error user callback");
+        }
 
         break;
       }
@@ -1386,8 +1385,8 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
             r.error_uri = error_uri;
             r.procedure = orig_call.rpc;
             r.user = orig_call.user_data;
-            // TODO: improve args handling
-            r.args.args_list  = msg[5];
+            if ( msg.size() > 5 ) r.args.args_list = msg[5];
+            if ( msg.size() > 6 ) r.args.args_list = msg[6];
             r.details = details;
 
             try {
