@@ -226,12 +226,6 @@ void basic_list_subscription_handler<T>::on_event(const jalson::json_object& det
        ( details.find(KEY_SNAPSHOT) != details.end() ) && // is snapshot
        patch->operator[](0).is_object()
     )
-
-  if ( patch &&
-       (patch->size()==1) &&
-       ( details.find(KEY_SNAPSHOT) != details.end() ) && // is snapshot
-       patch->operator[](0).is_object()
-    )
   {
     const jalson::json_object & patch_replace = patch->operator[](0).as_object();
     const jalson::json_object & patch_value   = jalson::get_ref(patch_replace, "value").as_object();
