@@ -27,14 +27,11 @@ AM_CPPFLAGS =  -I$(top_srcdir)/lib -I$(LIBUVHOME)/include -I$(JALSONHOME)/includ
 AM_LDFLAGS=-lpthread
 
 
-bin_PROGRAMS = admin
+bin_PROGRAMS = admin client
 
 admin_SOURCES=admin.cc
 admin_LDADD=-L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 admin_LDFLAGS=-L../lib -pthread
-
-
-bin_PROGRAMS = client
 
 client_SOURCES=client.cc
 client_LDADD=-L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
