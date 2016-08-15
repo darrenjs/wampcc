@@ -45,7 +45,8 @@ XXX/topic.h
 # List the sources for an individual library
 libXXX_la_SOURCES = dealer_service.cc event_loop.cc example_models.cc		\
 io_connector.cc io_handle.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc	\
-topic.cc utils.cc wamp_session.cc
+topic.cc utils.cc wamp_session.cc protocol.cc rawsocket_protocol.cc			\
+websocket_protocol.cc
 
 # Include compile and link flags for an individual library.
 #

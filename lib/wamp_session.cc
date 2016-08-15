@@ -1,11 +1,13 @@
 #include "XXX/wamp_session.h"
 
 #include "XXX/io_handle.h"
+#include "XXX/protocol.h"
 #include "XXX/rpc_man.h"
 #include "XXX/event_loop.h"
 #include "XXX/log_macros.h"
 #include "XXX/utils.h"
 #include "XXX/kernel.h"
+#include "XXX/rawsocket_protocol.h"
 
 #include <jalson/jalson.h>
 
@@ -40,16 +42,6 @@ public:
     uri( __uri )
   {
   }
-
-};
-
-class bad_protocol : public session_error
-{
-public:
-  bad_protocol(std::string msg)
-    : session_error(WAMP_ERROR_BAD_PROTOCOL,
-                    std::move(msg))
-  {}
 
 };
 
@@ -88,19 +80,55 @@ static void check_size_at_least(size_t msg_len, size_t s)
     m_sid( generate_unique_session_id() ),
     m_handle( std::move(h) ),
     m_shfut_has_closed(m_has_closed.get_future()),
-    m_hb_intvl(1),
+    m_hb_intvl(m_kernel.get_config().use_wamp_heartbeats?60:0),
     m_time_create(time(NULL)),
     m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
-    m_buf_size(__kernel.get_config().socket_buffer_max_size_bytes),
-    m_buf_size_max(__kernel.get_config().socket_buffer_max_size_bytes),
-    m_buf( new char[ m_buf_size ] ),
-    m_bytes_avail(0),
     m_is_passive(is_passive),
     m_auth_proivder(std::move(auth)),
     m_notify_state_change_fn(state_cb),
-    m_server_handler(handler)
-{
+    m_server_handler(handler),
+    m_proto(
+      new factory_protocol(
+        m_handle.get(),
+        [this](jalson::json_array msg, int messasge_type)
+        {
+          /* process on the EV thread */
+          std::weak_ptr<wamp_session> wp = handle();
+          std::function<void()> fn = [wp,msg,messasge_type]() mutable
+            {
+              if (auto sp = wp.lock())
+                sp->process_message(messasge_type, msg);
+            };
+          m_kernel.get_event_loop()->dispatch(std::move(fn));
+        },
+        [this](std::unique_ptr<protocol> up, char* buf, size_t)
+        {
+          /* IO thread */
+          auto temp = std::move(m_proto);
+          m_proto = std::move(up);
+
+          auto interval = m_proto->required_timer_callback_interval_ms();
+          if (interval)
+          {
+            std::weak_ptr<wamp_session> wp = this->handle();
+            this->m_kernel.get_event_loop()->dispatch(
+              std::chrono::milliseconds(interval),
+              [wp, interval]()
+              {
+                 if (auto sp = wp.lock())
+                 {
+                   sp->m_proto->ev_on_timer();
+                   return interval;
+                 }
+                 else return 0;
+              });
+
+
+          }
+
+        } ) )
+  {
 }
 
 
@@ -120,7 +148,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
   // constructor
   sp->m_handle->start_read( sp );
 
-  // set up a timer to expire close this session if it has not been successfully
+  // set up a timer to expire this session if it has not been successfully
   // opened with a maximum time duration
   std::weak_ptr<wamp_session> wp = sp;
   k.get_event_loop()->dispatch(
@@ -132,6 +160,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
         if (sp->is_pending_open())
           sp->abort_connection("wamp.error.logon_timeout");
       }
+      return 0;
     });
 
   return sp;
@@ -142,8 +171,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
 wamp_session::~wamp_session()
 {
   // note: dont log in here, just in case logger has been deleted
-  std::cout << "wamp_session::~wamp_session\n";
-  delete [] m_buf;
+  //  std::cout << "wamp_session::~wamp_session\n";
 }
 
 //----------------------------------------------------------------------
@@ -215,20 +243,24 @@ void wamp_session::io_on_read(char* src, size_t len)
   std::string temp(src,len);
   std::cout << "recv: bytes " << len << ": " << temp << "\n";
 
-
-  bool have_error = true;
   std::string err_uri;
   std::string err_text;
 
   try
   {
-    io_on_read_impl(src, len);
-    have_error = false;
+    return m_proto->io_on_read(src,len);
   }
   catch ( session_error& e )
   {
     err_uri  = std::move(e.uri);
     err_text = e.what();
+  }
+  catch ( bad_protocol& e )
+  {
+    LOG_WARN("closing session due to protocol error: "
+             << e.what());
+    this->close();
+    return;
   }
   catch ( std::exception& e )
   {
@@ -240,117 +272,115 @@ void wamp_session::io_on_read(char* src, size_t len)
     err_uri = WAMP_RUNTIME_ERROR;
   }
 
-  if (have_error)
-  {
-    LOG_ERROR("session_error: uri=" << err_uri
-            << ", text=" << err_text);
-    try
-    {
-      // TODO: this does not seem to get sent.  Probably the socket is getting
-      // closed before the message is written.
-      jalson::json_array msg;
-      jalson::json_object error_dict;
-      msg.push_back( GOODBYE );
-      msg.push_back( jalson::json_object() );
-      msg.push_back( err_uri );
-      this->send_msg( msg );
-    } catch (...){ log_exception(__logger, "send_msg for outbound goodbye"); }
-
-    this->close();
-  }
-
-}
-
-
-void wamp_session::io_on_read_impl(char* src, size_t len)
-{
-  /* IO thread */
-
-  while (len > 0)
-  {
-    size_t buf_space_avail = m_buf_size - m_bytes_avail;
-    if (buf_space_avail)
-    {
-      size_t bytes_to_consume = std::min(buf_space_avail, len);
-      memcpy(m_buf + m_bytes_avail, src, bytes_to_consume);
-      src += bytes_to_consume;
-      len -= bytes_to_consume;
-      m_bytes_avail += bytes_to_consume;
-
-      /* process the data in the working buffer */
-
-      char* ptr = m_buf;
-      while (m_bytes_avail)
-      {
-        if (m_bytes_avail < HEADERLEN) break; // header incomplete
-
-        // quick protocol check
-        if (m_bytes_avail > HEADERLEN)
-        {
-          char firstchar = *(ptr + HEADERLEN);
-          if (firstchar != '[')
-            throw bad_protocol("bad json message");
-        }
-
-        uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
-        if (m_bytes_avail < (HEADERLEN+msglen)) break; // body incomplete
-
-        if ((HEADERLEN+msglen) > m_buf_size)
-          throw session_error(WAMP_RUNTIME_ERROR, "inbound message will exceed buffer");
-
-        // we have enough bytes to decode
-        this->decode_and_process(ptr+HEADERLEN, msglen);
-
-        // skip to start of next message
-        ptr           += (HEADERLEN+msglen);
-        m_bytes_avail -= (HEADERLEN+msglen);
-      }
-
-      /* move any left over bytes to the head of the buffer */
-      if (m_bytes_avail && (m_buf != ptr)) memmove(m_buf, ptr, m_bytes_avail);
-    }
-    else
-    {
-      throw session_error(WAMP_RUNTIME_ERROR, "receive message buffer full");
-    }
-  }
-}
-//----------------------------------------------------------------------
-
-void wamp_session::decode_and_process(char* ptr, size_t msglen)
-{
-  /* IO thread */
-
+  LOG_WARN("session_error: uri=" << err_uri
+           << ", text=" << err_text);
   try
   {
-    jalson::json_value jv;
-    jalson::decode(jv, ptr, msglen);
+    // TODO: this does not seem to get sent.  Probably the socket is getting
+    // closed before the message is written.
+    jalson::json_array msg;
+    jalson::json_object error_dict;
+    msg.push_back( GOODBYE );
+    msg.push_back( jalson::json_object() );
+    msg.push_back( err_uri );
+    this->send_msg( msg );
+  } catch (...){ log_exception(__logger, "send_msg for outbound goodbye"); }
 
-    /* sanity check message */
-    jalson::json_array& msg = jv.as_array();
+  this->close();
 
-    if (msg.size() == 0)
-      throw bad_protocol( "json array empty");
 
-    if (!msg[0].is_uint())
-      throw bad_protocol("message type must be uint");
-    unsigned int messasge_type = msg[0].as_uint();
-
-    /* process on the EV thread */
-    std::weak_ptr<wamp_session> wp = handle();
-    std::function<void()> fn = [wp,msg,messasge_type]() mutable
-      {
-        if (auto sp = wp.lock())
-          sp->process_message(messasge_type, msg);
-      };
-    m_kernel.get_event_loop()->dispatch(std::move(fn));
-
-  }
-  catch( const jalson::json_error& e)
-  {
-    throw bad_protocol(e.what());
-  }
 }
+
+
+// void wamp_session::io_on_read_impl(char* src, size_t len)
+// {
+//   /* IO thread */
+
+//   while (len > 0)
+//   {
+//     size_t buf_space_avail = m_buf_size - m_bytes_avail;
+//     if (buf_space_avail)
+//     {
+//       size_t bytes_to_consume = std::min(buf_space_avail, len);
+//       memcpy(m_buf + m_bytes_avail, src, bytes_to_consume);
+//       src += bytes_to_consume;
+//       len -= bytes_to_consume;
+//       m_bytes_avail += bytes_to_consume;
+
+//       /* process the data in the working buffer */
+
+//       char* ptr = m_buf;
+//       while (m_bytes_avail)
+//       {
+//         if (m_bytes_avail < HEADERLEN) break; // header incomplete
+
+//         // quick protocol check
+//         if (m_bytes_avail > HEADERLEN)
+//         {
+//           char firstchar = *(ptr + HEADERLEN);
+//           if (firstchar != '[')
+//             throw bad_protocol("bad json message");
+//         }
+
+//         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
+//         if (m_bytes_avail < (HEADERLEN+msglen)) break; // body incomplete
+
+//         if ((HEADERLEN+msglen) > m_buf_size)
+//           throw session_error(WAMP_RUNTIME_ERROR, "inbound message will exceed buffer");
+
+//         // we have enough bytes to decode
+//         this->decode_and_process(ptr+HEADERLEN, msglen);
+
+//         // skip to start of next message
+//         ptr           += (HEADERLEN+msglen);
+//         m_bytes_avail -= (HEADERLEN+msglen);
+//       }
+
+//       /* move any left over bytes to the head of the buffer */
+//       if (m_bytes_avail && (m_buf != ptr)) memmove(m_buf, ptr, m_bytes_avail);
+//     }
+//     else
+//     {
+//       throw session_error(WAMP_RUNTIME_ERROR, "receive message buffer full");
+//     }
+//   }
+// }
+
+
+// void wamp_session::decode_and_process(char* ptr, size_t msglen)
+// {
+//   /* IO thread */
+
+//   try
+//   {
+//     jalson::json_value jv;
+//     jalson::decode(jv, ptr, msglen);
+
+//     /* sanity check message */
+//     jalson::json_array& msg = jv.as_array();
+
+//     if (msg.size() == 0)
+//       throw bad_protocol( "json array empty");
+
+//     if (!msg[0].is_uint())
+//       throw bad_protocol("message type must be uint");
+//     unsigned int messasge_type = msg[0].as_uint();
+
+//     /* process on the EV thread */
+//     std::weak_ptr<wamp_session> wp = handle();
+//     std::function<void()> fn = [wp,msg,messasge_type]() mutable
+//       {
+//         if (auto sp = wp.lock())
+//           sp->process_message(messasge_type, msg);
+//       };
+//     m_kernel.get_event_loop()->dispatch(std::move(fn));
+
+//   }
+//   catch( const jalson::json_error& e)
+//   {
+//     throw bad_protocol(e.what());
+//   }
+// }
 
 //----------------------------------------------------------------------
 
@@ -498,6 +528,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
                 }
               }
             }
+            return 0;
           };
         m_kernel.get_event_loop()->dispatch( std::chrono::milliseconds(m_hb_intvl*1000), m_hb_func);
       }
@@ -667,31 +698,35 @@ void wamp_session::send_msg(jalson::json_array& jv, bool final)
 {
   if (m_state == eClosing || m_state == eClosed) return;
 
-  std::pair<const char*, size_t> bufs[2];
-
-  std::string msg ( jalson::encode( jv ) );
-
-  // write message length prefix
-  uint32_t msglen = htonl(  msg.size() );
-  bufs[0].first  = (char*)&msglen;
-  bufs[0].second = sizeof(msglen);
-
-
-  if (final)
-  {
-    // TODO: think about how to manage session shutdown
-    // m_is_closing = true;
-  }
-  else
-  {
-    // write message
-    bufs[1].first  = (const char*)msg.c_str();
-    bufs[1].second = msg.size();
-
-    m_handle->write_bufs(bufs, 2, final);
-  }
-
   update_state_for_outbound(jv);
+
+  m_proto->encode(jv);
+
+  // std::pair<const char*, size_t> bufs[2];
+
+  // std::string msg ( jalson::encode( jv ) );
+
+  // // write message length prefix
+  // uint32_t msglen = htonl(  msg.size() );
+  // bufs[0].first  = (char*)&msglen;
+  // bufs[0].second = sizeof(msglen);
+
+
+  // if (final)
+  // {
+  //   // TODO: think about how to manage session shutdown
+  //   // m_is_closing = true;
+  // }
+  // else
+  // {
+  //   // write message
+  //   bufs[1].first  = (const char*)msg.c_str();
+  //   bufs[1].second = msg.size();
+
+  //   m_handle->write_bufs(bufs, 2, final);
+  // }
+
+
 
 }
 
@@ -858,9 +893,16 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 
   if (digest == peer_digest)
   {
-    jalson::json_array msg;
-    msg.push_back( WELCOME );
-    msg.push_back( m_sid );
+    jalson::json_object details;
+    details["roles"] = jalson::json_object( {
+        {"broker", jalson::json_value::make_object()},
+        {"dealer", jalson::json_value::make_object()}} );
+
+    jalson::json_array msg {
+      WELCOME,
+        m_sid,
+        std::move( details )
+        };
 
     send_msg( msg );
 
@@ -930,18 +972,37 @@ void wamp_session::initiate_handshake(client_credentials cc)
 
   m_client_secret_fn = std::move( cc.secret_fn );
 
-  jalson::json_array msg;
-  msg.push_back( HELLO );
-  msg.push_back( cc.realm );
-  jalson::json_object& opt = jalson::append_object( msg );
-  opt[ "roles" ] = jalson::json_object();
-  opt[ "authid"] = std::move(cc.authid);
+  // TODO: the lambda callback is duplicated here.
+  m_proto.reset(
+    new rawsocket_protocol(m_handle.get(),
+                           [this](jalson::json_array msg, int messasge_type)
+                           {
+                             /* process on the EV thread */
+                             std::weak_ptr<wamp_session> wp = handle();
+                             std::function<void()> fn = [wp,msg,messasge_type]() mutable
+                               {
+                                 if (auto sp = wp.lock())
+                                   sp->process_message(messasge_type, msg);
+                               };
+                             m_kernel.get_event_loop()->dispatch(std::move(fn));
+                           },
+                           protocol::connection_mode::eActive));
 
-  jalson::json_array& ja = jalson::insert_array(opt, "authmethods");
-  for (auto item : cc.authmethods)
-    ja.push_back( std::move(item) );
+  auto initiate_cb = [this, cc]()
+    {
+      jalson::json_array msg { jalson::json_value(HELLO), jalson::json_value(cc.realm) };
+      jalson::json_object& opt = jalson::append_object( msg );
+      opt[ "roles" ] = jalson::json_object();
+      opt[ "authid"] = std::move(cc.authid);
 
-  this->send_msg( msg );
+      jalson::json_array& ja = jalson::insert_array(opt, "authmethods");
+      for (auto item : cc.authmethods)
+        ja.push_back( std::move(item) );
+
+      this->send_msg( msg );
+    };
+
+  m_proto->initiate(std::move(initiate_cb));
 }
 
 
@@ -1191,8 +1252,6 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
 
   const jalson::json_array  & args_list = ptr_args_list? ptr_args_list->as_array()  : jalson::json_array();
   const jalson::json_object & args_dict = ptr_args_dict? ptr_args_dict->as_object() : jalson::json_object();
-
-
 
   auto iter = m_subscriptions.find(subscription_id);
   if (iter !=m_subscriptions.end())
@@ -1733,6 +1792,7 @@ void wamp_session::abort_connection(std::string errmsg)
     [wp]()
     {
       if (auto sp = wp.lock()) sp->close();
+      return 0;
     });
 }
 

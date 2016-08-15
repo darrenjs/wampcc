@@ -2,7 +2,6 @@
 #define XXX_SESSION_H
 
 #include "types.h"
-
 #include "io_listener.h"
 
 #include <jalson/jalson.h>
@@ -14,6 +13,7 @@
 
 namespace XXX {
 
+  class protocol;
   class wamp_session;
 
 
@@ -152,7 +152,6 @@ namespace XXX {
 
     void io_on_close() override;
     void io_on_read(char*, size_t) override;
-    void io_on_read_impl(char*, size_t);
     void decode_and_process(char*, size_t len);
     void process_message(unsigned intmessage_type,
                          jalson::json_array&);
@@ -213,11 +212,6 @@ namespace XXX {
 
     mutable std::mutex m_request_lock;
     t_request_id m_next_request_id;
-
-    size_t  m_buf_size;
-    size_t  m_buf_size_max;
-    char *  m_buf;
-    size_t  m_bytes_avail;
 
     bool m_is_passive;
 
@@ -298,7 +292,8 @@ namespace XXX {
     std::map<t_request_id, procedure> m_procedures;
     std::map<t_subscription_id, subscription> m_subscriptions;
 
-    std::function<void()> m_hb_func;
+    std::function<int()> m_hb_func;
+    std::unique_ptr<protocol> m_proto;
   };
 
 } // namespace XXX
