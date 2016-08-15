@@ -13,7 +13,8 @@ struct event
   {
     e_null = 0,
     e_kill,
-    function_dispatch
+    function_dispatch,
+    timer_dispatch
   } type;
 
   event(Type t)
@@ -32,6 +33,16 @@ struct ev_function_dispatch : event
   {}
 
   std::function<void()> fn;
+};
+
+struct ev_timer_dispatch : event
+{
+  ev_timer_dispatch(std::function<int()> __fn) :
+    event(event::timer_dispatch),
+    fn(__fn)
+  {}
+
+  std::function<int ()> fn;
 };
 
 
@@ -81,10 +92,14 @@ void event_loop::dispatch(std::function<void()> fn)
 }
 
 
-void event_loop::dispatch(std::chrono::milliseconds delay, std::function<void()> fn)
+void event_loop::dispatch(std::chrono::milliseconds delay, std::function<int()> fn)
+{
+  dispatch(delay, std::make_shared<ev_timer_dispatch>(std::move(fn)));
+}
+
+void event_loop::dispatch(std::chrono::milliseconds delay, std::shared_ptr<event> sp)
 {
   auto tp_due = std::chrono::steady_clock::now() + delay;
-  auto sp     = std::make_shared<ev_function_dispatch>(std::move(fn));
   auto event  = std::make_pair(tp_due, std::move(sp));
 
   {
@@ -93,7 +108,6 @@ void event_loop::dispatch(std::chrono::milliseconds delay, std::function<void()>
     m_condvar.notify_one();
   }
 }
-
 // void event_loop::hb_check()
 // {
 //   auto tnow = std::chrono::steady_clock::now();
@@ -197,7 +211,26 @@ void event_loop::eventloop()
 
       try
       {
-        process_event( ev.get() );
+
+        switch ( ev->type )
+        {
+          case event::function_dispatch :
+          {
+            ev_function_dispatch * ev2 = dynamic_cast<ev_function_dispatch*>(ev.get());
+            ev2->fn();
+            break;
+          }
+          case event::timer_dispatch :
+          {
+            ev_timer_dispatch * ev2 = dynamic_cast<ev_timer_dispatch*>(ev.get());
+            int repeat_ms = ev2->fn();
+            if (repeat_ms) dispatch(std::chrono::milliseconds(repeat_ms), ev);
+            break;
+          }
+	        default: break;
+        }
+
+
       }
       catch ( const std::exception& ex)
       {
@@ -232,37 +265,6 @@ void event_loop::eventmain()
   }
 }
 
-//----------------------------------------------------------------------
-
-void event_loop::process_event(event * ev)
-{
-
-  switch ( ev->type )
-  {
-    case event::function_dispatch :
-    {
-      ev_function_dispatch * ev2 =  dynamic_cast<ev_function_dispatch*>(ev);
-      ev2->fn();
-      break;
-    }
-
-    default:
-    {
-      LOG_ERROR( "unsupported event type " << ev->type );
-    }
-  }
-
-}
-
-
-
-
-
-// void event_loop::add_hb_target(hb_func f)
-// {
-//   std::unique_lock<std::mutex> guard(m_hb_targets_mutex);
-//   m_hb_targets.push_back(std::move(f));
-// }
 
 
 } // namespace XXX

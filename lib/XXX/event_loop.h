@@ -29,7 +29,7 @@ public:
   void init();
 
   void dispatch(std::function<void()> fn);
-  void dispatch(std::chrono::milliseconds, std::function<void()> fn);
+  void dispatch(std::chrono::milliseconds, std::function<int()> fn);
 
   // void add_hb_target(hb_func);
 
@@ -41,7 +41,7 @@ private:
   void eventloop();
   void eventmain();
 
-  void process_event(event* e);
+  void dispatch(std::chrono::milliseconds, std::shared_ptr<event>);
 
   // void hb_check();
 
