@@ -222,4 +222,48 @@ bool uri_regex::is_strict_uri(const char* s) const
   return m_impl->matches(s);
 }
 
+std::string to_hex(const char * p,
+                   size_t size)
+{
+  static const char digits[] = "0123456789abcdef";
+  std::string s(size*2,' ');
+
+  for (size_t i = 0; i < size; ++i)
+  {
+    unsigned char uc = p[i];
+    s[i * 2 + 0] = digits[(uc & 0xF0) >> 4];
+    s[i * 2 + 1] = digits[(uc & 0x0F)];
+  }
+
+  return s;
+}
+
+
+std::list<std::string> tokenize(const char* src,
+                                char delim,
+                                bool want_empty_tokens)
+{
+  std::list<std::string> tokens;
+
+  if (src and *src != '\0')
+    while( true )  {
+      const char* d = strchr(src, delim);
+      size_t len = (d)? d-src : strlen(src);
+
+      if (len or want_empty_tokens)
+        tokens.push_back( { src, len } ); // capture token
+
+      if (d) src += len+1; else break;
+    }
+  return tokens;
+}
+
+
+bool case_insensitive_same(const std::string &lhs,
+                           const std::string &rhs)
+{
+  return strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
+}
+
+
 } // namespace XXX

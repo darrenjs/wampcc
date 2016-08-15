@@ -131,6 +131,40 @@ private:
   uint64_t m_next;
 };
 
+
+std::string to_hex(const char *p, size_t size);
+
+/*
+ * Tokenize a string based on a single delimiter.
+ *
+ * want_empty_tokens==true  : include empty tokens, like strsep()
+ * want_empty_tokens==false : exclude empty tokens, like strtok()
+ */
+std::list<std::string> tokenize(const char* src,
+                                char delim,
+                                bool include_empty_tokens);
+
+
+inline std::string trim(const std::string& s, const std::string& d = " \f\n\r\t\v")
+{
+  size_t f = s.find_first_not_of(d);
+  if (f == std::string::npos)
+    return std::string(); // string is all delims
+  else
+    return s.substr(f, 1+s.find_last_not_of(d)-f);
+}
+
+
+bool case_insensitive_same(const std::string &,
+                           const std::string &);
+
+
+inline char* skip_whitespace(char* str)
+{
+  while (std::isspace(*str)) ++str;
+  return str;
+}
+
 } // namespace XXX
 
 #endif
