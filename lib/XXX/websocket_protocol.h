@@ -6,17 +6,11 @@
 namespace XXX
 {
 
+class http_headers_parser;
 
 class websocket_protocol : public protocol
 {
 public:
-
-  struct frame
-  {
-    bool fin;
-    unsigned int opcode;
-    unsigned int payload_len;
-  };
 
   static constexpr const unsigned char HEADER_SIZE = 4; /* "GET " */
   static constexpr const char*               MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -37,19 +31,18 @@ public:
   void initiate(t_initiate_cb) override;
 
   void encode(const jalson::json_array& j) override;
+
 private:
-
-  size_t parse_http_handshake(char* const src, size_t const len);
-  bool m_get_found;
-  bool m_request_crlf_found;
-  std::map<std::string, std::string> m_http_headers;
-
 
   enum
   {
-    eServerHandshakeWait,
-    eServerHandshareSent
-  } state = eServerHandshakeWait;
+    eInvalid,
+    eHandlingHttpRequest, // server
+    eSendingHttpRequest, // client
+    eHandlingWebsocket
+  } m_state = eInvalid;
+
+  std::unique_ptr<http_headers_parser> m_http_parser;
 };
 
 

@@ -16,19 +16,81 @@ namespace XXX
 {
 
 
+ class http_headers_parser
+ {
+ public:
 
-websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode m)
-  : protocol(h, msg_cb, m),
-    m_get_found(false),
-    m_request_crlf_found(false)
-{
-}
+   static constexpr const unsigned char HEADER_SIZE = 4; /* "GET " */
+
+   size_t handle_input(char* const src, size_t const len)
+   {
+     char * first = src;
+     size_t consumed = 0;
+     for (char * ptr = first; ptr < (src+len-1); ++ptr)
+     {
+       if (ptr[0] == '\r' && ptr[1] == '\n')
+       {
+         ptr[0] = 0;
+         ptr[1] = 0;
+         consumed = ptr - src + 2;
+
+         first = skip_whitespace(first);
+         if (m_get_found == false && websocket_protocol::is_http_get(first, strlen(first)))
+         {
+           std::cout << "found GET: " << first << "\n";
+           m_get_found = true;
+         }
+         else if (first == ptr)
+         {
+           std::cout << "m_request_crlf_found" << "\n";
+           m_request_crlf_found = true;
+         }
+         else
+         {
+           char * second = strchr(first,':');
+           if (second != nullptr)
+           {
+             *second = '\0';
+             second = skip_whitespace(second+1);
+             std::cout << "found: " << first << " -- " << second << "\n";
+             m_http_headers.emplace(first, second);
+           }
+           else
+           {
+             std::cout << "unexpected line: " << first << "\n";
+           }
+         }
+         first = ptr + 2;
+         ptr++;
+       }
+     }
+
+     return consumed;
+   }
+
+   bool complete() const { return m_request_crlf_found; }
+
+
+   size_t count(const char* s) const { return m_http_headers.count(s); }
+   const std::string& get(const char* s)  { return m_http_headers[s]; }
+
+ private:
+   bool m_request_crlf_found = false;
+   bool m_get_found = false;
+   std::map<std::string, std::string> m_http_headers;
+ };
 
 
 bool websocket_protocol::is_http_get(const char* s, size_t len)
 {
-  if (len < HEADER_SIZE) return false;
-  return ( strncmp(s, "GET", 3)==0 && (s[3] == ' ' || s[3]=='\t'));
+  return ( (len > 3) &&  (strncmp(s, "GET", 3)==0) && isspace(s[3]) );
+}
+
+websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode m)
+  : protocol(h, msg_cb, m),
+    m_state(m==protocol::connection_mode::ePassive? eHandlingHttpRequest : eSendingHttpRequest),
+    m_http_parser(new http_headers_parser())
+{
 }
 
 
@@ -210,21 +272,21 @@ void websocket_protocol::io_on_read(char* src, size_t len)
     auto rd = m_buf.read_ptr();
     while (rd.avail())
     {
-      auto consumed = parse_http_handshake(rd.ptr(), rd.avail());
-      rd.advance(consumed);
-
-      if (state == eServerHandshakeWait)
+      if (m_state == eHandlingHttpRequest)
       {
-        if (m_request_crlf_found)
+        auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
+        rd.advance(consumed);
+
+        if (m_http_parser->complete())
         {
-          if ( m_http_headers.count("Connection")  &&
-               m_http_headers.count("Upgrade") &&
-               string_list_contains(m_http_headers["Connection"], "Upgrade") &&
-               m_http_headers.count("Sec-WebSocket-Key") &&
-               m_http_headers.count("Sec-WebSocket-Version") )
+          if ( m_http_parser->count("Connection")  &&
+               m_http_parser->count("Upgrade") &&
+               string_list_contains(m_http_parser->get("Connection"), "Upgrade") &&
+               m_http_parser->count("Sec-WebSocket-Key") &&
+               m_http_parser->count("Sec-WebSocket-Version") )
           {
             std::cout << "found expected" << "\n";
-            auto websocket_version = std::stoi(m_http_headers["Sec-WebSocket-Version"]);
+            auto websocket_version = std::stoi(m_http_parser->get("Sec-WebSocket-Version").c_str());
 
             // TODO: hande version 0 ?
 
@@ -234,7 +296,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               os << "HTTP/1.1 101 Switching Protocols" << "\r\n";
               os << "Upgrade: websocket" << "\r\n";
               os << "Connection: Upgrade" << "\r\n";
-              os << "Sec-WebSocket-Accept: " << make_accept_key(m_http_headers["Sec-WebSocket-Key"]) << "\r\n";
+              os << "Sec-WebSocket-Accept: " << make_accept_key(m_http_parser->get("Sec-WebSocket-Key")) << "\r\n";
               os << "\r\n";
 
               std::string msg = os.str();
@@ -243,7 +305,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               buf.second = msg.size();
               std::cout << "websocket header sent back\n";
               m_iohandle->write_bufs(&buf, 1, false);
-              state = eServerHandshareSent;
+              m_state = eHandlingWebsocket;
             }
             else
             {
@@ -252,7 +314,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           }
         }
       }
-      else
+      else if (m_state == eHandlingWebsocket)
       {
         if (rd.avail() < 2) break;
 
@@ -317,6 +379,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 
         rd.advance(frame_len);
       }
+      else
+      {
+        // TODO: abort the connection
+      }
 
     }
 
@@ -331,51 +397,7 @@ void websocket_protocol::initiate(t_initiate_cb)
 
 
 
-size_t websocket_protocol::parse_http_handshake(char* const src, size_t const len)
-{
-  char * first = src;
-  size_t consumed = 0;
-  for (char * ptr = first; ptr < (src+len-1); ++ptr)
-  {
-    if (ptr[0] == '\r' && ptr[1] == '\n')
-    {
-      ptr[0] = 0;
-      ptr[1] = 0;
-      consumed = ptr - src + 2;
 
-      first = skip_whitespace(first);
-      if (m_get_found == false && is_http_get(first, strlen(first)))
-      {
-        std::cout << "found GET: " << first << "\n";
-        m_get_found = true;
-      }
-      else if (first == ptr)
-      {
-        std::cout << "m_request_crlf_found" << "\n";
-        m_request_crlf_found = true;
-      }
-      else
-      {
-        char * second = strchr(first,':');
-        if (second != nullptr)
-        {
-          *second = '\0';
-          second = skip_whitespace(second+1);
-          std::cout << "found: " << first << " -- " << second << "\n";
-          m_http_headers.emplace(first, second);
-        }
-        else
-        {
-          std::cout << "unexpected line: " << first << "\n";
-        }
-      }
-      first = ptr + 2;
-      ptr++;
-    }
-  }
-
-  return consumed;
-}
 
 
 void websocket_protocol::ev_on_timer()
