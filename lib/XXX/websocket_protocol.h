@@ -21,7 +21,10 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
-  static bool is_http_get(const char*, size_t len);
+  static bool is_http_get(const char* s, size_t n)
+  {
+    return n>3 && s[0]=='G' && s[1]=='E' && s[2]=='T' && isspace(s[3]);
+  }
 
   websocket_protocol(io_handle*, t_msg_cb, connection_mode m);
 

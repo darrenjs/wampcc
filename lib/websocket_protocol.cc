@@ -81,11 +81,6 @@ namespace XXX
  };
 
 
-bool websocket_protocol::is_http_get(const char* s, size_t len)
-{
-  return ( (len > 3) &&  (strncmp(s, "GET", 3)==0) && isspace(s[3]) );
-}
-
 websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode m)
   : protocol(h, msg_cb, m),
     m_state(m==protocol::connection_mode::ePassive? eHandlingHttpRequest : eSendingHttpRequest),
