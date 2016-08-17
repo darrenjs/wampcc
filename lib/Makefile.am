@@ -1,29 +1,8 @@
-## Makefile.am -- Process this file with automake to produce Makefile.in
-##
-## This program is free software; you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation; either version 2, or (at your option)
-## any later version.
-##
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-## GNU General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with this program; if not, write to the Free Software
-## Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#XLOGHOME=/home/darrens/work/dev/src/c++/xlog/install
 
-# NOTE: AM_CPPFLAGS is ignored in preference to a per-executable (or
-# per-library) _CPPFLAGS variable if it is defined
-#
-# NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
-# choices should be made by the user when they invoke the configure script.
-#AM_CPPFLAGS = -I$(top_srcdir)/libcpp11  -Wall -g3 -ggdb  -I$(XLOGHOME)/include
-AM_CPPFLAGS =  -I$(LIBUVHOME)/include -I$(JALSONHOME)/include -Wall -g3 -ggdb -std=c++0x -O0
 
+AM_CPPFLAGS = -Wall -g3 -ggdb -I$(top_srcdir)/external/http_parser
+AM_CXXFLAGS = -I$(LIBUVHOME)/include -I$(JALSONHOME)/include -Wall  -std=c++11
 
 AM_LDFLAGS=-lpthread
 
@@ -46,7 +25,8 @@ XXX/topic.h
 libXXX_la_SOURCES = dealer_service.cc event_loop.cc example_models.cc		\
 io_connector.cc io_handle.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc	\
 topic.cc utils.cc wamp_session.cc protocol.cc rawsocket_protocol.cc			\
-websocket_protocol.cc
+websocket_protocol.cc ../external/http_parser/http_parser.c
+
 
 # Include compile and link flags for an individual library.
 #

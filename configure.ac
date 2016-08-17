@@ -9,7 +9,7 @@ AC_PREREQ([2.59])
 AC_CANONICAL_SYSTEM
 
 # Note: the -Wall here is for automake errors; is unrelated to gcc errors
-AM_INIT_AUTOMAKE([1.10 no-define -Wall foreign] )
+AM_INIT_AUTOMAKE([1.10 no-define -Wall foreign subdir-objects] )
 
 AC_CONFIG_HEADERS([config.h])
 
