@@ -158,7 +158,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
       if (auto sp = wp.lock())
       {
         if (sp->is_pending_open())
-          sp->abort_connection("wamp.error.logon_timeout");
+          sp->drop_connection("wamp.error.logon_timeout");
       }
       return 0;
     });
@@ -272,23 +272,8 @@ void wamp_session::io_on_read(char* src, size_t len)
     err_uri = WAMP_RUNTIME_ERROR;
   }
 
-  LOG_WARN("session_error: uri=" << err_uri
-           << ", text=" << err_text);
-  try
-  {
-    // TODO: this does not seem to get sent.  Probably the socket is getting
-    // closed before the message is written.
-    jalson::json_array msg;
-    jalson::json_object error_dict;
-    msg.push_back( GOODBYE );
-    msg.push_back( jalson::json_object() );
-    msg.push_back( err_uri );
-    this->send_msg( msg );
-  } catch (...){ log_exception(__logger, "send_msg for outbound goodbye"); }
-
-  this->close();
-
-
+  LOG_WARN("session_error: uri=" << err_uri << ", text=" << err_text);
+  drop_connection(err_uri);
 }
 
 
@@ -388,20 +373,8 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 {
   int message_type = msg[0].as_uint();
 
-  if (message_type == ABORT)
-  {
-    // TODO: this will close the socket too quickly, meaning the peer will not
-    // receive the abort message. Need to give the socket an opportunity to
-    // complete the write.
-    close();
-    return;
-  }
-
   if (m_is_passive)
   {
-    // TODO: in both this function, and its outbound equivalent, need to have
-    // support for CLOSE and ABORT messages.
-
     if (message_type == CHALLENGE)
     {
       change_state(eRecvHello, eSentChallenge);
@@ -516,7 +489,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
               {
                 if (sp->duration_since_last() > sp->hb_interval_secs()*MAX_HEARTBEATS_MISSED)
                 {
-                  sp->abort_connection("wamp.error.session_timeout");
+                  sp->drop_connection("wamp.error.session_timeout");
                 }
                 else
                 {
@@ -559,7 +532,7 @@ void wamp_session::process_message(unsigned int message_type,
 
     if (message_type == ABORT)
     {
-      LOG_WARN("received ABORT from peer");
+      LOG_WARN("received ABORT from peer, closing session");
       close();
       return;
     }
@@ -1776,15 +1749,22 @@ bool wamp_session::uses_heartbeats() const
 }
 
 
-void wamp_session::abort_connection(std::string errmsg)
+void wamp_session::drop_connection(std::string errmsg)
 {
-  LOG_WARN("aborting session #" << unique_id() << ", " << errmsg);
+  LOG_WARN("closing session #" << unique_id() << ", err: " << errmsg);
 
   jalson::json_array msg;
-  msg.push_back( ABORT );
+  if (is_open())
+    msg.push_back( GOODBYE );
+  else
+    msg.push_back( ABORT );
   msg.push_back( jalson::json_object() );
   msg.push_back( std::move(errmsg) );
-  send_msg( msg, true );
+  try
+  {
+    send_msg( msg, true );
+  }
+  catch (...) { /* ignore, we are closing anyway */ }
 
   std::weak_ptr<wamp_session> wp = handle();
   m_kernel.get_event_loop()->dispatch(

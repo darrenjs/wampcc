@@ -247,7 +247,7 @@ namespace XXX {
                           std::string error_uri);
 
 
-    void abort_connection(std::string);
+    void drop_connection(std::string);
 
     bool user_cb_allowed() const { return m_state != eClosed; }
 
