@@ -4,6 +4,7 @@
 #include "XXX/utils.h"
 #include "XXX/rawsocket_protocol.h"
 #include "XXX/websocket_protocol.h"
+#include "XXX/http_parser.h"
 
 
 #include <iostream>
@@ -153,7 +154,7 @@ void factory_protocol::io_on_read(char* src, size_t len)
       m_protocol_change_fn(std::move(up), m_buf.data(), m_buf.avail());
     }
     else if (rd.avail() >= websocket_protocol::HEADER_SIZE &&
-             websocket_protocol::is_http_get(rd.ptr(), rd.avail()))
+             http_parser::is_http_get(rd.ptr(), rd.avail()))
     {
 
       // switch protocol

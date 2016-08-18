@@ -6,7 +6,7 @@
 namespace XXX
 {
 
-class http_headers_parser;
+class http_parser;
 
 class websocket_protocol : public protocol
 {
@@ -21,10 +21,6 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
-  static bool is_http_get(const char* s, size_t n)
-  {
-    return n>3 && s[0]=='G' && s[1]=='E' && s[2]=='T' && isspace(s[3]);
-  }
 
   websocket_protocol(io_handle*, t_msg_cb, connection_mode m);
 
@@ -45,7 +41,7 @@ private:
     eHandlingWebsocket
   } m_state = eInvalid;
 
-  std::unique_ptr<http_headers_parser> m_http_parser;
+  std::unique_ptr<http_parser> m_http_parser;
 };
 
 
