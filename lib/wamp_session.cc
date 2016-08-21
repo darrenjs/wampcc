@@ -575,6 +575,10 @@ void wamp_session::process_message(unsigned int message_type,
           process_inbound_subscribe(ja);
           return;
 
+        case UNSUBSCRIBE :
+          // TODO: handle unsubscribe request
+          return;
+
         case REGISTER :
           process_inbound_register(ja);
           return;
