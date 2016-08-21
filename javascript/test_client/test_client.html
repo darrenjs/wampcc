@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>WAMP Test Client</title>
+    <meta name="description" content="WAMP Test Client">
+    <meta name="author" content="Darren Smith">
+    <link rel="stylesheet" href="js/pure-release-0.6.0/pure-min.css">
+
+    <!--[if lt IE 9]>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+    <![endif]-->
+
+    <style>
+      .main {
+        color: black;
+        padding-top: 1em;
+        padding-right: 2em;
+        padding-bottom: 2em;
+        padding-left: 2em;
+      }
+
+      .status-connected
+      {
+
+        font-weight: bold;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+
+        padding: 5px;
+        margin: 0px;
+        background: #00ED00;
+        border-radius: 5px;
+        font-size: inherit;
+        font-weight: inherit;
+        font-family: 'Courier New', Courier, monospace;
+        font-style: inherit;
+        text-decoration: inherit;
+        text-align: left;
+      }
+      .status-disconnected
+      {
+
+        font-weight: bold;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+
+        padding: 5px;
+        margin: 0px;
+        background: #ED0000;
+        border-radius: 5px;
+        font-size: inherit;
+        font-weight: inherit;
+        font-family: 'Courier New', Courier, monospace;
+        font-style: inherit;
+        text-decoration: inherit;
+        text-align: left;
+      }
+
+      .open   { color: green; }
+      .closed { color: red; }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        font-size: 0.95rem;
+      }
+
+      ul li {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #EEE;
+      }
+
+      ul li:first-child {
+        border-top: 1px solid #EEE;
+      }
+
+      ul li span {
+        /* display: inline-block;*/
+        width: 90px;
+        font-weight: bold;
+        color: #999;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: block;
+      }
+
+      .wampmsg {
+        padding: 3px;
+
+        margin: 10px;
+
+        background: rgb(223, 223, 223);
+
+        color: rgb(25,25,25);
+        font-size: inherit;
+        font-weight: inherit;
+        font-family: 'Courier New', Courier, monospace;
+        font-style: inherit;
+        text-decoration: inherit;
+        text-align: left;
+
+        line-height: 1.3em;
+      }
+
+      .sent {
+        font-weight: bold;
+        color: #999;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: block;
+        font-family: "monospace"
+      }
+
+    </style>
+
+  </head>
+
+  <body>
+    <script src="js/crypto-js/hmac-sha256.js"></script>
+    <script src="js/crypto-js/enc-base64-min.js"></script>
+
+    <script  type="text/javascript">
+
+      var wsUri = "ws://127.0.0.1:55555/";
+      var output;
+      var websocket;
+
+
+      var wamp_session =
+      {
+          requestid  : 0
+      };
+
+      wamp_session.reset = function()
+      {
+          wamp_session.requestid = 0;
+      };
+
+
+      function submitFunction(i)
+      {
+        var topicform = document.getElementById("topic-form");
+        topicform.buttonsource = i;
+      }
+
+
+      function createWebsocket()
+      {
+        websocket = new WebSocket(wampStatusElement = document.getElementById("wamp-server-url").value);
+        websocket.onopen = function(evt) {
+          onOpen(evt);
+        };
+        websocket.onclose = function(evt) {
+          onClose(evt);
+        };
+        websocket.onmessage = function(evt) {
+          onMessage(evt);
+        };
+        websocket.onerror = function(evt) {
+          onError(evt);
+        };
+      }
+
+
+      function init()
+      {
+        // TODO: check to see if websocket are supported
+        output = document.getElementById("output");
+      }
+
+
+      function onOpen(evt)
+      {
+        wampStatusElement = document.getElementById("wamp-status");
+        wampStatusElement.innerHTML = "Connected";
+
+        wampStatusElement.classList.remove("status-disconnected");
+        wampStatusElement.classList.add("status-connected");
+
+        wampStatusElement = document.getElementById("call-fieldset").disabled = false;
+        wampStatusElement = document.getElementById("call-button").disabled = false;
+
+        wampStatusElement = document.getElementById("topic-fieldset").disabled = false;
+        wampStatusElement = document.getElementById("topic-sub-button").disabled = false;
+        wampStatusElement = document.getElementById("topic-unsub-button").disabled = false;
+
+        writeEvent(null, "Connected");
+
+        wamp_session.reset();
+
+        setTimeout(sendWampHello, 200);
+      }
+
+      function onClose(evt)
+      {
+        wampStatusElement = document.getElementById("call-button").disabled = true;
+        wampStatusElement = document.getElementById("wamp-status");
+        wampStatusElement.innerHTML = "Disconnected";
+        wampStatusElement.classList.add("status-disconnected");
+        wampStatusElement.classList.remove("status-connected");
+        wampStatusElement = document.getElementById("call-fieldset").disabled = true;
+
+        wampStatusElement = document.getElementById("topic-fieldset").disabled = true;
+        wampStatusElement = document.getElementById("topic-sub-button").disabled = true;
+        wampStatusElement = document.getElementById("topic-unsub-button").disabled = true;
+
+        writeEvent(null, "Disconnected");
+      }
+
+
+      function onMessage(evt)
+      {
+        wampMsg = JSON.parse(evt.data);
+        writeEvent(evt.data, "received");
+
+        wampMsgType = wampMsg[0];
+
+        if (typeof wampMsgType === 'undefined')
+        {
+          console.error("invalid WAMP message");
+          return;
+        }
+
+        if (wampMsgType === 4)
+        {
+          wampChallenge = JSON.parse(evt.data);
+          secret = document.getElementById("password").value;
+          challenge = wampChallenge[2]["challenge"];
+
+          if (typeof challenge === 'undefined')
+          {
+            console.log("WAMP challenge is undefined");
+            return;
+          }
+
+          console.log("challenge is :" + challenge);
+
+          var hash = CryptoJS.HmacSHA256(challenge, secret);
+          var strhash = CryptoJS.enc.Base64.stringify(hash);
+
+          wampAuthenticate = [5, strhash, {}];
+          doSendJSON(wampAuthenticate);
+          return;
+        }
+      }
+
+
+      function onError(evt)
+      {
+        writeEvent(evt.data, "error");
+      }
+
+
+      function doSendJSON(json)
+      {
+        var msgstr = JSON.stringify(json);
+        writeEvent(msgstr, "sent");
+        websocket.send(msgstr);
+      }
+
+
+      function pad(num, size)
+      {
+        var s = "000000000" + num;
+        return s.substr(s.length - size);
+      }
+
+
+      function datetimestamp()
+      {
+
+        var currentdate = new Date();
+        var datetime = ""
+                + pad(currentdate.getFullYear(), 4) + "/"
+                + pad((currentdate.getMonth() + 1), 2) + "/"
+                + pad(currentdate.getDate(), 2) + "-"
+                + pad(currentdate.getHours(), 2) + ":"
+                + pad(currentdate.getMinutes(), 2) + ":"
+                + pad(currentdate.getSeconds(), 2) + "."
+                + pad(currentdate.getMilliseconds(), 3);
+        return datetime;
+      }
+
+
+      function writeEvent(message, eventType)
+      {
+
+        var newdiv = document.createElement("DIV");
+        newdiv.className = "alert alert-info";
+       
+
+        var spanItem = document.createElement("SPAN");
+        spanItem.className = "sent";
+        senttext = datetimestamp();
+        senttext += " " + eventType + " ";
+
+        spanItem.appendChild(document.createTextNode(senttext));
+        newdiv.appendChild(spanItem);
+
+        if (typeof message !== "undefined" && message)
+        {
+          var msgDiv = document.createElement("DIV");
+          msgDiv.className = "wampmsg";
+
+          var textnode = document.createTextNode(message);
+          msgDiv.appendChild(textnode);
+
+          newdiv.appendChild(msgDiv);
+        }
+
+        output.insertBefore(newdiv, output.childNodes[0]);
+      }
+
+
+      function tryCreateWebsocket()
+      {
+        if (typeof websocket !== "undefined")
+        {
+          if (websocket.readyState === 0 || websocket.readyState === 1 )
+          {
+            ebsocket.close();
+          }
+          setTimeout(tryCreateWebsocket(), 500);
+        }
+        else
+        {
+          createWebsocket();
+        }
+      }
+
+
+      function onConnectClicked()
+      {
+        if (typeof websocket !== "undefined")
+        {
+          websocket.close();
+        }
+
+        setTimeout(createWebsocket(), 250);
+        return false;
+      }
+
+
+      function onDisconnectClicked()
+      {
+        if (typeof websocket !== "undefined")
+        {
+          setTimeout(websocket.close(), 250);
+        }
+        return false;
+      }
+
+
+      function onTopicButtonClicked()
+      {
+        if (typeof websocket !== "undefined")
+        {
+          var topicform = document.getElementById("topic-form");
+          var topicname = document.getElementById("topicname").value;
+
+          if (topicform.buttonsource === "unsub")
+          {
+            // [UNSUBSCRIBE, Request|id, SUBSCRIBED.Subscription|id]
+            var requestid = 0;       // TODO
+            var subscriptionid = 0;  // TODO
+            wampMsg = [34, requestid, subscriptionid];
+            doSendJSON(wampMsg);
+          }
+          else
+          {
+            wampMsg = [32, 0, {}, topicname, {}, []];
+            doSendJSON(wampMsg);
+          }
+          console.log(topicform.buttonsource);
+        }
+        return false;
+      }
+
+
+      function onCallClicked()
+      {
+        if (typeof websocket !== "undefined")
+        {
+
+          var value = document.getElementById("rpccommand").value;
+          wampCall = [48, wamp_session.requestid, {}, value, {}, []];
+          doSendJSON(wampCall);
+          wamp_session.requestid = wamp_session.requestid + 1;
+        }
+        return false;
+      }
+
+
+      function sendWampHello()
+      {
+        wampHello = [1, 
+           document.getElementById("realm").value,
+          {
+            "roles": {
+              "publisher": {},
+              "subscriber": {},
+              "caller": {},
+              "callee": {}
+            },
+            "authmethods": ["wampcra"],
+            "authid": document.getElementById("userid").value
+          }
+        ];
+
+        doSendJSON(wampHello);
+      }
+
+      window.addEventListener("load", init, false);
+    </script>
+
+    <div class="main">
+
+      <div>
+        <form class="pure-form pure-form-aligned" onsubmit="return onConnectClicked();">
+          <fieldset>
+            <div class="pure-control-group">
+              <label for="name">WAMP Server</label>
+              <input id="wamp-server-url" type="text" placeholder="ws://127.0.0.1:55555">
+            </div>
+
+            <div class="pure-control-group">
+              <label for="userid">User ID</label>
+              <input id="userid" type="text" placeholder="Username">
+            </div>
+
+            <div class="pure-control-group">
+              <label for="password">Password</label>
+              <input id="password" type="password" placeholder="Password">
+            </div>
+
+
+            <div class="pure-control-group">
+              <label for="realm">Realm</label>
+              <input id="realm" type="text" value="default_realm">
+            </div>
+
+            <div class="pure-controls">
+              <button type="submit" class="pure-button pure-button-primary">Connect</button>
+              <button type="button" class="pure-button pure-button-primary" onclick="onDisconnectClicked()">Disconnect</button>
+            </div>
+            <div class="pure-controls">
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+
+
+      <div class="rightdiv"  >
+        <div class="status-disconnected" id="wamp-status" >Disconnected
+        </div>
+        <p>
+      </div>
+
+
+      <form class="pure-form " onsubmit="return onCallClicked();"  >
+        <fieldset id="call-fieldset" disabled >
+
+          <div class="pure-control-group">
+            <input id="rpccommand" type="text"  placeholder="procedure">
+            <button id="call-button" disabled type="submit" class="pure-button pure-button-primary">Call</button>
+          </div>
+        </fieldset>
+      </form>
+
+      <form id="topic-form" class="pure-form "  onsubmit="return onTopicButtonClicked();" >
+        <fieldset id="topic-fieldset" disabled >
+
+          <div class="pure-control-group">
+            <input id="topicname" type="text"  placeholder="topic">
+            <button   id="topic-sub-button"  value="sub" disabled type="submit" class="pure-button pure-button-primary" onClick="submitFunction('sub')" >Subscribe</button>
+            <button   id="topic-unsub-button" value="unsub" disabled type="submit" class="pure-button pure-button-primary"  onClick="submitFunction('unsub')">Unsubscribe</button>
+
+          </div>
+        </fieldset>
+      </form>
+
+      <div class="pure-g">
+        <div class="pure-u-1-1">
+
+          <div id="output"></div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </body>
+
+</html>
+
