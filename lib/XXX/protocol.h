@@ -10,7 +10,7 @@
 namespace XXX {
 
 class io_handle;
-class wamp_session;
+//class wamp_session;
 
 
 class buffer
@@ -40,7 +40,7 @@ public:
   buffer(size_t initial_size, size_t max_size);
 
   /** amount of actual data present */
-  size_t avail() const { return m_bytes_avail; }
+  size_t data_size() const { return m_bytes_avail; }
 
   /** current space for new data */
   size_t space() const { return m_mem.size() - m_bytes_avail; }
@@ -102,6 +102,7 @@ public:
   virtual void ev_on_timer() {}
   virtual void io_on_read(char*, size_t) = 0;
   virtual void initiate(t_initiate_cb) = 0;
+  virtual const char* name() const = 0;
 
   virtual void encode(const jalson::json_array& j) {}
 
@@ -119,24 +120,7 @@ private:
   connection_mode m_mode;
 };
 
-
-class factory_protocol : public protocol
-{
-public:
-
-  typedef std::function<void(std::unique_ptr<protocol>, char*, size_t)> t_swtich_fn;
-
-  factory_protocol(io_handle*, t_msg_cb, t_swtich_fn);
-  virtual int  required_timer_callback_interval_ms() override { return 0;}
-  virtual void ev_on_timer() {}
-  virtual void io_on_read(char*, size_t) override;
-  virtual void initiate(t_initiate_cb) override;
-
-private:
-  t_swtich_fn m_protocol_change_fn;
-};
-
-
+typedef std::function< std::unique_ptr<protocol> (io_handle*, protocol::t_msg_cb ) > protocol_builder_fn;
 
 
 }

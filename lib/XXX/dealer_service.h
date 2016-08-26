@@ -14,6 +14,7 @@ namespace XXX {
   class pubsub_man;
   class rpc_man;
   struct rpc_details;
+  class pre_session;
 
 struct dealer_listener
 {
@@ -71,6 +72,7 @@ private:
 
   std::mutex m_sesions_lock;
   std::map<t_sid, std::shared_ptr<wamp_session> > m_sessions;
+  std::map<t_sid, std::shared_ptr<pre_session>  > m_pre_sessions;
 
   std::promise< void > m_promise_on_close;
 

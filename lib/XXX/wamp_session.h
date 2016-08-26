@@ -1,8 +1,9 @@
 #ifndef XXX_SESSION_H
 #define XXX_SESSION_H
 
-#include "types.h"
-#include "io_listener.h"
+#include "XXX/types.h"
+#include "XXX/io_listener.h"
+#include "XXX/protocol.h"
 
 #include <jalson/jalson.h>
 
@@ -75,8 +76,8 @@ namespace XXX {
     // wamp_session can only be created as shared_ptr
     static std::shared_ptr<wamp_session> create(kernel&,
                                                 std::unique_ptr<io_handle>,
-                                                bool is_passive,
                                                 session_state_fn state_cb,
+                                                protocol_builder_fn protocol_builder,
                                                 server_msg_handler = server_msg_handler(),
                                                 auth_provider auth = auth_provider() );
 
@@ -138,12 +139,16 @@ namespace XXX {
 
     t_sid unique_id() const { return m_sid; }
 
+    bool is_passive() const;
+
+    const char* protocol_name() const { return m_proto->name(); }
+
   private:
 
     wamp_session(kernel&,
                  std::unique_ptr<io_handle>,
-                 bool is_passive,
                  session_state_fn state_cb,
+                 protocol_builder_fn protocol_builder,
                  server_msg_handler,
                  auth_provider);
 
@@ -212,8 +217,6 @@ namespace XXX {
 
     mutable std::mutex m_request_lock;
     t_request_id m_next_request_id;
-
-    bool m_is_passive;
 
     std::function< std::string() > m_client_secret_fn;
 

@@ -96,7 +96,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
           m_initiate_cb();
         }
 
-        m_state = eHandshakeComplete;
+        m_state = eOpen;
         rd.advance(HEADER_SIZE);
       }
       else

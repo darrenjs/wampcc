@@ -25,7 +25,7 @@ XXX/topic.h
 libXXX_la_SOURCES = dealer_service.cc event_loop.cc example_models.cc		\
 io_connector.cc io_handle.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc	\
 topic.cc utils.cc wamp_session.cc protocol.cc rawsocket_protocol.cc			\
-websocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc
+websocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc pre_session.cc
 
 
 # Include compile and link flags for an individual library.

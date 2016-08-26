@@ -33,8 +33,10 @@ public:
 
   bool is_open() const { return m_state == eOpen; }
 
-  /** Starting from socket. This should only be called once. */
   void start_read(std::shared_ptr<io_listener> p);
+
+  /** Return underlying file description, for informational purposes. */
+  int fd() const;
 
 private:
   void write_async();
@@ -76,6 +78,7 @@ private:
   State m_state;
 
   std::mutex m_shutdown_mtx;
+  bool m_uv_read_started = false;
 };
 
 } // namespace XXX

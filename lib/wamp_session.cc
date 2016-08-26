@@ -70,8 +70,8 @@ static void check_size_at_least(size_t msg_len, size_t s)
 /* Constructor */
   wamp_session::wamp_session(kernel& __kernel,
                              std::unique_ptr<io_handle> h,
-                             bool is_passive,
                              session_state_fn state_cb,
+                             protocol_builder_fn protocol_builder,
                              server_msg_handler handler,
                              auth_provider auth)
   : m_state( eInit ),
@@ -84,63 +84,38 @@ static void check_size_at_least(size_t msg_len, size_t s)
     m_time_create(time(NULL)),
     m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
-    m_is_passive(is_passive),
     m_auth_proivder(std::move(auth)),
     m_notify_state_change_fn(state_cb),
     m_server_handler(handler),
     m_proto(
-      new factory_protocol(
+      protocol_builder(
         m_handle.get(),
-        [this](jalson::json_array msg, int messasge_type)
+        [this](jalson::json_array msg, int msg_type)
         {
           /* process on the EV thread */
           std::weak_ptr<wamp_session> wp = handle();
-          std::function<void()> fn = [wp,msg,messasge_type]() mutable
+          std::function<void()> fn = [wp,msg,msg_type]() mutable
             {
               if (auto sp = wp.lock())
-                sp->process_message(messasge_type, msg);
+                sp->process_message(msg_type, msg);
             };
           m_kernel.get_event_loop()->dispatch(std::move(fn));
-        },
-        [this](std::unique_ptr<protocol> up, char* buf, size_t)
-        {
-          /* IO thread */
-          auto temp = std::move(m_proto);
-          m_proto = std::move(up);
-
-          auto interval = m_proto->required_timer_callback_interval_ms();
-          if (interval)
-          {
-            std::weak_ptr<wamp_session> wp = this->handle();
-            this->m_kernel.get_event_loop()->dispatch(
-              std::chrono::milliseconds(interval),
-              [wp, interval]()
-              {
-                 if (auto sp = wp.lock())
-                 {
-                   sp->m_proto->ev_on_timer();
-                   return interval;
-                 }
-                 else return 0;
-              });
-
-
-          }
-
-        } ) )
+        }
+        ))
   {
-}
+    LOG_INFO("wamp_session created, using " << m_proto->name() << " protocol");
+  }
 
 
 std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
                                                    std::unique_ptr<io_handle> ioh,
-                                                   bool is_passive,
                                                    session_state_fn state_cb,
+                                                   protocol_builder_fn protocol_builder,
                                                    server_msg_handler handler,
                                                    auth_provider auth)
 {
   std::shared_ptr<wamp_session> sp(
-    new wamp_session(k, std::move(ioh), is_passive, state_cb, handler, auth)
+    new wamp_session(k, std::move(ioh), state_cb, protocol_builder, handler, auth)
       );
 
   // can't put this initialisation step inside wamp_sesssion constructor,
@@ -373,7 +348,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 {
   int message_type = msg[0].as_uint();
 
-  if (m_is_passive)
+  if (is_passive())
   {
     if (message_type == CHALLENGE)
     {
@@ -537,7 +512,7 @@ void wamp_session::process_message(unsigned int message_type,
       return;
     }
 
-    if (m_is_passive)
+    if (is_passive())
     {
       if (message_type == HELLO)
       {
@@ -607,7 +582,7 @@ void wamp_session::process_message(unsigned int message_type,
       else if (message_type == WELCOME)
       {
         change_state(eSentAuth, eOpen);
-        if (m_state == eOpen) notify_session_state_change(true);
+        if (m_state == eOpen) notify_session_state_change(true); // TODO: only ever pass true, so remove the parameter
         return;
       }
       else
@@ -887,7 +862,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
   }
   else
   {
-    LOG_WARN("wamp_session CRA failed; expected '" << orig_challenge<< "', received '"<< peer_digest<<"'");
+    LOG_WARN("peer failed challenge-response-authentication");
 
     jalson::json_array msg;
     msg.push_back( ABORT );
@@ -1355,7 +1330,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
   jalson::json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
-  if (m_is_passive)
+  if (is_passive())
   {
     switch (orig_request_type)
     {
@@ -1779,5 +1754,11 @@ void wamp_session::drop_connection(std::string errmsg)
       return 0;
     });
 }
+
+bool wamp_session::is_passive() const
+{
+  return m_proto->mode() == protocol::connection_mode::ePassive;
+}
+
 
 } // namespace XXX

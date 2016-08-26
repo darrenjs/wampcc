@@ -77,12 +77,16 @@ void io_handle::start_read(std::shared_ptr<io_listener> p)
 {
   m_listener = p;
 
-  uv_read_start(m_uv_handle, iohandle_alloc_buffer,
-                [](uv_stream_t*  uvh, ssize_t nread, const uv_buf_t* buf)
-                {
-                  io_handle * iohandle = (io_handle *) uvh->data;
-                  iohandle->on_read_cb(nread, buf);
-                });
+  if (!m_uv_read_started)
+  {
+    uv_read_start(m_uv_handle, iohandle_alloc_buffer,
+                  [](uv_stream_t*  uvh, ssize_t nread, const uv_buf_t* buf)
+                  {
+                    io_handle * iohandle = (io_handle *) uvh->data;
+                    iohandle->on_read_cb(nread, buf);
+                  });
+    m_uv_read_started = true;
+  }
 }
 
 
@@ -335,5 +339,10 @@ void io_handle::on_read_cb(ssize_t nread ,
   delete [] buf->base;
 }
 
+
+int io_handle::fd() const
+{
+  return -1; // TODO:
+}
 
 } // namespace XXX

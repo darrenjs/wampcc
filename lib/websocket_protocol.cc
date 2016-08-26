@@ -155,7 +155,13 @@ struct frame_builder
   }
 
   char * data() { return image; }
+  const char * data() const { return image; }
   size_t size() const { return header_len; }
+
+  std::pair<const char*, size_t> buf() const
+  {
+    return { data(), size() };
+  }
 private:
 
   // Storage for frame being created.
@@ -301,12 +307,21 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         if (!fin_bit)
           throw std::runtime_error("websocket continuations not yet supported");
 
-
         switch (opcode)
         {
-          case 0x00: /* cont. */
-          case 0x01: /* text  */
-          case 0x02: /* bin.  */
+          case 0x00: /* cont. */ break;
+          case 0x01: /* text  */ break;
+          case 0x02: /* bin.  */ break;
+          case OPCODE_CLOSE :
+          {
+            // issue a close frame -- TODO: should coordinate this from the wamp_session?
+            m_state = eClosing;
+            frame_builder fb(OPCODE_CLOSE, true, 0);
+            auto buf = fb.buf();
+            m_iohandle->write_bufs(&buf, 1, false);
+            m_iohandle->request_close();
+            break;
+          };
           default: break;
         }
 
@@ -338,14 +353,12 @@ void websocket_protocol::initiate(t_initiate_cb)
 
 void websocket_protocol::ev_on_timer()
 {
-  frame_builder fb(OPCODE_PING, true, 0);
-
-  std::pair<const char*, size_t> bufs[1];
-
-  bufs[0].first  = (char*)fb.data();
-  bufs[0].second = fb.size();
-
-  m_iohandle->write_bufs(bufs, 1, false);
+  if (m_state == eHandlingWebsocket)
+  {
+    frame_builder fb(OPCODE_PING, true, 0);
+    auto buf = fb.buf();
+    m_iohandle->write_bufs(&buf, 1, false);
+  }
 }
 
 

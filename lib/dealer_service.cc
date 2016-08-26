@@ -7,6 +7,7 @@
 #include "XXX/io_loop.h"
 #include "XXX/io_handle.h"
 #include "XXX/log_macros.h"
+#include "XXX/pre_session.h"
 
 #include <unistd.h>
 #include <string.h>
@@ -26,6 +27,7 @@ dealer_service::dealer_service(kernel & __svc, dealer_listener* l)
 
 dealer_service::~dealer_service()
 {
+  // TODO: need to close any remaining sessions and pre-sessions?
   std::unique_lock<std::recursive_mutex> guard(m_lock);
   m_listener = nullptr;
 }
@@ -42,44 +44,78 @@ std::future<int> dealer_service::listen(int port,
     std::move(intPromise),
     [this, auth](int /* port */, std::unique_ptr<io_handle> ioh)
     {
-      /* IO thread */
+      /* This lambda is invoked on the IO thread the when a socket has been
+       * accepted. */
 
-      server_msg_handler handlers;
-
-      handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
-        this->handle_inbound_call(s,u,std::move(args),f);
-      };
-
-      handlers.handle_inbound_publish  = [this](wamp_session* sptr, std::string uri, jalson::json_object options, wamp_args args)
+      auto protocol_ready_cb = [this, auth]( protocol_builder_fn builder,
+                                             std::unique_ptr<io_handle> ioh)
         {
-        // TODO: break this out into a separte method, and handle error
-          m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
-        };
+          /* Called on the IO thread, from the pre_session, when the
+           * pre_session has identified the wire protocol to use. */
 
-      handlers.inbound_subscribe  = [this](wamp_session* p, t_request_id request_id, std::string uri, jalson::json_object& options) {
-        return this->m_pubsub->subscribe(p, request_id, uri, options);
-      };
+          server_msg_handler handlers;
 
-      handlers.inbound_register  = [this](std::weak_ptr<wamp_session> h,
-                                          std::string realm,
-                                          std::string uri) {
-        return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
-      };
+          handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
+            this->handle_inbound_call(s,u,std::move(args),f);
+          };
 
-      {
-        std::shared_ptr<wamp_session> sp =
+          handlers.handle_inbound_publish = [this](wamp_session* sptr, std::string uri, jalson::json_object options, wamp_args args)
+          {
+            // TODO: break this out into a separte method, and handle error
+            m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
+          };
+
+          handlers.inbound_subscribe = [this](wamp_session* p, t_request_id request_id, std::string uri, jalson::json_object& options) {
+            return this->m_pubsub->subscribe(p, request_id, uri, options);
+          };
+
+          handlers.inbound_register = [this](std::weak_ptr<wamp_session> h,
+                                             std::string realm,
+                                             std::string uri) {
+            return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
+          };
+
+          int fd = ioh->fd();
+
+          std::shared_ptr<wamp_session> sp =
           wamp_session::create( m_kernel,
                                 std::move(ioh),
-                                true, /* session is passive */
                                 [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
+                                builder,
                                 handlers,
                                 auth);
+          {
+            std::lock_guard<std::mutex> guard(m_sesions_lock);
+            m_sessions[ sp->unique_id() ] = sp;
+          }
+
+          LOG_INFO( "session created #" << sp->unique_id()
+                    << ", protocol: " << sp->protocol_name()
+                    << ", fd: " << fd);
+        };
+
+
+      auto on_closed = [this](std::weak_ptr<pre_session> sh)
         {
-          std::lock_guard<std::mutex> guard(m_sesions_lock);
-          m_sessions[ sp->unique_id() ] = sp;
-        }
-        LOG_INFO( "session created #" << sp->unique_id() );
+          /* EV thread */
+          if (auto sp = sh.lock())
+          {
+            std::lock_guard<std::mutex> guard(m_sesions_lock);
+            m_pre_sessions.erase( sp->unique_id() );
+          }
+        };
+
+      auto sp = pre_session::create(m_kernel,
+                                    std::move(ioh),
+                                    on_closed,
+                                    protocol_ready_cb);
+
+      {
+        std::lock_guard<std::mutex> guard(m_sesions_lock);
+        m_pre_sessions[ sp->unique_id() ] = sp;
       }
+
+      LOG_INFO( "passive pre-session created #" << sp->unique_id() );
 
     } );
 
@@ -223,12 +259,7 @@ void dealer_service::handle_session_state_change(session_handle sh, bool is_open
     if (auto sp = sh.lock())
     {
       std::lock_guard<std::mutex> guard(m_sesions_lock);
-
-      t_sid sid ( sp->unique_id() );
-      auto it = m_sessions.find(sid);
-
-      if (it != m_sessions.end())
-        m_sessions.erase( it );
+      m_sessions.erase( sp->unique_id() );
     }
   }
 }
