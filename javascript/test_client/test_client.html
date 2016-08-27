@@ -132,14 +132,17 @@
       var websocket;
 
 
-      var wamp_session =
-      {
-          requestid  : 0
-      };
+      var wamp_session;
 
-      wamp_session.reset = function()
+      wamp_session_reset = function()
       {
-          wamp_session.requestid = 0;
+        wamp_session =
+                {
+                  request_id: 0,
+                  requests: {},
+                  subscriptions_by_topic: {},
+                  subscriptions_by_id: {}
+                };
       };
 
 
@@ -192,7 +195,7 @@
 
         writeEvent(null, "Connected");
 
-        wamp_session.reset();
+        wamp_session_reset();
 
         setTimeout(sendWampHello, 200);
       }
@@ -246,6 +249,19 @@
 
           wampAuthenticate = [5, strhash, {}];
           doSendJSON(wampAuthenticate);
+          return;
+        }
+
+        if (wampMsgType === 33)
+        {
+          // received subscription ack
+          orig_request_id = wampMsg[1];
+          subscription_id = wampMsg[2];
+          topicname = wamp_session.requests[orig_request_id]['topic'];
+          wamp_session.subscriptions_by_id[subscription_id] = {};
+          wamp_session.subscriptions_by_id[subscription_id]['topic'] = topicname;
+          wamp_session.subscriptions_by_topic[topicname]['subscription_id'] =
+                  subscription_id;
           return;
         }
       }
@@ -322,7 +338,7 @@
       {
         if (typeof websocket !== "undefined")
         {
-          if (websocket.readyState === 0 || websocket.readyState === 1 )
+          if (websocket.readyState === 0 || websocket.readyState === 1)
           {
             ebsocket.close();
           }
@@ -366,18 +382,20 @@
 
           if (topicform.buttonsource === "unsub")
           {
-            // [UNSUBSCRIBE, Request|id, SUBSCRIBED.Subscription|id]
-            var requestid = 0;       // TODO
-            var subscriptionid = 0;  // TODO
-            wampMsg = [34, requestid, subscriptionid];
+            subscription_id = wamp_session.subscriptions_by_topic[topicname]['subscription_id'];
+            wamp_session.request_id = wamp_session.request_id + 1;
+            wampMsg = [34, wamp_session.request_id, subscription_id];
             doSendJSON(wampMsg);
           }
           else
           {
-            wampMsg = [32, 0, {}, topicname, {}, []];
+            wamp_session.request_id = wamp_session.request_id + 1;
+            wamp_session.requests [wamp_session.request_id] = {};
+            wamp_session.requests [wamp_session.request_id]['topic'] = topicname;
+            wamp_session.subscriptions_by_topic [topicname] = {};
+            wampMsg = [32, wamp_session.request_id, {}, topicname, {}, []];
             doSendJSON(wampMsg);
           }
-          console.log(topicform.buttonsource);
         }
         return false;
       }
@@ -387,11 +405,11 @@
       {
         if (typeof websocket !== "undefined")
         {
-
           var value = document.getElementById("rpccommand").value;
-          wampCall = [48, wamp_session.requestid, {}, value, {}, []];
+          wamp_session.request_id = wamp_session.request_id + 1;
+          wampCall = [48, wamp_session.request_id, {}, value, {}, []];
           doSendJSON(wampCall);
-          wamp_session.requestid = wamp_session.requestid + 1;
+
         }
         return false;
       }
@@ -399,8 +417,8 @@
 
       function sendWampHello()
       {
-        wampHello = [1, 
-           document.getElementById("realm").value,
+        wampHello = [1,
+          document.getElementById("realm").value,
           {
             "roles": {
               "publisher": {},
