@@ -67,19 +67,44 @@ namespace XXX {
 
   typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
 
+
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
   class wamp_session : public std::enable_shared_from_this<wamp_session>,
                        public io_listener
   {
   public:
-    // wamp_session can only be created as shared_ptr
+
+    /** Create a server side session (i.e., the socket was accepted from a
+     * remote client). */
     static std::shared_ptr<wamp_session> create(kernel&,
                                                 std::unique_ptr<io_handle>,
-                                                session_state_fn state_cb,
-                                                protocol_builder_fn protocol_builder,
-                                                server_msg_handler = server_msg_handler(),
-                                                auth_provider auth = auth_provider() );
+                                                session_state_fn,
+                                                protocol_builder_fn ,
+                                                server_msg_handler,
+                                                auth_provider);
+
+    /** Create a client side session (i.e., the socket was actively connected to
+     * remote server). */
+    template<typename T>
+    static std::shared_ptr<wamp_session> create(kernel& k,
+                                                std::unique_ptr<io_handle> socket,
+                                                session_state_fn state_cb )
+    {
+      protocol_builder_fn factory_fn;
+
+      factory_fn = [](io_handle* socket, protocol::t_msg_cb _msg_cb)
+        {
+          std::unique_ptr<protocol> up (
+            new T(socket, _msg_cb,
+                  protocol::connection_mode::ePassive)
+            );
+          return up;
+        };
+
+      return wamp_session::create(k, std::move(socket), state_cb, factory_fn, {}, {});
+    }
+
 
     ~wamp_session();
 

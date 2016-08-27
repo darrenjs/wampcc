@@ -6,6 +6,7 @@
 #include "XXX/io_handle.h"
 #include "XXX/io_connector.h"
 #include "XXX/wamp_session.h"
+#include "XXX/websocket_protocol.h"
 #include "XXX/log_macros.h"
 
 #include <sstream>
@@ -333,17 +334,17 @@ int main(int argc, char** argv)
    * events. The wamp_session will commence the WAMP handshake; connection
    * success is delivered via the callback. */
 
-
   auto fn = [](XXX::session_handle wp, bool is_open){
     if (auto sp = wp.lock())
       router_connection_cb(0, is_open);
   };
 
-  std::shared_ptr<XXX::wamp_session> ws
-    = XXX::wamp_session::create(*g_kernel.get(),
-                                std::move(up_handle),
-                                false,
-                                fn);
+  std::shared_ptr<XXX::wamp_session> ws (
+    XXX::wamp_session::create<XXX::websocket_protocol>(*g_kernel.get(),
+                                                       std::move(up_handle),
+                                                       fn)
+    );
+
   ws->initiate_handshake(credentials);
 
   /* Wait for the WAMP session to authenticate and become open */

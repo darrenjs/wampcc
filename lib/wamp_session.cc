@@ -103,7 +103,6 @@ static void check_size_at_least(size_t msg_len, size_t s)
         }
         ))
   {
-    LOG_INFO("wamp_session created, using " << m_proto->name() << " protocol");
   }
 
 

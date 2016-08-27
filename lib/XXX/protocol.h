@@ -10,8 +10,6 @@
 namespace XXX {
 
 class io_handle;
-//class wamp_session;
-
 
 class buffer
 {
