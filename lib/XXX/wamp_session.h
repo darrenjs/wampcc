@@ -89,15 +89,16 @@ namespace XXX {
     template<typename T>
     static std::shared_ptr<wamp_session> create(kernel& k,
                                                 std::unique_ptr<io_handle> socket,
-                                                session_state_fn state_cb )
+                                                session_state_fn state_cb,
+                                                typename T::options _options)
     {
       protocol_builder_fn factory_fn;
 
-      factory_fn = [](io_handle* socket, protocol::t_msg_cb _msg_cb)
+      factory_fn = [_options](io_handle* socket, protocol::t_msg_cb _msg_cb)
         {
           std::unique_ptr<protocol> up (
             new T(socket, _msg_cb,
-                  protocol::connection_mode::ePassive)
+                  protocol::connection_mode::ePassive, _options)
             );
           return up;
         };

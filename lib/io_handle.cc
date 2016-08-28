@@ -342,7 +342,7 @@ void io_handle::on_read_cb(ssize_t nread ,
 
 int io_handle::fd() const
 {
-  return -1; // TODO:
+  return m_uv_handle->io_watcher.fd;
 }
 
 } // namespace XXX

@@ -16,9 +16,9 @@
 namespace XXX
 {
 
-websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode m)
-  : protocol(h, msg_cb, m),
-    m_state(m==protocol::connection_mode::ePassive? eHandlingHttpRequest : eSendingHttpRequest),
+websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode _mode)
+  : protocol(h, msg_cb, _mode),
+    m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eSendingHttpRequest),
     m_http_parser(new http_parser())
 {
 }
@@ -26,7 +26,7 @@ websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection
 
 const char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-std::string base64Encode(const void* dataVoid, size_t length) {
+std::string base64Send_msg(const void* dataVoid, size_t length) {
     std::string output;
     auto data = reinterpret_cast<const uint8_t*>(dataVoid);
     for (auto i = 0u; i < length; i += 3) {
@@ -173,12 +173,9 @@ private:
 
 
 
-void websocket_protocol::encode(const jalson::json_array& ja)
+void websocket_protocol::send_msg(const jalson::json_array& ja)
 {
   std::string msg ( jalson::encode( ja ) );
-
-  // TODO: now I have data to send
-
 
   // prepare frame
 

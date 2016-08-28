@@ -115,8 +115,6 @@ std::future<int> dealer_service::listen(int port,
         m_pre_sessions[ sp->unique_id() ] = sp;
       }
 
-      LOG_INFO( "passive pre-session created #" << sp->unique_id() );
-
     } );
 
   return fut;

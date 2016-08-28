@@ -102,7 +102,7 @@ public:
   virtual void initiate(t_initiate_cb) = 0;
   virtual const char* name() const = 0;
 
-  virtual void encode(const jalson::json_array& j) {}
+  virtual void send_msg(const jalson::json_array& j) = 0;
 
   connection_mode mode() const { return m_mode; }
 

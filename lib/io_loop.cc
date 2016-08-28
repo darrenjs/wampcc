@@ -102,19 +102,9 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
     io_handle* ioh = new io_handle( myio_loop->get_kernel(),
                                   (uv_stream_t *) client, myio_loop);
 
-    int fd = client->io_watcher.fd;
-
-    LOG_INFO("accept: type=" << client->type
-           << ", fd=" << fd);
-
-    // register the stream before beginning read operations
+    // register the stream before beginning read operations (which happens once
+    // a protocol object has been constructed)
     myserver->ioloop->add_passive_handle(myserver, ioh );
-
-  //   // NOTE: registration of read event moved into the handle
-
-  //   // // new client is accepted, identified via its stream handle ... need to put
-  //   // // in place a lot more session tracking here.
-  //   // uv_read_start((uv_stream_t *) client, alloc_buffer, io_on_read);
   }
   else
   {

@@ -24,9 +24,7 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
-
-
-  websocket_protocol(io_handle*, t_msg_cb, connection_mode m);
+  websocket_protocol(io_handle*, t_msg_cb, connection_mode);
 
   int  required_timer_callback_interval_ms() override { return 2000;}
   void ev_on_timer() override;
@@ -34,7 +32,7 @@ public:
   void initiate(t_initiate_cb) override;
 
   const char* name() const override { return NAME; }
-  void encode(const jalson::json_array& j) override;
+  void send_msg(const jalson::json_array& j) override;
 
 private:
 

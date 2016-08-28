@@ -645,40 +645,13 @@ void wamp_session::process_message(unsigned int message_type,
 //----------------------------------------------------------------------
 
 
-void wamp_session::send_msg(jalson::json_array& jv, bool final)
+void wamp_session::send_msg(jalson::json_array& jv, bool)
 {
   if (m_state == eClosing || m_state == eClosed) return;
 
   update_state_for_outbound(jv);
 
-  m_proto->encode(jv);
-
-  // std::pair<const char*, size_t> bufs[2];
-
-  // std::string msg ( jalson::encode( jv ) );
-
-  // // write message length prefix
-  // uint32_t msglen = htonl(  msg.size() );
-  // bufs[0].first  = (char*)&msglen;
-  // bufs[0].second = sizeof(msglen);
-
-
-  // if (final)
-  // {
-  //   // TODO: think about how to manage session shutdown
-  //   // m_is_closing = true;
-  // }
-  // else
-  // {
-  //   // write message
-  //   bufs[1].first  = (const char*)msg.c_str();
-  //   bufs[1].second = msg.size();
-
-  //   m_handle->write_bufs(bufs, 2, final);
-  // }
-
-
-
+  m_proto->send_msg(jv);
 }
 
 
@@ -923,6 +896,7 @@ void wamp_session::initiate_handshake(client_credentials cc)
 
   m_client_secret_fn = std::move( cc.secret_fn );
 
+  // TODO: why is the proto being reset here?
   // TODO: the lambda callback is duplicated here.
   m_proto.reset(
     new rawsocket_protocol(m_handle.get(),

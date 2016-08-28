@@ -76,11 +76,11 @@ namespace XXX {
   }
 
 
-protocol::protocol(io_handle* h, t_msg_cb cb, connection_mode m)
+protocol::protocol(io_handle* h, t_msg_cb cb, connection_mode _mode)
   : m_iohandle(h),
     m_msg_processor(cb),
     m_buf(1,1024),
-    m_mode(m)
+    m_mode(_mode)
 {
 }
 
