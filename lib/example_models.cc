@@ -55,7 +55,7 @@ void planets_list::thread_main()
     //text_data.set_value(newvalue);
 
 
-    std::cout << "PRIOR:" << model.copy_value() << "\n";
+    //std::cout << "PRIOR:" << model.copy_value() << "\n";
     switch ( dis(gen) % 7 )
     {
       case 0 : model.insert(0, names[dis(gen)]); break;
@@ -66,7 +66,7 @@ void planets_list::thread_main()
       case 5 : if (model.copy_value().size()>0) model.erase(model.copy_value().size()-1); break;
       default: if (model.copy_value().size()<10) model.push_back( names[dis(gen)] );
     };
-    std::cout << "ACTUAL:" << model.copy_value() << "\n";
+    //std::cout << "ACTUAL:" << model.copy_value() << "\n";
 
   }
 

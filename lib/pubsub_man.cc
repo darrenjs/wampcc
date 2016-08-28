@@ -122,13 +122,13 @@ void pubsub_man::update_topic(const std::string& topic,
   if (options.find(KEY_PATCH) != options.end() && args.args_list.is_array())
   {
     // apply the patch
-    std::cout << "@" << topic << ", patch\n";
-    std::cout << "BEFORE: " << mt->image << "\n";
-    std::cout << "PATCH : " << args.args_list << "\n";
+    //std::cout << "@" << topic << ", patch\n";
+    //std::cout << "BEFORE: " << mt->image << "\n";
+    //std::cout << "PATCH : " << args.args_list << "\n";
     jalson::json_array & change = args.args_list.as_array();
     mt->image.patch(change[0].as_array());
-    std::cout << "AFTER : "  << mt->image << "\n";
-    std::cout << "-------\n";
+    //std::cout << "AFTER : "  << mt->image << "\n";
+    //std::cout << "-------\n";
   }
 
   // broadcast event to subscribers
