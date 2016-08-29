@@ -9,6 +9,7 @@ import socket
 import struct
 import time
 import pprint as pp
+import wamplite
 
 def onWampChallenge(msg):
 
@@ -52,6 +53,7 @@ port = 55555                # Reserve a port for your service.
 
 print "connecting ..."
 s.connect((host, port))
+wamplite.rawsocket_handshake( s );
 
 
 # start handshakre
