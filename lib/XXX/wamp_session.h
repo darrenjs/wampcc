@@ -98,7 +98,7 @@ namespace XXX {
         {
           std::unique_ptr<protocol> up (
             new T(socket, _msg_cb,
-                  protocol::connection_mode::ePassive, _options)
+                  protocol::connection_mode::eActive, _options)
             );
           return up;
         };

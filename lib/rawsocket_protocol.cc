@@ -72,8 +72,8 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
           if (rd[0] != MAGIC)
             throw std::runtime_error("rawsocket client handshake must begin with magic octet");
 
-          m_peer_max_msg_size = 1 << (9 + (rd[1]>>4) );
-          uint8_t serializer  = rd[1] & 0x0F;
+          uint8_t rd_1 = rd[1];
+          m_peer_max_msg_size = 1 << (9 + (rd_1>>4) );
 
           if ((rd[2] || rd[3]))
           {
@@ -81,7 +81,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
             throw std::runtime_error("rawsocket handshake reserved bytes must be zero");
           }
 
-          switch(serializer)
+          switch(rd_1 & 0x0F)
           {
             case e_JSON : break;
             case e_MSGPACK :

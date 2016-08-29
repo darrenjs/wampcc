@@ -527,8 +527,8 @@ void wamp_session::process_message(unsigned int message_type,
       }
       else
       {
-        if (m_state != eOpen) throw session_error(WAMP_RUNTIME_ERROR,
-                                                  "received request but handshake incomplete");
+        if (m_state != eOpen)
+          throw bad_protocol("received request before session is open");
       }
 
       switch (message_type)
@@ -587,7 +587,7 @@ void wamp_session::process_message(unsigned int message_type,
       else
       {
         if (m_state != eOpen)
-          throw bad_protocol("received request but handshake incomplete");
+          throw bad_protocol("received request before session is open");
       }
 
       switch (message_type)
@@ -895,23 +895,6 @@ void wamp_session::initiate_handshake(client_credentials cc)
   }
 
   m_client_secret_fn = std::move( cc.secret_fn );
-
-  // TODO: why is the proto being reset here?
-  // TODO: the lambda callback is duplicated here.
-  m_proto.reset(
-    new rawsocket_protocol(m_handle.get(),
-                           [this](jalson::json_array msg, int messasge_type)
-                           {
-                             /* process on the EV thread */
-                             std::weak_ptr<wamp_session> wp = handle();
-                             std::function<void()> fn = [wp,msg,messasge_type]() mutable
-                               {
-                                 if (auto sp = wp.lock())
-                                   sp->process_message(messasge_type, msg);
-                               };
-                             m_kernel.get_event_loop()->dispatch(std::move(fn));
-                           },
-                           protocol::connection_mode::eActive));
 
   auto initiate_cb = [this, cc]()
     {
