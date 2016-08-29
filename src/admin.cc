@@ -7,6 +7,7 @@
 #include "XXX/io_connector.h"
 #include "XXX/wamp_session.h"
 #include "XXX/websocket_protocol.h"
+#include "XXX/rawsocket_protocol.h"
 #include "XXX/log_macros.h"
 
 #include <sstream>
@@ -339,10 +340,12 @@ int main(int argc, char** argv)
       router_connection_cb(0, is_open);
   };
 
+
+  XXX::rawsocket_protocol::options options;
   std::shared_ptr<XXX::wamp_session> ws (
-    XXX::wamp_session::create<XXX::websocket_protocol>(*g_kernel.get(),
+    XXX::wamp_session::create<XXX::rawsocket_protocol>(*g_kernel.get(),
                                                        std::move(up_handle),
-                                                       fn)
+                                                       fn, options)
     );
 
   ws->initiate_handshake(credentials);
