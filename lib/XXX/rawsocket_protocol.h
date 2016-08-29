@@ -61,12 +61,12 @@ private:
 
   void decode(const char*, size_t);
 
-  enum handshake_error
+  enum handshake_error_code
   {
-    eSerialiserUnsupported = 1,
-    eMaxMsgLengthUnacceptable = 2,
-    eUseOfReservedBits = 3,
-    eMaxConnectionCountReach = 4
+    e_SerialiserUnsupported    = 1,
+    e_MaxMsgLengthUnacceptable = 2,
+    e_UseOfReservedBits        = 3,
+    e_MaxConnectionCountReach  = 4
   };
 
   void reply_handshake(int, int);

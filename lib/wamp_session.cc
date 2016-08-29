@@ -56,7 +56,7 @@ static uint64_t generate_unique_session_id()
 static t_request_id extract_request_id(jalson::json_array & msg, int index)
 {
   if (!msg[index].is_uint())
-    throw bad_protocol("request ID must be unsigned int");
+    throw protocol_error("request ID must be unsigned int");
   return msg[index].as_uint();
 }
 
@@ -64,7 +64,7 @@ static t_request_id extract_request_id(jalson::json_array & msg, int index)
 static void check_size_at_least(size_t msg_len, size_t s)
 {
   if (msg_len < s)
-    throw bad_protocol("json message not enough elements");
+    throw protocol_error("json message not enough elements");
 }
 
 /* Constructor */
@@ -229,7 +229,7 @@ void wamp_session::io_on_read(char* src, size_t len)
     err_uri  = std::move(e.uri);
     err_text = e.what();
   }
-  catch ( bad_protocol& e )
+  catch ( protocol_error& e )
   {
     LOG_WARN("closing session due to protocol error: "
              << e.what());
@@ -528,7 +528,7 @@ void wamp_session::process_message(unsigned int message_type,
       else
       {
         if (m_state != eOpen)
-          throw bad_protocol("received request before session is open");
+          throw protocol_error("received request before session is open");
       }
 
       switch (message_type)
@@ -566,7 +566,7 @@ void wamp_session::process_message(unsigned int message_type,
         default:
           std::ostringstream os;
           os << "unknown message type " << (int)message_type;
-          throw bad_protocol(os.str());
+          throw protocol_error(os.str());
       }
     }
     else
@@ -587,7 +587,7 @@ void wamp_session::process_message(unsigned int message_type,
       else
       {
         if (m_state != eOpen)
-          throw bad_protocol("received request before session is open");
+          throw protocol_error("received request before session is open");
       }
 
       switch (message_type)
@@ -621,7 +621,7 @@ void wamp_session::process_message(unsigned int message_type,
         default:
           std::ostringstream os;
           os << "unknown message type " << (int)message_type;
-          throw bad_protocol(os.str());
+          throw protocol_error(os.str());
       }
     }
     return; // message handled okay
@@ -732,13 +732,13 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
   /* EV thread */
 
   if (ja.size() < 3)
-    throw bad_protocol("message requires length 3");
+    throw protocol_error("message requires length 3");
 
   if (!ja[1].is_string())
-    throw bad_protocol("AuthMethod must be string");
+    throw protocol_error("AuthMethod must be string");
 
   if (!ja[2].is_object())
-    throw bad_protocol("Extra must be dict");
+    throw protocol_error("Extra must be dict");
 
   std::string authmethod = ja[1].as_string();
   if (authmethod != "wampcra")
@@ -980,7 +980,7 @@ void wamp_session::process_inbound_registered(jalson::json_array & msg)
   t_request_id request_id  = extract_request_id(msg, 1);
 
   if (!msg[2].is_uint())
-    throw bad_protocol("registration ID must be unsigned int");
+    throw protocol_error("registration ID must be unsigned int");
   uint64_t registration_id = msg[2].as_uint();
 
   std::unique_lock<std::mutex> guard(m_pending_lock);
@@ -1007,7 +1007,7 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
   t_request_id request_id = extract_request_id(msg, 1);
 
   if (!msg[2].is_uint())
-    throw bad_protocol("registration ID must be unsigned int");
+    throw protocol_error("registration ID must be unsigned int");
   uint64_t registration_id = msg[2].as_uint();
 
   // find the procedure
@@ -1106,7 +1106,7 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
   t_request_id request_id  = extract_request_id(msg, 1);
 
   if (!msg[2].is_uint())
-      throw bad_protocol("subscription ID must be unsigned int");
+      throw protocol_error("subscription ID must be unsigned int");
   t_subscription_id subscription_id = msg[2].as_uint();
 
   subscription temp;
@@ -1234,7 +1234,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
   t_request_id request_id  = extract_request_id(msg, 1);
 
   if (!msg[2].is_object())
-      throw bad_protocol("details must be json object");
+      throw protocol_error("details must be json object");
   jalson::json_object & options = msg[2].as_object();
 
   wamp_call orig_call;
@@ -1417,7 +1417,7 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
-  if (!msg[3].is_string()) throw bad_protocol("procedure uri must be string");
+  if (!msg[3].is_string()) throw protocol_error("procedure uri must be string");
   std::string procedure_uri = std::move(msg[3].as_string());
 
   wamp_args my_wamp_args;
@@ -1548,9 +1548,9 @@ void wamp_session::process_inbound_publish(jalson::json_array & msg)
     check_size_at_least(msg.size(), 4);
 
     if (!msg[2].is_object())
-      throw bad_protocol("options must be json object");
+      throw protocol_error("options must be json object");
 
-    if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
+    if (!msg[3].is_string()) throw protocol_error("topic uri must be string");
 
     wamp_args args;
     if ( msg.size() > 4 ) args.args_list = std::move(msg[4]);
@@ -1569,8 +1569,8 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
-  if (!msg[2].is_object()) throw bad_protocol("options must be json object");
-  if (!msg[3].is_string()) throw bad_protocol("topic uri must be string");
+  if (!msg[2].is_object()) throw protocol_error("options must be json object");
+  if (!msg[3].is_string()) throw protocol_error("topic uri must be string");
 
   std::string topic_uri = std::move(msg[3].as_string());
 
@@ -1603,7 +1603,7 @@ void wamp_session::process_inbound_register(jalson::json_array & msg)
   t_request_id request_id = extract_request_id(msg, 1);
 
   if (!msg[3].is_string())
-    throw bad_protocol("procedure uri must be string");
+    throw protocol_error("procedure uri must be string");
   std::string uri = std::move(msg[3].as_string());
 
   try

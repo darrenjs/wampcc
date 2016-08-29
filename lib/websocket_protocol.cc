@@ -211,7 +211,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         rd.advance(consumed);
 
         if (m_http_parser->fail())
-          throw std::runtime_error("bad http header: " + m_http_parser->error_text());
+          throw handshake_error("bad http header: " + m_http_parser->error_text());
 
         if (m_http_parser->complete() )
         {
@@ -246,11 +246,11 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             }
             else
             {
-              throw std::runtime_error("invalid websocket version");
+              throw handshake_error("invalid websocket version");
             }
           }
           else
-            throw std::runtime_error("http header is not a websocket upgrade");
+            throw handshake_error("http header is not a websocket upgrade");
         }
       }
       else if (m_state == eHandlingWebsocket)
@@ -302,7 +302,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         std::cout << "payload=" << payload << "\n";
 
         if (!fin_bit)
-          throw std::runtime_error("websocket continuations not yet supported");
+          throw protocol_error("websocket continuations not yet supported");
 
         switch (opcode)
         {

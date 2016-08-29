@@ -6,8 +6,7 @@
 
 #include <http_parser.h> /* nodejs http parser */
 
-#include <iostream> // TODO: delete me
-
+#include <iostream>
 #include <string.h>
 
 
@@ -69,12 +68,25 @@ http_parser::~http_parser()
 }
 
 
-void http_parser::store_header()
+void http_parser::store_current_header_field()
 {
-  // TODO: if field already exists, append to existing (comma).
-
   if (!m_current_field.empty())
-    m_headers[ m_current_field ] = m_current_value;
+  {
+    auto it = m_headers.find( m_current_field );
+    if (it != m_headers.end())
+    {
+      // TODO: test this append does actuall work
+      std::string t = it->second + "," + m_current_value;
+      m_headers.insert({m_current_field, t}  );
+      it->second.append(",");
+      it->second.append(m_current_value);
+    }
+    else
+    {
+      m_headers.insert({ m_current_field, m_current_value});
+    }
+    std::cout << "added: " << m_current_field << ":" << m_current_value<< "\n";
+  }
 
   m_current_field.clear();
   m_current_value.clear();
@@ -95,12 +107,10 @@ int http_parser::on_header_field(const char *s, size_t n)
   }
   else
   {
-    store_header();
+    store_current_header_field();
     m_current_field = {s,n};
     m_state = eParsingField;
   }
-
-  std::cout << "on_header_field ["  << m_current_field << "]\n";
 
   return 0;
 }
@@ -117,7 +127,7 @@ int http_parser::on_header_value(const char *s, size_t n)
   {
     m_current_value += {s,n};
   }
-  std::cout << "on_header_value [" << m_current_value  << "]\n";
+
   return 0;
 }
 
@@ -137,8 +147,7 @@ size_t http_parser::handle_input(char* const data, size_t const len)
 
 int http_parser::on_headers_complete()
 {
-  std::cout << "***** headers complete *****\n";
-  store_header();
+  store_current_header_field();
   m_state = eComplete;
   return HPE_OK;
 }

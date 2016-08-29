@@ -158,12 +158,11 @@ void pre_session::io_on_read(char* src, size_t len)
   }
   catch ( std::exception& e )
   {
-    LOG_WARN("closing session due to exception: "
-             << e.what());
+    LOG_WARN("closing pre-session: " << e.what());
   }
   catch (...)
   {
-    LOG_WARN("closing session due to unknown exception");
+    LOG_WARN("closing pre-session due to unknown exception");
   }
   this->close();
 }
@@ -186,7 +185,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
     // protocol is constructed (since it will then take over socket read
     // callbacks).
     if (len)
-      throw std::runtime_error("failed to consume all bytes read from socket");
+      throw handshake_error("failed to consume all bytes read from socket");
 
     auto rd = m_buf.read_ptr();
 
@@ -225,7 +224,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
     }
     else if (rd.avail() >= rawsocket_protocol::HEADER_SIZE)
     {
-      throw std::runtime_error("unknown wire protocol");
+      throw handshake_error("unknown wire protocol");
     }
   }
 
@@ -245,7 +244,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
       proto_actual->io_on_read(m_buf.data(), m_buf.data_size());
     }
     else
-      throw std::runtime_error("protocol identified but instance was not created");
+      throw handshake_error("protocol identified but instance was not created");
   }
 
 }

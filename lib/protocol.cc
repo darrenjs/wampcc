@@ -96,16 +96,16 @@ void protocol::decode_json(const char* ptr, size_t msglen)
     jalson::json_array& msg = jv.as_array();
 
     if (msg.size() == 0)
-      throw bad_protocol("json array empty");
+      throw protocol_error("json array empty");
 
     if (!msg[0].is_uint())
-      throw bad_protocol("message type must be uint");
+      throw protocol_error("message type must be uint");
 
     m_msg_processor(msg, msg[0].as_uint());
   }
   catch( const jalson::json_error& e)
   {
-    throw bad_protocol(e.what());
+    throw protocol_error(e.what());
   }
 }
 

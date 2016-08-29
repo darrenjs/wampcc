@@ -70,15 +70,15 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
         if (mode() == connection_mode::ePassive)
         {
           if (rd[0] != MAGIC)
-            throw std::runtime_error("rawsocket client handshake must begin with magic octet");
+            throw handshake_error("client handshake must begin with magic octet");
 
           uint8_t rd_1 = rd[1];
           m_peer_max_msg_size = 1 << (9 + (rd_1>>4) );
 
           if ((rd[2] || rd[3]))
           {
-            reply_handshake(eUseOfReservedBits, 0);
-            throw std::runtime_error("rawsocket handshake reserved bytes must be zero");
+            reply_handshake(e_UseOfReservedBits, 0);
+            throw handshake_error("handshake reserved bytes must be zero");
           }
 
           switch(rd_1 & 0x0F)
@@ -86,8 +86,8 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
             case e_JSON : break;
             case e_MSGPACK :
             default:
-              reply_handshake(eSerialiserUnsupported, 0);
-              throw std::runtime_error("unsupported rawsocket serializer type");
+              reply_handshake(e_SerialiserUnsupported, 0);
+              throw handshake_error("unsupported rawsocket serializer type");
           }
 
           // complete the handshake
@@ -99,12 +99,10 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
           std::cout << "active connection received rawsocket handshake" << "\n";
 
           if (rd[0] != MAGIC)
-            throw std::runtime_error("rawsocket server handshake reply must begin with magic octet");
+            throw handshake_error("server handshake must begin with magic octet");
 
           if ((rd[2] || rd[3]))
-          {
-            throw std::runtime_error("rawsocket server handshake reply reserved bytes must be zero");
-          }
+            throw handshake_error("server handshake reserved bytes must be zero");
 
           m_peer_max_msg_size = 1 << (9 + (rd[1]>>4) );
           uint8_t serializer  = rd[1] & 0x0F;
@@ -116,7 +114,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
             // TODO: log error code
             // int error = rd[1] >> 4;
 
-            throw std::runtime_error("server rejected handshake");
+            throw handshake_error("server rejected handshake");
           }
 
 
@@ -134,7 +132,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
         // TODO: test this
         if (msglen > m_self_max_msg_size)
         {
-          throw std::runtime_error("inbound message size exceeds limit");
+          throw protocol_error("received message size exceeds limit");
         }
 
         decode(rd.ptr()+HEADER_SIZE, msglen);
@@ -159,16 +157,16 @@ void rawsocket_protocol::decode(const char* ptr, size_t msglen)
     jalson::json_array& msg = jv.as_array();
 
     if (msg.size() == 0)
-      throw bad_protocol("json array empty");
+      throw protocol_error("json array empty");
 
     if (!msg[0].is_uint())
-      throw bad_protocol("message type must be uint");
+      throw protocol_error("message type must be uint");
 
     m_msg_processor(msg, msg[0].as_uint());
   }
   catch( const jalson::json_error& e)
   {
-    throw bad_protocol(e.what());
+    throw protocol_error(e.what());
   }
 }
 

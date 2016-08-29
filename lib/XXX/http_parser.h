@@ -59,7 +59,7 @@ class http_parser
 
  private:
 
-  void store_header();
+  void store_current_header_field();
   int on_headers_complete();
   int on_url(const char *s, size_t n);
   int on_header_field(const char *s, size_t n);

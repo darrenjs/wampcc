@@ -69,12 +69,31 @@ private:
   size_t m_bytes_avail;
 };
 
-
-
-class bad_protocol : public std::runtime_error
+/** Exception thrown during IO processing of a new connection. This is an
+ * unrecoverable error that prevents the correct construction of a protocol
+ * encoder/decoder object, and so prevents creationg of a WAMP session from a
+ * new socket connection.  Will lead to connection drop without any attempt to
+ * send a final WAMP message (although protocol level messages maybe sent before
+ * disconnect). */
+class handshake_error : public std::runtime_error
 {
 public:
-  bad_protocol(const std::string& msg)
+  handshake_error(const std::string& msg)
+    : std::runtime_error(msg.c_str())
+  {}
+};
+
+/** Exception thrown due to any sort of malformed WAMP message.  Generally this
+ * error is thrown when the peer has failed to respect the terms of the WAMP
+ * message-level protocol. Some examples: missinng mandatory arguments in WAMP
+ * messages; values that have incorrect primitive type or container type (eg an
+ * object where an array was expected).  This exception can be thrown during
+ * initial message processing on the IO thread, or later during deferred
+ * processing on the EV thread.  Shall result in a connection drop. */
+class protocol_error : public std::runtime_error
+{
+public:
+  protocol_error(const std::string& msg)
     : std::runtime_error(msg.c_str())
   {}
 
