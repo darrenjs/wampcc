@@ -189,7 +189,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
 
     auto rd = m_buf.read_ptr();
 
-    if (rd.avail() >= rawsocket_protocol::HEADER_SIZE
+    if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE
         && rd[0] == rawsocket_protocol::MAGIC)
     {
       rawsocket_protocol::options default_opts;
@@ -222,7 +222,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
 
       break;
     }
-    else if (rd.avail() >= rawsocket_protocol::HEADER_SIZE)
+    else if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE)
     {
       throw handshake_error("unknown wire protocol");
     }

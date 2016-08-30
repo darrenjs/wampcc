@@ -9,6 +9,8 @@ class rawsocket_protocol : public protocol
 {
 public:
 
+  /** Enumeration used to specify the maximum length of messages that a raw
+      socket transport can receive. */
   enum max_msg_size_flag
   {
     e_512_b = 0,
@@ -29,6 +31,9 @@ public:
     e_16_mb
   };
 
+  /** The default maximum length for received (RX) messages. */
+  static constexpr max_msg_size_flag default_max_rxmsg_size = rawsocket_protocol::e_16_mb;
+
   enum serialiser_flag
   {
     e_INVALID = 0,
@@ -39,7 +44,11 @@ public:
   struct options
   {
     max_msg_size_flag inbound_max_msg_size;
-    options(max_msg_size_flag __inbound_max_msg_size=e_512_kb)
+    options()
+      : inbound_max_msg_size(rawsocket_protocol::default_max_rxmsg_size)
+    {}
+
+    options(max_msg_size_flag __inbound_max_msg_size)
       : inbound_max_msg_size(__inbound_max_msg_size)
     {}
   };
@@ -47,7 +56,7 @@ public:
   static constexpr const char* NAME = "rawsocket";
 
   static constexpr unsigned char HANDSHAKE_SIZE = 4;
-  static constexpr unsigned char HEADER_SIZE = HANDSHAKE_SIZE;
+  static constexpr unsigned char FRAME_PREFIX_SIZE = 4;
   static constexpr unsigned char MAGIC = 0x7F;
 
   rawsocket_protocol(io_handle*, t_msg_cb, connection_mode, options);
@@ -58,6 +67,14 @@ public:
   void send_msg(const jalson::json_array& j);
 
 private:
+  static const int FRAME_MSG_LEN_MASK       = 0x00FFFFFF;
+  static const int FRAME_RESERVED_MASK      = 0xF8000000;
+  static const int FRAME_MSG_TYPE_MASK      = 0x07000000;
+  static const int FRAME_FIRST_OCTECT_SHIFT = 24;
+
+  static const int MSG_TYPE_WAMP = 0;
+  static const int MSG_TYPE_PING = 1;
+  static const int MSG_TYPE_PONG = 2;
 
   void decode(const char*, size_t);
 

@@ -52,7 +52,9 @@ void rawsocket_protocol::initiate(t_initiate_cb cb)
 
 void rawsocket_protocol::io_on_read(char* src, size_t len)
 {
-  while (len) /* IO thread */
+  /* IO thread */
+
+  while (len)
   {
     size_t consume_len = m_buf.consume(src, len);
     src += consume_len;
@@ -61,8 +63,6 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
     auto rd = m_buf.read_ptr();
     while (rd.avail())
     {
-      if (rd.avail() < rawsocket_protocol::HEADER_SIZE) break; // header incomplete
-
       if (m_state == eHandshaking)
       {
         if (rd.avail() < HANDSHAKE_SIZE) break;
@@ -117,7 +117,6 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
             throw handshake_error("server rejected handshake");
           }
 
-
           m_state = eOpen;
           m_initiate_cb();
         }
@@ -126,8 +125,14 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
       }
       else
       {
-        uint32_t msglen =  ntohl( *((uint32_t*) rd.ptr()) );
-        if (rd.avail() < (HEADER_SIZE+msglen)) break; // body incomplete
+        if (rd.avail() < FRAME_PREFIX_SIZE) break; // header incomplete
+
+        uint32_t frame_hdr = ntohl( *((uint32_t*) rd.ptr()) );
+
+        if (frame_hdr & FRAME_RESERVED_MASK)
+          throw protocol_error("frame reserved bits must be zero");
+
+        uint32_t msglen = frame_hdr & FRAME_MSG_LEN_MASK;
 
         // TODO: test this
         if (msglen > m_self_max_msg_size)
@@ -135,8 +140,33 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
           throw protocol_error("received message size exceeds limit");
         }
 
-        decode(rd.ptr()+HEADER_SIZE, msglen);
-        rd.advance(HEADER_SIZE+msglen); // advance to next message
+        if (rd.avail() < (FRAME_PREFIX_SIZE+msglen)) break; // body incomplete
+
+        switch ((frame_hdr & FRAME_MSG_TYPE_MASK)>>FRAME_FIRST_OCTECT_SHIFT)
+        {
+          case MSG_TYPE_WAMP :
+          {
+            decode(rd.ptr()+FRAME_PREFIX_SIZE, msglen);
+            break;
+          }
+          case MSG_TYPE_PING :
+          {
+            uint32_t out_frame_hdr = msglen | (MSG_TYPE_PONG << FRAME_FIRST_OCTECT_SHIFT);
+            out_frame_hdr = htonl(out_frame_hdr);
+            std::pair<const char*, size_t> bufs[2];
+            bufs[0].first  = (char*)&out_frame_hdr;
+            bufs[0].second = FRAME_PREFIX_SIZE;
+            bufs[1].first  = rd.ptr()+FRAME_PREFIX_SIZE;
+            bufs[1].second = msglen;
+            m_iohandle->write_bufs(bufs, 2, false);
+            break;
+          }
+          case MSG_TYPE_PONG : break;
+          default:
+            throw protocol_error("unknown rawsocket msg type");
+        };
+
+        rd.advance(FRAME_PREFIX_SIZE+msglen); // advance to next message
       }
     }
 
