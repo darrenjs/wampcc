@@ -184,8 +184,8 @@ namespace XXX {
     void io_on_close() override;
     void io_on_read(char*, size_t) override;
     void decode_and_process(char*, size_t len);
-    void process_message(unsigned intmessage_type,
-                         jalson::json_array&);
+    void process_message(unsigned int, jalson::json_array&);
+    void handle_exception();
 
     void update_state_for_outbound(const jalson::json_array& msg);
 
@@ -219,7 +219,7 @@ namespace XXX {
     void handle_CHALLENGE(jalson::json_array& ja);
     void handle_AUTHENTICATE(jalson::json_array& ja);
 
-    void notify_session_state_change(bool is_open);
+    void notify_session_open();
     static const char* state_to_str(wamp_session::SessionState);
 
 

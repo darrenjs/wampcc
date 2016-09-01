@@ -24,26 +24,26 @@
 #define MAX_PENDING_OPEN_MS 5000
 #define MAX_HEARTBEATS_MISSED 3
 
-
-
 namespace XXX {
 
-/* exception that represents a protocol level error, and will result in
- * termination of the connection */
-class session_error : public std::runtime_error
+/** Exception class used to indicate failure of authentication. */
+class auth_error : public std::runtime_error
 {
 public:
 
-  std::string uri;
-
-  session_error(const std::string& __uri,
-                const std::string& __text="")
+ auth_error(const std::string& __uri, const std::string& __text)
   : std::runtime_error( __text ),
-    uri( __uri )
+    m_uri( __uri )
   {
   }
 
+  const std::string& error_uri() const { return m_uri; }
+
+private:
+  std::string m_uri;
 };
+
+
 
 
 static std::atomic<uint64_t> m_next_id(1); // start at 1, so that 0 implies invalid ID
@@ -209,7 +209,7 @@ void wamp_session::io_on_close()
     } );
 }
 
-//----------------------------------------------------------------------
+
 void wamp_session::io_on_read(char* src, size_t len)
 {
   /* IO thread */
@@ -222,126 +222,14 @@ void wamp_session::io_on_read(char* src, size_t len)
 
   try
   {
-    return m_proto->io_on_read(src,len);
-  }
-  catch ( session_error& e )
-  {
-    err_uri  = std::move(e.uri);
-    err_text = e.what();
-  }
-  catch ( protocol_error& e )
-  {
-    LOG_WARN("closing session due to protocol error: "
-             << e.what());
-    this->close();
-    return;
-  }
-  catch ( std::exception& e )
-  {
-    err_uri = WAMP_RUNTIME_ERROR;
-    err_text = e.what();
+    m_proto->io_on_read(src,len);
   }
   catch (...)
   {
-    err_uri = WAMP_RUNTIME_ERROR;
+    handle_exception();
   }
-
-  LOG_WARN("session_error: uri=" << err_uri << ", text=" << err_text);
-  drop_connection(err_uri);
 }
 
-
-// void wamp_session::io_on_read_impl(char* src, size_t len)
-// {
-//   /* IO thread */
-
-//   while (len > 0)
-//   {
-//     size_t buf_space_avail = m_buf_size - m_bytes_avail;
-//     if (buf_space_avail)
-//     {
-//       size_t bytes_to_consume = std::min(buf_space_avail, len);
-//       memcpy(m_buf + m_bytes_avail, src, bytes_to_consume);
-//       src += bytes_to_consume;
-//       len -= bytes_to_consume;
-//       m_bytes_avail += bytes_to_consume;
-
-//       /* process the data in the working buffer */
-
-//       char* ptr = m_buf;
-//       while (m_bytes_avail)
-//       {
-//         if (m_bytes_avail < HEADERLEN) break; // header incomplete
-
-//         // quick protocol check
-//         if (m_bytes_avail > HEADERLEN)
-//         {
-//           char firstchar = *(ptr + HEADERLEN);
-//           if (firstchar != '[')
-//             throw bad_protocol("bad json message");
-//         }
-
-//         uint32_t msglen =  ntohl( *((uint32_t*) ptr) );
-//         if (m_bytes_avail < (HEADERLEN+msglen)) break; // body incomplete
-
-//         if ((HEADERLEN+msglen) > m_buf_size)
-//           throw session_error(WAMP_RUNTIME_ERROR, "inbound message will exceed buffer");
-
-//         // we have enough bytes to decode
-//         this->decode_and_process(ptr+HEADERLEN, msglen);
-
-//         // skip to start of next message
-//         ptr           += (HEADERLEN+msglen);
-//         m_bytes_avail -= (HEADERLEN+msglen);
-//       }
-
-//       /* move any left over bytes to the head of the buffer */
-//       if (m_bytes_avail && (m_buf != ptr)) memmove(m_buf, ptr, m_bytes_avail);
-//     }
-//     else
-//     {
-//       throw session_error(WAMP_RUNTIME_ERROR, "receive message buffer full");
-//     }
-//   }
-// }
-
-
-// void wamp_session::decode_and_process(char* ptr, size_t msglen)
-// {
-//   /* IO thread */
-
-//   try
-//   {
-//     jalson::json_value jv;
-//     jalson::decode(jv, ptr, msglen);
-
-//     /* sanity check message */
-//     jalson::json_array& msg = jv.as_array();
-
-//     if (msg.size() == 0)
-//       throw bad_protocol( "json array empty");
-
-//     if (!msg[0].is_uint())
-//       throw bad_protocol("message type must be uint");
-//     unsigned int messasge_type = msg[0].as_uint();
-
-//     /* process on the EV thread */
-//     std::weak_ptr<wamp_session> wp = handle();
-//     std::function<void()> fn = [wp,msg,messasge_type]() mutable
-//       {
-//         if (auto sp = wp.lock())
-//           sp->process_message(messasge_type, msg);
-//       };
-//     m_kernel.get_event_loop()->dispatch(std::move(fn));
-
-//   }
-//   catch( const jalson::json_error& e)
-//   {
-//     throw bad_protocol(e.what());
-//   }
-// }
-
-//----------------------------------------------------------------------
 
 void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 {
@@ -581,7 +469,7 @@ void wamp_session::process_message(unsigned int message_type,
       else if (message_type == WELCOME)
       {
         change_state(eSentAuth, eOpen);
-        if (m_state == eOpen) notify_session_state_change(true); // TODO: only ever pass true, so remove the parameter
+        if (m_state == eOpen) notify_session_open();
         return;
       }
       else
@@ -624,25 +512,55 @@ void wamp_session::process_message(unsigned int message_type,
           throw protocol_error(os.str());
       }
     }
-    return; // message handled okay
-  }
-  catch (session_error & e)
-  {
-    LOG_WARN("aborting session due to error, uri: " << e.uri << ", what: " << e.what());
-  }
-  catch (std::exception & e)
-  {
-    LOG_WARN("closing session due to exception, what: " << e.what());
   }
   catch (...)
   {
-    LOG_WARN("closing session due to unknown exception");
+    handle_exception();
   }
-  this->close();
 }
 
 
-//----------------------------------------------------------------------
+/** Exception handler for all inbound traffic, i.e., processing raw bytes of a
+  * socket and processing inbound messages on the event thread. */
+void wamp_session::handle_exception()
+{
+  try
+  {
+    throw;
+  }
+  catch ( handshake_error& e )
+  {
+    LOG_WARN("handhake error: " << e.what());
+    this->close();
+  }
+  catch ( auth_error& e )
+  {
+    LOG_WARN("auth error: " << e.what());
+    drop_connection(e.error_uri());
+  }
+  catch ( protocol_error& e )
+  {
+    LOG_WARN("protocol error: " << e.what());
+    drop_connection(WAMP_ERROR_BAD_PROTOCOL);
+  }
+  catch (wamp_error & e)
+  {
+    // We don't expect a wamp_error here; they are intended to be caught at
+    // the inside the process method.
+    LOG_WARN("unexpected wamp error: " << e.what());
+    drop_connection(e.error_uri());
+  }
+  catch (std::exception & e)
+  {
+    LOG_WARN("exception: " << e.what());
+    drop_connection(WAMP_RUNTIME_ERROR);
+  }
+  catch (...)
+  {
+    LOG_WARN("unknown exception");
+    drop_connection(WAMP_RUNTIME_ERROR);
+  }
+}
 
 
 void wamp_session::send_msg(jalson::json_array& jv, bool)
@@ -664,8 +582,8 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   std::string authid = jalson::get_copy(authopts, "authid", "").as_string();
 
   if (realm.empty())
-    throw session_error(WAMP_ERROR_NO_SUCH_REALM,
-                        "empty realm not allowed");
+    throw auth_error(WAMP_ERROR_NO_SUCH_REALM,
+                     "empty realm not allowed");
 
   {
     // update the realm & authid, and protect from multiple assignments to the
@@ -676,8 +594,8 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   }
 
   if (m_auth_proivder.permit_user_realm(authid, realm) == false)
-    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        "auth_provider rejected user/realm");
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "auth_provider rejected user/realm");
 
   /* verify the supported auth methods */
 
@@ -694,8 +612,8 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   }
 
   if (!wampcra_found)
-    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        "no supported auth method advertised during logon");
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "no supported auth method advertised during logon");
 
   /* Construct the challenge */
 
@@ -714,8 +632,8 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
     if (m_challenge.empty())
       m_challenge = challengestr;
     else
-      throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                          "challenge already issued");
+      throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                       "challenge already issued");
   }
 
   jalson::json_array msg;
@@ -742,14 +660,14 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 
   std::string authmethod = ja[1].as_string();
   if (authmethod != "wampcra")
-    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        "unknown AuthMethod  (only wampcra supported)");
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "unknown AuthMethod (only wampcra supported)");
 
   const jalson::json_object & extra = ja[2].as_object();
   std::string challmsg = jalson::get_copy(extra, "challenge", "").as_string();
   if (challmsg == "")
-    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        "challenge not found in Extra");
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "challenge not found in Extra");
 
   /* generate the authentication digest */
 
@@ -774,12 +692,8 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
   }
   else
   {
-    LOG_ERROR("failed to compute HMAC SHA256 diget");
-    jalson::json_array msg;
-    msg.push_back( ABORT );
-    msg.push_back( jalson::json_object() );
-    msg.push_back( "wamp.error.authentication_failed" );
-    send_msg( msg, true );
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "failed to compute HMAC SHA256 diget");
   }
 
 }
@@ -808,8 +722,8 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
   for (size_t i = 0; i < key.size(); i++) key[i]='\0';
   if (r == -1)
   {
-    throw session_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                        "HMACSHA256 failed");
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "HMAC SHA256 failed");
   }
 
   // the digest generated by the peer
@@ -830,27 +744,21 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 
     send_msg( msg );
 
-    if (m_state == eOpen) notify_session_state_change(true);
+    if (m_state == eOpen) notify_session_open();
   }
   else
   {
-    LOG_WARN("peer failed challenge-response-authentication");
-
-    jalson::json_array msg;
-    msg.push_back( ABORT );
-    msg.push_back( jalson::json_object() );
-    msg.push_back( "wamp.error.authentication_failed" );
-    send_msg( msg, true );
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "client failed challenge-response-authentication");
   }
 }
 
-//----------------------------------------------------------------------
 
 /* In here have taken approach of doing the session open notification via the
  * event loop.  This sticks to the principle of minimising the actions taken in
  * the IO thread.
  */
-void wamp_session::notify_session_state_change(bool is_open)
+void wamp_session::notify_session_open()
 {
   /* EV thread */
 
@@ -859,15 +767,14 @@ void wamp_session::notify_session_state_change(bool is_open)
     session_handle wp = handle();
 
     m_kernel.get_event_loop()->dispatch(
-      [wp, is_open]()
+      [wp]()
       {
         if (auto sp = wp.lock())
-          sp->m_notify_state_change_fn(wp, is_open);
+          sp->m_notify_state_change_fn(wp, true /* session is open */);
       } );
   }
 }
 
-//----------------------------------------------------------------------
 
 bool wamp_session::is_open() const
 {
@@ -1051,14 +958,6 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
   {
     reply_with_error(INVOCATION, request_id, ex.args(), ex.error_uri());
   }
-  catch (std::exception& ex)
-  {
-    reply_with_error(INVOCATION, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
-  }
-  catch (...)
-  {
-    reply_with_error(INVOCATION, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
-  }
 }
 
 
@@ -1144,7 +1043,6 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
                        temp.user_data);
 
       } catch(...){ log_exception(__logger, "inbound subscribed user callback"); }
-
   }
 }
 
@@ -1578,17 +1476,9 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
   {
     m_server_handler.inbound_subscribe(this, request_id, topic_uri, msg[2].as_object());
   }
-  catch(wamp_error ex)
+  catch(wamp_error& ex)
   {
     reply_with_error(SUBSCRIBE, request_id, ex.args(), ex.error_uri());
-  }
-  catch (std::exception& ex)
-  {
-    reply_with_error(SUBSCRIBE, request_id, wamp_args(), ex.what());
-  }
-  catch (...)
-  {
-    reply_with_error(SUBSCRIBE, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
   }
 }
 
@@ -1618,17 +1508,9 @@ void wamp_session::process_inbound_register(jalson::json_array & msg)
     resp.push_back(registration_id);
     send_msg(resp);
   }
-  catch(wamp_error ex)
+  catch(wamp_error& ex)
   {
     reply_with_error(REGISTER, request_id, ex.args(), ex.error_uri());
-  }
-  catch (std::exception& ex)
-  {
-    reply_with_error(REGISTER, request_id, wamp_args(), ex.what());
-  }
-  catch (...)
-  {
-    reply_with_error(REGISTER, request_id, wamp_args(), WAMP_RUNTIME_ERROR);
   }
 }
 
