@@ -69,6 +69,10 @@ std::future<int> dealer_service::listen(int port,
             return this->m_pubsub->subscribe(p, request_id, uri, options);
           };
 
+          handlers.inbound_unsubscribe = [this](wamp_session* p, t_request_id request_id, t_subscription_id sub_id) {
+            this->m_pubsub->unsubscribe(p, request_id, sub_id);
+          };
+
           handlers.inbound_register = [this](std::weak_ptr<wamp_session> h,
                                              std::string realm,
                                              std::string uri) {

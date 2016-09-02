@@ -438,7 +438,7 @@ void wamp_session::process_message(unsigned int message_type,
           return;
 
         case UNSUBSCRIBE :
-          // TODO: handle unsubscribe request
+          process_inbound_unsubscribe(ja);
           return;
 
         case REGISTER :
@@ -490,6 +490,10 @@ void wamp_session::process_message(unsigned int message_type,
 
         case SUBSCRIBED :
           process_inbound_subscribed(ja);
+          return;
+
+        case UNSUBSCRIBED :
+          // TODO: process_inbound_unsubscribed(ja);
           return;
 
         case EVENT :
@@ -1479,6 +1483,29 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
   catch(wamp_error& ex)
   {
     reply_with_error(SUBSCRIBE, request_id, ex.args(), ex.error_uri());
+  }
+}
+
+
+
+void wamp_session::process_inbound_unsubscribe(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[2].is_uint()) throw protocol_error("subscription id must be uint");
+  t_subscription_id sub_id = msg[2].as_uint();
+
+  try
+  {
+    m_server_handler.inbound_unsubscribe(this, request_id, sub_id);
+  }
+  catch(wamp_error& ex)
+  {
+    reply_with_error(UNSUBSCRIBE, request_id, ex.args(), ex.error_uri());
   }
 }
 

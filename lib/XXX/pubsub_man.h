@@ -27,9 +27,13 @@ public:
                        wamp_args);
 
   uint64_t subscribe(wamp_session* ptr,
-                     t_request_id request_id,
+                     t_request_id,
                      std::string uri,
                      jalson::json_object & options);
+
+  void unsubscribe(wamp_session*,
+                   t_request_id,
+                   t_subscription_id);
 
   void session_closed(session_handle sh);
 

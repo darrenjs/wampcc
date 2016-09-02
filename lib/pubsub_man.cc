@@ -186,6 +186,7 @@ void pubsub_man::inbound_publish(std::string realm,
   update_topic(topic, realm, std::move(options), args);
 }
 
+
 /* Add a subscription to a managed topic.  Need to sync the addition of the
   subscriber, with the series of images and updates it sees. This is done via
   single threaded access to this class.
@@ -205,7 +206,6 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 
   if (uri.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "URI zero length");
-
 
   // find or create a topic
   managed_topic* mt = find_topic(uri, sptr->realm(), true);
@@ -255,6 +255,17 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   return mt->subscription_id;
 }
 
+
+
+void pubsub_man::unsubscribe(wamp_session* sptr,
+                             t_request_id request_id,
+                             t_subscription_id sub_id)
+{
+  /* EV thread */
+
+  // TODO: need to handle unsubscribe
+
+}
 
 void pubsub_man::session_closed(session_handle /*sh*/)
 {

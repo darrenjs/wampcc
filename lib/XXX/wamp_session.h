@@ -34,6 +34,7 @@ namespace XXX {
     std::function<void(wamp_session*, std::string uri, jalson::json_object, wamp_args)> handle_inbound_publish;
     std::function<uint64_t (std::weak_ptr<wamp_session>, std::string realm, std::string uri)> inbound_register;
     std::function<uint64_t (wamp_session*, t_request_id, std::string uri, jalson::json_object&)> inbound_subscribe;
+    std::function<void (wamp_session*, t_request_id, t_subscription_id)> inbound_unsubscribe;
   };
 
   class kernel;
@@ -265,6 +266,7 @@ namespace XXX {
     void process_inbound_yield(jalson::json_array &);
     void process_inbound_publish(jalson::json_array &);
     void process_inbound_subscribe(jalson::json_array &);
+    void process_inbound_unsubscribe(jalson::json_array &);
     void process_inbound_register(jalson::json_array &);
 
     void invocation_yield(int request_id,
