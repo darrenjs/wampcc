@@ -31,6 +31,8 @@ public:
     e_16_mb
   };
 
+
+
   /** The default maximum length for received (RX) messages. */
   static constexpr max_msg_size_flag default_max_rxmsg_size = rawsocket_protocol::e_16_mb;
 
@@ -85,6 +87,8 @@ private:
     e_UseOfReservedBits        = 3,
     e_MaxConnectionCountReach  = 4
   };
+
+  static const char* handshake_error_code_to_sting(handshake_error_code);
 
   void reply_handshake(int, int);
 

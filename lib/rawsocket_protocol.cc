@@ -2,11 +2,9 @@
 
 #include "XXX/io_handle.h"
 
-
-#include <iostream>
+#include <sstream>
 
 namespace XXX {
-
 
 template<int N>
 static void format_handshake(char (&handshake) [N],
@@ -20,6 +18,24 @@ static void format_handshake(char (&handshake) [N],
   handshake[1]= ((max_size & 0xF) << 4) | (serialiser & 0xF);
   handshake[2]=0;
   handshake[3]=0;
+}
+
+
+const char* rawsocket_protocol::handshake_error_code_to_sting(handshake_error_code e)
+{
+  switch (e)
+  {
+    case e_SerialiserUnsupported :
+      return  "serialised unsupported";
+    case e_MaxMsgLengthUnacceptable :
+      return "max msg length unacceptable";
+    case e_UseOfReservedBits :
+      return "use of handshake reserved bits";
+    case e_MaxConnectionCountReach :
+      return "max connection count reached";
+    default:
+      return "";
+  }
 }
 
 
@@ -96,25 +112,27 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
         }
         else
         {
-          std::cout << "active connection received rawsocket handshake" << "\n";
-
           if (rd[0] != MAGIC)
             throw handshake_error("server handshake must begin with magic octet");
 
           if ((rd[2] || rd[3]))
             throw handshake_error("server handshake reserved bytes must be zero");
 
-          m_peer_max_msg_size = 1 << (9 + (rd[1]>>4) );
-          uint8_t serializer  = rd[1] & 0x0F;
+          uint8_t rd_1 = rd[1];
+          m_peer_max_msg_size = 1 << (9 + (rd_1>>4) );
+          uint8_t serializer  = rd_1 & 0x0F;
 
           if (serializer == 0)
           {
             /* handshake rejected by server */
 
-            // TODO: log error code
-            // int error = rd[1] >> 4;
-
-            throw handshake_error("server rejected handshake");
+            auto error_code = (handshake_error_code) (rd_1 >> 4);
+            std::ostringstream os;
+            os << "server rejected handshake with error code " <<  error_code;
+            const char* err_str = handshake_error_code_to_sting(error_code);
+            if (err_str[0] != '\0')
+              os << " (" << err_str << ")";
+            throw handshake_error(os.str());
           }
 
           m_state = eOpen;

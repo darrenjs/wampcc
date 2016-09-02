@@ -11,8 +11,6 @@
 #include <string.h>
 
 
-#define SYSTEM_HEARTBEAT_MS 10
-
 static const char* safe_str(const char* s)
 {
   return s? s : "null";
@@ -319,7 +317,6 @@ void io_loop::on_async()
                                std::move(user_req->listener_err));
     }
   }
-
 }
 
 
@@ -330,6 +327,7 @@ void io_loop::async_send()
   // cause the IO thread to wake up
   uv_async_send( m_async.get() );
 }
+
 
 void io_loop::run_loop()
 {
@@ -353,6 +351,7 @@ void io_loop::run_loop()
     }
   }
 }
+
 
 void io_loop::start()
 {
