@@ -63,7 +63,6 @@ inline std::string make_accept_key(const std::string& challenge)
 }
 
 
-
 static bool string_list_contains(const std::string & source,
                                  const std::string & match)
 {
@@ -75,7 +74,6 @@ static bool string_list_contains(const std::string & source,
   }
   return false;
 }
-
 
 
 // Two byte conversion union
@@ -115,60 +113,61 @@ struct frame_builder
   /** Construct  */
   frame_builder(int opcode, bool is_fin, size_t payload_len)
   {
-    unsigned char is_fin_bit    = is_fin?FRAME_FIN:0;
+    unsigned char is_fin_bit = is_fin?FRAME_FIN:0;
 
-    image[0] = is_fin_bit | (FRAME_OPCODE & opcode);
+    m_image[0] = is_fin_bit | (FRAME_OPCODE & opcode);
 
     if (payload_len < 126)
     {
-      image[1] = (unsigned char)(payload_len);
-      header_len = 2;
+      m_image[1] = (unsigned char)(payload_len);
+      m_header_len = 2;
     }
     else if (payload_len < 65536)
     {
       uint16_converter temp;
       temp.i = htons(payload_len & 0xFFFF);
-      image[1] = (unsigned char)126;
-      image[2] = temp.m[0];
-      image[3] = temp.m[1];
-      header_len = 4;
+      m_image[1] = (unsigned char)126;
+      m_image[2] = temp.m[0];
+      m_image[3] = temp.m[1];
+      m_header_len = 4;
     }
     else
     {
       uint64_converter temp;
       temp.i = __bswap_64(payload_len);
-      image[1] = (unsigned char)127;
-      for (int i = 0; i<8; ++i) image[2+i]=temp.m[i];
-      header_len = 10;
+      m_image[1] = (unsigned char)127;
+      for (int i = 0; i<8; ++i) m_image[2+i]=temp.m[i];
+      m_header_len = 10;
     }
   }
 
   frame_builder(int opcode, bool is_fin, size_t payload_len, std::array<char,4> mask)
-    :  frame_builder(opcode, is_fin, payload_len)
+    : frame_builder(opcode, is_fin, payload_len)
   {
-    image[1] |= FRAME_MASKED;
-    image[header_len+0] = mask[0];
-    image[header_len+1] = mask[1];
-    image[header_len+2] = mask[2];
-    image[header_len+3] = mask[3];
-    header_len += 4;
+    m_image[1] |= FRAME_MASKED;
+    m_image[m_header_len+0] = mask[0];
+    m_image[m_header_len+1] = mask[1];
+    m_image[m_header_len+2] = mask[2];
+    m_image[m_header_len+3] = mask[3];
+    m_header_len += 4;
   }
 
-  char * data() { return image; }
-  const char * data() const { return image; }
-  size_t size() const { return header_len; }
+  char * data() { return m_image; }
+  const char * data() const { return m_image; }
+  size_t size() const { return m_header_len; }
 
   std::pair<const char*, size_t> buf() const
   {
     return { data(), size() };
   }
+
 private:
 
   // Storage for frame being created.
-  char   image[MAX_HEADER_LENGTH];
+  char m_image[MAX_HEADER_LENGTH];
 
   // Actual frame size, since frame size depends on payload size and masking
-  size_t header_len;
+  size_t m_header_len;
 };
 
 
@@ -177,21 +176,17 @@ void websocket_protocol::send_msg(const jalson::json_array& ja)
 {
   std::string msg ( jalson::encode( ja ) );
 
-  // prepare frame
-
   frame_builder fb(OPCODE_TEXT, true, msg.size());
 
   std::pair<const char*, size_t> bufs[2];
 
-  bufs[0].first  = (char*)fb.data();
-  bufs[0].second = fb.size();
+  bufs[0] = fb.buf();
 
   bufs[1].first  = (const char*)msg.c_str();;
   bufs[1].second = msg.size();
 
   m_iohandle->write_bufs(bufs, 2, false);
 }
-
 
 
 void websocket_protocol::io_on_read(char* src, size_t len)
@@ -246,7 +241,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             }
             else
             {
-              throw handshake_error("invalid websocket version");
+              throw handshake_error("unsupported websocket version");
             }
           }
           else
@@ -308,14 +303,19 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         {
           case 0x00: /* cont. */ break;
           case 0x01: /* text  */ break;
-          case 0x02: /* bin.  */ break;
+          case 0x02: /* bin.  */
+          {
+            throw protocol_error("websocket binary messages not supported");
+          }
           case OPCODE_CLOSE :
           {
-            // issue a close frame -- TODO: should coordinate this from the wamp_session?
+            // issue a close frame
             m_state = eClosing;
             frame_builder fb(OPCODE_CLOSE, true, 0);
             auto buf = fb.buf();
             m_iohandle->write_bufs(&buf, 1, false);
+
+            // TODO: request for close should be initiaied from the owning session?
             m_iohandle->request_close();
             break;
           };
@@ -329,7 +329,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
       }
       else
       {
-        // TODO: abort the connection
+        throw protocol_error("websocket not ready to receive data");
       }
 
     }
@@ -338,14 +338,12 @@ void websocket_protocol::io_on_read(char* src, size_t len)
   } // while(len)
 }
 
+
 void websocket_protocol::initiate(t_initiate_cb)
 {
+  // TODO: implement websocket client
   throw std::runtime_error("websocket_protocol::initiate not implemented");
 }
-
-
-
-
 
 
 void websocket_protocol::ev_on_timer()
