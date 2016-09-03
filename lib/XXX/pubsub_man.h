@@ -55,8 +55,10 @@ private:
 
   typedef  std::map< std::string, std::unique_ptr<managed_topic> > topic_registry;
   typedef  std::map< std::string, topic_registry >   realm_to_topicreg;
+  typedef  std::map< t_subscription_id,  managed_topic*>  subscriptionid_registry;
   realm_to_topicreg m_topics;
-  size_t m_next_subscription_id;
+  t_subscription_id m_next_subscription_id;
+  subscriptionid_registry m_subscription_registry;
 };
 
 } // namespace XXX

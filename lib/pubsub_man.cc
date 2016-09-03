@@ -9,8 +9,14 @@
 
 #include <list>
 #include <iostream>
+#include <algorithm>
 
 namespace XXX {
+
+static bool session_equals(const session_handle& p1, const session_handle& p2)
+{
+  return ( !p1.owner_before(p2) && !p2.owner_before(p1) );
+}
 
 /*
 Thread safety for pubsub.
@@ -33,22 +39,59 @@ struct managed_topic
   // current upto date image of the value
   jalson::json_value image;
 
-  // Note, we are tieing the subscription ID direct to the topic.  WAMP does
-  // allow this, and it has the benefit that we can perform a single message
-  // serialisation for all subscribers.  Might have to change later if more
-  // complex subscription features are supported.
-  size_t subscription_id;
+
+  t_subscription_id subscription_id() const { return m_subscription_id; }
 
 
   managed_topic(size_t __subscription_id)
-  : subscription_id(__subscription_id)
+  :  m_subscription_id(__subscription_id)
   {
   }
 
   uint64_t next_publication_id() { return m_id_gen.next(); }
 
+
+  /** Add a subscriber to this topic. */
+  void add(std::weak_ptr<wamp_session> wp)
+  {
+    auto it = std::find_if(std::begin(m_subscribers),
+                           std::end(m_subscribers),
+                           [wp](std::weak_ptr<wamp_session>& rhs)
+                           {
+                             return session_equals(wp,rhs);
+                           });
+
+    /* In WAMP it is not an error for a session to subscribe multiple times. So
+     * we dont throw an exception here if the session is already subscribed. */
+    if (it == std::end(m_subscribers))
+      m_subscribers.push_back(wp);
+  }
+
+
+  /** Remove a subscriber from this topic. */
+  void remove(std::weak_ptr<wamp_session> wp)
+  {
+    auto it = std::find_if(std::begin(m_subscribers),
+                           std::end(m_subscribers),
+                           [wp](std::weak_ptr<wamp_session>& rhs)
+                           {
+                             return session_equals(wp,rhs);
+                           });
+
+    /* In WAMP it is not an error for a session to subscribe multiple times. So
+     * we dont throw an exception here if the session is not found. */
+    if (it != std::end(m_subscribers))
+      m_subscribers.erase(it);
+  }
+
 private:
   global_scope_id_generator m_id_gen;
+
+  // Note, we are tieing the subscription ID direct to the topic.  WAMP does
+  // allow this, and it has the benefit that we can perform a single message
+  // serialisation for all subscribers.  Might have to change later if more
+  // complex subscription features are supported.
+  size_t m_subscription_id;
 };
 
 /* Constructor */
@@ -65,17 +108,13 @@ pubsub_man::~pubsub_man()
 }
 
 
-/*
-static bool compare_session(const session_handle& p1, const session_handle& p2)
-{
-  return ( !p1.owner_before(p2) && !p2.owner_before(p1) );
-}
-*/
+
 
 managed_topic* pubsub_man::find_topic(const std::string& topic,
                                       const std::string& realm,
                                       bool allow_create)
 {
+  // first find the realm
   auto realm_iter = m_topics.find( realm );
   if (realm_iter == m_topics.end())
   {
@@ -88,12 +127,14 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
       return nullptr;
   }
 
+  // now find the topic
   auto topic_iter = realm_iter->second.find( topic );
   if (topic_iter ==  realm_iter->second.end())
   {
     if (allow_create)
     {
       std::unique_ptr<managed_topic> ptr(new managed_topic(m_next_subscription_id++));
+      m_subscription_registry[ptr->subscription_id()] = ptr.get();
       auto result = realm_iter->second.insert(std::make_pair(topic, std::move( ptr )));
       topic_iter = result.first;
     }
@@ -136,7 +177,7 @@ void pubsub_man::update_topic(const std::string& topic,
   jalson::json_array msg;
   msg.reserve(6);
   msg.push_back( EVENT );
-  msg.push_back( mt->subscription_id );
+  msg.push_back( mt->subscription_id() );
   msg.push_back( mt->next_publication_id() );
   msg.push_back( std::move(options) );
   if (!args.args_list.is_null())
@@ -212,15 +253,10 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 
   if (!mt) throw wamp_error(WAMP_ERROR_INVALID_URI);
 
-  LOG_INFO("session " << sptr->unique_id() << " subscribing to '"<< uri<< "'");
+  LOG_INFO("session " << sptr->unique_id() << " subscribed to '"<< uri<< "'");
 
-  /* SUBSCRIBED acknowledgement */
-  jalson::json_array subscribed_msg;
-  subscribed_msg.reserve(3);
-  subscribed_msg.push_back(SUBSCRIBED);
-  subscribed_msg.push_back(request_id);
-  subscribed_msg.push_back(mt->subscription_id);
-  sptr->send_msg(subscribed_msg);
+  jalson::json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
+  sptr->send_msg(msg);
 
   /* for stateful topic must send initial snapshot */
   if (options.find(KEY_PATCH) != options.end())
@@ -243,16 +279,16 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
     jalson::json_array snapshot_msg;
     snapshot_msg.reserve(5);
     snapshot_msg.push_back( EVENT );
-    snapshot_msg.push_back( mt->subscription_id );
+    snapshot_msg.push_back( mt->subscription_id() );
     snapshot_msg.push_back( 0 ); // publication id
     snapshot_msg.push_back( std::move(event_options) );
     snapshot_msg.push_back( pub_args.args_list );
     sptr->send_msg(snapshot_msg);
   }
 
-  mt->m_subscribers.push_back(sptr->handle());
+  mt->add(sptr->handle());
 
-  return mt->subscription_id;
+  return mt->subscription_id();
 }
 
 
@@ -263,8 +299,19 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
 {
   /* EV thread */
 
-  // TODO: need to handle unsubscribe
+  auto it = m_subscription_registry.find(sub_id);
 
+  if (it != m_subscription_registry.end())
+  {
+    it->second->remove(sptr->handle());
+
+    jalson::json_array msg({ UNSUBSCRIBED, request_id });
+    sptr->send_msg(msg);
+  }
+  else
+  {
+    throw wamp_error(WAMP_ERROR_NO_SUCH_SUBSCRIPTION);
+  }
 }
 
 void pubsub_man::session_closed(session_handle /*sh*/)
