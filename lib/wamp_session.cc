@@ -750,7 +750,7 @@ void wamp_session::notify_session_open()
   /* EV thread */
 
   if (m_notify_state_change_fn)
-    m_notify_state_change_fn(wp, true /* session is open */);
+    m_notify_state_change_fn(handle(), true /* session is open */);
 }
 
 
