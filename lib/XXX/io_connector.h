@@ -11,7 +11,7 @@ namespace XXX {
 class kernel;
 class io_handle;
 
-/* Represents the asynchronous task of creating an active socket connection */
+/* Represents the asynchronous task of creating an active socket connection. */
 class io_connector
 {
 public:

@@ -48,10 +48,6 @@ private:
   std::unique_ptr<http_parser> m_http_parser;
 };
 
-
-
-
-
 }
 
 #endif

@@ -348,7 +348,7 @@ int main(int argc, char** argv)
                                                        fn, options)
     );
 
-  ws->initiate_handshake(credentials);
+  ws->initiate_hello(credentials);
 
   /* Wait for the WAMP session to authenticate and become open */
   auto wait_interval = std::chrono::seconds(50);

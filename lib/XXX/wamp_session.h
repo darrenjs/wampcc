@@ -16,6 +16,10 @@ namespace XXX {
 
   class protocol;
   class wamp_session;
+  class kernel;
+  class pubsub_man;
+  class io_handle;
+  struct logger;
 
 
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
@@ -36,11 +40,6 @@ namespace XXX {
     std::function<uint64_t (wamp_session*, t_request_id, std::string uri, jalson::json_object&)> inbound_subscribe;
     std::function<void (wamp_session*, t_request_id, t_subscription_id)> inbound_unsubscribe;
   };
-
-  class kernel;
-  class io_handle;
-  struct logger;
-
 
   struct client_credentials
   {
@@ -68,7 +67,6 @@ namespace XXX {
 
   typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
 
-
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
   class wamp_session : public std::enable_shared_from_this<wamp_session>,
@@ -86,7 +84,7 @@ namespace XXX {
                                                 auth_provider);
 
     /** Create a client side session (i.e., the socket was actively connected to
-     * remote server). */
+     * a remote server). */
     template<typename T>
     static std::shared_ptr<wamp_session> create(kernel& k,
                                                 std::unique_ptr<io_handle> socket,
@@ -108,9 +106,11 @@ namespace XXX {
     }
 
 
-    ~wamp_session();
+    /** Should be called client session once the session has been created, to
+     * begin the HELLO sequence. */
+    void initiate_hello(client_credentials);
 
-    void send_msg(jalson::json_array&, bool final=false);
+    ~wamp_session();
 
     /** Request asynchronous close of the session */
     std::shared_future<void> close();
@@ -119,8 +119,6 @@ namespace XXX {
 
     bool is_open() const;
     bool is_pending_open() const;
-
-    void initiate_handshake(client_credentials);
 
     /* Number of seconds since session constructed  */
     int duration_since_creation() const;
@@ -134,7 +132,7 @@ namespace XXX {
     /** Return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a passive session that receives the realm from remote
      * peer. */
-    std::string realm() const;
+    const std::string& realm() const;
 
     int hb_interval_secs() const { return m_hb_intvl; }
 
@@ -166,6 +164,7 @@ namespace XXX {
 
     t_sid unique_id() const { return m_sid; }
 
+    /** Is session passive (i.e. server side) or active (client). */
     bool is_passive() const;
 
     const char* protocol_name() const { return m_proto->name(); }
@@ -190,7 +189,10 @@ namespace XXX {
 
     void update_state_for_outbound(const jalson::json_array& msg);
 
+    void send_msg(jalson::json_array&, bool final=false);
+
     friend class io_handle;
+    friend class pubsub_man;
 
     enum SessionState
     {

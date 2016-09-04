@@ -19,8 +19,6 @@
 #include <unistd.h>
 
 
-#define HEADERLEN 4 /* size of uint32 */
-
 #define MAX_PENDING_OPEN_MS 5000
 #define MAX_HEARTBEATS_MISSED 3
 
@@ -42,8 +40,6 @@ public:
 private:
   std::string m_uri;
 };
-
-
 
 
 static std::atomic<uint64_t> m_next_id(1); // start at 1, so that 0 implies invalid ID
@@ -68,12 +64,12 @@ static void check_size_at_least(size_t msg_len, size_t s)
 }
 
 /* Constructor */
-  wamp_session::wamp_session(kernel& __kernel,
-                             std::unique_ptr<io_handle> h,
-                             session_state_fn state_cb,
-                             protocol_builder_fn protocol_builder,
-                             server_msg_handler handler,
-                             auth_provider auth)
+wamp_session::wamp_session(kernel& __kernel,
+                           std::unique_ptr<io_handle> h,
+                           session_state_fn state_cb,
+                           protocol_builder_fn protocol_builder,
+                           server_msg_handler handler,
+                           auth_provider auth)
   : m_state( eInit ),
     __logger(__kernel.get_logger()),
     m_kernel(__kernel),
@@ -102,8 +98,8 @@ static void check_size_at_least(size_t msg_len, size_t s)
           m_kernel.get_event_loop()->dispatch(std::move(fn));
         }
         ))
-  {
-  }
+{
+}
 
 
 std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
@@ -123,7 +119,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
   sp->m_handle->start_read( sp );
 
   // set up a timer to expire this session if it has not been successfully
-  // opened with a maximum time duration
+  // opened within a maximum time duration
   std::weak_ptr<wamp_session> wp = sp;
   k.get_event_loop()->dispatch(
     std::chrono::milliseconds(MAX_PENDING_OPEN_MS),
@@ -145,10 +141,8 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
 wamp_session::~wamp_session()
 {
   // note: dont log in here, just in case logger has been deleted
-  //  std::cout << "wamp_session::~wamp_session\n";
 }
 
-//----------------------------------------------------------------------
 
 std::shared_future<void> wamp_session::close()
 {
@@ -171,8 +165,6 @@ std::shared_future<void> wamp_session::close()
   return m_shfut_has_closed;
 }
 
-
-//----------------------------------------------------------------------
 
 void wamp_session::io_on_close()
 {
@@ -205,7 +197,6 @@ void wamp_session::io_on_close()
       sp->m_notify_state_change_fn(sp, false);
 
       sp->m_has_closed.set_value();
-
     } );
 }
 
@@ -216,9 +207,6 @@ void wamp_session::io_on_read(char* src, size_t len)
 
   std::string temp(src,len);
   std::cout << "recv: bytes " << len << ": " << temp << "\n";
-
-  std::string err_uri;
-  std::string err_text;
 
   try
   {
@@ -249,7 +237,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     {
       if (m_state != eOpen)
       {
-        LOG_ERROR("unexpected message while session not open");
+        LOG_ERROR("unexpected message sent while session not open");
         this->close();
       }
     }
@@ -268,7 +256,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     {
       if (m_state != eOpen)
       {
-        LOG_ERROR("unexpected message while session not open");
+        LOG_ERROR("unexpected message sent while session not open");
         this->close();
       }
     }
@@ -293,7 +281,6 @@ const char* wamp_session::state_to_str(wamp_session::SessionState s)
     case wamp_session::eStateMax : return "eStateMax";
     default: return "unknown_state";
   };
-
 }
 
 
@@ -377,7 +364,6 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 
 }
 
-//----------------------------------------------------------------------
 
 void wamp_session::process_message(unsigned int message_type,
                                    jalson::json_array& ja)
@@ -549,8 +535,8 @@ void wamp_session::handle_exception()
   }
   catch (wamp_error & e)
   {
-    // We don't expect a wamp_error here; they are intended to be caught at
-    // the inside the process method.
+    // We don't expect a wamp_error here; they are intended to be caught inside
+    // the relevant process method.
     LOG_WARN("unexpected wamp error: " << e.what());
     drop_connection(e.error_uri());
   }
@@ -586,14 +572,13 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   std::string authid = jalson::get_copy(authopts, "authid", "").as_string();
 
   if (realm.empty())
-    throw auth_error(WAMP_ERROR_NO_SUCH_REALM,
-                     "empty realm not allowed");
+    throw auth_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed");
 
   {
     // update the realm & authid, and protect from multiple assignments to the
     // value, so that it cannot be changed once set
     std::unique_lock<std::mutex> guard(m_realm_lock);
-    if (m_realm.empty())  m_realm = realm;
+    if (m_realm.empty())  m_realm  = realm;
     if (m_authid.empty()) m_authid = authid;
   }
 
@@ -640,11 +625,10 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
                        "challenge already issued");
   }
 
-  jalson::json_array msg;
-  msg.push_back( CHALLENGE );
-  msg.push_back( "wampcra" );
-  jalson::append_object(msg)["challenge"] = std::move(challengestr);
-
+  jalson::json_array msg({
+    CHALLENGE,
+    "wampcra",
+    jalson::json_object({{"challenge", std::move(challengestr)}})});
   send_msg( msg );
 }
 
@@ -758,25 +742,15 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 }
 
 
-/* In here have taken approach of doing the session open notification via the
- * event loop.  This sticks to the principle of minimising the actions taken in
- * the IO thread.
+/* Notify any callback of state change to open. This is deliberately performed
+ * on the event thread, to prevent IO thread going into user code.
  */
 void wamp_session::notify_session_open()
 {
   /* EV thread */
 
   if (m_notify_state_change_fn)
-  {
-    session_handle wp = handle();
-
-    m_kernel.get_event_loop()->dispatch(
-      [wp]()
-      {
-        if (auto sp = wp.lock())
-          sp->m_notify_state_change_fn(wp, true /* session is open */);
-      } );
-  }
+    m_notify_state_change_fn(wp, true /* session is open */);
 }
 
 
@@ -791,17 +765,23 @@ bool wamp_session::is_pending_open() const
   return (m_state != eOpen && m_state != eClosed && m_state != eClosing);
 }
 
-//----------------------------------------------------------------------
 
-void wamp_session::initiate_handshake(client_credentials cc)
+void wamp_session::initiate_hello(client_credentials cc)
 {
+  /* USER thread */
+
   if (!cc.secret_fn)
     throw std::runtime_error("user-secret function cannot be undefined");
 
   {
     std::unique_lock<std::mutex> guard(m_realm_lock);
+
     if (cc.realm.empty())
-      throw std::runtime_error("realm cannot be empty string");
+      throw std::runtime_error("realm cannot be empty");
+
+    if (!m_realm.empty())
+      throw std::runtime_error("initiate_hello cannot be called more than once");
+
     if (m_realm.empty()) m_realm = cc.realm;
   }
 
@@ -809,16 +789,25 @@ void wamp_session::initiate_handshake(client_credentials cc)
 
   auto initiate_cb = [this, cc]()
     {
+      jalson::json_object roles ({
+          {"publisher",  jalson::json_object()},
+          {"subscriber", jalson::json_object()},
+          {"caller",     jalson::json_object()},
+          {"callee",     jalson::json_object()}
+        });
+
       jalson::json_array msg { jalson::json_value(HELLO), jalson::json_value(cc.realm) };
       jalson::json_object& opt = jalson::append_object( msg );
-      opt[ "roles" ] = jalson::json_object();
+
+      opt[ "roles" ] = std::move( roles );
+      opt[ "agent" ] = "XXX-1.0"; // TODO: update with project name
       opt[ "authid"] = std::move(cc.authid);
 
       jalson::json_array& ja = jalson::insert_array(opt, "authmethods");
       for (auto item : cc.authmethods)
         ja.push_back( std::move(item) );
 
-      this->send_msg( msg );
+      send_msg( msg );
     };
 
   m_proto->initiate(std::move(initiate_cb));
@@ -837,7 +826,7 @@ int wamp_session::duration_since_creation() const
 }
 
 
-std::string wamp_session::realm() const
+const std::string& wamp_session::realm() const
 {
   // need this lock, because realm might be updated from IO thread during logon
   std::unique_lock<std::mutex> guard(m_realm_lock);
