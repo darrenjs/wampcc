@@ -32,21 +32,17 @@ synchronization around the managed topics.  Additionally for the addition of a
 new subscriber, the synchronization of the initially snapshot followed by
 updates is also acheived through the single threaded approach.
 */
-struct managed_topic
+class managed_topic
 {
-  std::vector< std::weak_ptr<wamp_session> > m_subscribers;
-
-  // current upto date image of the value
-  jalson::json_value image;
-
-
-  t_subscription_id subscription_id() const { return m_subscription_id; }
-
+public:
 
   managed_topic(size_t __subscription_id)
   :  m_subscription_id(__subscription_id)
   {
   }
+
+  t_subscription_id subscription_id() const { return m_subscription_id; }
+
 
   uint64_t next_publication_id() { return m_id_gen.next(); }
 
@@ -84,7 +80,19 @@ struct managed_topic
       m_subscribers.erase(it);
   }
 
+  jalson::json_value& image() { return m_image; }
+  const jalson::json_value& image() const { return m_image; }
+
+  std::vector< std::weak_ptr<wamp_session> > &  subscribers()  {return m_subscribers;}
+  const std::vector< std::weak_ptr<wamp_session> > &  subscribers() const {return m_subscribers;}
+
 private:
+
+  std::vector< std::weak_ptr<wamp_session> > m_subscribers;
+
+  // current upto date image of the value
+  jalson::json_value m_image;
+
   global_scope_id_generator m_id_gen;
 
   // Note, we are tieing the subscription ID direct to the topic.  WAMP does
@@ -167,7 +175,7 @@ void pubsub_man::update_topic(const std::string& topic,
     //std::cout << "BEFORE: " << mt->image << "\n";
     //std::cout << "PATCH : " << args.args_list << "\n";
     jalson::json_array & change = args.args_list.as_array();
-    mt->image.patch(change[0].as_array());
+    mt->image().patch(change[0].as_array());
     //std::cout << "AFTER : "  << mt->image << "\n";
     //std::cout << "-------\n";
   }
@@ -187,7 +195,7 @@ void pubsub_man::update_topic(const std::string& topic,
   }
 
   size_t num_active = 0;
-  for (auto & item : mt->m_subscribers)
+  for (auto & item : mt->subscribers())
   {
     if (auto sp = item.lock())
     {
@@ -198,19 +206,17 @@ void pubsub_man::update_topic(const std::string& topic,
 
   // remove any expired sessions
 
-  if (num_active != mt->m_subscribers.size())
+  if (num_active != mt->subscribers().size())
   {
     std::vector< std::weak_ptr<wamp_session> > temp;
     temp.resize(num_active);
-    for (auto item : mt->m_subscribers)
+    for (auto item : mt->subscribers())
     {
       if (!item.expired())
         temp.push_back( std::move(item) );
     }
-    mt->m_subscribers.swap( temp );
+    mt->subscribers().swap( temp );
   }
-
-
 
 }
 
@@ -268,7 +274,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
     jalson::json_object& operation = jalson::append_object(patch);
     operation["op"]    = "replace";
     operation["path"]  = "";  /* replace whole document */
-    operation["value"] = mt->image;
+    operation["value"] = mt->image();
 
     pub_args.args_list.as_array().push_back(std::move(patch));
     pub_args.args_list.as_array().push_back(jalson::json_array()); // empty event
