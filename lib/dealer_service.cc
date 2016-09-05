@@ -188,18 +188,17 @@ void dealer_service::handle_inbound_call(
 
         if (rpc.user_cb)
         {
-          invoke_details invoke;
-          invoke.uri = uri;
+          wamp_invocation invoke;
           invoke.user = rpc.user_data;
           invoke.args = std::move(args);
 
-          invoke.yield_fn = [fn](wamp_args args)
+          invoke.yield = [fn](wamp_args args)
             {
               if (fn)
                 fn(args, std::unique_ptr<std::string>());
             };
 
-          invoke.error_fn = [fn](wamp_args args, std::string error_uri)
+          invoke.error = [fn](wamp_args args, std::string error_uri)
             {
               if (fn)
                 fn(args, std::unique_ptr<std::string>(new std::string(error_uri)));

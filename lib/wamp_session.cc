@@ -924,19 +924,18 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
 
     std::string uri = iter->second.uri;
 
-    invoke_details invoke;
-    invoke.uri = iter->second.uri;
+    XXX:: wamp_invocation invoke;
     invoke.user = iter->second.user_data;
     invoke.args = std::move(my_wamp_args);
 
     session_handle wp = this->handle();
-    invoke.yield_fn = [wp,request_id](wamp_args args)
+    invoke.yield = [wp,request_id](wamp_args args)
       {
         if (auto sp = wp.lock())
           sp->invocation_yield(request_id, std::move(args));
       };
 
-    invoke.error_fn = [wp,request_id](wamp_args args, std::string error_uri)
+    invoke.error = [wp,request_id](wamp_args args, std::string error_uri)
       {
         if (auto sp = wp.lock())
           sp->reply_with_error(INVOCATION, request_id, std::move(args), std::move(error_uri));

@@ -78,13 +78,13 @@ struct callback_t
 };
 
 
-void procedure_cb(XXX::invoke_details& invocation)
+void procedure_cb(XXX::wamp_invocation& invocation)
 {
   const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
 
- LOG_INFO ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
+ LOG_INFO ("CALLEE has procuedure_cb invoked, args: " << invocation.args.args_list
          << ", user:" << cbdata->request );
 
   // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
@@ -96,7 +96,7 @@ void procedure_cb(XXX::invoke_details& invocation)
   arr.push_back("hello");
   arr.push_back("back");
 
-  invocation.yield_fn(my_args);
+  invocation.yield(my_args);
 }
 
 void call_cb(XXX::wamp_call_result r)

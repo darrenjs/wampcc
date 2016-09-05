@@ -110,20 +110,19 @@ private:
   wamp_args m_args;
 };
 
-
-struct invoke_details // TODO: rename
+/** Aggregate passed on RPC invocation. */
+struct wamp_invocation
 {
-  std::string  uri;
-  wamp_args args;
+  wamp_args           args;
   jalson::json_object details;
-  void * user;
+  void *              user;
 
-  std::function<void(wamp_args)> yield_fn;
-  std::function<void(wamp_args, std::string)> error_fn;
-
+  std::function<void(wamp_args)>              yield;
+  std::function<void(wamp_args, std::string)> error;
 };
 
-typedef std::function<void(invoke_details&) > rpc_cb;
+
+typedef std::function<void(wamp_invocation&) > rpc_cb;
 
 struct wamp_call_result
 {

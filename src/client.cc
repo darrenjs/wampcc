@@ -37,26 +37,25 @@ auto __logger = XXX::logger::stdlog(std::cout,
 XXX::planets_list planets;
 XXX::topic planets_topic("planets", &planets.model);
 
-void procedure_error_cb(XXX::invoke_details& invocation)
+void procedure_error_cb(XXX::wamp_invocation invocation)
 {
   const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
 
-  LOG_INFO ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
+  LOG_INFO ("CALLEE has procedure_error_cb invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
   throw XXX::wamp_error("user.error.rpc_failed");
-
 }
 
-void procedure_cb(XXX::invoke_details& invocation)
+void procedure_cb(XXX::wamp_invocation& invocation)
 {
   const callback_t* cbdata = (callback_t*) invocation.user;
 
   /* called when a procedure within a CALLEE is triggered */
 
-  LOG_INFO ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
+  LOG_INFO ("CALLEE has procuedure_cb invoked, args: " << invocation.args.args_list
           << ", user:" << cbdata->request );
 
 //  throw std::runtime_error("bad alloc");
@@ -67,7 +66,7 @@ void procedure_cb(XXX::invoke_details& invocation)
   arr.push_back("hello");
   arr.push_back("back");
 
-  invocation.yield_fn(my_args);
+  invocation.yield(my_args);
 }
 
 
