@@ -92,20 +92,15 @@ void io_handle::start_read(std::shared_ptr<io_listener> p)
 
 io_handle::~io_handle()
 {
-  // Shutdown mutex has two purposes. [1] ensure shutdown-notifcation is fully
-  // complete before commencing deletion, and [2] deterministically catch
-  // attempt to delete self from the io_on_close callback (it will cause
-  // deadlock).
-  std::lock_guard<std::mutex> guard(m_shutdown_mtx);
+  // Before io_handle can be deleted we must prevent a later callback the IO
+  // thread. So if self has not yet closed, request closure and wait
+  // indefinitely until it completes. The libuv thread must be still alive &
+  // functioning for this wait to ever return.
+  if (m_state != eClosed) request_close().wait();
 
-  // If this object we can still be called by the IO thread, then a core dump or
-  // other undefined behaviour will happen shortly.  Remove that uncertainty by
-  // performing an immediate exit.
-  if (m_state != eClosed)
-  {
-    LOG_ERROR("iohandle destructing without pior orderly shutdown - calling std::terminate");
-    std::terminate();
-  }
+  // Take the shutdown mutex, which has purpose of ensuring the on_close_cb has
+  // completed before destruction continues.
+  std::lock_guard<std::mutex> guard(m_shutdown_mtx);
 
   delete m_uv_handle;
 
@@ -113,7 +108,6 @@ io_handle::~io_handle()
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
     for (auto &i :m_pending_write ) delete [] i.base;
   }
-
 }
 
 
@@ -137,7 +131,7 @@ void io_handle::on_close_cb()
 
       if (sp)
       {
-	      // Notify owning session about end of file event. The owner must not try
+        // Notify owning session about end of file event. The owner must not try
         // to delete this object from the current thread.
         sp->io_on_close();
         m_listener.reset();
@@ -266,7 +260,7 @@ std::shared_future<void> io_handle::request_close()
 
 void io_handle::init_close()
 {
-  /* IO thread */
+  /* ANY thread (including IO) */
 
   std::lock_guard<std::mutex> guard(m_pending_write_lock);
 
@@ -309,8 +303,7 @@ void io_handle::on_write_cb(uv_write_t * req, int status)
 }
 
 
-void io_handle::on_read_cb(ssize_t nread ,
-                          const uv_buf_t* buf)
+void io_handle::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 {
   /* IO thread */
 
