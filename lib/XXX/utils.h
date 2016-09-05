@@ -91,6 +91,8 @@ private:
 
 
 struct regex_impl;
+
+/** Provide methods to check validity of WAMP URIs */
 class uri_regex
 {
 public:

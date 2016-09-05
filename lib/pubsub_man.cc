@@ -5,7 +5,6 @@
 #include "XXX/log_macros.h"
 #include "XXX/wamp_session.h"
 #include "XXX/kernel.h"
-#include "XXX/utils.h"
 
 #include <list>
 #include <iostream>
@@ -230,6 +229,18 @@ void pubsub_man::inbound_publish(std::string realm,
 {
   /* EV thread */
 
+  if (realm.empty())
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "realm has zero length");
+
+  if (m_uri_regex.is_strict_uri(realm.c_str()) == false)
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "realm fails strictness check");
+
+  if (topic.empty())
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "topic has zero length");
+
+  if (m_uri_regex.is_strict_uri(topic.c_str()) == false)
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
+
   update_topic(topic, realm, std::move(options), args);
 }
 
@@ -240,26 +251,23 @@ void pubsub_man::inbound_publish(std::string realm,
  */
 uint64_t pubsub_man::subscribe(wamp_session* sptr,
                                t_request_id request_id,
-                               std::string uri,
+                               std::string topic,
                                jalson::json_object & options)
 {
   /* EV thread */
 
-  /* We have received an external request to subscribe to a top */
+  if (topic.empty())
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "topic has zero length");
 
-
-  // validate the URI
-  // TODO: implement Strict URIs
-
-  if (uri.empty())
-    throw wamp_error(WAMP_ERROR_INVALID_URI, "URI zero length");
+  if (m_uri_regex.is_strict_uri(topic.c_str()) == false)
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
 
   // find or create a topic
-  managed_topic* mt = find_topic(uri, sptr->realm(), true);
+  managed_topic* mt = find_topic(topic, sptr->realm(), true);
 
   if (!mt) throw wamp_error(WAMP_ERROR_INVALID_URI);
 
-  LOG_INFO("session " << sptr->unique_id() << " subscribed to '"<< uri<< "'");
+  LOG_INFO("session " << sptr->unique_id() << " subscribed to '"<< topic << "'");
 
   jalson::json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
   sptr->send_msg(msg);
