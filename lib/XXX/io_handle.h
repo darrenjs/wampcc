@@ -33,7 +33,7 @@ public:
 
   bool is_open() const { return m_state == eOpen; }
 
-  void start_read(std::shared_ptr<io_listener> p);
+  void start_read(io_listener* p);
 
   /** Return underlying file description, for informational purposes. */
   int fd() const;
@@ -54,7 +54,7 @@ private:
   uv_stream_t* m_uv_handle;
   uv_async_t   m_write_async;
 
-  std::weak_ptr<io_listener> m_listener;
+  io_listener * m_listener;
 
   int m_closed_handles_count;
 
@@ -77,7 +77,6 @@ private:
   };
   State m_state;
 
-  std::mutex m_shutdown_mtx;
   bool m_uv_read_started = false;
 };
 

@@ -69,7 +69,7 @@ std::shared_ptr<pre_session> pre_session::create(kernel& k,
   // can't put this initialisation step inside wamp_sesssion constructor,
   // because the shared pointer wont be created & available inside the
   // constructor
-  sp->m_io_handle->start_read( sp );
+  sp->m_io_handle->start_read( sp.get() );
 
   // set up a timer to expire this session if it has not been successfully
   // opened with a maximum time duration

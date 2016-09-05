@@ -479,21 +479,15 @@ int main(int argc, char** argv)
 
   }
 
-  int sleep_time = 3;
-  std::cout << "sleeping for " << sleep_time << " before shutdown\n";
-  sleep(sleep_time); // TODO: think I need this, to give publish time to complete
-
 
   /* Commence orderly shutdown of the wamp_session.  Shutdown is an asychronous
    * operation so we start the request and then wait for the request to
    * complete.  Once complete, we shall not receive anymore events from the
    * wamp_session object (and thus is safe to delete). */
 
-  std::cout << "requesting wamp_session closure\n";
   auto fut_closed = ws->close();
   fut_closed.wait();
-
-//  while (1) sleep(10);
+  ws.reset();
 
 
   /* We must be mindful to free the kernel and logger only after all sessions

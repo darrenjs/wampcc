@@ -51,6 +51,7 @@ io_handle::io_handle(kernel& k, uv_stream_t * hdl, io_loop * loop)
   : m_kernel(k),
     __logger(k.get_logger()),
     m_uv_handle(hdl),
+    m_listener(nullptr),
     m_closed_handles_count(0),
     m_bytes_pending(0),
     m_bytes_written(0),
@@ -73,9 +74,14 @@ io_handle::io_handle(kernel& k, uv_stream_t * hdl, io_loop * loop)
 }
 
 
-void io_handle::start_read(std::shared_ptr<io_listener> p)
+void io_handle::start_read(io_listener* p)
 {
   m_listener = p;
+
+  if (m_listener == nullptr)
+    throw std::runtime_error("io_listener pointer null");
+
+  // TODO: should check session status here, might already be closed
 
   if (!m_uv_read_started)
   {
@@ -92,15 +98,12 @@ void io_handle::start_read(std::shared_ptr<io_listener> p)
 
 io_handle::~io_handle()
 {
-  // Before io_handle can be deleted we must prevent a later callback the IO
-  // thread. So if self has not yet closed, request closure and wait
-  // indefinitely until it completes. The libuv thread must be still alive &
-  // functioning for this wait to ever return.
-  if (m_state != eClosed) request_close().wait();
-
-  // Take the shutdown mutex, which has purpose of ensuring the on_close_cb has
-  // completed before destruction continues.
-  std::lock_guard<std::mutex> guard(m_shutdown_mtx);
+  // Before io_handle can be deleted we must prevent a later callback, via IO
+  // thread, into the m_listener. So if self has not yet closed, request closure
+  // and wait indefinitely until it completes. The libuv thread must be still
+  // alive & functioning for this wait to return.
+  request_close();
+  m_shfut_io_closed.wait();
 
   delete m_uv_handle;
 
@@ -117,30 +120,17 @@ void io_handle::on_close_cb()
 
   if (++m_closed_handles_count == 2)
   {
-    // while code still uses a shared_ptr to the observer (probably not the
-    // right thing to do), make sure the target destructor (and hence self
-    // destructor) does not get invoked during the shutdown critical section.
-    auto sp = m_listener.lock();
+    // Both handles have been closed, so no more callbacks are due from the
+    // IO service.
+    m_state = eClosed;
 
-    {
-      std::lock_guard<std::mutex> guard(m_shutdown_mtx);
+    // Notify owning session about end of file event. The owner must not try to
+    // delete this object from the current thread.
+    if (m_listener) m_listener->io_on_close();
 
-      // All our handles have been closed, so no more callbacks are due from the
-      // IO service
-      m_state = eClosed;
-
-      if (sp)
-      {
-        // Notify owning session about end of file event. The owner must not try
-        // to delete this object from the current thread.
-        sp->io_on_close();
-        m_listener.reset();
-      }
-
-      // This must be final code in this method, because once called, this
-      // object can be deleted immediately by another thread.
-      m_io_has_closed.set_value();
-    }
+    // This must be final code in this method, because once called, this object
+    // may be immediately deleted from elsewhere, and on a different thread.
+    m_io_has_closed.set_value();
   }
 }
 
@@ -247,13 +237,10 @@ void io_handle::write_bufs(std::pair<const char*, size_t> * srcbuf, size_t count
 }
 
 
-/* User wants to initiate closure of the IO handle */
 std::shared_future<void> io_handle::request_close()
 {
   /* ANY thread */
-
   init_close();
-
   return m_shfut_io_closed;
 }
 
@@ -316,7 +303,10 @@ void io_handle::on_read_cb(ssize_t nread, const uv_buf_t* buf)
     else if (nread > 0)
     {
       m_bytes_read += nread;
-      if (auto sp = m_listener.lock()) sp->io_on_read(buf->base, nread);
+
+      // don't need null check, because socket reads only start after pointer
+      // has been provided
+      m_listener->io_on_read(buf->base, nread);
     }
     else if (nread == 0)
     {
