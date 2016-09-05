@@ -102,7 +102,8 @@ namespace XXX {
           return up;
         };
 
-      return wamp_session::create(k, std::move(socket), state_cb, factory_fn, {}, {});
+      return wamp_session::create(k, std::move(socket), state_cb, factory_fn, 
+                                  server_msg_handler(), auth_provider());
     }
 
 
