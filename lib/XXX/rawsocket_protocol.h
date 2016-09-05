@@ -31,8 +31,6 @@ public:
     e_16_mb
   };
 
-
-
   /** The default maximum length for received (RX) messages. */
   static constexpr max_msg_size_flag default_max_rxmsg_size = rawsocket_protocol::e_16_mb;
 
@@ -102,10 +100,11 @@ private:
 
   t_initiate_cb m_initiate_cb;
 
+  options m_options;
+
   /* maximum messages that this-side and remote-side can accept */
   unsigned int m_self_max_msg_size;
   unsigned int m_peer_max_msg_size;
-  options m_options;
 };
 
 

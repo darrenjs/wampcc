@@ -44,9 +44,9 @@ rawsocket_protocol::rawsocket_protocol(io_handle* h,
                                        connection_mode __mode,
                                        options __options)
   : protocol(h, msg_cb, __mode),
+    m_options(__options),
     m_self_max_msg_size( 1<<(9+m_options.inbound_max_msg_size) ),
-    m_peer_max_msg_size(0),
-    m_options(__options)
+    m_peer_max_msg_size(0)
 {
   m_buf.update_max_size(m_self_max_msg_size);
 }
