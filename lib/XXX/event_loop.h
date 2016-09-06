@@ -54,13 +54,13 @@ private:
   std::list< std::shared_ptr<event> > m_queue;
   std::mutex m_mutex;
   std::condition_variable m_condvar;
-  std::thread m_thread;
   std::multimap< std::chrono::steady_clock::time_point, std::shared_ptr<event>  > m_schedule;
-
-//  std::chrono::time_point<std::chrono::steady_clock> m_last_hb;
 
   // std::list< hb_func > m_hb_targets;
   // std::mutex           m_hb_targets_mutex;
+
+
+  std::thread m_thread;  // must be final member, prevent race conditions
 };
 
 } // namespace XXX
