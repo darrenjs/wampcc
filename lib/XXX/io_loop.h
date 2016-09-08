@@ -70,24 +70,22 @@ public:
   kernel & get_kernel() const { return m_kernel; }
 
 private:
-  kernel & m_kernel;
-  struct logger & __logger;
-  uv_loop_t*   m_uv_loop;
-  std::unique_ptr<uv_async_t> m_async;
-  std::thread  m_thread;
-  bool m_async_closed = false;
-
-private:
 
   void create_tcp_server_socket(int port, socket_accept_cb cb,
                                 std::unique_ptr< std::promise<int> > );
 
   void on_tcp_connect_cb(uv_connect_t* __req, int status);
 
+  kernel & m_kernel;
+  struct logger & __logger;
+  uv_loop_t*   m_uv_loop;
+  std::unique_ptr<uv_async_t> m_async;
+
+  bool m_async_closed = false;
+
   std::vector< std::unique_ptr<io_request> > m_pending_requests;
   std::mutex                                 m_pending_requests_lock;
 
-  void on_tcp_connect_cb();
 
   enum PendingFlags
   {
@@ -97,6 +95,7 @@ private:
   int m_pending_flags;
 
   std::list< std::unique_ptr<tcp_server> > m_server_handles;
+  std::thread  m_thread; // should be final member
 };
 
 } // namespace XXX
