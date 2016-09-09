@@ -8,7 +8,6 @@
 #include "XXX/wamp_session.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/rawsocket_protocol.h"
-#include "XXX/log_macros.h"
 
 #include <sstream>
 #include <condition_variable>
@@ -32,6 +31,10 @@ std::unique_ptr<XXX::kernel> g_kernel;
 
 struct user_options
 {
+  std::string username;
+  std::string password;
+  std::string realm;
+
   std::string addr;
   std::string port;
   std::string cmd;
@@ -84,8 +87,8 @@ void procedure_cb(XXX::wamp_invocation& invocation)
 
   /* called when a procedure within a CALLEE is triggered */
 
- LOG_INFO ("CALLEE has procuedure_cb invoked, args: " << invocation.args.args_list
-         << ", user:" << cbdata->request );
+  std::cout << "CALLEE has procuedure_cb invoked, args: " << invocation.args.args_list
+            << ", user:" << cbdata->request;
 
   // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
 
@@ -106,17 +109,17 @@ void call_cb(XXX::wamp_call_result r)
 
   if (r.was_error)
   {
-    LOG_INFO( "received error, error=" << r.error_uri << ", args="
-            << r.args.args_list << ", cb_user_data: " << msg
-            << ", reqid: " << r.reqid
-            << ", proc:" << r.procedure );
+    std::cout << "received error, error=" << r.error_uri << ", args="
+              << r.args.args_list << ", cb_user_data: " << msg
+              << ", reqid: " << r.reqid
+              << ", proc:" << r.procedure ;
   }
   else
   {
-    LOG_INFO( "received result, args="
-            << r.args.args_list << ", cb_user_data: " << msg
-            << ", reqid: " << r.reqid
-            << ", proc:" << r.procedure );
+    std::cout << "received result, args="
+              << r.args.args_list << ", cb_user_data: " << msg
+              << ", reqid: " << r.reqid
+              << ", proc:" << r.procedure;
   }
   std::unique_lock< std::mutex > guard( event_queue_mutex );
   event_queue.push( eReplyReceived );
@@ -152,7 +155,7 @@ void router_connection_cb(int errcode,
 }
 
 
-static void die(const char* e)
+static void die(std::string e)
 {
   std::cout << e  << std::endl;
   exit( 1 );
@@ -195,10 +198,13 @@ static void process_options(int argc, char** argv)
     {"register",  required_argument, 0, 'r'},
     {"call",      required_argument, 0, 'c'},
     {"msg",       required_argument, 0, 'm'},
+    {"username",  required_argument, 0, 'U'},
+    {"password",  required_argument, 0, 'P'},
+    {"realm",     required_argument, 0, 'R'},
     {"no-uri-check", no_argument , 0, NO_URI_CHECK},
     {NULL, 0, NULL, 0}
   };
-  const char* optstr="hvds:p:m:r:c:";
+  const char* optstr="hvds:p:m:r:c:U:P:R:";
 
   ::opterr=1;
 
@@ -230,6 +236,9 @@ static void process_options(int argc, char** argv)
       case 'm' : uopts.publish_message = optarg; break;
       case 'r' : uopts.register_procedure = optarg; break;
       case 'c' : uopts.call_procedure = optarg; break;
+      case 'U' : uopts.username = optarg; break;
+      case 'P' : uopts.password = optarg; break;
+      case 'R' : uopts.realm    = optarg; break;
       case '?' : exit(1); // invalid option
       default:
       {
@@ -250,11 +259,12 @@ static void process_options(int argc, char** argv)
     XXX::uri_regex uri_check;
     for (auto & i : uopts.subscribe_topics)
       if (not uri_check.is_strict_uri(i.c_str()))
-      {
-        std::cout << "not strict uri: " << i << std::endl;
-        exit(1);
-      }
+        die("not strict uri: " + i);
   }
+
+  if (uopts.username.empty()) die("missing username");
+  if (uopts.password.empty()) die("missing password");
+  if (uopts.realm.empty())    die("missing realm");
 }
 
 std::string get_timestamp()
@@ -325,10 +335,10 @@ int main(int argc, char** argv)
 
 
   XXX::client_credentials credentials;
-  credentials.realm="default_realm";
-  credentials.authid="peter";
+  credentials.realm  = uopts.realm;
+  credentials.authid = uopts.username;
   credentials.authmethods = {"wampcra"};
-  credentials.secret_fn = []() -> std::string { return "secret2"; };
+  credentials.secret_fn = [=]() -> std::string { return uopts.password; };
 
   /* We have obtained a socket. It's not yet being read from. We now create a
    * wamp_session that takes ownership of the socket, and initiates socket read
@@ -363,10 +373,7 @@ int main(int argc, char** argv)
   }
 
   if (!g_handshake_success)
-  {
-    std::cout << "Unable to connect" << std::endl;
-    exit(1);
-  }
+    die("Unable to connect");
 
   /* WAMP session is now open  */
 
