@@ -79,6 +79,7 @@ AC_CONFIG_FILES([
 Makefile
 src/Makefile
 lib/Makefile
+test/Makefile
 ])
 
 # Trigger the generation of our makefiles

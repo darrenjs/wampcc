@@ -454,7 +454,8 @@ void wamp_session::process_message(unsigned int message_type,
       else if (message_type == WELCOME)
       {
         change_state(eSentAuth, eOpen);
-        if (m_state == eOpen) notify_session_open();
+        if (m_state == eOpen)
+          notify_session_open();
         return;
       }
       else
@@ -731,7 +732,8 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 
     send_msg( msg );
 
-    if (m_state == eOpen) notify_session_open();
+    if (m_state == eOpen)
+      notify_session_open();
   }
   else
   {
@@ -750,6 +752,8 @@ void wamp_session::notify_session_open()
 
   if (m_notify_state_change_fn)
     m_notify_state_change_fn(handle(), true /* session is open */);
+
+  m_promise_on_open.set_value();
 }
 
 
@@ -765,7 +769,7 @@ bool wamp_session::is_pending_open() const
 }
 
 
-void wamp_session::initiate_hello(client_credentials cc)
+std::future<void> wamp_session::initiate_hello(client_credentials cc)
 {
   /* USER thread */
 
@@ -810,6 +814,8 @@ void wamp_session::initiate_hello(client_credentials cc)
     };
 
   m_proto->initiate(std::move(initiate_cb));
+
+  return m_promise_on_open.get_future();
 }
 
 

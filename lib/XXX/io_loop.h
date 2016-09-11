@@ -28,6 +28,10 @@ struct io_request;
 typedef std::function<void(int port, std::unique_ptr<io_handle>)> socket_accept_cb;
 typedef std::function<void(io_handle*, int)> tcp_connect_cb;
 
+// TODO: comment
+void version_check_libuv(int uv_major, int uv_minor);
+
+
 struct  tcp_server
 {
   uv_tcp_t uvh;
@@ -49,9 +53,6 @@ public:
   void on_async();
   void run_loop();
 
-
-  void async_send();
-
   void add_passive_handle(tcp_server* server, io_handle* iohandle);
 
   void add_server(int port, std::promise<int> listener_err, socket_accept_cb);
@@ -61,8 +62,14 @@ public:
                                                std::string port,
                                                bool resolve_hostname);
 
+  uv_tcp_t*  connect(std::string addr,
+                     std::string port,
+                     bool resolve_hostname,
+                     std::function<void()> on_success,
+                     std::function<void(std::exception_ptr)> on_failure);
 
   void request_cancel(uv_tcp_t*, uv_close_cb);
+  void cancel_connect(uv_tcp_t*);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
@@ -75,6 +82,8 @@ private:
                                 std::unique_ptr< std::promise<int> > );
 
   void on_tcp_connect_cb(uv_connect_t* __req, int status);
+
+  void push_request(std::unique_ptr<io_request>);
 
   kernel & m_kernel;
   struct logger & __logger;
@@ -92,7 +101,7 @@ private:
     eNone  = 0x00,
     eFinal = 0x01
   };
-  int m_pending_flags;
+  int m_pending_flags; // TODO: remove it no-longer required
 
   std::list< std::unique_ptr<tcp_server> > m_server_handles;
   std::thread  m_thread; // should be final member

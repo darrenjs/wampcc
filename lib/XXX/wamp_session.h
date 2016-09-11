@@ -109,7 +109,7 @@ namespace XXX {
 
     /** Should be called client session once the session has been created, to
      * begin the HELLO sequence. */
-    void initiate_hello(client_credentials);
+    std::future<void> initiate_hello(client_credentials);
 
     ~wamp_session();
 
@@ -141,18 +141,18 @@ namespace XXX {
     t_request_id provide(std::string uri,
                          const jalson::json_object& options,
                          rpc_cb cb,
-                         void * data);
+                         void * data = nullptr);
 
     t_request_id subscribe(const std::string& uri,
                            const jalson::json_object& options,
                            subscription_cb cb,
-                           void * user);
+                           void * user = nullptr);
 
     t_request_id call(std::string uri,
                       const jalson::json_object& options,
                       wamp_args args,
                       wamp_call_result_cb user_cb,
-                      void* user_data);
+                      void* user_data = nullptr);
 
     t_request_id publish(std::string uri,
                          const jalson::json_object& options,
@@ -328,6 +328,8 @@ namespace XXX {
 
     std::function<int()> m_hb_func;
     std::unique_ptr<protocol> m_proto;
+
+    std::promise< void > m_promise_on_open;
   };
 
 } // namespace XXX

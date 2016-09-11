@@ -1,9 +1,14 @@
 
-XXX_HOME=/home/darrens/work/dev/src/c++/projx_install
+ifeq ($(XXX_HOME),)
+ $(error XXX_HOME not defined -- you should source a build env script)
+endif
+
 XXX_INC=-I$(XXX_HOME)/include
+XXX_LIBS=-L$(XXX_HOME)/lib -lXXX
 XXX_LIBA=$(XXX_HOME)/lib/libXXX.a
 
 LIBUV_HOME=/home/darrens/opt/libuv-1.8.0
+LIBUV_INC=-I$(LIBUV_HOME)/include
 LIBUV_LIBS=-L$(LIBUV_HOME)/lib -luv
 LIBUV_LIBA=$(LIBUV_HOME)/lib/libuv.a
 
@@ -16,18 +21,11 @@ JANSSON_HOME=/home/darrens/opt/jansson-2.7
 JANSSON_LIBS=-L$(JANSSON_HOME)/lib -ljansson
 JANSSON_LIBA=$(JANSSON_HOME)/lib/libjansson.a
 
-# ifeq ($(XXHOME),)
-# $(error XXHOME not defined -- you should source a build env script)
-# endif
-
-# ifeq ($(XXPORT),)
-# $(error XXPORT not defined -- you should source a build env script)
-# endif
 
 CXXFLAGS += -MMD -MP
-CXXFLAGS += -std=c++11 -O3 -W -Wall -Wextra -g $(XXX_INC) $(JALSON_INC)
+CXXFLAGS += -Wall -g3 -ggdb -std=c++0x -pthread   $(XXX_INC) $(JALSON_INC) $(LIBUV_INC)
 
-LDLIBS +=$(XXX_LIBA) $(LIBUV_LIBA) $(JALSON_LIBA) $(JANSSON_LIBA) -lcrypto -lpthread
+LDLIBS +=$(XXX_LIBS) $(LIBUV_LIBS) $(JALSON_LIBS) $(JANSSON_LIBS) -lcrypto -lpthread
 
 # default: callee
 

@@ -25,7 +25,8 @@ struct io_request
     eNone = 0,
     eCancelHandle,
     eAddServer,
-    eAddConnection
+    eAddConnection,
+    eCloseLoop
   } type;
 
   logger & logptr;
@@ -36,6 +37,10 @@ struct io_request
   uv_tcp_t * tcp_handle = nullptr;
   uv_close_cb on_close_cb = nullptr;
   socket_accept_cb on_accept;
+
+  std::function<void()> on_connect_success;
+  std::function<void(std::exception_ptr)> on_connect_failure;
+
 
   std::shared_ptr<io_connector> connector;
 
@@ -66,13 +71,14 @@ void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
     std::ostringstream oss;
     oss << "uv_connect: " << status << ", " << safe_str(uv_err_name(status))
         << ", " << safe_str(uv_strerror(status));
-    ioreq->connector->io_on_connect_exception(
+    ioreq->on_connect_failure(
       std::make_exception_ptr( std::runtime_error(oss.str()) )
       );
   }
   else
   {
-    ioreq->connector->io_on_connect_success();
+    ioreq->on_connect_success();
+//    ioreq->connector->io_on_connect_success();
   }
 }
 
@@ -134,6 +140,8 @@ io_loop::io_loop(kernel& k)
     m_async( new uv_async_t() ),
     m_pending_flags( eNone )
 {
+  version_check_libuv(UV_VERSION_MAJOR, UV_VERSION_MINOR);
+
   uv_loop_init(m_uv_loop);
   m_uv_loop->data = this;
 
@@ -149,15 +157,16 @@ io_loop::io_loop(kernel& k)
   //  signal(SIGPIPE, SIG_IGN);
 }
 
+
 void io_loop::stop()
 {
-  {
-    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
-    m_pending_flags |= eFinal;
-  }
-  async_send();
+  std::unique_ptr<io_request> r( new io_request( io_request::eCloseLoop,
+                                                 __logger) );
+  push_request(std::move(r));
+
   if (m_thread.joinable()) m_thread.join();
 }
+
 
 io_loop::~io_loop()
 {
@@ -165,6 +174,7 @@ io_loop::~io_loop()
   uv_loop_close(m_uv_loop);
   delete m_uv_loop;
 }
+
 
 void io_loop::create_tcp_server_socket(int port,
                                       socket_accept_cb cb,
@@ -209,17 +219,6 @@ void io_loop::on_async()
 
   if (m_async_closed) return;
 
-  if (pending_flags & eFinal)
-  {
-    for (auto & i : m_server_handles)
-      uv_close((uv_handle_t*)i.get(), 0);
-
-    uv_close((uv_handle_t*) m_async.get(), 0);
-
-    m_async_closed = true;
-    return;
-  }
-
   for (auto & user_req : work)
   {
     if (user_req->type == io_request::eCancelHandle)
@@ -228,7 +227,6 @@ void io_loop::on_async()
     }
     else if (user_req->type == io_request::eAddConnection)
     {
-      // create the request
       std::unique_ptr<io_request> req( std::move(user_req) );  // <--- the sp<connector> is here now
 
       const struct sockaddr* addrptr;
@@ -258,7 +256,7 @@ void io_loop::on_async()
           std::ostringstream oss;
           oss << "uv_getaddrinfo: " << r << ", " << safe_str(uv_err_name(r))
               << ", " << safe_str(uv_strerror(r));
-          req->connector->io_on_connect_exception(
+          req->on_connect_failure(
             std::make_exception_ptr( std::runtime_error(oss.str()) )
             );
           return;
@@ -280,7 +278,7 @@ void io_loop::on_async()
 
       r = uv_tcp_connect(
         connect_req.get(),
-        req->connector->get_handle(),
+        req->tcp_handle,
         addrptr,
         [](uv_connect_t* __req, int status)
         {
@@ -302,10 +300,9 @@ void io_loop::on_async()
       else
       {
         std::ostringstream oss;
-
         oss << "uv_tcp_connect: " << r << ", " << safe_str(uv_err_name(r))
             << ", " << safe_str(uv_strerror(r));
-        req->connector->io_on_connect_exception(
+        req->on_connect_failure(
           std::make_exception_ptr( std::runtime_error(oss.str()) )
           );
       }
@@ -316,16 +313,20 @@ void io_loop::on_async()
                                user_req->on_accept,
                                std::move(user_req->listener_err));
     }
+    else if (user_req->type == io_request::eCloseLoop)
+    {
+      // TODO: raise warning if there are other items on the loop?
+
+      for (auto & i : m_server_handles)
+        uv_close((uv_handle_t*)i.get(), 0);
+
+      uv_close((uv_handle_t*) m_async.get(), 0);
+
+      m_async_closed = true;
+      return; // don't process any more items in queue (should be none)
+    }
   }
-}
 
-
-void io_loop::async_send()
-{
-  /* ANY thread */
-
-  // cause the IO thread to wake up
-  uv_async_send( m_async.get() );
 }
 
 
@@ -339,7 +340,8 @@ void io_loop::run_loop()
       int r = uv_run(m_uv_loop, UV_RUN_DEFAULT);
 
       // if r == 0, there are no more handles; implies we are shutting down.
-      if (r == 0) return;
+      if (r == 0)
+        return;
     }
     catch(std::exception & e)
     {
@@ -372,12 +374,7 @@ void io_loop::add_server(int port,
                                                  std::move(listen_err),
                                                  std::move(cb) ) );
 
-  {
-    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
-    m_pending_requests.push_back( std::move(r) );
-  }
-
-  this->async_send();
+  push_request(std::move(r));
 }
 
 
@@ -386,6 +383,30 @@ void io_loop::add_passive_handle(tcp_server* myserver, io_handle* iohandle)
   if (myserver->cb) myserver->cb(myserver->port, std::unique_ptr<io_handle>(iohandle));
 }
 
+
+uv_tcp_t* io_loop::connect(std::string addr,
+                           std::string port,
+                           bool resolve_hostname,
+                           std::function<void()> on_success,
+                           std::function<void(std::exception_ptr)> on_failure)
+{
+  // create the handle, need it here, so that the caller can later request
+  // cancellation
+  uv_tcp_t * tcp_handle = new uv_tcp_t();
+  uv_tcp_init(m_uv_loop, tcp_handle);
+
+  std::unique_ptr<io_request> r( new io_request(io_request::eAddConnection, __logger ) );
+  r->tcp_handle = tcp_handle;
+  r->addr = addr;
+  r->port = port;
+  r->resolve_hostname = resolve_hostname;
+  r->on_connect_success = on_success;
+  r->on_connect_failure = on_failure;
+
+  push_request(std::move(r));
+
+  return tcp_handle;
+}
 
 std::shared_ptr<io_connector> io_loop::add_connection(std::string addr,
                                                      std::string port,
@@ -404,17 +425,10 @@ std::shared_ptr<io_connector> io_loop::add_connection(std::string addr,
   r->port = port;
   r->resolve_hostname = resolve_hostname;
 
-  {
-    std::lock_guard< std::mutex > guard (m_pending_requests_lock);
-    m_pending_requests.push_back( std::move(r) );
-  }
-
-  this->async_send();
+  push_request(std::move(r));
 
   return conn;
 }
-
-
 
 
 void io_loop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
@@ -424,13 +438,57 @@ void io_loop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
   r->tcp_handle = h;
   r->on_close_cb = cb;
 
+  push_request(std::move(r));
+}
+
+
+void io_loop::cancel_connect(uv_tcp_t * handle)
+{
+  std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logger ) );
+
+  r->tcp_handle = handle;
+  r->on_close_cb = [](uv_handle_t* handle)
+    {
+      delete handle;
+    };
+
+  push_request(std::move(r));
+}
+
+
+void io_loop::push_request(std::unique_ptr<io_request> r)
+{
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     m_pending_requests.push_back( std::move(r) );
   }
-  this->async_send();
+
+
+  uv_async_send( m_async.get() ); // wake-up IO thread
 }
 
 
+void version_check_libuv(int compile_major, int compile_minor)
+{
+  // version that our library was build against
+  int library_major = UV_VERSION_MAJOR;
+  int library_minor = UV_VERSION_MINOR;
+
+  // version we are linked to at runtime
+  int runtime_major = (uv_version() & 0xFF0000) >> 16;
+  int runtime_minor = (uv_version() & 0x00FF00) >> 8;
+
+  // check all versions are consistent
+  if ( compile_major != library_major || compile_major != runtime_major ||
+       compile_minor != library_minor || compile_minor != runtime_minor)
+  {
+    std::ostringstream oss;
+    oss << "libuv version mismatch; "
+        << "user-compile-time: " << compile_major  << "." << compile_minor
+        << ", library-compile-time: " << library_major  << "." << library_minor
+        << ", link-time: " << runtime_major << "." << runtime_minor;
+    throw std::runtime_error( oss.str() );
+  }
+}
 
 } // namespace XXX

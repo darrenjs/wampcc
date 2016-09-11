@@ -6,6 +6,7 @@
 #include "XXX/io_handle.h"
 #include "XXX/io_connector.h"
 #include "XXX/wamp_session.h"
+#include "XXX/wamp_connector.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/rawsocket_protocol.h"
 
@@ -285,53 +286,49 @@ std::string get_timestamp()
 }
 
 
-int main(int argc, char** argv)
+int main_impl(int argc, char** argv)
 {
   process_options(argc, argv);
 
   g_kernel.reset( new XXX::kernel({}, __logger));
   g_kernel->start();
 
+
   /* Create a socket connector.  This will immediately make an attempt to
    * connect to the target end point.  The connector object is a source of async
    * events (the connect and disconnect call back), and so must be managed
    * asynchronously. */
-  std::shared_ptr<XXX::io_connector> conn
-    = g_kernel->get_io()->add_connection("t420", "55555", false);
 
-  auto connect_fut = conn->get_future();
+  auto wconn = XXX::wamp_connector::create(
+    g_kernel.get(),
+    "t420", "55555",
+    false,
+    [](XXX::session_handle wp, bool is_open) {
+      if (auto sp = wp.lock())
+        router_connection_cb(0, is_open);
+    });
 
-  std::unique_ptr<XXX::io_handle> up_handle;
-  try
+  auto connect_fut = wconn->get_future();
+
+  std::shared_ptr<XXX::wamp_session> ws;
+
+  /* Wait until the connector has got a result. The result can be successful,
+   * in which case a socket is available, or result could be a failure, in
+   * which case either an exception will be available or a null pointer. */
+  std::future_status status;
+  do
   {
-    /* Wait until the connector has got a result. The result can be successful,
-     * in which case a socket is available, or result could be a failure, in
-     * which case either an exception will be available or a null pointer. */
-    std::future_status status;
-    do
-    {
-      status = connect_fut.wait_for(std::chrono::seconds(5));
+    status = connect_fut.wait_for(std::chrono::seconds(5));
 
-      if (status == std::future_status::timeout)
-      {
-        std::cout << "timed out when trying to connect, cancelling" << std::endl;
-        conn->async_cancel();
-      }
-    } while (status != std::future_status::ready);
+    if (status == std::future_status::timeout)
+      throw std::runtime_error("time-out during transport connect");
 
-    /* A result is available; our socket connection could be available. */
-    up_handle = connect_fut.get();
-    if (!up_handle)
-    {
-      std::cout << "connect failed\n";
-      return 1;
-    }
-  }
-  catch (std::exception & e)
-  {
-    std::cout << "connect failed : " << e.what() << std::endl;
-    return 1;
-  }
+  } while (status != std::future_status::ready);
+
+  /* A result is available; our socket connection could be available. */
+  ws = connect_fut.get();
+  if (!ws)
+    throw std::runtime_error("failed to obtain WAMP session");
 
 
   XXX::client_credentials credentials;
@@ -339,24 +336,6 @@ int main(int argc, char** argv)
   credentials.authid = uopts.username;
   credentials.authmethods = {"wampcra"};
   credentials.secret_fn = [=]() -> std::string { return uopts.password; };
-
-  /* We have obtained a socket. It's not yet being read from. We now create a
-   * wamp_session that takes ownership of the socket, and initiates socket read
-   * events. The wamp_session will commence the WAMP handshake; connection
-   * success is delivered via the callback. */
-
-  auto fn = [](XXX::session_handle wp, bool is_open){
-    if (auto sp = wp.lock())
-      router_connection_cb(0, is_open);
-  };
-
-
-  XXX::rawsocket_protocol::options options;
-  std::shared_ptr<XXX::wamp_session> ws (
-    XXX::wamp_session::create<XXX::rawsocket_protocol>(*g_kernel.get(),
-                                                       std::move(up_handle),
-                                                       fn, options)
-    );
 
   ws->initiate_hello(credentials);
 
@@ -369,11 +348,12 @@ int main(int argc, char** argv)
                                                         wait_interval,
                                                         [](){ return g_active_session_notifed; });
 
-    if (!hasevent) die("failed to obtain remote connection");
+    if (!hasevent)
+      throw std::runtime_error("failed to obtain remote connection");
   }
 
   if (!g_handshake_success)
-    die("Unable to connect");
+    throw std::runtime_error("Unable to connect");
 
   /* WAMP session is now open  */
 
@@ -505,4 +485,17 @@ int main(int argc, char** argv)
 
 
   return 0;
+}
+
+
+int main(int argc, char** argv)
+{
+  try {
+    return main_impl(argc, argv);
+  }
+  catch (std::exception&e)
+  {
+    std::cout << "error, " << e.what() << std::endl;
+    return 1;
+  }
 }

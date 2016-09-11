@@ -1,255 +1,74 @@
-
 #include "XXX/kernel.h"
-#include "XXX/wamp_session.h"
-#include "XXX/io_connector.h"
-#include "XXX/io_loop.h"
-#include "XXX/io_handle.h"
 #include "XXX/rawsocket_protocol.h"
+#include "XXX/wamp_connector.h"
+#include "XXX/wamp_session.h"
 #include "XXX/websocket_protocol.h"
-
 
 #include <memory>
 #include <iostream>
-#include <unistd.h>
 
-//using namespace std;
+using namespace XXX;
 
-void procedure_cb(XXX::wamp_invocation& invocation)
+void rpc(wamp_invocation& invoke)
 {
-  // TODO: show example of using callback data
-//   const callback_t* cbdata = (callback_t*) invocation.user;
-
-  std::cout << "rpc invoked" << std::endl;
-
-
-  XXX::wamp_args reply;
-  reply.args_list = jalson::json_array({"hello", "world"});
-
-
-//   LOG_INFO ("CALLEE has procuedure '"<< invocation.uri << "' invoked, args: " << invocation.args.args_list
-//           << ", user:" << cbdata->request );
-
-// //  throw std::runtime_error("bad alloc");
-//   auto my_args = invocation.args;
-
-//   my_args.args_list = jalson::json_array();
-//   jalson::json_array & arr = my_args.args_list.as_array();
-//   arr.push_back("hello");
-//   arr.push_back("back");
-
-  invocation.yield(reply);
+  invoke.yield( { jalson::json_array({"hello", "world"}) ,{} } );
 }
 
-struct connect_options
+int main(int, char**)
 {
-  bool resolve_hostname;
-  int  timeout_millisec;
+  try {
+    auto __logger = logger::stdlog(std::cout,
+                                   logger::levels_upto(logger::eError), 0);
 
-  enum t_protocol
-  {
-    e_rawsocket,
-    e_websocket
-  } protocol;
+    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, __logger));
+    the_kernel->start();
 
-  enum t_encoding
-  {
-    e_json,
-    e_msgpack
-  } encoding;
+    std::promise<void> promise_on_close;
 
-
-  connect_options(t_protocol p, t_encoding e, bool resolve=true, int timeout=1000)
-    : resolve_hostname(resolve),
-      timeout_millisec(timeout),
-      protocol(p),
-      encoding(e)
-  {
-  }
-};
-
-
-struct io_handle_guard
-{
-  std::unique_ptr<XXX::io_handle> handle;
-
-  io_handle_guard(std::unique_ptr<XXX::io_handle> h)
-    : handle(std::move(h))
-  {
-  }
-
-  ~io_handle_guard()
-  {
-    if (handle)
-    {
-      std::cout << "we have to close the io\n";
-      auto fut = handle->request_close();
-      fut.wait();
-    }
-  }
-
-};
-
-
-/** Convenience function
-
- * currently is sychronous.
-*/
-std::shared_ptr<XXX::wamp_session> connect_to_server(
-  XXX::kernel* kernel,
-  const std::string& host,
-  const std::string& port,
-  const XXX::client_credentials& credentials,
-  connect_options options,
-  std::function<void( std::shared_ptr<XXX::wamp_session> )> on_close)
-{
-  /* Create a socket connector.  This will immediately make an attempt to
-   * connect to the target end point.  The connector object is a source of async
-   * events (the connect and disconnect call back), and so must be managed
-   * asynchronously. */
-  std::shared_ptr<XXX::io_connector> conn
-    = kernel->get_io()->add_connection(host, port, options.resolve_hostname);
-
-  auto connect_fut = conn->get_future();
-
-  /* Wait until the connector has got a result. The result can be successful,
-   * in which case a socket is available, or result could be a failure, in
-   * which case either an exception will be available or a null pointer. */
-  std::future_status status;
-  do
-  {
-    // TODO: should use wait_until?
-    status = connect_fut.wait_for(std::chrono::milliseconds(options.timeout_millisec));
-
-    if (status == std::future_status::timeout)
-    {
-      std::cout << "got timeout\n";
-      conn->async_cancel();
-      throw std::runtime_error("connect timeout");
-    }
-  } while (status != std::future_status::ready);
-
-  /* The future has a result; our socket connection could be available. */
-  // auto ioh = connect_fut.get();
-  // std::cout << "going to throw\n";
-  // throw std::runtime_error("decided to throw");
-
-  io_handle_guard io_guard ( connect_fut.get() );
-
-  if (!io_guard.handle)
-    throw std::runtime_error("connect failed");
-
-  std::mutex               session_mutex;
-  std::condition_variable  session_condition;
-
-  auto fn = [&](XXX::session_handle wp, bool is_open)
-    {
-      if (auto sp = wp.lock())
-      {
-        if (is_open)
-        {
-          session_condition.notify_all();
-        }
-      }
+    auto fn = [&promise_on_close](XXX::session_handle, bool is_open){
+      if (!is_open)
+        promise_on_close.set_value();
     };
 
-  // TODO: should try to ensure WS can only be created using an io_handle this
-  // is open ... could throw an exception.
+    // Attempt to make a socket connection & build a wamp_session
+    auto wconn = wamp_connector::create(
+      the_kernel.get(),
+      "127.0.0.1", "55555",
+      false, fn);
 
-  std::cout << "attempt create\n";
-  XXX::rawsocket_protocol::options rs_options;
-  std::shared_ptr<XXX::wamp_session> ws (
-    XXX::wamp_session::create<XXX::rawsocket_protocol>(*kernel,
-                                                       std::move(io_guard.handle),
-                                                       fn, rs_options)
-    );
+    auto connect_future = wconn->get_future();
+    auto connect_status = connect_future.wait_for(std::chrono::milliseconds(100));
 
-  std::cout << "got wamp_session, attempt hello\n";
-  ws->initiate_hello(credentials);
+    if (connect_status == std::future_status::timeout)
+      throw std::runtime_error("time-out during network connect");
 
-  // std::cout << "going to throw\n";
-  // throw std::runtime_error("decided to throw");
+    std::shared_ptr<wamp_session> session = std::move(connect_future.get());
 
-  /* Wait for the WAMP session to authenticate and become open */
-  std::unique_lock<std::mutex> guard(session_mutex);
-  std::cout << "waiting for session to open...\n";
-  bool hasevent = session_condition.wait_for(guard,
-                                             std::chrono::milliseconds(options.timeout_millisec),
-                                             [&](){ return ws->is_open(); });
+    // Logon to a WAMP realm, and wait for session to be deemed open
+    client_credentials credentials;
+    credentials.realm="default_realm";
+    credentials.authid="peter";
+    credentials.authmethods = {"wampcra"};
+    credentials.secret_fn = []() -> std::string { return "secret2"; };
 
-  if (!hasevent)
-    throw std::runtime_error("failed to establish WAMP session after timeout");
+    auto session_open_fut = session->initiate_hello(credentials);
+    if (session_open_fut.wait_for(std::chrono::milliseconds(5000)) == std::future_status::timeout)
+      throw std::runtime_error("time-out during session logon");
 
-  return ws;
-}
+    // Session is now open, register an RPC
+    session->provide("inline", jalson::json_object(), rpc);
 
-/*
+    // wait until we get disconnected
+    promise_on_close.get_future().wait();
 
-  need a simple connect interface
-
-  need to support async and sync, so provide basic atomics to support both user approaches
-
-  WS closure, and IO closure are huge problems (active objects)
-
-  how to register an RPC mulitpe times?
-
-  if I want to sync, then how do I also deal with WS disconnects, which can
-  happen at any time?
-
-  is there any way I can support WS delete?
-
- */
-int main(int /* argc */, char** /* argv */)
-{
-  auto logger = XXX::logger::stdlog(std::cout,
-                                    XXX::logger::levels_upto(XXX::logger::eInfo), 1);
-
-  std::unique_ptr<XXX::kernel> kernel( new XXX::kernel({},logger));
-  kernel->start();
-
-  XXX::client_credentials credentials;
-  credentials.realm="default_realm";
-  credentials.authid="peter";
-  credentials.authmethods = {"wampcra"};
-  credentials.secret_fn = []() -> std::string { return "secret2XXX"; };
-
-  connect_options options(connect_options::e_rawsocket, connect_options::e_json);
-  std::shared_ptr<XXX::wamp_session> ws;
-
-  while (!ws)
-  {
-    try
-    {
-      ws = connect_to_server(kernel.get(), "localhost", "55555", credentials, options, nullptr);
-    }
-    catch (const std::exception & e)
-    {
-      std::cout << "failed to get wamp session: " << e.what() << std::endl;
-      sleep(1);
-      continue;
-    }
-    catch (...)
-    {
-      std::cout << "failed to get wamp session: unknown exception" <<  std::endl;
-      sleep(1);
-      continue;
-    }
-
-
-    ws->provide("hello",
-                jalson::json_object(),
-                procedure_cb,
-                nullptr);
-
-    while (ws->is_open())
-    {
-      sleep(1);
-    }
+    session->close().wait();
+    session.reset();
+    return 0;
   }
-
-  auto fut_closed = ws->close();
-  fut_closed.wait();
-
-  kernel.reset();
-
-  return 0;
+  catch (std::exception& e)
+  {
+    std::cout << "error, " << e.what() << std::endl;
+    return 1;
+  }
 }
+
