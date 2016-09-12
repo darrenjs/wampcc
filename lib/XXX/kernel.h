@@ -29,8 +29,14 @@ struct logger
   std::function<bool(Level)> wants_level;
   std::function<void(Level, const std::string&, const char* file, int ln)> write;
 
-  // create a logger for stdout or stderr
+  /** create a logger for stdout or stderr */
   static logger stdlog(std::ostream&, int level_mask, bool inc_file_line);
+
+  /** create a logger that does not log anything */
+  static logger nolog();
+
+  /** default logger -- logs everything to stdout */
+  logger();
 };
 
 
