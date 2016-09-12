@@ -1,4 +1,3 @@
-
 #include "XXX/kernel.h"
 #include "XXX/topic.h"
 #include "XXX/wamp_session.h"
@@ -10,82 +9,88 @@
 
 using namespace XXX;
 
-struct timeout_error : public std::runtime_error
+enum test_outcome
 {
-  timeout_error()
-    : std::runtime_error("timeout_error"){}
-
+  e_expected,
+  e_unexpected
 };
 
 
-void make_connection()
+test_outcome throw_on_invalid_address()
 {
-  auto __logger = logger::stdlog(std::cout,
-                                 logger::levels_upto(logger::eError), 0);
-
-  std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, __logger) );
-  the_kernel->start();
-
-  std::promise<void> promise_on_close;
-
+  kernel the_kernel( {}, logger::nolog() );
+  the_kernel.start();
 
   auto wconn = wamp_connector::create(
-    the_kernel.get(),
-    "10.0.0.0", "55555",
+    &the_kernel,
+    "0.42.42.42", /* Invalid argument */
+    "55555",
     false,
-    [&promise_on_close](XXX::session_handle, bool is_open){
-      if (!is_open)
-        promise_on_close.set_value();
-    }
-    );
+    [](XXX::session_handle, bool){});
 
   auto connect_future = wconn->get_future();
   auto connect_status = connect_future.wait_for(std::chrono::milliseconds(50));
 
-  if (connect_status == std::future_status::timeout)
-  {
-    throw timeout_error();
-  }
-  else
-  {
-    throw std::runtime_error("call should have timed-out");
-  }
+  std::shared_ptr<wamp_session> session;
 
+  if (connect_status == std::future_status::ready)
+    try
+    {
+      session = connect_future.get();
+    }
+    catch (std::exception& e)
+    {
+      return e_expected;
+    }
+
+  return e_unexpected;
 }
 
 
-int run_test()
+test_outcome timeout_for_unreachable_connect()
 {
-  try
-  {
-    make_connection();
-  }
-  catch (timeout_error&)
-  {
-    // OK, this is what we expected
-    return 0;
-  }
+  std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ) );
+  the_kernel->start();
 
-  return 1; // unexpected
+  auto wconn = wamp_connector::create(
+    the_kernel.get(),
+    "10.255.255.1", "55555",
+    false,
+    [](XXX::session_handle, bool){});
+
+  auto connect_future = wconn->get_future();
+
+  auto connect_status = connect_future.wait_for(std::chrono::milliseconds(50));
+
+  if (connect_status == std::future_status::timeout)
+    return e_expected;
+
+  return e_unexpected;
 }
 
 
+#define TEST( X )                                       \
+  if ( X () != e_expected)                              \
+  {                                                     \
+    std::cout << "FAIL for:  " << #X << std::endl;      \
+    result |= 1;                                        \
+  }
 
+
+/* Note, these tests will only succeed if the system has access to a network. */
 
 int main()
 {
-  try
+  int result = 0;
+
+  for (int i =0; i < 20; i++)
   {
-    for (int i =0; i < 100; i++)
-    {
-      std::cout << "."<< std::flush;
-      run_test();
-    }
-    return 0;
+    std::cout << "."<< std::flush;
+    TEST( throw_on_invalid_address );
+    TEST( timeout_for_unreachable_connect );
   }
-  catch (std::exception& e)
-  {
-    std::cerr << "error: " << e.what() << std::endl;
-    return 1;
-  }
+
+  /* We let any uncaught exceptions (which are not expected) to terminate main,
+   * and cause test failure. */
+  return result;
 }
