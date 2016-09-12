@@ -1,6 +1,5 @@
 #include "XXX/io_loop.h"
 
-#include "XXX/io_connector.h"
 #include "XXX/log_macros.h"
 #include "XXX/io_handle.h"
 #include "XXX/kernel.h"
@@ -41,9 +40,6 @@ struct io_request
   std::function<void()> on_connect_success;
   std::function<void(std::exception_ptr)> on_connect_failure;
 
-
-  std::shared_ptr<io_connector> connector;
-
   io_request(request_type __type,
              logger & __logger)
     : type(__type),
@@ -78,7 +74,6 @@ void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
   else
   {
     ioreq->on_connect_success();
-//    ioreq->connector->io_on_connect_success();
   }
 }
 
@@ -227,7 +222,7 @@ void io_loop::on_async()
     }
     else if (user_req->type == io_request::eAddConnection)
     {
-      std::unique_ptr<io_request> req( std::move(user_req) );  // <--- the sp<connector> is here now
+      std::unique_ptr<io_request> req( std::move(user_req) );
 
       const struct sockaddr* addrptr;
       struct sockaddr_in inetaddr;
@@ -406,39 +401,6 @@ uv_tcp_t* io_loop::connect(std::string addr,
   push_request(std::move(r));
 
   return tcp_handle;
-}
-
-std::shared_ptr<io_connector> io_loop::add_connection(std::string addr,
-                                                     std::string port,
-                                                     bool resolve_hostname)
-{
-  // create the handle, need it here, so that the caller can later request
-  // cancellation
-  uv_tcp_t * tcp_handle = new uv_tcp_t();
-  uv_tcp_init(m_uv_loop, tcp_handle);
-
-  std::shared_ptr<io_connector> conn ( new io_connector(m_kernel, tcp_handle) );
-
-  std::unique_ptr<io_request> r( new io_request(io_request::eAddConnection, __logger ) );
-  r->connector = conn;
-  r->addr = addr;
-  r->port = port;
-  r->resolve_hostname = resolve_hostname;
-
-  push_request(std::move(r));
-
-  return conn;
-}
-
-
-void io_loop::request_cancel(uv_tcp_t* h, uv_close_cb cb)
-{
-  std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logger ) );
-
-  r->tcp_handle = h;
-  r->on_close_cb = cb;
-
-  push_request(std::move(r));
 }
 
 

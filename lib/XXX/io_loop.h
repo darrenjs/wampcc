@@ -20,7 +20,6 @@ class kernel;
 struct logger;
 class io_loop;
 class io_handle;
-class io_connector;
 struct io_request;
 
 
@@ -57,18 +56,12 @@ public:
 
   void add_server(int port, std::promise<int> listener_err, socket_accept_cb);
 
-
-  std::shared_ptr<io_connector> add_connection(std::string addr,
-                                               std::string port,
-                                               bool resolve_hostname);
-
   uv_tcp_t*  connect(std::string addr,
                      std::string port,
                      bool resolve_hostname,
                      std::function<void()> on_success,
                      std::function<void(std::exception_ptr)> on_failure);
 
-  void request_cancel(uv_tcp_t*, uv_close_cb);
   void cancel_connect(uv_tcp_t*);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }

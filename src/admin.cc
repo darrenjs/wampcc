@@ -1,10 +1,6 @@
 
-#include "XXX/event_loop.h"
 #include "XXX/kernel.h"
 #include "XXX/topic.h"
-#include "XXX/io_loop.h"
-#include "XXX/io_handle.h"
-#include "XXX/io_connector.h"
 #include "XXX/wamp_session.h"
 #include "XXX/wamp_connector.h"
 #include "XXX/websocket_protocol.h"
