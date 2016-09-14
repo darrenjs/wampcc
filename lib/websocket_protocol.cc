@@ -211,12 +211,12 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         if (m_http_parser->complete() )
         {
           if ( m_http_parser->is_upgrade() &&
-               m_http_parser->count("Upgrade") &&
+               m_http_parser->has("Upgrade") &&
                string_list_contains(m_http_parser->get("Upgrade"), "websocket") &&
-               m_http_parser->count("Connection") &&
+               m_http_parser->has("Connection") &&
                string_list_contains(m_http_parser->get("Connection"), "Upgrade") &&
-               m_http_parser->count("Sec-WebSocket-Key") &&
-               m_http_parser->count("Sec-WebSocket-Version") )
+               m_http_parser->has("Sec-WebSocket-Key") &&
+               m_http_parser->has("Sec-WebSocket-Version") )
           {
             auto websocket_version = std::stoi(m_http_parser->get("Sec-WebSocket-Version").c_str());
 

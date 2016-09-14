@@ -46,8 +46,10 @@ class http_parser
   /** does http-parser error indicate failure? */
   bool fail() const;
 
-  size_t count(const char* s) const { return m_headers.count(s); }
+  /** is field present in headers? */
+  bool has(const char* s) const { return m_headers.find(s) != m_headers.end();}
 
+  /** return header field, otherwise throw */
   const std::string& get(const std::string& field) const
   {
     auto it = m_headers.find(field);
