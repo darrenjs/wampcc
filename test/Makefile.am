@@ -6,14 +6,14 @@
 # http://stackoverflow.com/questions/35998856/how-can-i-use-google-test-with-my-project-that-builds-via-autotools
 
 check_LTLIBRARIES    = libgtest.la
-libgtest_la_SOURCES  = ../googletest/googletest/src/gtest-all.cc
-libgtest_la_CPPFLAGS = -I$(top_srcdir)/googletest/googletest/include -I$(top_srcdir)/googletest/googletest
+libgtest_la_SOURCES  = ../external/googletest/googletest/src/gtest-all.cc
+libgtest_la_CPPFLAGS = -I$(top_srcdir)/external/googletest/googletest/include -I$(top_srcdir)/external/googletest/googletest
 libgtest_la_LDFLAGS  = -pthread
 
 # Define compile & link flags for each target
 AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(LIBUVHOME)/include						\
--I$(JALSONHOME)/include -I$(top_srcdir)/googletest/googletest/include			\
--I$(top_srcdir)/googletest/googletest -Wall -g3 -ggdb -std=c++0x -O0 -pthread
+-I$(JALSONHOME)/include -I$(top_srcdir)/external/googletest/googletest/include			\
+-I$(top_srcdir)/external/googletest/googletest -Wall -g3 -ggdb -std=c++0x -O0 -pthread
 
 AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 
