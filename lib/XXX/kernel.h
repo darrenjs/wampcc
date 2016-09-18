@@ -70,7 +70,7 @@ public:
   kernel& operator=(const kernel&) = delete;
 
   logger&      get_logger() { return __logger; }
-  io_loop*      get_io();
+  io_loop*     get_io();
   event_loop*  get_event_loop();
 
   const config& get_config() const { return m_config; }
