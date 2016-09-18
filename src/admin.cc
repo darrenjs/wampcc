@@ -298,15 +298,7 @@ int main_impl(int argc, char** argv)
   auto wconn = XXX::wamp_connector::create(
     g_kernel.get(),
     "t420", "55555",
-    false,
-    [](XXX::session_handle wp, bool is_open) {
-      if (auto sp = wp.lock())
-        router_connection_cb(0, is_open);
-    });
-
-  auto connect_fut = wconn->get_future();
-
-  std::shared_ptr<XXX::wamp_session> ws;
+    false);
 
   /* Wait until the connector has got a result. The result can be successful,
    * in which case a socket is available, or result could be a failure, in
@@ -314,7 +306,7 @@ int main_impl(int argc, char** argv)
   std::future_status status;
   do
   {
-    status = connect_fut.wait_for(std::chrono::seconds(5));
+    status = wconn->completion_future().wait_for(std::chrono::seconds(5));
 
     if (status == std::future_status::timeout)
       throw std::runtime_error("time-out during transport connect");
@@ -322,10 +314,14 @@ int main_impl(int argc, char** argv)
   } while (status != std::future_status::ready);
 
   /* A result is available; our socket connection could be available. */
-  ws = connect_fut.get();
+  auto ws = wconn->create_session(
+    [](XXX::session_handle wp, bool is_open) {
+      if (auto sp = wp.lock())
+        router_connection_cb(0, is_open);
+    });
+
   if (!ws)
     throw std::runtime_error("failed to obtain WAMP session");
-
 
   XXX::client_credentials credentials;
   credentials.realm  = uopts.realm;

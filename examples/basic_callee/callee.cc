@@ -17,28 +17,27 @@ void rpc(wamp_invocation& invoke)
 int main(int, char**)
 {
   try {
+
     std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ));
     the_kernel->start();
 
-    std::promise<void> promise_on_close;
-
     // Attempt to make a socket connection & build a wamp_session
-    auto wconn = wamp_connector::create(
-      the_kernel.get(),
-      "127.0.0.1", "55555",
-      false,
-      [&promise_on_close](XXX::session_handle, bool is_open){
-        if (!is_open)
-          promise_on_close.set_value();
-      } );
+    auto wconn = wamp_connector::create( the_kernel.get(),
+                                         "127.0.0.1", "55555",
+                                         false );
 
-    auto connect_future = wconn->get_future();
-    auto connect_status = connect_future.wait_for(std::chrono::milliseconds(100));
+    auto connect_status = wconn->completion_future().wait_for(std::chrono::milliseconds(100));
 
     if (connect_status == std::future_status::timeout)
       throw std::runtime_error("time-out during network connect");
 
-    std::shared_ptr<wamp_session> session = std::move(connect_future.get());
+    std::promise<void> promise_on_close;
+
+    std::shared_ptr<wamp_session> session = wconn->create_session(
+      [&promise_on_close](XXX::session_handle, bool is_open){
+        if (!is_open)
+          promise_on_close.set_value();
+      });
 
     // Logon to a WAMP realm, and wait for session to be deemed open
     client_credentials credentials;
@@ -48,6 +47,7 @@ int main(int, char**)
     credentials.secret_fn = []() -> std::string { return "secret2"; };
 
     auto session_open_fut = session->initiate_hello(credentials);
+
     if (session_open_fut.wait_for(std::chrono::milliseconds(5000)) == std::future_status::timeout)
       throw std::runtime_error("time-out during session logon");
 
@@ -61,7 +61,7 @@ int main(int, char**)
   }
   catch (std::exception& e)
   {
-    std::cout << "error, " << e.what() << std::endl;
+    std::cout << e.what() << std::endl;
     return 1;
   }
 }

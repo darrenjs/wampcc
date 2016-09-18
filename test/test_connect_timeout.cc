@@ -16,6 +16,41 @@ enum test_outcome
 };
 
 
+void on_wamp_connector_completed(std::shared_ptr<wamp_connector> wconn)
+{
+}
+
+
+test_outcome throw_on_unreachable_network()
+{
+  kernel the_kernel( {}, logger::nolog() );
+  the_kernel.start();
+
+  auto wconn = wamp_connector::create(
+    &the_kernel,
+    "255.255.255.255", /* IP selected to be unreachable */
+    "55555",
+    false);
+
+  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
+  std::shared_ptr<wamp_session> session;
+
+  if (completed == std::future_status::ready)
+    try
+    {
+      session = wconn->create_session( nullptr );
+    }
+    catch (std::exception& e)
+    {
+      std::cout << "expected connect error: " << e.what() << std::endl;
+      return e_expected;
+    }
+
+  return e_unexpected;
+}
+
+
+
 test_outcome throw_on_invalid_address()
 {
   kernel the_kernel( {}, logger::nolog() );
@@ -25,26 +60,26 @@ test_outcome throw_on_invalid_address()
     &the_kernel,
     "0.42.42.42", /* Invalid argument */
     "55555",
-    false,
-    [](XXX::session_handle, bool){});
+    false);
 
-  auto connect_future = wconn->get_future();
-  auto connect_status = connect_future.wait_for(std::chrono::milliseconds(50));
-
+  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
   std::shared_ptr<wamp_session> session;
 
-  if (connect_status == std::future_status::ready)
+  if (completed == std::future_status::ready)
     try
     {
-      session = connect_future.get();
+      session = wconn->create_session( nullptr );
     }
     catch (std::exception& e)
     {
+      std::cout << "expected connect error: " << e.what() << std::endl;
       return e_expected;
     }
 
   return e_unexpected;
 }
+
+
 
 
 test_outcome timeout_for_unreachable_connect()
@@ -54,18 +89,15 @@ test_outcome timeout_for_unreachable_connect()
 
   auto wconn = wamp_connector::create(
     the_kernel.get(),
-    "10.255.255.1", "55555",
-    false,
-    [](XXX::session_handle, bool){});
+    "10.0.0.0", "55555",
+    false, on_wamp_connector_completed);
 
-  auto connect_future = wconn->get_future();
+  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
 
-  auto connect_status = connect_future.wait_for(std::chrono::milliseconds(50));
-
-  if (connect_status == std::future_status::timeout)
+  if (completed == std::future_status::timeout)
+  {
     return e_expected;
-  else
-    auto session = connect_future.get(); // copy the sp<wamp_session> from the IO thread
+  }
 
   return e_unexpected;
 }
@@ -85,10 +117,10 @@ int main()
 {
   int result = 0;
 
-  for (int i =0; i < 20; i++)
+  for (int i =0; i < 200; i++)
   {
-    std::cout << "."<< std::flush;
-    // TEST( throw_on_invalid_address );
+    TEST( throw_on_unreachable_network );
+    TEST( throw_on_invalid_address );
     TEST( timeout_for_unreachable_connect );
   }
 
