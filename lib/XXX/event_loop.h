@@ -26,8 +26,6 @@ public:
 
   void stop();
 
-  void init();
-
   void dispatch(std::function<void()> fn);
   void dispatch(std::chrono::milliseconds, std::function<int()> fn);
 

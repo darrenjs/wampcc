@@ -68,8 +68,6 @@ event_loop::~event_loop()
 
 void event_loop::stop()
 {
-  m_continue = false;
-
   {
     std::unique_lock<std::mutex> guard(m_mutex);
     m_queue.push_back(m_kill_event);
@@ -200,12 +198,16 @@ void event_loop::eventloop()
 
     }
 
-    if (!m_continue) return;
+    if (!m_continue) return; // needed?
 
     for (auto & ev : to_process)
     {
-      if (!m_continue) return;
-      if (ev == m_kill_event) continue;
+      if (!m_continue) return; // needed?
+      if (ev == m_kill_event)
+      {
+        m_continue = false;
+        continue;
+      }
 
       //hb_check(); // check for when there are many items work through
 
