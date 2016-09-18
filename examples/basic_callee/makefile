@@ -29,8 +29,8 @@ LDLIBS +=$(XXX_LIBS) $(LIBUV_LIBS) $(JALSON_LIBS) $(JANSSON_LIBS) -lcrypto -lpth
 
 # default: callee
 
-all_srcs := $(shell find . -name *.cc)
-app_srcs := $(shell find . -name *.cc)
+all_srcs := $(shell find . -name \*.cc)
+app_srcs := $(shell find . -name \*.cc)
 
 all   : apps
 apps  : $(app_srcs:%.cc=%)
