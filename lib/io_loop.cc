@@ -34,7 +34,6 @@ struct io_request
   bool resolve_hostname;
   std::unique_ptr< std::promise<int> > listener_err;
   uv_tcp_t * tcp_handle = nullptr;
-  uv_close_cb on_close_cb = nullptr;
   socket_accept_cb on_accept;
 
   std::function<void()> on_connect_success;
@@ -212,13 +211,15 @@ void io_loop::on_async()
     std::swap(pending_flags, m_pending_flags);
   }
 
-  if (m_async_closed) return;
-
   for (auto & user_req : work)
   {
     if (user_req->type == io_request::eCancelHandle)
     {
-      uv_close((uv_handle_t*) user_req->tcp_handle, user_req->on_close_cb);
+      auto handle_to_cancel = (uv_handle_t*) user_req->tcp_handle;
+      if (!uv_is_closing(handle_to_cancel))
+        uv_close(handle_to_cancel, [](uv_handle_t* handle) {
+            delete handle;
+          });
     }
     else if (user_req->type == io_request::eAddConnection)
     {
@@ -310,14 +311,26 @@ void io_loop::on_async()
     }
     else if (user_req->type == io_request::eCloseLoop)
     {
-      // TODO: raise warning if there are other items on the loop?
-
       for (auto & i : m_server_handles)
         uv_close((uv_handle_t*)i.get(), 0);
 
       uv_close((uv_handle_t*) m_async.get(), 0);
 
-      m_async_closed = true;
+      // While there are active handles, progress the event loop here and on
+      // each iteration identify and request close any handles which have not
+      // been requested to close.
+      uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg){
+          if (!uv_is_closing(handle))
+          {
+            uv_close(handle, [](uv_handle_t* handle){
+                delete handle;
+              });
+          }
+        }, nullptr);
+
+      if (uv_run(m_uv_loop, UV_RUN_NOWAIT) != 0)
+        LOG_WARN("expected uv_run to return 0 after handle closing");
+
       return; // don't process any more items in queue (should be none)
     }
   }
@@ -334,8 +347,7 @@ void io_loop::run_loop()
     {
       int r = uv_run(m_uv_loop, UV_RUN_DEFAULT);
 
-      // if r == 0, there are no more handles; implies we are shutting down.
-      if (r == 0)
+      if (r == 0) /*  no more handles; we are shutting down */
         return;
     }
     catch(std::exception & e)
@@ -344,7 +356,7 @@ void io_loop::run_loop()
     }
     catch(...)
     {
-      LOG_ERROR("exception in io_loop: uknown");
+      LOG_ERROR("uknown exception in io_loop");
     }
   }
 }
@@ -407,13 +419,7 @@ uv_tcp_t* io_loop::connect(std::string addr,
 void io_loop::cancel_connect(uv_tcp_t * handle)
 {
   std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logger ) );
-
   r->tcp_handle = handle;
-  r->on_close_cb = [](uv_handle_t* handle)
-    {
-      delete handle;
-    };
-
   push_request(std::move(r));
 }
 
@@ -424,7 +430,6 @@ void io_loop::push_request(std::unique_ptr<io_request> r)
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     m_pending_requests.push_back( std::move(r) );
   }
-
 
   uv_async_send( m_async.get() ); // wake-up IO thread
 }

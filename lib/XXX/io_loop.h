@@ -83,8 +83,6 @@ private:
   uv_loop_t*   m_uv_loop;
   std::unique_ptr<uv_async_t> m_async;
 
-  bool m_async_closed = false;
-
   std::vector< std::unique_ptr<io_request> > m_pending_requests;
   std::mutex                                 m_pending_requests_lock;
 
