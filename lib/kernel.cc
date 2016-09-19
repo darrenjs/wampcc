@@ -33,14 +33,6 @@ kernel::~kernel()
   m_evl.reset();
 }
 
-void kernel::start()
-{
-  /* USER thread */
-
-  m_io_loop->start(); // returns immediately
-}
-
-
 io_loop*  kernel::get_io()
 {
   return m_io_loop.get();

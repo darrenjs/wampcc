@@ -92,7 +92,6 @@ std::shared_ptr<XXX::dealer_service> g_dealer;
 int main(int /* argc */, char** /* argv */)
 {
   std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel({},__logger) );
-  mycs->start();
 
   std::shared_ptr<XXX::dealer_service> dealer ( new XXX::dealer_service(*(mycs.get()), nullptr ) );
   g_dealer = dealer;

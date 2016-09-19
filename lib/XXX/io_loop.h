@@ -46,11 +46,10 @@ public:
   io_loop(kernel&);
   ~io_loop();
 
-  void start();
   void stop();
-  void on_timer();
+
   void on_async();
-  void run_loop();
+
 
   void add_passive_handle(tcp_server* server, io_handle* iohandle);
 
@@ -70,6 +69,8 @@ public:
   kernel & get_kernel() const { return m_kernel; }
 
 private:
+
+  void run_loop();
 
   void create_tcp_server_socket(int port, socket_accept_cb cb,
                                 std::unique_ptr< std::promise<int> > );

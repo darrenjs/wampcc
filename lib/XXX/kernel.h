@@ -64,8 +64,6 @@ public:
   kernel(config, logger nlog);
   ~kernel();
 
-  void start();
-
   kernel(const kernel&) = delete;
   kernel& operator=(const kernel&) = delete;
 

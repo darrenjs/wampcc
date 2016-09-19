@@ -24,7 +24,6 @@ void on_wamp_connector_completed(std::shared_ptr<wamp_connector> wconn)
 test_outcome throw_on_unreachable_network()
 {
   kernel the_kernel( {}, logger::nolog() );
-  the_kernel.start();
 
   auto wconn = wamp_connector::create(
     &the_kernel,
@@ -54,7 +53,6 @@ test_outcome throw_on_unreachable_network()
 test_outcome throw_on_invalid_address()
 {
   kernel the_kernel( {}, logger::nolog() );
-  the_kernel.start();
 
   auto wconn = wamp_connector::create(
     &the_kernel,
@@ -85,7 +83,6 @@ test_outcome throw_on_invalid_address()
 test_outcome timeout_for_unreachable_connect()
 {
   std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ) );
-  the_kernel->start();
 
   auto wconn = wamp_connector::create(
     the_kernel.get(),

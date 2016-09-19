@@ -149,6 +149,8 @@ io_loop::io_loop(kernel& k)
   // TODO: I prefer to not have to do this.  Need to review what is the correct
   // policy for handling sigpipe using libuv.
   //  signal(SIGPIPE, SIG_IGN);
+
+  m_thread = std::thread(&io_loop::run_loop, this);
 }
 
 
@@ -361,11 +363,6 @@ void io_loop::run_loop()
   }
 }
 
-
-void io_loop::start()
-{
-  m_thread = std::thread(&io_loop::run_loop, this);
-}
 
 
 void io_loop::add_server(int port,
