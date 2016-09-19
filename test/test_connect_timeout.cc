@@ -100,6 +100,41 @@ test_outcome timeout_for_unreachable_connect()
 }
 
 
+
+test_outcome cancel_for_unreachable_connect()
+{
+  std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ) );
+
+  auto wconn = wamp_connector::create(
+    the_kernel.get(),
+    "10.0.0.0", "55555",
+    false, on_wamp_connector_completed);
+
+  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
+
+  if (completed == std::future_status::timeout)
+  {
+    bool cancel_worked = wconn->attempt_cancel();
+    if (!cancel_worked)
+      return e_unexpected;
+
+    wconn->completion_future().wait();
+
+    try
+    {
+      auto session = wconn->create_session( nullptr );
+    }
+    catch (std::exception& e)
+    {
+      return e_expected;
+    }
+
+  }
+
+  return e_unexpected;
+}
+
+
 #define TEST( X )                                       \
   if ( X () != e_expected)                              \
   {                                                     \
@@ -119,6 +154,7 @@ int main()
     TEST( throw_on_unreachable_network );
     TEST( throw_on_invalid_address );
     TEST( timeout_for_unreachable_connect );
+    TEST( cancel_for_unreachable_connect );
   }
 
   /* We let any uncaught exceptions (which are not expected) to terminate main,

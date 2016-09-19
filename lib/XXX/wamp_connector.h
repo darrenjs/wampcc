@@ -32,14 +32,19 @@ public:
 
   std::future<void> & completion_future() { return m_result_fut;  }
 
-
    /** Return the session, or, throw an excption.  Should only be called once */
   std::shared_ptr<XXX::wamp_session> create_session(session_state_fn state_change_fn)
   {
-    version_check_libuv(UV_VERSION_MAJOR, UV_VERSION_MINOR);
     std::unique_lock<std::mutex> guard(m_mutex);
 
+    // A common source of subtle error is to accidentally include a user copy of
+    // libuv into this header. This check is to detect that.
+    version_check_libuv(UV_VERSION_MAJOR, UV_VERSION_MINOR);
+
     m_result_fut.get();
+
+    if (m_connect_handle == nullptr)
+      throw std::runtime_error("wamp connect request cancelled");
 
     std::unique_ptr<io_handle> socket = this->create_handle();
     m_connect_handle = nullptr;
@@ -54,6 +59,13 @@ public:
 
     return ws;
   }
+
+  /** Attempt to cancel a pending wamp connect request.  This might fail if the
+   * IO operation completes in another thread before this function has acquired
+   * exclusive access to the handle (in which case a session can be created via
+   * the create() method). Returns true if cancel succeeded, or false if
+   * failed. */
+  bool attempt_cancel();
 
   ~wamp_connector();
 

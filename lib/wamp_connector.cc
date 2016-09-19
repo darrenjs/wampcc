@@ -68,5 +68,18 @@ namespace XXX
   }
 
 
+  bool wamp_connector::attempt_cancel()
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    if (m_connect_handle)
+    {
+      m_kernel->get_io()->cancel_connect(m_connect_handle);
+      m_connect_handle = nullptr;
+      return true;
+    }
+    else
+      return false;
+  }
+
 
 }
