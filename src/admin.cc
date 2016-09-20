@@ -314,7 +314,7 @@ int main_impl(int argc, char** argv)
   } while (status != std::future_status::ready);
 
   /* A result is available; our socket connection could be available. */
-  auto ws = wconn->create_session(
+  auto ws = wconn->create_session<XXX::rawsocket_protocol>(
     [](XXX::session_handle wp, bool is_open) {
       if (auto sp = wp.lock())
         router_connection_cb(0, is_open);

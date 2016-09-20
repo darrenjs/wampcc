@@ -215,7 +215,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
         {
           std::unique_ptr<protocol> up (
             new websocket_protocol(io, _msg_cb,
-                                   protocol::connection_mode::ePassive));
+                                   protocol::connection_mode::ePassive, {}));
           proto_actual = up.get();
           return up;
         };

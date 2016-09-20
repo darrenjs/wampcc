@@ -37,7 +37,7 @@ test_outcome throw_on_unreachable_network()
   if (completed == std::future_status::ready)
     try
     {
-      session = wconn->create_session( nullptr );
+      session = wconn->create_session<rawsocket_protocol>( nullptr );
     }
     catch (std::exception& e)
     {
@@ -66,7 +66,7 @@ test_outcome throw_on_invalid_address()
   if (completed == std::future_status::ready)
     try
     {
-      session = wconn->create_session( nullptr );
+      session = wconn->create_session<rawsocket_protocol>( nullptr );
     }
     catch (std::exception& e)
     {
@@ -122,7 +122,7 @@ test_outcome cancel_for_unreachable_connect()
 
     try
     {
-      auto session = wconn->create_session( nullptr );
+      auto session = wconn->create_session<rawsocket_protocol>( nullptr );
     }
     catch (std::exception& e)
     {

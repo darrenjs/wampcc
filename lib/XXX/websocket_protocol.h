@@ -12,6 +12,10 @@ class websocket_protocol : public protocol
 {
 public:
 
+  struct options
+  {
+    options(){}
+  };
   static constexpr const char* NAME = "websocket";
 
   static constexpr const unsigned char HEADER_SIZE = 4; /* "GET " */
@@ -24,7 +28,7 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
-  websocket_protocol(io_handle*, t_msg_cb, connection_mode);
+  websocket_protocol(io_handle*, t_msg_cb, connection_mode, options);
 
   int  required_timer_callback_interval_ms() override { return 2000;}
   void ev_on_timer() override;

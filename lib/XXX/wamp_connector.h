@@ -33,7 +33,9 @@ public:
   std::future<void> & completion_future() { return m_result_fut;  }
 
    /** Return the session, or, throw an excption.  Should only be called once */
-  std::shared_ptr<XXX::wamp_session> create_session(session_state_fn state_change_fn)
+  template <typename T>
+  std::shared_ptr<wamp_session> create_session(session_state_fn state_change_fn,
+                                               typename T::options protocol_opts={})
   {
     std::unique_lock<std::mutex> guard(m_mutex);
 
@@ -49,12 +51,11 @@ public:
     std::unique_ptr<io_handle> socket = this->create_handle();
     m_connect_handle = nullptr;
 
-    XXX::rawsocket_protocol::options options;
-    std::shared_ptr<XXX::wamp_session> ws (
-      XXX::wamp_session::create<XXX::rawsocket_protocol>(*m_kernel,
-                                                         std::move(socket),
-                                                         std::move(state_change_fn),
-                                                         options)
+    std::shared_ptr<wamp_session> ws (
+      wamp_session::create<T>(*m_kernel,
+                              std::move(socket),
+                              std::move(state_change_fn),
+                              protocol_opts)
       );
 
     return ws;

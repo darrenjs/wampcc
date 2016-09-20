@@ -16,7 +16,7 @@
 namespace XXX
 {
 
-websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode _mode)
+websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode _mode, options)
   : protocol(h, msg_cb, _mode),
     m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eSendingHttpRequest),
     m_http_parser(new http_parser())
