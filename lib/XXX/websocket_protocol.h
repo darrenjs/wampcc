@@ -44,7 +44,7 @@ private:
   {
     eInvalid,
     eHandlingHttpRequest, // server
-    eSendingHttpRequest, // client
+    eHandlingHttpResponse,  // client
     eHandlingWebsocket,
     eClosing
   } m_state = eInvalid;
@@ -52,6 +52,8 @@ private:
   std::unique_ptr<http_parser> m_http_parser;
 
   options m_options;
+
+  std::string m_expected_accept_key;
 };
 
 }

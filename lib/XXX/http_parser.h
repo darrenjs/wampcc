@@ -16,12 +16,17 @@ class http_parser
 {
  public:
 
+  enum parser_type {
+    e_http_request,
+    e_http_response
+  };
+
   static bool is_http_get(const char* s, size_t n)
   {
     return n>3 && s[0]=='G' && s[1]=='E' && s[2]=='T' && isspace(s[3]);
   }
 
-  http_parser();
+  http_parser(parser_type);
   ~http_parser();
 
   static constexpr const unsigned char HEADER_SIZE = 4; /* "GET " */

@@ -1,4 +1,3 @@
-
 #include "XXX/http_parser.h"
 
 #include "XXX/utils.h"
@@ -36,13 +35,17 @@ std::string http_parser::error_text() const {
 }
 
 
-http_parser::http_parser()
+http_parser::http_parser(parser_type pt)
   : m_settings( new ::http_parser_settings ),
     m_parser( new ::http_parser )
 {
   ::http_parser_settings_init( m_settings.get() );
 
-  ::http_parser_init(m_parser.get(), HTTP_REQUEST);
+  if (pt == e_http_request)
+    ::http_parser_init(m_parser.get(), HTTP_REQUEST);
+  else if (pt == e_http_response)
+    ::http_parser_init(m_parser.get(), HTTP_RESPONSE);
+
   m_parser->data = this;
 
   // set up the callbacks, using lambdas without captures, so that these lambdas
@@ -85,7 +88,6 @@ void http_parser::store_current_header_field()
     {
       m_headers.insert({ m_current_field, m_current_value});
     }
-    std::cout << "added: " << m_current_field << ":" << m_current_value<< "\n";
   }
 
   m_current_field.clear();

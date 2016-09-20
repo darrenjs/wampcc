@@ -18,8 +18,9 @@ namespace XXX
 
 websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode _mode, options opts)
   : protocol(h, msg_cb, _mode),
-    m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eSendingHttpRequest),
-    m_http_parser(new http_parser()),
+    m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eHandlingHttpResponse),
+    m_http_parser(new http_parser(_mode==protocol::connection_mode::ePassive?
+                                  http_parser::e_http_request : http_parser::e_http_response)),
     m_options(std::move(opts))
 {
 }
@@ -235,7 +236,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               std::pair<const char*, size_t> buf;
               buf.first  = msg.c_str();
               buf.second = msg.size();
-              std::cout << "websocket header sent back\n";
+
               m_iohandle->write_bufs(&buf, 1, false);
               m_state = eHandlingWebsocket;
             }
@@ -327,11 +328,36 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 
         rd.advance(frame_len);
       }
-      else
+      else if (m_state == eHandlingHttpResponse)
       {
-        throw protocol_error("websocket not ready to receive data");
-      }
+        auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
+        rd.advance(consumed);
 
+        if (m_http_parser->fail())
+          throw handshake_error("bad http header: " + m_http_parser->error_text());
+
+        // TODO: where to check the HTTP/1.1 101 Switching Protocols part of the reply?
+        if (m_http_parser->complete() )
+        {
+          if ( m_http_parser->is_upgrade() &&
+               m_http_parser->has("Upgrade") &&
+               string_list_contains(m_http_parser->get("Upgrade"), "websocket") &&
+               m_http_parser->has("Connection") &&
+               string_list_contains(m_http_parser->get("Connection"), "Upgrade") &&
+               m_http_parser->has("Sec-WebSocket-Accept")  )
+          {
+            auto sec_websocket_accept = m_http_parser->get("Sec-WebSocket-Accept");
+
+            if (sec_websocket_accept != m_expected_accept_key)
+              throw handshake_error("Sec-WebSocket-Accept incorrect");
+
+            std::cout << "*** upgrade ok ***\n";
+            m_state = eHandlingWebsocket;
+          }
+          else
+            throw handshake_error("http header is not a websocket upgrade");
+        }
+      }
     }
 
     m_buf.discard_read( rd ); /* shift unused bytes to front of buffer */
@@ -342,24 +368,31 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 void websocket_protocol::initiate(t_initiate_cb)
 {
   char nonce [16];
-  std::mt19937 engine( std::random_device()() );
+  std::random_device rd;
+  std::mt19937 engine( rd() );
   std::uniform_int_distribution<> distr(0x00, 0xFF);
   for (auto & x : nonce) x = distr(engine);
   auto sec_websocket_key = base64Encode(nonce, sizeof(nonce));
 
   std::ostringstream oss;
-  oss << "GET / HTTP/1.1\x0d\x0a"
-         "Pragma: no-cache\x0d\x0a"
-         "Cache-Control: no-cache\x0d\x0a"
-         "Upgrade: websocket\x0d\x0a"
-         "Connection: Upgrade\x0d\x0a"
-      << "Host: " << m_options.connect_host << "\x0d\x0a"
-      << "Sec-WebSocket-Key: " << sec_websocket_key  << "\x0d\x0a"
-         "Sec-WebSocket-Version: 13\x0d\x0a"
-         "\x0d\x0a";
+  oss << "GET / HTTP/1.1\r\n"
+         "Pragma: no-cache\r\n"
+         "Cache-Control: no-cache\r\n"
+         "Upgrade: websocket\r\n"
+         "Connection: Upgrade\r\n"
+      << "Host: " << m_options.connect_host << "\r\n"
+      << "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
+         "Sec-WebSocket-Version: 13\r\n"
+         "\r\n";
+  std::string http_request = oss.str();
 
-  // TODO: implement websocket client
-  throw std::runtime_error("websocket_protocol::initiate not implemented");
+  m_expected_accept_key = make_accept_key(sec_websocket_key);
+
+  std::pair<const char*, size_t> bufs[1];
+  bufs[0].first  = http_request.c_str();
+  bufs[0].second = http_request.size();
+
+  m_iohandle->write_bufs(bufs, 1, false);
 }
 
 
