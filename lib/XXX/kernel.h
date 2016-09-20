@@ -48,6 +48,14 @@ struct config
   /** Generate and expect WAMP session heartbeats. */
   bool   use_wamp_heartbeats = false;
 
+  /** User function which gets invoked on the callback thread as soon as it
+   * begins. */
+  std::function<void()> event_loop_start_fn;
+
+  /** User function which gets invoked on the callback thread just before the
+   * thread completes. */
+  std::function<void()> event_loop_end_fn;
+
   config()
     : socket_buffer_max_size_bytes(65536),
       socket_max_pending_write_bytes(65536)

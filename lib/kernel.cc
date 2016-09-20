@@ -18,7 +18,7 @@ kernel::kernel(config __conf, logger nlog)
   : m_config(__conf),
     __logger(nlog),
     m_io_loop( new io_loop(*this) ),
-    m_evl( new event_loop(__logger) )
+    m_evl( new event_loop(this) )
 {
 }
 

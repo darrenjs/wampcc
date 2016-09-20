@@ -49,8 +49,9 @@ struct ev_timer_dispatch : event
 // #define SYSTEM_HEARTBEAT_MS 500
 
 /* Constructor */
-event_loop::event_loop(logger & logptr)
-  : __logger(logptr),
+event_loop::event_loop(kernel* k)
+  : m_kernel(k),
+    __logger(k->get_logger()),
     m_continue(true),
     m_kill_event( std::make_shared< event > (event::e_kill) ),
     m_thread(&event_loop::eventmain, this)
@@ -250,6 +251,11 @@ void event_loop::eventloop()
 
 void event_loop::eventmain()
 {
+  if (m_kernel->get_config().event_loop_start_fn)
+    try {
+      m_kernel->get_config().event_loop_start_fn();
+    } catch(...){}
+
   while (m_continue)
   {
     try
@@ -265,6 +271,12 @@ void event_loop::eventmain()
       LOG_ERROR("ignoring unknown exception in eventmain");
     }
   }
+
+  if (m_kernel->get_config().event_loop_end_fn)
+    try {
+      m_kernel->get_config().event_loop_end_fn();
+    } catch(...){}
+
 }
 
 
