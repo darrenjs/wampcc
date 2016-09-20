@@ -16,13 +16,13 @@
 namespace XXX
 {
 
-websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode _mode, options)
+websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode _mode, options opts)
   : protocol(h, msg_cb, _mode),
     m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eSendingHttpRequest),
-    m_http_parser(new http_parser())
+    m_http_parser(new http_parser()),
+    m_options(std::move(opts))
 {
 }
-
 
 const char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -341,6 +341,23 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 
 void websocket_protocol::initiate(t_initiate_cb)
 {
+  char nonce [16];
+  std::mt19937 engine( std::random_device()() );
+  std::uniform_int_distribution<> distr(0x00, 0xFF);
+  for (auto & x : nonce) x = distr(engine);
+  auto sec_websocket_key = base64Encode(nonce, sizeof(nonce));
+
+  std::ostringstream oss;
+  oss << "GET / HTTP/1.1\x0d\x0a"
+         "Pragma: no-cache\x0d\x0a"
+         "Cache-Control: no-cache\x0d\x0a"
+         "Upgrade: websocket\x0d\x0a"
+         "Connection: Upgrade\x0d\x0a"
+      << "Host: " << m_options.connect_host << "\x0d\x0a"
+      << "Sec-WebSocket-Key: " << sec_websocket_key  << "\x0d\x0a"
+         "Sec-WebSocket-Version: 13\x0d\x0a"
+         "\x0d\x0a";
+
   // TODO: implement websocket client
   throw std::runtime_error("websocket_protocol::initiate not implemented");
 }

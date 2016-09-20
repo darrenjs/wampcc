@@ -41,7 +41,7 @@ public:
     e_MSGPACK = 2
   };
 
-  struct options
+  struct options : public protocol::options
   {
     max_msg_size_flag inbound_max_msg_size;
     options()

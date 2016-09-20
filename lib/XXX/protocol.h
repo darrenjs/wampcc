@@ -104,6 +104,12 @@ class protocol
 {
 public:
 
+  struct options
+  {
+    std::string connect_host;
+  };
+
+
   typedef std::function<void(jalson::json_array msg, int msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
 

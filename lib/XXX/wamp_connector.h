@@ -51,6 +51,8 @@ public:
     std::unique_ptr<io_handle> socket = this->create_handle();
     m_connect_handle = nullptr;
 
+    protocol_opts.connect_host = m_host;
+
     std::shared_ptr<wamp_session> ws (
       wamp_session::create<T>(*m_kernel,
                               std::move(socket),
@@ -70,9 +72,12 @@ public:
 
   ~wamp_connector();
 
+  const std::string& host() const { return m_host;  }
+  const std::string& port() const { return  m_port; }
+
 private:
 
-  wamp_connector(kernel* k, t_on_complete_fn fn);
+  wamp_connector(kernel* k, t_on_complete_fn fn, std::string host, std::string port);
 
   wamp_connector(const wamp_connector&) = delete;
   wamp_connector& operator=(const wamp_connector&) = delete;
@@ -80,6 +85,9 @@ private:
   std::unique_ptr<io_handle> create_handle();
 
   kernel* m_kernel;
+
+  std::string m_host;
+  std::string m_port;
 
   t_on_complete_fn m_on_complete_fn;
 

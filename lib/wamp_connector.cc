@@ -5,8 +5,12 @@
 namespace XXX
 {
 
-  wamp_connector::wamp_connector(kernel* k, t_on_complete_fn fn)
+  wamp_connector::wamp_connector(kernel* k, t_on_complete_fn fn,
+                                 std::string addr,
+                                 std::string port)
   : m_kernel(k),
+    m_host(addr),
+    m_port(port),
     m_on_complete_fn(fn),
     m_connect_handle(nullptr),
     m_result_fut(m_result_promise.get_future())
@@ -28,7 +32,7 @@ namespace XXX
                                                          bool resolve_hostname,
                                                          t_on_complete_fn fn)
   {
-    std::shared_ptr<wamp_connector> sp( new wamp_connector(k, fn));
+    std::shared_ptr<wamp_connector> sp( new wamp_connector(k, fn, addr, port));
 
     auto success_fn = [sp]() {
 

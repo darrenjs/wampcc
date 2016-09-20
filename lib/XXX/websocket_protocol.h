@@ -12,7 +12,7 @@ class websocket_protocol : public protocol
 {
 public:
 
-  struct options
+  struct options : public protocol::options
   {
     options(){}
   };
@@ -28,7 +28,7 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
-  websocket_protocol(io_handle*, t_msg_cb, connection_mode, options);
+  websocket_protocol(io_handle*, t_msg_cb, connection_mode _mode, options);
 
   int  required_timer_callback_interval_ms() override { return 2000;}
   void ev_on_timer() override;
@@ -50,6 +50,8 @@ private:
   } m_state = eInvalid;
 
   std::unique_ptr<http_parser> m_http_parser;
+
+  options m_options;
 };
 
 }
