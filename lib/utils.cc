@@ -3,6 +3,7 @@
 
 #include <openssl/hmac.h> // crypto functions
 #include <sys/time.h>
+#include <sys/utsname.h>
 #include <string.h>
 #include <regex.h>
 
@@ -265,5 +266,15 @@ bool case_insensitive_same(const std::string &lhs,
   return strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
 }
 
+
+/** Return local hostname, or throw upon failure. */
+std::string hostname()
+{
+  struct utsname buffer;
+  if (uname(&buffer) != 0)
+    throw std::runtime_error("uname failed");
+
+  return buffer.nodename;
+}
 
 } // namespace XXX

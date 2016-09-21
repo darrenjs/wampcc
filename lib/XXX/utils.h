@@ -167,6 +167,9 @@ inline char* skip_whitespace(char* str)
   return str;
 }
 
+/** Return local hostname, or throw upon failure. */
+std::string hostname();
+
 } // namespace XXX
 
 #endif
