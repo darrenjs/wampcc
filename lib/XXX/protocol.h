@@ -107,6 +107,7 @@ public:
   struct options
   {
     std::string connect_host;
+    std::string connect_port;
   };
 
 

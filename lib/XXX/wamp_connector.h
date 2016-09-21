@@ -52,6 +52,7 @@ public:
     m_connect_handle = nullptr;
 
     protocol_opts.connect_host = m_host;
+    protocol_opts.connect_port = m_port;
 
     std::shared_ptr<wamp_session> ws (
       wamp_session::create<T>(*m_kernel,

@@ -380,7 +380,8 @@ void websocket_protocol::initiate(t_initiate_cb)
          "Cache-Control: no-cache\r\n"
          "Upgrade: websocket\r\n"
          "Connection: Upgrade\r\n"
-      << "Host: " << m_options.connect_host << "\r\n"
+      << "Host: " << m_options.connect_host << ":" << m_options.connect_port <<  "\r\n"
+      << "Origin: " << hostname() << "\r\n"
       << "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
          "Sec-WebSocket-Version: 13\r\n"
          "\r\n";
