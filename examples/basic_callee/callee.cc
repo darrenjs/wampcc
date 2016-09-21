@@ -19,7 +19,6 @@ int main(int, char**)
   try {
 
     std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ));
-    the_kernel->start();
 
     // Attempt to make a socket connection & build a wamp_session
     auto wconn = wamp_connector::create( the_kernel.get(),
@@ -33,7 +32,7 @@ int main(int, char**)
 
     std::promise<void> promise_on_close;
 
-    std::shared_ptr<wamp_session> session = wconn->create_session(
+    std::shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>(
       [&promise_on_close](XXX::session_handle, bool is_open){
         if (!is_open)
           promise_on_close.set_value();
