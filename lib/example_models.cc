@@ -29,8 +29,19 @@ planets_list::planets_list()
 {
 }
 
+
+planets_list::~planets_list()
+{
+  m_notify_to_exit.set_value();
+  m_thr.join();
+}
+
+
 void planets_list::thread_main()
 {
+  auto exit_fut = m_notify_to_exit.get_future();
+  auto delay = std::chrono::milliseconds(10000);
+
   const char* const names[] = { "sun", "mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"};
 
   std::random_device rd;
@@ -39,7 +50,9 @@ void planets_list::thread_main()
   std::uniform_int_distribution<> dis(0, 9);
   while(true)
   {
-    usleep(1000000 * 3);
+    if (exit_fut.wait_for(delay) == std::future_status::ready)
+      return;
+
     std::string newvalue = "0000____" + get_timestamp();
 
 

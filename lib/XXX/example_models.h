@@ -11,6 +11,7 @@ class planets_list
 public:
 
   planets_list();
+  ~planets_list();
 
   void thread_main();
 
@@ -19,6 +20,7 @@ public:
 private:
 
   std::thread m_thr;
+  std::promise<void> m_notify_to_exit;
 };
 
 }
