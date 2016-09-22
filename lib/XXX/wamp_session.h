@@ -65,7 +65,38 @@ namespace XXX {
                              void* user) > subscription_cb;
 
 
+  struct wamp_call_result
+  {
+    t_request_id reqid;    /* protocol ID that was used */
+    std::string procedure;
+    bool was_error;
+    std::string error_uri; // if was_error == true
+    jalson::json_object details;
+    wamp_args args;
+    void * user;
+
+    wamp_call_result()
+      : reqid(0),
+        was_error(false),
+        user(0){}
+  };
+
   typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
+
+
+  /** Aggregate passed on RPC invocation. */
+  struct wamp_invocation
+  {
+    wamp_args           args;
+    jalson::json_object details;
+    void *              user;
+
+    std::function<void(wamp_args)>              yield;
+    std::function<void(wamp_args, std::string)> error;
+  };
+
+  typedef std::function<void(wamp_invocation&) > rpc_cb;
+
 
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)

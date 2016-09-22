@@ -70,11 +70,13 @@ enum WampMsgType
 
 class wamp_session;
 
+
 struct wamp_args
 {
   jalson::json_value  args_list;
   jalson::json_value  args_dict;
 };
+
 
 typedef uint64_t t_request_id;
 typedef uint64_t t_invoke_id;
@@ -108,36 +110,6 @@ public:
 private:
   std::string m_uri;
   wamp_args m_args;
-};
-
-/** Aggregate passed on RPC invocation. */
-struct wamp_invocation
-{
-  wamp_args           args;
-  jalson::json_object details;
-  void *              user;
-
-  std::function<void(wamp_args)>              yield;
-  std::function<void(wamp_args, std::string)> error;
-};
-
-
-typedef std::function<void(wamp_invocation&) > rpc_cb;
-
-struct wamp_call_result
-{
-  t_request_id reqid;    /* protocol ID that was used */
-  std::string procedure;
-  bool was_error;
-  std::string error_uri; // if was_error == true
-  jalson::json_object details;
-  wamp_args args;
-  void * user;
-
-  wamp_call_result()
-    : reqid(0),
-      was_error(false),
-      user(0){}
 };
 
 
