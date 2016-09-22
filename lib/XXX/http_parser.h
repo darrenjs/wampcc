@@ -16,6 +16,8 @@ class http_parser
 {
  public:
 
+  static constexpr unsigned int status_code_switching_protocols = 101;
+
   enum parser_type {
     e_http_request,
     e_http_response
@@ -48,9 +50,6 @@ class http_parser
   /** does http-parser error indicate success? */
   bool good() const;
 
-  /** does http-parser error indicate failure? */
-  bool fail() const;
-
   /** is field present in headers? */
   bool has(const char* s) const { return m_headers.find(s) != m_headers.end();}
 
@@ -64,6 +63,13 @@ class http_parser
       throw std::runtime_error("requested http header not found");
   }
 
+  /* HTTP response status-line textual phrase */
+  const std::string & http_status_phrase() const { return m_http_status; }
+
+  /* HTTP response status-line code */
+  unsigned int http_status_code() const { return m_http_status_code; }
+
+
  private:
 
   void store_current_header_field();
@@ -71,6 +77,7 @@ class http_parser
   int on_url(const char *s, size_t n);
   int on_header_field(const char *s, size_t n);
   int on_header_value(const char *s, size_t n);
+  int on_status(const char *s, size_t n);
 
   std::map<std::string, std::string> m_headers;
 
@@ -87,6 +94,9 @@ class http_parser
 
   std::string m_current_field;
   std::string m_current_value;
+
+  unsigned int m_http_status_code;
+  std::string  m_http_status;
 };
 
 }

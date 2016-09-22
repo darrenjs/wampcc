@@ -23,7 +23,7 @@ namespace XXX {
 
 
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
-  typedef std::function< void(session_handle, bool) > session_state_fn;
+  typedef std::function< void(std::shared_ptr<wamp_session>, bool) > session_state_fn;
 
   struct auth_provider
   {
@@ -102,7 +102,7 @@ namespace XXX {
           return up;
         };
 
-      return wamp_session::create(k, std::move(socket), state_cb, factory_fn, 
+      return wamp_session::create(k, std::move(socket), state_cb, factory_fn,
                                   server_msg_handler(), auth_provider());
     }
 

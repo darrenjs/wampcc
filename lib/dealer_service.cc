@@ -84,7 +84,7 @@ std::future<int> dealer_service::listen(int port,
           std::shared_ptr<wamp_session> sp =
           wamp_session::create( m_kernel,
                                 std::move(ioh),
-                                [this](session_handle s, bool b){ this->handle_session_state_change(s,b); },
+                                [this](std::shared_ptr<wamp_session> s, bool b){ this->handle_session_state_change(s,b); },
                                 builder,
                                 handlers,
                                 auth);
@@ -249,19 +249,17 @@ void dealer_service::handle_inbound_call(
 }
 
 
-void dealer_service::handle_session_state_change(session_handle sh, bool is_open)
+void dealer_service::handle_session_state_change(std::shared_ptr<wamp_session> session, bool is_open)
 {
   /* EV thread */
 
   if (!is_open)
   {
-    m_pubsub->session_closed(sh);
+    m_rpcman->session_closed(session);
+    m_pubsub->session_closed(session);
 
-    if (auto sp = sh.lock())
-    {
-      std::lock_guard<std::mutex> guard(m_sesions_lock);
-      m_sessions.erase( sp->unique_id() );
-    }
+    std::lock_guard<std::mutex> guard(m_sesions_lock);
+    m_sessions.erase( session->unique_id() );
   }
 }
 

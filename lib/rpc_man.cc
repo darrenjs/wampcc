@@ -52,7 +52,7 @@ int rpc_man::register_internal_rpc_2(const std::string& realm,
   r.user_data = user_data;
   r.type = rpc_details::eInternal;
 
-  register_rpc(realm, r);
+  register_rpc(session_handle(), realm, r);
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;
@@ -71,14 +71,14 @@ uint64_t rpc_man::handle_inbound_register(session_handle sh,
   r.session = sh;
   r.type = rpc_details::eRemote;
 
-  register_rpc(realm, r);
+  register_rpc(sh, realm, r);
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;
 }
 
 
-void rpc_man::register_rpc(std::string realm, rpc_details& r)
+void rpc_man::register_rpc(session_handle session, std::string realm, rpc_details& r)
 {
   std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
   auto realm_iter = m_realm_to_registry.find( realm );
@@ -90,17 +90,47 @@ void rpc_man::register_rpc(std::string realm, rpc_details& r)
     realm_iter = std::move(p.first);
   }
 
-  auto rpc_iter = realm_iter->second.find(r.uri);
-  if (rpc_iter != realm_iter->second.end())
+  auto result = realm_iter->second.insert(std::make_pair(r.uri,r));
+  if (!result.second)
   {
     LOG_WARN("Ignore duplicate procedure register for " << realm << ":" << r.uri);
     throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
   }
 
   r.registration_id = m_next_regid++;
-  realm_iter->second[ r.uri ] = r;
+  result.first->second = r;
 
-  LOG_INFO( "Procedure "<< realm << "::'" << r.uri <<"' registered with id " << r.registration_id );
+  auto & rpcs_for_session = m_rpcs_for_session[session];
+  rpcs_for_session.push_back( result.first );
+
+  LOG_INFO( "procedure added, " << r.registration_id << ", "
+            << realm << "::"
+            << r.uri );
 }
+
+
+void rpc_man::session_closed(std::shared_ptr<wamp_session>& session)
+{
+  /* EV thread */
+
+  std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+
+  auto realm_iter = m_realm_to_registry.find( session->realm() );
+  if (realm_iter != m_realm_to_registry.end())
+  {
+    auto session_iter = m_rpcs_for_session.find(session);
+    if (session_iter != m_rpcs_for_session.end())
+      for (auto & rpc_iter : session_iter->second)
+      {
+        LOG_INFO( "procedure removed, " << rpc_iter->second.registration_id << ", "
+                  << session->realm() << "::"
+                  << rpc_iter->first );
+        realm_iter->second.erase( rpc_iter );
+      }
+  }
+
+  m_rpcs_for_session.erase(session);
+}
+
 
 } // namespace XXX

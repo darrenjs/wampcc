@@ -22,10 +22,6 @@ bool http_parser::good() const {
   return error() == HPE_OK;
 }
 
-bool http_parser::fail() const {
-  return error() != HPE_OK;
-}
-
 bool http_parser::is_upgrade() const {
   return m_parser->upgrade != 0;
 }
@@ -37,7 +33,8 @@ std::string http_parser::error_text() const {
 
 http_parser::http_parser(parser_type pt)
   : m_settings( new ::http_parser_settings ),
-    m_parser( new ::http_parser )
+    m_parser( new ::http_parser ),
+    m_http_status_code(0)
 {
   ::http_parser_settings_init( m_settings.get() );
 
@@ -62,6 +59,9 @@ http_parser::http_parser(parser_type pt)
 
   m_settings->on_header_value=[](::http_parser* p, const char *s, size_t n) {
     auto hp =(XXX::http_parser*)p->data; return hp->on_header_value(s,n); };
+
+  m_settings->on_status=[](::http_parser* p, const char *s, size_t n) {
+    auto hp =(XXX::http_parser*)p->data; return hp->on_status(s,n); };
 
 }
 
@@ -151,7 +151,15 @@ int http_parser::on_headers_complete()
 {
   store_current_header_field();
   m_state = eComplete;
+  m_http_status_code = m_parser->status_code;
   return HPE_OK;
+}
+
+
+int http_parser::on_status(const char* s, size_t n)
+{
+  m_http_status += {s,n};
+  return 0;
 }
 
 

@@ -206,7 +206,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
         rd.advance(consumed);
 
-        if (m_http_parser->fail())
+        if (not m_http_parser->good())
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
         if (m_http_parser->complete() )
@@ -333,18 +333,19 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
         rd.advance(consumed);
 
-        if (m_http_parser->fail())
+        if (not m_http_parser->good())
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
-        // TODO: where to check the HTTP/1.1 101 Switching Protocols part of the reply?
-        if (m_http_parser->complete() )
+        if (m_http_parser->complete())
         {
           if ( m_http_parser->is_upgrade() &&
                m_http_parser->has("Upgrade") &&
                string_list_contains(m_http_parser->get("Upgrade"), "websocket") &&
                m_http_parser->has("Connection") &&
                string_list_contains(m_http_parser->get("Connection"), "Upgrade") &&
-               m_http_parser->has("Sec-WebSocket-Accept")  )
+               m_http_parser->has("Sec-WebSocket-Accept")  &&
+               m_http_parser->http_status_phrase() == "Switching Protocols" &&
+               m_http_parser->http_status_code() == http_parser::status_code_switching_protocols)
           {
             auto sec_websocket_accept = m_http_parser->get("Sec-WebSocket-Accept");
 

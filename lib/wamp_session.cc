@@ -185,7 +185,7 @@ void wamp_session::io_on_close()
       {
         /* EV thread */
         if (auto sp=wp.lock())
-          sp->m_notify_state_change_fn(wp, false);
+          sp->m_notify_state_change_fn(sp, false);
       } );
   }
   catch (std::bad_weak_ptr&)
@@ -751,7 +751,7 @@ void wamp_session::notify_session_open()
   /* EV thread */
 
   if (m_notify_state_change_fn)
-    m_notify_state_change_fn(handle(), true /* session is open */);
+    m_notify_state_change_fn(shared_from_this(), true /* session is open */);
 
   m_promise_on_open.set_value();
 }
