@@ -121,15 +121,10 @@ void call_cb(XXX::wamp_call_result r)
 }
 
 /* called upon subscribed and update events */
-void subscribe_cb(XXX::subscription_event_type evtype,
-                  const std::string& /* uri */,
-                  const jalson::json_object& /* details */,
-                  const jalson::json_array& args_list,
-                  const jalson::json_object& args_dict,
-                  void* /*user*/)
+void subscribe_cb(XXX::wamp_subscription_event ev)
 {
-  std::cout << "received topic update!!! evtype: " << evtype << ", args_list: " << args_list
-            << ", args_dict:" << args_dict << "\n";
+  std::cout << "received topic update!!! evtype: " << ev.type << ", args_list: " << ev.args.args_list
+            << ", args_dict:" << ev.args.args_dict << "\n";
 }
 
 bool g_handshake_success = false;
@@ -311,7 +306,7 @@ int main_impl(int argc, char** argv)
   } while (status != std::future_status::ready);
 
   /* A result is available; our socket connection could be available. */
-  auto ws = wconn->create_session<XXX::websocket_protocol>(
+  auto ws = wconn->create_session<XXX::rawsocket_protocol>(
     [](XXX::session_handle wp, bool is_open) {
       if (auto sp = wp.lock())
         router_connection_cb(0, is_open);

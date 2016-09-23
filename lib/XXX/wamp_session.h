@@ -48,20 +48,22 @@ namespace XXX {
     std::function< std::string() > secret_fn;
   };
 
-  enum subscription_event_type
-  {
-    e_sub_failed,
-    e_sub_start,
-    e_sub_update,
-    e_sub_end
-  };
 
-  typedef std::function<void(subscription_event_type evtype,
-                             const std::string& uri,
-                             const jalson::json_object& details,
-                             const jalson::json_array& args_list,
-                             const jalson::json_object& args_dict,
-                             void* user) > subscription_cb;
+  struct wamp_subscription_event
+  {
+    enum
+    {
+      started,
+      failed,
+      update,
+      finished
+    } type;
+    std::string uri;
+    jalson::json_object details;
+    wamp_args args;
+    void* user;
+  };
+  typedef std::function< void (wamp_subscription_event) > subscription_cb;
 
 
   struct wamp_call_result

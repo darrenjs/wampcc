@@ -1032,12 +1032,12 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
       try
       {
         if (user_cb_allowed())
-          temp.user_cb(XXX::e_sub_start,
-                       temp.uri,
-                       jalson::json_object(),
-                       jalson::json_array(),
-                       jalson::json_object(),
-                       temp.user_data);
+        {
+          wamp_subscription_event ev;
+          ev.type = wamp_subscription_event::started;
+          ev.uri = temp.uri;
+          temp.user_cb( ev );
+        }
 
       } catch(...){ log_exception(__logger, "inbound subscribed user callback"); }
   }
@@ -1049,7 +1049,7 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
   /* EV thread */
 
   t_subscription_id subscription_id = msg[1].as_uint();
-  jalson::json_object & details = msg.at(3).as_object();
+  jalson::json_object details = std::move(msg.at(3).as_object());
   jalson::json_value * ptr_args_list = jalson::get_ptr(msg, 4); // optional
   jalson::json_value * ptr_args_dict = jalson::get_ptr(msg, 5); // optional
 
@@ -1061,12 +1061,16 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
   {
     try {
       if (user_cb_allowed())
-        iter->second.user_cb(e_sub_update,
-                             iter->second.uri,
-                             details,
-                             args_list,
-                             args_dict,
-                             iter->second.user_data);
+      {
+        wamp_subscription_event ev;
+        ev.type = wamp_subscription_event::update;
+        ev.uri  = iter->second.uri;
+        ev.details = std::move( details );
+        ev.args.args_list = args_list;
+        ev.args.args_dict = args_dict;
+        ev.user = iter->second.user_data;
+        iter->second.user_cb( ev );
+      }
     } catch (...){ log_exception(__logger, "inbound event user callback"); }
 
   }

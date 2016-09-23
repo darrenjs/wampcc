@@ -98,16 +98,12 @@ public:
     : m_uri( std::move(uri) ),
       m_event_handler( std::move(handler) )
   {
-    auto fn = [=](XXX::subscription_event_type evtype,
-                  const std::string& /*uri*/,
-                  const jalson::json_object& details,
-                  const jalson::json_array& args_list,
-                  const jalson::json_object& args_dict,
-                  void* /*user*/)
-      {
-        if (evtype == e_sub_update)
-          m_event_handler.on_event(details, args_list, args_dict);
-      };
+
+    auto fn = [=](wamp_subscription_event e)
+    {
+      if (e.type == wamp_subscription_event::update)
+        m_event_handler.on_event(e.details, e.args.args_list, e.args.args_dict);
+    };
 
     ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
   }
