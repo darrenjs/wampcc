@@ -93,7 +93,6 @@ private:
     eNone  = 0x00,
     eFinal = 0x01
   };
-  int m_pending_flags; // TODO: remove it no-longer required
 
   std::list< std::unique_ptr<tcp_server> > m_server_handles;
   std::thread  m_thread; // should be final member

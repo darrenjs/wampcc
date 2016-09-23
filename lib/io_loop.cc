@@ -130,9 +130,7 @@ io_loop::io_loop(kernel& k)
   :  m_kernel(k),
      __logger( k.get_logger() ),
     m_uv_loop( new uv_loop_t() ),
-
     m_async( new uv_async_t() ),
-    m_pending_flags( eNone )
 {
   version_check_libuv(UV_VERSION_MAJOR, UV_VERSION_MINOR);
 
@@ -205,12 +203,10 @@ void io_loop::on_async()
 {
   /* IO thread */
   std::vector< std::unique_ptr<io_request> > work;
-  int pending_flags = eNone;
 
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     work.swap( m_pending_requests );
-    std::swap(pending_flags, m_pending_flags);
   }
 
   for (auto & user_req : work)
