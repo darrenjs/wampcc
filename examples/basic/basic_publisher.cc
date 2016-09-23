@@ -54,9 +54,8 @@ int main(int, char**)
 
     while ( exit_fut.wait_for(std::chrono::milliseconds(500)) != std::future_status::ready )
     {
-      wamp_args args;
-      args.args_list = jalson::json_array( {coin_sides[distr(engine)]} );
-      session->publish("coin_toss", {}, args);
+      wamp_args args({{coin_sides[distr(engine)]}});
+      session->publish("coin_toss", {}, std::move(args));
     }
 
     return 0;
