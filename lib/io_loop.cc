@@ -130,7 +130,7 @@ io_loop::io_loop(kernel& k)
   :  m_kernel(k),
      __logger( k.get_logger() ),
     m_uv_loop( new uv_loop_t() ),
-    m_async( new uv_async_t() ),
+    m_async( new uv_async_t() )
 {
   version_check_libuv(UV_VERSION_MAJOR, UV_VERSION_MINOR);
 
