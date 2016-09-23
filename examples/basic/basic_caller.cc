@@ -1,18 +1,11 @@
 #include "XXX/kernel.h"
-#include "XXX/rawsocket_protocol.h"
 #include "XXX/wamp_connector.h"
-#include "XXX/wamp_session.h"
 #include "XXX/websocket_protocol.h"
 
 #include <memory>
 #include <iostream>
 
 using namespace XXX;
-
-void rpc(wamp_invocation& invoke)
-{
-  invoke.yield( { jalson::json_array({"hello", "world"}) ,{} } );
-}
 
 int main(int, char**)
 {
@@ -31,7 +24,7 @@ int main(int, char**)
 
     std::promise<void> ready_to_exit;
 
-    std::shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>(
+    std::shared_ptr<wamp_session> session = wconn->create_session<websocket_protocol>(
       [&ready_to_exit](XXX::session_handle, bool is_open){
         if (!is_open)
           try {
@@ -39,7 +32,7 @@ int main(int, char**)
           } catch (...) {}
       });
 
-    /* Logon to a WAMP realm, and wait for session to be deemed open */
+    /* Logon to a WAMP realm, and wait for session to be deemed open. */
     client_credentials credentials;
     credentials.realm="default_realm";
     credentials.authid="peter";
@@ -51,9 +44,9 @@ int main(int, char**)
     if (session_open_fut.wait_for(std::chrono::milliseconds(5000)) == std::future_status::timeout)
       throw std::runtime_error("time-out during session logon");
 
-    /* Session is now open, call a remote procedure */
+    /* Session is now open, call a remote procedure. */
     wamp_args call_args;
-    call_args.args_list = jalson::json_value::make_array();
+    call_args.args_list = jalson::json_array({"hello from basic_caller"});
     session->call("greeting", {}, call_args, [&ready_to_exit](wamp_call_result){
         try {
         ready_to_exit.set_value();
@@ -61,7 +54,6 @@ int main(int, char**)
       });
 
     ready_to_exit.get_future().wait();
-    std::cout << "going into exit\n";
     return 0;
   }
   catch (std::exception& e)
