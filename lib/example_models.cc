@@ -57,8 +57,7 @@ void planets_list::thread_main()
 
 
     XXX::wamp_args wargs;
-    wargs.args_list = jalson::json_value::make_array();
-    wargs.args_list.as_array().push_back( newvalue );
+    wargs.args_list.push_back( newvalue );
 
     // if (g_dealer) g_dealer->publish("USERHB",
     //                                 "default_realm",

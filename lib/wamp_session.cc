@@ -924,8 +924,8 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
       throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
 
     wamp_args my_wamp_args;
-    if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
-    if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
+    if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4].as_array();
+    if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5].as_object();
 
     std::string uri = iter->second.uri;
 
@@ -1092,8 +1092,8 @@ t_request_id wamp_session::call(std::string uri,
   msg.push_back( 0 );
   msg.push_back( options );
   msg.push_back( uri );
-  if (!args.args_list.is_null()) msg.push_back( args.args_list );
-  if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+  if (!args.args_list.empty()) msg.push_back( args.args_list );
+  if (!args.args_dict.empty()) msg.push_back( args.args_dict );
 
   wamp_call mycall;
   mycall.user_cb = user_cb;
@@ -1154,8 +1154,8 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
     r.was_error = false;
     r.procedure = orig_call.rpc;
     r.user = orig_call.user_data;
-    if (msg.size()>3) r.args.args_list = std::move(msg[3]);
-    if (msg.size()>4) r.args.args_dict = msg[4];
+    if (msg.size()>3) r.args.args_list = std::move(msg[3].as_array());
+    if (msg.size()>4) r.args.args_dict = std::move(msg[4].as_object());
     r.details = options;
 
     try {
@@ -1200,8 +1200,8 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
         }
 
         wamp_args args;
-        if ( msg.size() > 5 ) args.args_list = std::move(msg[5]);
-        if ( msg.size() > 6 ) args.args_dict = std::move(msg[6]);
+        if ( msg.size() > 5 ) args.args_list = std::move(msg[5].as_array());
+        if ( msg.size() > 6 ) args.args_dict = std::move(msg[6].as_object());
         std::unique_ptr<std::string> error_ptr( new std::string(error_uri) );
 
         try
@@ -1247,8 +1247,8 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
             r.error_uri = error_uri;
             r.procedure = orig_call.rpc;
             r.user = orig_call.user_data;
-            if ( msg.size() > 5 ) r.args.args_list = msg[5];
-            if ( msg.size() > 6 ) r.args.args_list = msg[6];
+            if ( msg.size() > 5 ) r.args.args_list = msg[5].as_array();
+            if ( msg.size() > 6 ) r.args.args_dict = msg[6].as_object();
             r.details = details;
 
             try {
@@ -1283,10 +1283,10 @@ t_request_id wamp_session::publish(std::string uri,
   msg.push_back( 0 );
   msg.push_back( options );
   msg.push_back( uri );
-  if (!args.args_list.is_null())
+  if (!args.args_list.empty())
   {
     msg.push_back( args.args_list );
-    if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+    if (!args.args_dict.empty()) msg.push_back( args.args_dict );
   }
 
   t_request_id request_id;
@@ -1316,8 +1316,8 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
   std::string procedure_uri = std::move(msg[3].as_string());
 
   wamp_args my_wamp_args;
-  if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4];
-  if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5];
+  if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4].as_array();
+  if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5].as_object();
 
 
   session_handle wp = this->handle();
@@ -1337,10 +1337,10 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
           msg.push_back(RESULT);
           msg.push_back(request_id);
           msg.push_back(jalson::json_object());
-          if (!args.args_list.is_null())
+          if (!args.args_list.empty())
           {
             msg.push_back( args.args_list );
-            if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+            if (!args.args_dict.empty()) msg.push_back( args.args_dict );
           }
           sp->send_msg( msg );
         }
@@ -1352,10 +1352,10 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
           msg.push_back(request_id);
           msg.push_back(jalson::json_object());
           msg.push_back(*error_uri);
-          if (!args.args_list.is_null())
+          if (!args.args_list.empty())
           {
             msg.push_back( args.args_list );
-            if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+            if (!args.args_dict.empty()) msg.push_back( args.args_dict );
           }
           sp->send_msg( msg );
         }
@@ -1379,10 +1379,11 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
   msg.push_back( 0 );
   msg.push_back( registration_id );
   msg.push_back( options );
-  if (!args.args_list.is_null())
+
+  if (!args.args_list.empty())
   {
     msg.push_back( args.args_list );
-    if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+    if (!args.args_dict.empty()) msg.push_back( args.args_dict );
   }
 
   t_request_id request_id;
@@ -1416,8 +1417,8 @@ void wamp_session::process_inbound_yield(jalson::json_array & msg)
   t_request_id request_id = extract_request_id(msg, 1);
 
   wamp_args args;
-  if ( msg.size() > 3 ) args.args_list = msg[3];
-  if ( msg.size() > 4 ) args.args_dict = msg[4];
+  if ( msg.size() > 3 ) args.args_list = msg[3].as_array();
+  if ( msg.size() > 4 ) args.args_dict = msg[4].as_object();
 
   auto iter = m_pending_invocation.find(request_id);
   if (iter != m_pending_invocation.end())
@@ -1448,8 +1449,8 @@ void wamp_session::process_inbound_publish(jalson::json_array & msg)
     if (!msg[3].is_string()) throw protocol_error("topic uri must be string");
 
     wamp_args args;
-    if ( msg.size() > 4 ) args.args_list = std::move(msg[4]);
-    if ( msg.size() > 5 ) args.args_dict = std::move(msg[5]);
+    if ( msg.size() > 4 ) args.args_list = std::move(msg[4].as_array());
+    if ( msg.size() > 5 ) args.args_dict = std::move(msg[5].as_object());
 
     m_server_handler.handle_inbound_publish(this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
   }
@@ -1546,10 +1547,10 @@ void wamp_session::invocation_yield(int request_id,
   msg.push_back(request_id);
   msg.push_back(jalson::json_object());
 
-  if (!args.args_list.is_null())
+  if (!args.args_list.empty())
   {
     msg.push_back(args.args_list);
-    if (!args.args_dict.is_null()) msg.push_back(args.args_dict);
+    if (!args.args_dict.empty()) msg.push_back(args.args_dict);
   }
 
   send_msg(msg);
@@ -1570,10 +1571,10 @@ void wamp_session::reply_with_error(
   msg.push_back(jalson::json_object());
   msg.push_back(error_uri);
 
-  if (!args.args_list.is_null())
+  if (!args.args_list.empty())
   {
     msg.push_back(args.args_list);
-    if (!args.args_dict.is_null()) msg.push_back(args.args_dict);
+    if (!args.args_dict.empty()) msg.push_back(args.args_dict);
   }
 
   send_msg(msg);

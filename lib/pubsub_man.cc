@@ -167,14 +167,13 @@ void pubsub_man::update_topic(const std::string& topic,
     return;
   }
 
-  if (options.find(KEY_PATCH) != options.end() && args.args_list.is_array())
+  if (options.find(KEY_PATCH) != options.end())
   {
     // apply the patch
     //std::cout << "@" << topic << ", patch\n";
     //std::cout << "BEFORE: " << mt->image << "\n";
     //std::cout << "PATCH : " << args.args_list << "\n";
-    jalson::json_array & change = args.args_list.as_array();
-    mt->image().patch(change[0].as_array());
+    mt->image().patch(args.args_list[0].as_array());
     //std::cout << "AFTER : "  << mt->image << "\n";
     //std::cout << "-------\n";
   }
@@ -187,10 +186,10 @@ void pubsub_man::update_topic(const std::string& topic,
   msg.push_back( mt->subscription_id() );
   msg.push_back( mt->next_publication_id() );
   msg.push_back( std::move(options) );
-  if (!args.args_list.is_null())
+  if (!args.args_list.empty())
   {
     msg.push_back( args.args_list );
-    if (!args.args_dict.is_null()) msg.push_back( args.args_dict );
+    if (!args.args_dict.empty()) msg.push_back( args.args_dict );
   }
 
   size_t num_active = 0;
@@ -284,8 +283,8 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
     operation["path"]  = "";  /* replace whole document */
     operation["value"] = mt->image();
 
-    pub_args.args_list.as_array().push_back(std::move(patch));
-    pub_args.args_list.as_array().push_back(jalson::json_array()); // empty event
+    pub_args.args_list.push_back(std::move(patch));
+    pub_args.args_list.push_back(jalson::json_array()); // empty event
 
     jalson::json_object event_options;
     event_options[KEY_PATCH] = options[KEY_PATCH];

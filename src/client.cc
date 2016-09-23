@@ -60,11 +60,8 @@ void procedure_cb(XXX::wamp_invocation& invocation)
 
 //  throw std::runtime_error("bad alloc");
   auto my_args = invocation.args;
-
-  my_args.args_list = jalson::json_array();
-  jalson::json_array & arr = my_args.args_list.as_array();
-  arr.push_back("hello");
-  arr.push_back("back");
+  my_args.args_list.push_back("hello");
+  my_args.args_list.push_back("back");
 
   invocation.yield(my_args);
 }

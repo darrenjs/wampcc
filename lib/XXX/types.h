@@ -73,8 +73,8 @@ class wamp_session;
 
 struct wamp_args
 {
-  jalson::json_value  args_list;
-  jalson::json_value  args_dict;
+  jalson::json_array  args_list;
+  jalson::json_object args_dict;
 };
 
 

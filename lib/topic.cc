@@ -105,8 +105,7 @@ void topic::add_publisher(std::weak_ptr<wamp_session> wp)
   obs.on_snapshot = [=](const jalson::json_array& patch)
     {
       XXX::wamp_args pub_args;
-      pub_args.args_list = jalson::json_array();
-      pub_args.args_list.as_array().push_back( patch );
+      pub_args.args_list.push_back( patch );
 
       if (auto sp = wp.lock())
         sp->publish( m_uri, { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
@@ -117,9 +116,8 @@ void topic::add_publisher(std::weak_ptr<wamp_session> wp)
                       const jalson::json_array& event)
     {
       XXX::wamp_args pub_args;
-      pub_args.args_list = jalson::json_array();
-      pub_args.args_list.as_array().push_back( patch );
-      pub_args.args_list.as_array().push_back( event );
+      pub_args.args_list.push_back( patch );
+      pub_args.args_list.push_back( event );
 
       if (auto sp = wp.lock())
         sp->publish( m_uri, { {KEY_PATCH, 1} }, std::move(pub_args) );
@@ -137,8 +135,7 @@ void topic::add_publisher(std::string realm,
   obs.on_snapshot = [=](const jalson::json_array& patch)
     {
       XXX::wamp_args pub_args;
-      pub_args.args_list = jalson::json_array();
-      pub_args.args_list.as_array().push_back( patch );
+      pub_args.args_list.push_back( patch );
 
       if (auto sp=dealer.lock())
         sp->publish( m_uri,
@@ -151,9 +148,8 @@ void topic::add_publisher(std::string realm,
                       const jalson::json_array& event)
     {
       XXX::wamp_args pub_args;
-      pub_args.args_list = jalson::json_array();
-      pub_args.args_list.as_array().push_back( patch );
-      pub_args.args_list.as_array().push_back( event );
+      pub_args.args_list.push_back( patch );
+      pub_args.args_list.push_back( event );
 
       if (auto sp=dealer.lock())
         sp->publish( m_uri,
