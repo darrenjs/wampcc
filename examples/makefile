@@ -35,7 +35,7 @@ app_srcs := $(shell find . -name \*.cc)
 all   : apps
 apps  : $(app_srcs:%.cc=%)
 test  : obj/test/main ; @$<
-clean : ; rm -rf *.o *.d $(app_srcs:%.cc=%)
+clean : ; rm -f $(app_srcs:%.cc=%) $(app_srcs:%.cc=%.d)
 
 #-include $(all_srcs:%.cc=%.d)
 .PRECIOUS : %.o
