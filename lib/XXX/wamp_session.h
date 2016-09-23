@@ -21,7 +21,6 @@ namespace XXX {
   class io_handle;
   struct logger;
 
-
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
   typedef std::function< void(std::shared_ptr<wamp_session>, bool) > session_state_fn;
 
@@ -96,6 +95,31 @@ namespace XXX {
   };
 
   typedef std::function<void(wamp_invocation&) > rpc_cb;
+
+  class wamp_error : public std::runtime_error
+  {
+  public:
+    wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
+      : std::runtime_error(what),
+        m_uri(error_uri),
+        m_args(wa)
+    {  }
+
+    wamp_error(const char* error_uri, wamp_args wa = wamp_args())
+      : std::runtime_error(error_uri),
+        m_uri(error_uri),
+        m_args(wa)
+    {  }
+
+    wamp_args& args() { return m_args; }
+    const wamp_args& args() const { return m_args; }
+
+    const std::string & error_uri() { return m_uri; }
+
+  private:
+    std::string m_uri;
+    wamp_args m_args;
+  };
 
 
   // Needs to support needs of service providers (rpc & topics), and service

@@ -66,52 +66,19 @@ enum WampMsgType
     WAMP_MSGID_MAX
 };
 
-
+typedef uint64_t t_request_id;
+typedef uint64_t t_invoke_id;
+typedef uint64_t t_sid;
+typedef uint64_t t_subscription_id;
 
 class wamp_session;
-
+typedef std::weak_ptr<wamp_session> session_handle;
 
 struct wamp_args
 {
   jalson::json_array  args_list;
   jalson::json_object args_dict;
 };
-
-
-typedef uint64_t t_request_id;
-typedef uint64_t t_invoke_id;
-typedef uint64_t t_sid;
-typedef uint64_t t_subscription_id;
-
-typedef std::weak_ptr<wamp_session> session_handle;
-typedef std::function<void(wamp_session*)> session_closed_cb;
-
-
-class wamp_error : public std::runtime_error
-{
-public:
-  wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
-    : std::runtime_error(what),
-      m_uri(error_uri),
-      m_args(wa)
-  {  }
-
-  wamp_error(const char* error_uri, wamp_args wa = wamp_args())
-    : std::runtime_error(error_uri),
-      m_uri(error_uri),
-      m_args(wa)
-  {  }
-
-  wamp_args& args() { return m_args; }
-  const wamp_args& args() const { return m_args; }
-
-  const std::string & error_uri() { return m_uri; }
-
-private:
-  std::string m_uri;
-  wamp_args m_args;
-};
-
 
 } // namespace
 
