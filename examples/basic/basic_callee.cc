@@ -11,7 +11,7 @@ using namespace XXX;
 
 void rpc(wamp_invocation& invoke)
 {
-  invoke.yield( { jalson::json_array({"hello", "world"}) ,{} } );
+  invoke.yield( jalson::json_array({"hello", "world"}), {} );
 }
 
 int main(int, char**)

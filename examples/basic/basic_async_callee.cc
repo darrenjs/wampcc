@@ -16,7 +16,7 @@ std::shared_ptr<wamp_session> g_session;
 
 void rpc(wamp_invocation& invoke)
 {
-  invoke.yield( { jalson::json_array({"hello", "world"}) ,{} } );
+  invoke.yield( jalson::json_array({"hello", "world"}), {}  );
 }
 
 
