@@ -84,16 +84,14 @@ void procedure_cb(XXX::wamp_invocation& invocation)
 
   /* called when a procedure within a CALLEE is triggered */
 
-  std::cout << "CALLEE has procuedure_cb invoked, args: " << invocation.args.args_list
+  std::cout << "CALLEE has procuedure_cb invoked, args: " << invocation.arg_list
             << ", user:" << cbdata->request;
 
   // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
 
-  auto my_args = invocation.args;
-  my_args.args_list.push_back("hello");
-  my_args.args_list.push_back("back");
+  jalson::json_array args {"hello", "back"};
 
-  invocation.yield(my_args);
+  invocation.yield(args, {});
 }
 
 void call_cb(XXX::wamp_call_result r)

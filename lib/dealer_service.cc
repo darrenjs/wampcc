@@ -190,16 +190,19 @@ void dealer_service::handle_inbound_call(
         {
           wamp_invocation invoke;
           invoke.user = rpc.user_data;
-          invoke.args = std::move(args);
+          invoke.arg_list = std::move(args.args_list);
+          invoke.arg_dict = std::move(args.args_dict);
 
-          invoke.yield = [fn](wamp_args args)
+          invoke.yield = [fn](jalson::json_array arg_list, jalson::json_object arg_dict)
             {
+              wamp_args args { std::move(arg_list), std::move(arg_dict) };
               if (fn)
                 fn(args, std::unique_ptr<std::string>());
             };
 
-          invoke.error = [fn](wamp_args args, std::string error_uri)
+          invoke.error = [fn](std::string error_uri, jalson::json_array arg_list, jalson::json_object arg_dict)
             {
+              wamp_args args { std::move(arg_list), std::move(arg_dict) };
               if (fn)
                 fn(args, std::unique_ptr<std::string>(new std::string(error_uri)));
             };

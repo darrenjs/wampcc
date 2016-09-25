@@ -33,7 +33,7 @@ namespace XXX {
 
   struct server_msg_handler
   {
-    std::function<void(wamp_session*, std::string uri, wamp_args, wamp_invocation_reply_fn)> inbound_call;
+    std::function<void(wamp_session*, std::string, wamp_args, wamp_invocation_reply_fn)> inbound_call;
     std::function<void(wamp_session*, std::string uri, jalson::json_object, wamp_args)> handle_inbound_publish;
     std::function<uint64_t (std::weak_ptr<wamp_session>, std::string realm, std::string uri)> inbound_register;
     std::function<uint64_t (wamp_session*, t_request_id, std::string uri, jalson::json_object&)> inbound_subscribe;
@@ -88,12 +88,13 @@ namespace XXX {
   /** Aggregate passed on RPC invocation. */
   struct wamp_invocation
   {
-    wamp_args           args;
+    jalson::json_array  arg_list;
+    jalson::json_object arg_dict;
     jalson::json_object details;
     void *              user;
 
-    std::function<void(wamp_args)>              yield;
-    std::function<void(wamp_args, std::string)> error;
+    std::function<void(jalson::json_array, jalson::json_object)> yield;
+    std::function<void(std::string, jalson::json_array, jalson::json_object)> error;
   };
 
   typedef std::function<void(wamp_invocation&) > rpc_cb;

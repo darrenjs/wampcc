@@ -923,25 +923,25 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
     if (iter == m_procedures.end())
       throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
 
-    wamp_args my_wamp_args;
-    if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4].as_array();
-    if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5].as_object();
-
     std::string uri = iter->second.uri;
 
     XXX:: wamp_invocation invoke;
     invoke.user = iter->second.user_data;
-    invoke.args = std::move(my_wamp_args);
+
+    if ( msg.size() > 4 ) invoke.arg_list = std::move(msg[4].as_array());
+    if ( msg.size() > 5 ) invoke.arg_dict = std::move(msg[4].as_object());
 
     session_handle wp = this->handle();
-    invoke.yield = [wp,request_id](wamp_args args)
+    invoke.yield = [wp,request_id](jalson::json_array arg_list, jalson::json_object arg_dict)
       {
+        wamp_args args { arg_list, arg_dict };
         if (auto sp = wp.lock())
           sp->invocation_yield(request_id, std::move(args));
       };
 
-    invoke.error = [wp,request_id](wamp_args args, std::string error_uri)
+    invoke.error = [wp,request_id](std::string error_uri,jalson::json_array arg_list, jalson::json_object arg_dict)
       {
+        wamp_args args { arg_list, arg_dict };
         if (auto sp = wp.lock())
           sp->reply_with_error(INVOCATION, request_id, std::move(args), std::move(error_uri));
       };

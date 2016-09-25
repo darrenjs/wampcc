@@ -43,10 +43,10 @@ void procedure_error_cb(XXX::wamp_invocation invocation)
 
   /* called when a procedure within a CALLEE is triggered */
 
-  LOG_INFO ("CALLEE has procedure_error_cb invoked, args: " << invocation.args.args_list
+  LOG_INFO ("CALLEE has procedure_error_cb invoked, args: " << invocation.arg_list
           << ", user:" << cbdata->request );
 
-  throw XXX::wamp_error("user.error.rpc_failed");
+  throw XXX::wamp_error("user.error.rpc_failed", {}, {});
 }
 
 void procedure_cb(XXX::wamp_invocation& invocation)
@@ -55,15 +55,10 @@ void procedure_cb(XXX::wamp_invocation& invocation)
 
   /* called when a procedure within a CALLEE is triggered */
 
-  LOG_INFO ("CALLEE has procuedure_cb invoked, args: " << invocation.args.args_list
+  LOG_INFO ("CALLEE has procuedure_cb invoked, args: " << invocation.arg_list
           << ", user:" << cbdata->request );
 
-//  throw std::runtime_error("bad alloc");
-  auto my_args = invocation.args;
-  my_args.args_list.push_back("hello");
-  my_args.args_list.push_back("back");
-
-  invocation.yield(my_args);
+  invocation.yield({"hello","back"}, {});
 }
 
 
