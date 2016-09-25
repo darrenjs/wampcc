@@ -1096,8 +1096,8 @@ t_request_id wamp_session::call(std::string uri,
   msg.push_back( 0 );
   msg.push_back( options );
   msg.push_back( uri );
-  if (!args.args_list.empty()) msg.push_back( args.args_list );
-  if (!args.args_dict.empty()) msg.push_back( args.args_dict );
+  msg.push_back( args.args_list );
+  msg.push_back( args.args_dict );
 
   wamp_call mycall;
   mycall.user_cb = user_cb;
