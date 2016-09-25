@@ -45,9 +45,11 @@ private:
     eInvalid,
     eHandlingHttpRequest, // server
     eHandlingHttpResponse,  // client
-    eHandlingWebsocket,
+    eOpen,
     eClosing
   } m_state = eInvalid;
+
+  t_initiate_cb m_initiate_cb;
 
   std::unique_ptr<http_parser> m_http_parser;
 

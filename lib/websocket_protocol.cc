@@ -238,7 +238,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               buf.second = msg.size();
 
               m_iohandle->write_bufs(&buf, 1, false);
-              m_state = eHandlingWebsocket;
+              m_state = eOpen;
             }
             else
             {
@@ -249,7 +249,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             throw handshake_error("http header is not a websocket upgrade");
         }
       }
-      else if (m_state == eHandlingWebsocket)
+      else if (m_state == eOpen)
       {
         if (rd.avail() < 2) break;
 
@@ -353,7 +353,8 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               throw handshake_error("Sec-WebSocket-Accept incorrect");
 
             std::cout << "*** upgrade ok ***\n";
-            m_state = eHandlingWebsocket;
+            m_state = eOpen;
+            m_initiate_cb();
           }
           else
             throw handshake_error("http header is not a websocket upgrade");
@@ -366,8 +367,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 }
 
 
-void websocket_protocol::initiate(t_initiate_cb)
+void websocket_protocol::initiate(t_initiate_cb cb)
 {
+  m_initiate_cb = cb;
+
   char nonce [16];
   std::random_device rd;
   std::mt19937 engine( rd() );
@@ -400,7 +403,7 @@ void websocket_protocol::initiate(t_initiate_cb)
 
 void websocket_protocol::ev_on_timer()
 {
-  if (m_state == eHandlingWebsocket)
+  if (m_state == eOpen)
   {
     frame_builder fb(OPCODE_PING, true, 0);
     auto buf = fb.buf();
