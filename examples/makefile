@@ -23,7 +23,7 @@ JANSSON_LIBA=$(JANSSON_HOME)/lib/libjansson.a
 
 
 CXXFLAGS += -MMD -MP
-CXXFLAGS += -Wall -g3 -ggdb -std=c++0x -pthread   $(XXX_INC) $(JALSON_INC) $(LIBUV_INC)
+CXXFLAGS += -Wall -O0 -g3 -ggdb -std=c++0x -pthread   $(XXX_INC) $(JALSON_INC) $(LIBUV_INC)
 
 LDLIBS +=$(XXX_LIBS) $(LIBUV_LIBS) $(JALSON_LIBS) $(JANSSON_LIBS) -lcrypto -lpthread
 

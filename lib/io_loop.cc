@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <iostream>
 
 
 static const char* safe_str(const char* s)
@@ -320,6 +321,7 @@ void io_loop::on_async()
       uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg){
           if (!uv_is_closing(handle))
           {
+            std::cout << std::this_thread::get_id() << " " << "walk doing uv_close for " <<  handle<< std::endl;
             uv_close(handle, [](uv_handle_t* handle){
                 delete handle;
               });
@@ -338,7 +340,7 @@ void io_loop::on_async()
 
 void io_loop::run_loop()
 {
-  LOG_INFO("io_loop thread starting");
+  std::cout << std::this_thread::get_id() << " " << " @io_loop" << "\n";
   while ( true )
   {
     try

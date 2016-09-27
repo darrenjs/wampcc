@@ -93,7 +93,12 @@ wamp_session::wamp_session(kernel& __kernel,
           std::function<void()> fn = [wp,msg,msg_type]() mutable
             {
               if (auto sp = wp.lock())
+              {
+                std::cout << std::this_thread::get_id() << " " << "EV process_message -->" << std::endl;
                 sp->process_message(msg_type, msg);
+                std::cout << std::this_thread::get_id() << " " << "EV process_message <--" << std::endl;
+              }
+              std::cout << std::this_thread::get_id() << " " << "EV completed process_message" << std::endl;
             };
           m_kernel.get_event_loop()->dispatch(std::move(fn));
         }
@@ -140,11 +145,14 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
 /* Destructor */
 wamp_session::~wamp_session()
 {
+  std::cout << std::this_thread::get_id() << " " << "~wamp_session -->" << "\n";
   // note: don't log in here, just in case logger has been deleted
 
   // request IO closure and wait for IO thread to complete its callbacks
   // in this object, before we start deleting members
+  std::cout << std::this_thread::get_id() << " " << "wamp_session::close.wait() <--" << "\n";
   close().wait();
+  std::cout << std::this_thread::get_id() << " " << "~wamp_session <--" << "\n";
 }
 
 
@@ -163,6 +171,7 @@ std::shared_future<void> wamp_session::close()
   else
   {
     change_state(eClosing, eClosing);
+    std::cout << std::this_thread::get_id() << " " << "m_handle->request_close" << "\n";
     m_handle->request_close();
   }
 
@@ -185,6 +194,7 @@ void wamp_session::io_on_close()
       {
         /* EV thread */
         if (auto sp=wp.lock())
+        {
           sp->m_notify_state_change_fn(sp, false);
       } );
   }
@@ -751,7 +761,10 @@ void wamp_session::notify_session_open()
   /* EV thread */
 
   if (m_notify_state_change_fn)
+  {
+    std::cout << std::this_thread::get_id() << " " << "wamp_session::notify_session_open" << "\n";
     m_notify_state_change_fn(shared_from_this(), true /* session is open */);
+  }
 
   m_promise_on_open.set_value();
 }
