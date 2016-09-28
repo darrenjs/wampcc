@@ -194,7 +194,6 @@ void wamp_session::io_on_close()
       {
         /* EV thread */
         if (auto sp=wp.lock())
-        {
           sp->m_notify_state_change_fn(sp, false);
       } );
   }
