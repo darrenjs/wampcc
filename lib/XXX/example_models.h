@@ -19,8 +19,8 @@ public:
 
 private:
 
-  std::thread m_thr;
   std::promise<void> m_notify_to_exit;
+  std::thread m_thr;
 };
 
 }
