@@ -1,9 +1,9 @@
 #ifndef XXX_TOPIC_H
 #define XXX_TOPIC_H
 
-#include "types.h"
-#include "utils.h"
-#include "wamp_session.h"
+#include "XXX/types.h"
+#include "XXX/utils.h"
+#include "XXX/wamp_session.h"
 
 #include <jalson/jalson.h>
 

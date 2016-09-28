@@ -1,7 +1,7 @@
 #ifndef XXX_LOG_MACROS_H
 #define XXX_LOG_MACROS_H
 
-#include "kernel.h"
+#include "XXX/kernel.h"
 
 #include <sstream>
 

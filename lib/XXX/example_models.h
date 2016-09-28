@@ -1,7 +1,7 @@
 #ifndef XXX_EXAMPLE_MODELS_H
 #define XXX_EXAMPLE_MODELS_H
 
-#include "topic.h"
+#include "XXX/topic.h"
 
 namespace XXX {
 
@@ -20,7 +20,7 @@ public:
 private:
 
   std::promise<void> m_notify_to_exit;
-  std::thread m_thr;
+  std::thread m_thr; /* keep as final member, to avoid race condition */
 };
 
 }
