@@ -17,10 +17,13 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(LIBUVHOME)/include						\
 
 AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 
-check_PROGRAMS=test_connect_timeout
-noinst_PROGRAMS=test_connect_timeout
-TESTS=test_connect_timeout
+check_PROGRAMS=test_connect_timeout test_late_wamp_session_descructor
+noinst_PROGRAMS=test_connect_timeout test_late_wamp_session_descructor
+TESTS=test_connect_timeout test_late_wamp_session_descructor
 
 
 test_connect_timeout_SOURCES=test_connect_timeout.cc
 test_connect_timeout_LDADD=libgtest.la
+
+test_late_wamp_session_descructor_SOURCES=test_late_wamp_session_descructor.cc
+test_late_wamp_session_descructor_LDADD=libgtest.la
