@@ -17,13 +17,20 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(LIBUVHOME)/include						\
 
 AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 
-check_PROGRAMS=test_connect_timeout test_late_wamp_session_descructor
-noinst_PROGRAMS=test_connect_timeout test_late_wamp_session_descructor
-TESTS=test_connect_timeout test_late_wamp_session_descructor
-
+check_PROGRAMS=test_connect_timeout test_late_wamp_session_destructor		\
+test_early_wamp_session_destructor test_evthread_wamp_session_destructor
+noinst_PROGRAMS=$(check_PROGRAMS)
+TESTS=$(check_PROGRAMS)
 
 test_connect_timeout_SOURCES=test_connect_timeout.cc
 test_connect_timeout_LDADD=libgtest.la
 
-test_late_wamp_session_descructor_SOURCES=test_late_wamp_session_descructor.cc
-test_late_wamp_session_descructor_LDADD=libgtest.la
+test_late_wamp_session_destructor_SOURCES=test_late_wamp_session_destructor.cc
+test_late_wamp_session_destructor_LDADD=libgtest.la
+
+test_early_wamp_session_destructor_SOURCES=test_early_wamp_session_destructor.cc
+test_early_wamp_session_destructor_LDADD=libgtest.la
+
+test_evthread_wamp_session_destructor_SOURCES=test_evthread_wamp_session_destructor.cc
+test_evthread_wamp_session_destructor_LDADD=libgtest.la
+
