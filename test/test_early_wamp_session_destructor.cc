@@ -51,9 +51,6 @@ int main()
     internal_client iclient;
     int port = iclient.start();
 
-    if (port == 0)
-      throw runtime_error("failed to find an available port number for listen socket");
-
     test_control(port);
 
     return 0;

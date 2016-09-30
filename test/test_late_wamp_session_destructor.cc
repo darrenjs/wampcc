@@ -48,13 +48,6 @@ void test_WS_destroyed_after_kernel(int port)
   cout << "test success\n";
 }
 
-/* Note, these tests will only succeed if the system has access to a network. */
-
-int __main()
-{
-  return 0;
-}
-
 
 int main()
 {
@@ -62,9 +55,6 @@ int main()
   {
     internal_client iclient;
     int port = iclient.start();
-
-    if (port == 0)
-      throw runtime_error("failed to find an available port number for listen socket");
 
     test_WS_destroyed_after_kernel(port);
 

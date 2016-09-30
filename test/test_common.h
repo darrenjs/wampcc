@@ -53,6 +53,7 @@ public:
       }
     }
 
+    throw std::runtime_error("failed to find an available port number for listen socket");
     return 0;
   }
 
