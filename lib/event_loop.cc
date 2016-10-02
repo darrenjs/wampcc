@@ -253,7 +253,6 @@ void event_loop::eventloop()
 
 void event_loop::eventmain()
 {
-  std::cout << std::this_thread::get_id() << " " << " @event_loop" << "\n";
   if (m_kernel->get_config().event_loop_start_fn)
     try {
       m_kernel->get_config().event_loop_start_fn();
