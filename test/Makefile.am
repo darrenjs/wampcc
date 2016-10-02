@@ -18,7 +18,8 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(LIBUVHOME)/include						\
 AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 
 check_PROGRAMS=test_connect_timeout test_late_wamp_session_destructor		\
-test_early_wamp_session_destructor test_evthread_wamp_session_destructor
+test_early_wamp_session_destructor test_evthread_wamp_session_destructor	\
+test_unused_wamp_connector
 noinst_PROGRAMS=$(check_PROGRAMS)
 TESTS=$(check_PROGRAMS)
 
@@ -34,3 +35,5 @@ test_early_wamp_session_destructor_LDADD=libgtest.la
 test_evthread_wamp_session_destructor_SOURCES=test_evthread_wamp_session_destructor.cc
 test_evthread_wamp_session_destructor_LDADD=libgtest.la
 
+test_unused_wamp_connector_SOURCES=test_unused_wamp_connector.cc
+test_unused_wamp_connector_LDADD=libgtest.la

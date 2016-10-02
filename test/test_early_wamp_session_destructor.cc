@@ -1,13 +1,17 @@
 #include "test_common.h"
 
+
 using namespace XXX;
 using namespace std;
 
-void test_control(int port)
+void test_WS_destroyed_before_kernel(int port)
 {
   cout << "------------------------------\n";
   cout << "control test\n";
   cout << "------------------------------\n";
+
+  callback_status = e_callback_not_invoked;
+
   {
     unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
 
@@ -25,13 +29,7 @@ void test_control(int port)
 
     /* attempt to create a session */
     cout << "attemping session creation ...\n";
-    promise<void> promise_on_close;
-    shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>(
-      [&promise_on_close](session_handle, bool is_open)
-      {
-        if (!is_open)
-          promise_on_close.set_value();
-      });
+    shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>(session_cb);
     cout << "    got session\n";
 
     cout << "trigger ~wamp_session\n";
@@ -39,6 +37,8 @@ void test_control(int port)
     cout << "exiting scope (will trigger kernel, io_loop, ev_loop destruction)...\n";
   }
   cout << "    scope complete\n";
+
+  assert(callback_status == e_close_callback_without_sp);
 
   cout << "test success\n";
 }
@@ -48,10 +48,25 @@ int main()
 {
   try
   {
-    internal_client iclient;
-    int port = iclient.start();
 
-    test_control(port);
+    // share a common internal_client
+    for (int i = 0; i < 10; i++)
+    {
+      internal_client iclient;
+      int port = iclient.start();
+
+      for (int j=0; j < 10; j++) {
+        test_WS_destroyed_before_kernel(port);
+      }
+    }
+
+    // use one internal_client per test
+    for (int i = 0; i < 100; i++)
+    {
+      internal_client iclient;
+      int port = iclient.start();
+      test_WS_destroyed_before_kernel(port);
+    }
 
     return 0;
   }

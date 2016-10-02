@@ -25,17 +25,8 @@ kernel::kernel(config __conf, logger nlog)
 /* Destructor */
 kernel::~kernel()
 {
-  std::cout << std::this_thread::get_id() << " " << "~kernel -->" << "\n";
-  // TODO: dont think this is the best way to shutdown.  Should start by trying
-  // to close all the sessions.
-  std::cout << std::this_thread::get_id() << " " << "stopping io_loop" << "\n";
   m_io_loop->stop();
-  std::cout << std::this_thread::get_id() << " " << "stopping ev_loop" << "\n";
   m_evl->stop();
-
-
-  m_evl.reset();
-  std::cout << std::this_thread::get_id() << " " << "~kernel <--" << "\n";
 }
 
 io_loop*  kernel::get_io()

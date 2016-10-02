@@ -30,6 +30,35 @@ typedef std::function<void(io_handle*, int)> tcp_connect_cb;
 // TODO: comment
 void version_check_libuv(int uv_major, int uv_minor);
 
+struct uv_handle_data
+{
+  enum { DATA_CHECK = 0x5555555555555555 };
+  uint64_t check;
+
+  union {
+    io_handle * io_handle_ptr;
+  };
+  enum ptr_type {
+    io_handle_tcp,
+    io_handle_async
+  } type;
+
+  uv_handle_data(ptr_type t, void* ptr)
+    : check( DATA_CHECK ),
+      io_handle_ptr(nullptr),
+      type(t)
+  {
+    switch (t)
+    {
+      case io_handle_tcp :
+      case io_handle_async :
+        io_handle_ptr = (io_handle*) ptr;
+        break;
+    }
+  }
+
+
+};
 
 struct  tcp_server
 {

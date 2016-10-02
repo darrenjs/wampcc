@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
 #include <iostream>
 
 
@@ -318,18 +319,30 @@ void io_loop::on_async()
       // While there are active handles, progress the event loop here and on
       // each iteration identify and request close any handles which have not
       // been requested to close.
-      uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg){
+      uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg) {
           if (!uv_is_closing(handle))
           {
-            std::cout << std::this_thread::get_id() << " " << "walk doing uv_close for " <<  handle<< std::endl;
-            uv_close(handle, [](uv_handle_t* handle){
-                delete handle;
-              });
+            uv_handle_data * ptr = (uv_handle_data*) handle->data;
+
+            if (ptr == 0)
+            {
+              // We are uv_walking a handle which does not have the data member
+              // set. Common cause of this is a shutdown of the kernel & ioloop
+              // while a wamp_connector exists which has not had its UV handle
+              // used.
+              uv_close(handle, [](uv_handle_t* h){
+                  delete h;
+                });
+            }
+            else
+            {
+              assert(ptr->check == uv_handle_data::DATA_CHECK);
+
+              if (ptr->type == uv_handle_data::io_handle_tcp)
+                ptr->io_handle_ptr->do_close();
+            }
           }
         }, nullptr);
-
-      if (uv_run(m_uv_loop, UV_RUN_NOWAIT) != 0)
-        LOG_WARN("expected uv_run to return 0 after handle closing");
 
       return; // don't process any more items in queue (should be none)
     }
@@ -340,7 +353,6 @@ void io_loop::on_async()
 
 void io_loop::run_loop()
 {
-  std::cout << std::this_thread::get_id() << " " << " @io_loop" << "\n";
   while ( true )
   {
     try

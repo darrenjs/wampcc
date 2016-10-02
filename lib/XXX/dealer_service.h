@@ -55,7 +55,7 @@ private:
                            wamp_args args,
                            wamp_invocation_reply_fn);
 
-  void handle_session_state_change(std::shared_ptr<wamp_session>, bool);
+  void handle_session_state_change(std::weak_ptr<wamp_session>, bool);
 
   void check_has_closed();
 

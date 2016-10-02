@@ -22,7 +22,7 @@ namespace XXX {
   struct logger;
 
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
-  typedef std::function< void(std::shared_ptr<wamp_session>, bool) > session_state_fn;
+  typedef std::function< void(std::weak_ptr<wamp_session>, bool) > session_state_fn;
 
   struct auth_provider
   {
@@ -316,6 +316,7 @@ namespace XXX {
     auth_provider m_auth_proivder;
 
     session_state_fn m_notify_state_change_fn;
+    std::weak_ptr<wamp_session> m_self_weak;
 
     void process_inbound_registered(jalson::json_array &);
     void process_inbound_invocation(jalson::json_array &);

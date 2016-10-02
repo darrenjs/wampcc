@@ -4,7 +4,7 @@ using namespace XXX;
 using namespace std;
 
 
-void test_WS_destroyed_after_kernel(int port)
+void test_WS_destroyed_on_ev_thread(int port)
 {
   cout << "------------------------------\n";
   cout << "test ~WS on EV thread\n";
@@ -27,13 +27,7 @@ void test_WS_destroyed_after_kernel(int port)
 
     /* attempt to create a session */
     cout << "attemping session creation ...\n";
-    promise<void> promise_on_close;
-    shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>(
-      [&promise_on_close](session_handle, bool is_open)
-      {
-        if (!is_open)
-          promise_on_close.set_value();
-      });
+    shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>(nullptr);
     cout << "    got session\n";
 
     cout << "pushing session onto ev_loop, where is will stay until ~ev_loop\n";
@@ -54,10 +48,24 @@ int main()
 {
   try
   {
-    internal_client iclient;
-    int port = iclient.start();
+    // share a common internal_client
+    for (int i = 0; i < 10; i++)
+    {
+        internal_client iclient;
+        int port = iclient.start();
 
-    test_WS_destroyed_after_kernel(port);
+        for (int j=0; j < 10; j++) {
+          test_WS_destroyed_on_ev_thread(port);
+        }
+    }
+
+    // use one internal_client per test
+    for (int i = 0; i < 100; i++)
+    {
+      internal_client iclient;
+      int port = iclient.start();
+      test_WS_destroyed_on_ev_thread(port);
+    }
 
     return 0;
   }

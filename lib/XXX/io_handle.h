@@ -47,6 +47,8 @@ private:
   void on_close_cb();
   void on_read_cb(ssize_t, const uv_buf_t*);
 
+  void do_close();
+
 private:
   kernel & m_kernel;
   logger & __logger;
@@ -55,8 +57,6 @@ private:
   uv_async_t   m_write_async;
 
   io_listener * m_listener;
-
-  int m_closed_handles_count;
 
   std::atomic<size_t> m_bytes_pending; // pending written
   size_t m_bytes_written = 0;
@@ -78,6 +78,7 @@ private:
   State m_state;
 
   bool m_uv_read_started = false;
+  friend io_loop;
 };
 
 } // namespace XXX

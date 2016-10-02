@@ -53,7 +53,6 @@ io_handle::io_handle(kernel& k, uv_stream_t * hdl, io_loop * loop)
     __logger(k.get_logger()),
     m_uv_handle(hdl),
     m_listener(nullptr),
-    m_closed_handles_count(0),
     m_bytes_pending(0),
     m_bytes_written(0),
     m_bytes_read(0),
@@ -62,17 +61,16 @@ io_handle::io_handle(kernel& k, uv_stream_t * hdl, io_loop * loop)
     m_state(eOpen)
 {
   /* IO thread */
-
-  m_uv_handle->data = this;
+  m_uv_handle->data = new uv_handle_data(uv_handle_data::io_handle_tcp, this);
 
   // set up the async handler
   uv_async_init(loop->uv_loop(), &m_write_async, [](uv_async_t* uvh){
-      io_handle* ioh = static_cast<io_handle*>( uvh->data );
-      std::cout << std::this_thread::get_id() << " " << "iohandle async cb" << std::endl;
+      uv_handle_data * ptr = (uv_handle_data*) uvh->data;
+      io_handle* ioh = ptr->io_handle_ptr;
       ioh->write_async();
     });
-  m_write_async.data = this;
 
+  m_write_async.data = new uv_handle_data(uv_handle_data::io_handle_async, this);
 }
 
 
@@ -90,8 +88,8 @@ void io_handle::start_read(io_listener* p)
     uv_read_start(m_uv_handle, iohandle_alloc_buffer,
                   [](uv_stream_t*  uvh, ssize_t nread, const uv_buf_t* buf)
                   {
-                    io_handle * iohandle = (io_handle *) uvh->data;
-                    iohandle->on_read_cb(nread, buf);
+                    uv_handle_data * ptr = (uv_handle_data*) uvh->data;
+                    ptr->io_handle_ptr->on_read_cb(nread, buf);
                   });
     m_uv_read_started = true;
   }
@@ -116,47 +114,31 @@ io_handle::~io_handle()
 }
 
 
-void io_handle::on_close_cb()
+void io_handle::on_close_cb() // TODO: rename
 {
   /* IO thread */
+  // Both handles have been closed, so no more callbacks are due from the
+  // IO service.
+  m_state = eClosed;
 
-  if (++m_closed_handles_count == 2)
-  {
-    // Both handles have been closed, so no more callbacks are due from the
-    // IO service.
-    m_state = eClosed;
+  // Notify owning session about end of file event. The owner must not try to
+  // delete this object from the current thread.
+  if (m_listener) m_listener->io_on_close();
 
-    // Notify owning session about end of file event. The owner must not try to
-    // delete this object from the current thread.
-    if (m_listener) m_listener->io_on_close();
-
-    // This must be final code in this method, because once called, this object
-    // may be immediately deleted from elsewhere, and on a different thread.
-    m_io_has_closed.set_value();
-  }
+  // This must be final code in this method, because once called, this object
+  // may be immediately deleted from elsewhere, and on a different thread.
+  m_io_has_closed.set_value();
 }
 
 
 void io_handle::write_async()
 {
   /* IO thread */
-  std::cout << std::this_thread::get_id() << " " << "io_handle::write_async" <<  &m_write_async<< std::endl;
 
   // Handling of close_handles signals needs to be checked first
   if (m_pending_close_handles)
   {
-    // request closure of our UV handles
-    std::cout << std::this_thread::get_id() << " " << "calling uv_close on " <<  &m_write_async<< std::endl;
-    uv_close((uv_handle_t*)&m_write_async, [](uv_handle_t* uvh){
-        io_handle * h = (io_handle *) uvh->data;
-        h->on_close_cb();
-      });
-    std::cout << std::this_thread::get_id() << " " << "calling uv_close on " <<   m_uv_handle<< std::endl;
-    uv_close((uv_handle_t*)m_uv_handle,  [](uv_handle_t* uvh){
-        io_handle * h = (io_handle *) uvh->data;
-        h->on_close_cb();
-      });
-
+    do_close();
     return;
   }
 
@@ -253,19 +235,14 @@ std::shared_future<void> io_handle::request_close()
 void io_handle::init_close()
 {
   /* ANY thread (including IO) */
-  std::cout << std::this_thread::get_id() << " " << "io_handle::init_close -->" << "\n";
 
   std::lock_guard<std::mutex> guard(m_pending_write_lock);
 
   if (m_state == eOpen)
   {
-    m_state = eClosing;
-
     m_pending_close_handles = true;
-    std::cout << std::this_thread::get_id() << " " << "calling uv_async_send  " <<  &m_write_async<< std::endl;
     uv_async_send( &m_write_async );
   }
-  std::cout << std::this_thread::get_id() << " " << "io_handle::init_close <--" << "\n";
 }
 
 
@@ -334,6 +311,34 @@ void io_handle::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 int io_handle::fd() const
 {
   return m_uv_handle->io_watcher.fd;
+}
+
+void io_handle::do_close()
+{
+  /* IO thread */
+
+  // perform the actual closure
+
+  // TODO: lock the state, and set to is_closing
+
+
+  if (m_state != eClosing && m_state != eClosed)
+  {
+    m_state = eClosing;
+
+    uv_close((uv_handle_t*)m_uv_handle,  [](uv_handle_t* uvh) {
+
+        uv_handle_data * ptr = (uv_handle_data*) uvh->data;
+        io_handle * ioh = ptr->io_handle_ptr;
+
+        // now close the async handle
+        uv_close((uv_handle_t*) & ioh->m_write_async, [](uv_handle_t* uvh){
+            uv_handle_data * ptr = (uv_handle_data*) uvh->data;
+            ptr->io_handle_ptr->on_close_cb();
+          });
+
+      });
+  }
 }
 
 } // namespace XXX

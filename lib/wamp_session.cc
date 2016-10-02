@@ -93,12 +93,7 @@ wamp_session::wamp_session(kernel& __kernel,
           std::function<void()> fn = [wp,msg,msg_type]() mutable
             {
               if (auto sp = wp.lock())
-              {
-                std::cout << std::this_thread::get_id() << " " << "EV process_message -->" << std::endl;
                 sp->process_message(msg_type, msg);
-                std::cout << std::this_thread::get_id() << " " << "EV process_message <--" << std::endl;
-              }
-              std::cout << std::this_thread::get_id() << " " << "EV completed process_message" << std::endl;
             };
           m_kernel.get_event_loop()->dispatch(std::move(fn));
         }
@@ -117,6 +112,8 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
   std::shared_ptr<wamp_session> sp(
     new wamp_session(k, std::move(ioh), state_cb, protocol_builder, handler, auth)
       );
+
+  sp->m_self_weak = sp;
 
   // can't put this initialisation step inside wamp_sesssion constructor,
   // because the shared pointer wont be created & available inside the
@@ -145,14 +142,11 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
 /* Destructor */
 wamp_session::~wamp_session()
 {
-  std::cout << std::this_thread::get_id() << " " << "~wamp_session -->" << "\n";
   // note: don't log in here, just in case logger has been deleted
 
   // request IO closure and wait for IO thread to complete its callbacks
   // in this object, before we start deleting members
-  std::cout << std::this_thread::get_id() << " " << "wamp_session::close.wait() <--" << "\n";
   close().wait();
-  std::cout << std::this_thread::get_id() << " " << "~wamp_session <--" << "\n";
 }
 
 
@@ -171,37 +165,35 @@ std::shared_future<void> wamp_session::close()
   else
   {
     change_state(eClosing, eClosing);
-    std::cout << std::this_thread::get_id() << " " << "m_handle->request_close" << "\n";
     m_handle->request_close();
   }
 
   return m_shfut_has_closed;
 }
 
-
+/* Called on the IO thread when the underlying io_handle object has closed all
+ * its socket related resources (eg the tcp socket and timers).  This is the
+ * last call that will be received on the IO thread.
+ */
 void wamp_session::io_on_close()
 {
-  /* IO thread */
-
   change_state(eClosed,eClosed);
 
   // push the final EV operation
-  try
-  {
-    std::weak_ptr<wamp_session> wp = shared_from_this();
-    m_kernel.get_event_loop()->dispatch(
-      [wp]()
-      {
-        /* EV thread */
-        if (auto sp=wp.lock())
-          sp->m_notify_state_change_fn(sp, false);
-      } );
-  }
-  catch (std::bad_weak_ptr&)
-  {
-    // failed to obtain a weak pointer from shared_from_this(), ie, this object
-    // is in the process of being deleted (all shared_ptr to self have expired)
-  }
+  std::weak_ptr<wamp_session> wp = m_self_weak;
+  auto user_cb = m_notify_state_change_fn;
+  m_kernel.get_event_loop()->dispatch(
+    [wp, user_cb]()
+    {
+      /* EV thread */
+      // if (auto sp=wp.lock())
+      // {
+      //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn -->" << "\n";
+      //   sp->m_notify_state_change_fn(sp, false);
+      //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn <--" << "\n";
+      // }
+      user_cb(wp, false);
+    } );
 
   // setting the promise must be very last act in this method, since it likely
   // this object will proceed to be deleted upon this event
@@ -213,8 +205,8 @@ void wamp_session::io_on_read(char* src, size_t len)
 {
   /* IO thread */
 
-  std::string temp(src,len);
-  std::cout << "recv: bytes " << len << ": " << temp << "\n";
+  // std::string temp(src,len);
+  // std::cout << "recv: bytes " << len << ": " << temp << "\n";
 
   try
   {
@@ -760,10 +752,7 @@ void wamp_session::notify_session_open()
   /* EV thread */
 
   if (m_notify_state_change_fn)
-  {
-    std::cout << std::this_thread::get_id() << " " << "wamp_session::notify_session_open" << "\n";
     m_notify_state_change_fn(shared_from_this(), true /* session is open */);
-  }
 
   m_promise_on_open.set_value();
 }

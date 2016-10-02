@@ -27,9 +27,22 @@ dealer_service::dealer_service(kernel & __svc, dealer_listener* l)
 
 dealer_service::~dealer_service()
 {
-  // TODO: need to close any remaining sessions and pre-sessions?
+  std::map<t_sid, std::shared_ptr<wamp_session> > sessions;
+  std::map<t_sid, std::shared_ptr<pre_session>  > pre_sessions;
+
+  {
+    std::lock_guard<std::mutex> guard(m_sesions_lock);
+    m_sessions.swap( sessions );
+    m_pre_sessions.swap( pre_sessions );
+  }
+
   std::unique_lock<std::recursive_mutex> guard(m_lock);
   m_listener = nullptr;
+
+  // trigger the destructors on sessions & pre_sessions, so that they are all
+  // closed before dealer destruction can complete
+  sessions.clear();
+  pre_sessions.clear();
 }
 
 
@@ -84,7 +97,7 @@ std::future<int> dealer_service::listen(int port,
           std::shared_ptr<wamp_session> sp =
           wamp_session::create( m_kernel,
                                 std::move(ioh),
-                                [this](std::shared_ptr<wamp_session> s, bool b){ this->handle_session_state_change(s,b); },
+                                [this](std::weak_ptr<wamp_session> s, bool b){ this->handle_session_state_change(s,b); },
                                 builder,
                                 handlers,
                                 auth);
@@ -97,7 +110,6 @@ std::future<int> dealer_service::listen(int port,
                     << ", protocol: " << sp->protocol_name()
                     << ", fd: " << fd);
         };
-
 
       auto on_closed = [this](std::weak_ptr<pre_session> sh)
         {
@@ -252,17 +264,19 @@ void dealer_service::handle_inbound_call(
 }
 
 
-void dealer_service::handle_session_state_change(std::shared_ptr<wamp_session> session, bool is_open)
+void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp, bool is_open)
 {
   /* EV thread */
-
-  if (!is_open)
+  if (auto session = wp.lock())
   {
-    m_rpcman->session_closed(session);
-    m_pubsub->session_closed(session);
+    if (!is_open)
+    {
+      m_rpcman->session_closed(session);
+      m_pubsub->session_closed(session);
 
-    std::lock_guard<std::mutex> guard(m_sesions_lock);
-    m_sessions.erase( session->unique_id() );
+      std::lock_guard<std::mutex> guard(m_sesions_lock);
+      m_sessions.erase( session->unique_id() );
+    }
   }
 }
 

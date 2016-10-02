@@ -9,6 +9,7 @@
 
 #include <mutex>
 #include <memory>
+#include <future>
 
 namespace XXX {
 
@@ -35,7 +36,7 @@ namespace XXX {
     ~pre_session();
 
     /** Request asynchronous close of the session */
-    void close();
+    std::shared_future<void> close();
 
     std::weak_ptr<pre_session> handle() { return shared_from_this(); }
 
@@ -76,12 +77,17 @@ namespace XXX {
 
     uint64_t m_sid;
     buffer   m_buf;
-    std::unique_ptr<io_handle> m_io_handle;
+    std::unique_ptr<io_handle> m_handle;
+
+    std::promise<void> m_has_closed;
+    std::shared_future<void> m_shfut_has_closed;
 
     time_t m_time_create;
 
     on_closed_fn    m_notify_closed_cb;
     on_protocol_fn  m_protocol_cb;
+
+    std::weak_ptr<pre_session> m_self_weak;
 
     friend class io_handle;
   };
