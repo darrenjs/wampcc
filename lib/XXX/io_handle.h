@@ -44,10 +44,10 @@ private:
   void init_close();
 
   void on_write_cb(uv_write_t * req, int status);
-  void on_close_cb();
   void on_read_cb(ssize_t, const uv_buf_t*);
 
   void do_close();
+  void io_closed();
 
 private:
   kernel & m_kernel;

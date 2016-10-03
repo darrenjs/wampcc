@@ -66,7 +66,7 @@ io_handle::io_handle(kernel& k, uv_stream_t * hdl, io_loop * loop)
   // set up the async handler
   uv_async_init(loop->uv_loop(), &m_write_async, [](uv_async_t* uvh){
       uv_handle_data * ptr = (uv_handle_data*) uvh->data;
-      io_handle* ioh = ptr->io_handle_ptr;
+      io_handle* ioh = ptr->io_handle_ptr();
       ioh->write_async();
     });
 
@@ -89,7 +89,7 @@ void io_handle::start_read(io_listener* p)
                   [](uv_stream_t*  uvh, ssize_t nread, const uv_buf_t* buf)
                   {
                     uv_handle_data * ptr = (uv_handle_data*) uvh->data;
-                    ptr->io_handle_ptr->on_read_cb(nread, buf);
+                    ptr->io_handle_ptr()->on_read_cb(nread, buf);
                   });
     m_uv_read_started = true;
   }
@@ -105,6 +105,14 @@ io_handle::~io_handle()
   request_close();
   m_shfut_io_closed.wait();
 
+  uv_handle_data * dataptr = (uv_handle_data *) m_write_async.data;
+  delete dataptr;
+
+  if (m_uv_handle)
+  {
+    dataptr = (uv_handle_data *) m_uv_handle->data;
+    delete dataptr;
+  }
   delete m_uv_handle;
 
   {
@@ -114,7 +122,7 @@ io_handle::~io_handle()
 }
 
 
-void io_handle::on_close_cb() // TODO: rename
+void io_handle::io_closed()
 {
   /* IO thread */
   // Both handles have been closed, so no more callbacks are due from the
@@ -329,12 +337,12 @@ void io_handle::do_close()
     uv_close((uv_handle_t*)m_uv_handle,  [](uv_handle_t* uvh) {
 
         uv_handle_data * ptr = (uv_handle_data*) uvh->data;
-        io_handle * ioh = ptr->io_handle_ptr;
+        io_handle * ioh = ptr->io_handle_ptr();
 
         // now close the async handle
         uv_close((uv_handle_t*) & ioh->m_write_async, [](uv_handle_t* uvh){
             uv_handle_data * ptr = (uv_handle_data*) uvh->data;
-            ptr->io_handle_ptr->on_close_cb();
+            ptr->io_handle_ptr()->io_closed();
           });
 
       });

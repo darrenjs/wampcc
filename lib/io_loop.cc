@@ -336,10 +336,10 @@ void io_loop::on_async()
             }
             else
             {
-              assert(ptr->check == uv_handle_data::DATA_CHECK);
+              assert(ptr->check() == uv_handle_data::DATA_CHECK);
 
-              if (ptr->type == uv_handle_data::io_handle_tcp)
-                ptr->io_handle_ptr->do_close();
+              if (ptr->type() == uv_handle_data::io_handle_tcp)
+                ptr->io_handle_ptr()->do_close();
             }
           }
         }, nullptr);
