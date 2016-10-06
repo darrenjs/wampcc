@@ -1,4 +1,6 @@
 #include "test_common.h"
+       #include <string.h>
+
 
 using namespace XXX;
 using namespace std;
@@ -34,26 +36,38 @@ int main()
 {
   try
   {
-    int loops = 1000;
+    int starting_port_number = 23000;
+    int loops = 1;
 
     // share a common internal_client
     for (int i = 0; i < loops; i++)
     {
-      internal_client iclient;
-      int port = iclient.start();
+      void * ptr;
+      size_t sz;
+      std::cout << "loop -->" << std::endl;
+      {
+        internal_client iclient;
+        ptr = &iclient;
+        sz = sizeof(iclient);
+        int port = iclient.start(starting_port_number++);
 
-      for (int j=0; j < 100; j++) {
-        test_wamp_connector_unused(port);
+        std::cout << "-->" << std::endl;
+        for (int j=0; j < 1; j++) {
+          test_wamp_connector_unused(port);
+        }
+        std::cout << "<--" << std::endl;
       }
+      memset(ptr, 0, sz);
+      std::cout << "loop <--" << std::endl;
     }
 
-    // use one internal_client per test
-    for (int i = 0; i < loops; i++)
-    {
-      internal_client iclient;
-      int port = iclient.start();
-      test_wamp_connector_unused(port);
-    }
+    // // use one internal_client per test
+    // for (int i = 0; i < loops; i++)
+    // {
+    //   internal_client iclient;
+    //   int port = iclient.start(starting_port_number++);
+    //   test_wamp_connector_unused(port);
+    // }
 
     return 0;
   }

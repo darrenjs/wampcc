@@ -48,12 +48,13 @@ int main()
 {
   try
   {
+    int starting_port_number = 21000;
 
     // share a common internal_client
     for (int i = 0; i < 10; i++)
     {
       internal_client iclient;
-      int port = iclient.start();
+      int port = iclient.start(starting_port_number++);
 
       for (int j=0; j < 10; j++) {
         test_WS_destroyed_before_kernel(port);
@@ -64,7 +65,7 @@ int main()
     for (int i = 0; i < 100; i++)
     {
       internal_client iclient;
-      int port = iclient.start();
+      int port = iclient.start(starting_port_number++);
       test_WS_destroyed_before_kernel(port);
     }
 

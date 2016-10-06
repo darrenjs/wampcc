@@ -60,26 +60,22 @@ int main()
 {
   try
   {
-    int starting_port_number = 20000;
+    int starting_port_number = 24000;
     int loops = 500;
 
     // share a common internal_client
     for (int i = 0; i < loops; i++)
     {
-      internal_client iclient;
-      int port = iclient.start(starting_port_number++);
+      // build a client
+      std::unique_ptr<internal_client> iclient(new internal_client());
+      int port = iclient->start(starting_port_number++);
 
-      for (int j=0; j < 100; j++) {
-        test_WS_destroyed_after_kernel(port);
-      }
-    }
+      // add connections
+      add_client_connections(port, 10);
 
-    // use one internal_client per test
-    for (int i = 0; i < loops; i++)
-    {
-      internal_client iclient;
-      int port = iclient.start(starting_port_number++);
-      test_WS_destroyed_after_kernel(port);
+      // drop the client
+      iclient.reset();
+
     }
 
     return 0;

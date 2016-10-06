@@ -11,7 +11,10 @@
 #include "XXX/event_loop.h"
 
 #include <iostream>
+#include <string.h>
 
+
+#include <unistd.h>
 #undef NDEBUG
 
 #include <assert.h>
@@ -27,7 +30,7 @@ enum test_outcome
   e_unexpected
 };
 
-class internal_client
+class internal_client  // TODO: rename as internal_server
 {
 public:
   internal_client()
@@ -38,18 +41,21 @@ public:
 
   ~internal_client()
   {
+    std::cout << "m_dealer.reset" << std::endl;
     m_dealer.reset();
+    std::cout << "m_kernel.reset" << std::endl;
     m_kernel.reset();
+    std::cout << "m_kernel.reset done" << std::endl;
   }
 
-  int start()
+  int start(int starting_port_number)
   {
     auth_provider server_auth;
     server_auth.provider_name = [](const std::string){ return "programdb"; };
     server_auth.permit_user_realm = [](const std::string& /*user*/, const std::string& /*realm*/){ return true; };
     server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2";};
 
-    for (int port = 20000; port < 65535; port++)
+    for (int port = starting_port_number; port < 65535; port++)
     {
       std::future<int> fut_listen_err = m_dealer->listen(port, server_auth);
       std::future_status status = fut_listen_err.wait_for(std::chrono::milliseconds(100));
