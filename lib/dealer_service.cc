@@ -43,6 +43,7 @@ dealer_service::~dealer_service()
   // closed before dealer destruction can complete
   sessions.clear();
   pre_sessions.clear();
+  m_server_sockets.clear();
 }
 
 
@@ -52,9 +53,19 @@ std::future<int> dealer_service::listen(int port,
   std::promise<int> intPromise;
   std::future<int> fut = intPromise.get_future();
 
+  std::weak_ptr<dealer_service> wp = shared_from_this();
+  auto cb = [wp](std::unique_ptr<server_handle>& up)
+    {
+      if (auto sp = wp.lock())
+      {
+        sp-> m_server_sockets.push_back( std::move(up) );
+      }
+    };
+
   m_kernel.get_io()->add_server(
     port,
     std::move(intPromise),
+    cb,
     [this, auth](int /* port */, std::unique_ptr<io_handle> ioh)
     {
       /* This lambda is invoked on the IO thread the when a socket has been

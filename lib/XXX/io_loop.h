@@ -21,14 +21,53 @@ struct logger;
 class io_loop;
 class io_handle;
 struct io_request;
+class server_handle;
 
-
-
+typedef std::function<void(std::unique_ptr<server_handle>&)> on_server_socket_cb;
 typedef std::function<void(int port, std::unique_ptr<io_handle>)> socket_accept_cb;
 typedef std::function<void(io_handle*, int)> tcp_connect_cb;
 
 // TODO: comment
 void version_check_libuv(int uv_major, int uv_minor);
+
+/**
+ * Wrap a libuv server socket.
+ */
+class server_handle
+{
+public:
+
+  server_handle(uv_tcp_t*h, kernel * k);
+  ~server_handle();
+
+
+  void do_close()
+  {
+    std::lock_guard< std::mutex > guard (m_state_lock);
+
+    // TODO: do I need to perform any pre check in here, eg should the state be
+    // open or something?
+
+    uv_close((uv_handle_t*) m_uv_handle, [](uv_handle_t * h) {
+        delete h; });
+
+    m_state = eClosed;
+    m_io_has_closed.set_value();
+  }
+
+  uv_tcp_t* m_uv_handle;
+
+  enum State
+  {
+    eOpen,
+    eClosing,
+    eClosed
+  } m_state;
+  std::mutex m_state_lock;
+  std::promise<void>       m_io_has_closed;
+  std::shared_future<void> m_shfut_io_closed;
+  kernel * m_kernel;
+};
 
 class uv_handle_data
 {
@@ -37,7 +76,8 @@ public:
 
   enum ptr_type {
     io_handle_tcp,
-    io_handle_async
+    io_handle_async,
+    io_handle_server
   };
 
   uv_handle_data(ptr_type t, void* ptr)
@@ -47,6 +87,9 @@ public:
   {
     switch (t)
     {
+      case io_handle_server:
+        m_server_handle_ptr = (server_handle *) ptr;
+        break;
       case io_handle_tcp :
       case io_handle_async :
         m_io_handle_ptr = (io_handle*) ptr;
@@ -54,16 +97,20 @@ public:
     }
   }
 
+
+
   uint64_t check() const { return m_check; }
   ptr_type type() const { return m_type; }
 
   io_handle* io_handle_ptr() { return m_io_handle_ptr; }
+  server_handle* server_handle_ptr() { return m_server_handle_ptr; }
 
 private:
   uint64_t m_check; /* retain as first member */
 
   union {
-    io_handle * m_io_handle_ptr;
+    io_handle     * m_io_handle_ptr;
+    server_handle * m_server_handle_ptr;
   };
 
   ptr_type m_type;
@@ -91,7 +138,7 @@ public:
 
   void add_passive_handle(tcp_server* server, io_handle* iohandle);
 
-  void add_server(int port, std::promise<int> listener_err, socket_accept_cb);
+  void add_server(int port, std::promise<int> listener_err, on_server_socket_cb, socket_accept_cb);
 
   uv_tcp_t*  connect(std::string addr,
                      std::string port,
@@ -100,6 +147,8 @@ public:
                      std::function<void(std::exception_ptr)> on_failure);
 
   void cancel_connect(uv_tcp_t*);
+
+  void close_server_handle(uv_tcp_t*);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
@@ -132,7 +181,7 @@ private:
     eFinal = 0x01
   };
 
-  std::list< std::unique_ptr<tcp_server> > m_server_handles;
+  //std::list< std::unique_ptr<tcp_server> > m_server_handles;
   std::thread  m_thread; // should be final member
 };
 

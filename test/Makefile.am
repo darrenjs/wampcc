@@ -19,7 +19,8 @@ AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(L
 
 check_PROGRAMS=test_connect_timeout test_late_wamp_session_destructor		\
 test_early_wamp_session_destructor test_evthread_wamp_session_destructor	\
-test_unused_wamp_connector test_dealer_disconnect_when_has_connections
+test_unused_wamp_connector test_dealer_disconnect_when_has_connections		\
+test_late_dealer_destructor
 noinst_PROGRAMS=$(check_PROGRAMS)
 TESTS=$(check_PROGRAMS)
 
@@ -40,3 +41,6 @@ test_unused_wamp_connector_LDADD=libgtest.la
 
 test_dealer_disconnect_when_has_connections_SOURCES=test_unused_wamp_connector.cc
 test_dealer_disconnect_when_has_connections_LDADD=libgtest.la
+
+test_late_dealer_destructor_SOURCES=test_late_dealer_destructor.cc
+test_late_dealer_destructor_LDADD=libgtest.la

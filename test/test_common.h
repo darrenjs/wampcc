@@ -41,11 +41,8 @@ public:
 
   ~internal_client()
   {
-    std::cout << "m_dealer.reset" << std::endl;
     m_dealer.reset();
-    std::cout << "m_kernel.reset" << std::endl;
     m_kernel.reset();
-    std::cout << "m_kernel.reset done" << std::endl;
   }
 
   int start(int starting_port_number)
@@ -63,10 +60,8 @@ public:
       {
         int err = fut_listen_err.get();
         if (err == 0)
-        {
-          std::cout << "port: " << port << "\n";
           return port;
-        }
+
       }
     }
 
@@ -74,6 +69,17 @@ public:
     return 0;
   }
 
+  void reset_kernel()
+  {
+    m_kernel.reset();
+  }
+
+  void reset_dealer()
+  {
+    m_dealer.reset();
+  }
+
+  kernel* get_kernel() { return m_kernel.get(); }
 private:
   std::unique_ptr<kernel>         m_kernel;
   std::shared_ptr<dealer_service> m_dealer;

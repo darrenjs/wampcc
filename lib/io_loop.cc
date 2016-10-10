@@ -27,7 +27,8 @@ struct io_request
     eCancelHandle,
     eAddServer,
     eAddConnection,
-    eCloseLoop
+    eCloseLoop,
+    eCloseServerHandle
   } type;
 
   logger & logptr;
@@ -36,8 +37,8 @@ struct io_request
   bool resolve_hostname;
   std::unique_ptr< std::promise<int> > listener_err;
   uv_tcp_t * tcp_handle = nullptr;
+  on_server_socket_cb on_server_socket;
   socket_accept_cb on_accept;
-
   std::function<void()> on_connect_success;
   std::function<void(std::exception_ptr)> on_connect_failure;
 
@@ -51,6 +52,7 @@ struct io_request
              logger & __logger,
              std::string port,
              std::promise<int> p,
+             on_server_socket_cb,
              socket_accept_cb );
 
 };
@@ -118,11 +120,13 @@ io_request::io_request(request_type __type,
                        logger & lp,
                        std::string __port,
                        std::promise<int> listen_err,
+                       on_server_socket_cb __on_server_socket,
                        socket_accept_cb __on_accept)
   : type( __type),
     logptr( lp ),
     port( __port ),
     listener_err( new std::promise<int>(std::move(listen_err) ) ),
+    on_server_socket( std::move(__on_server_socket) ),
     on_accept( std::move(__on_accept) )
 {
 }
@@ -197,7 +201,19 @@ void io_loop::create_tcp_server_socket(int port,
     r = uv_listen((uv_stream_t *) &myserver->uvh, 5, __on_tcp_connect);
   listener_err->set_value(std::abs(r));
 
-  m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
+  // TODO: get sp to the dealer, or the callback
+
+  // TODO: is was able to transfer back, then great
+
+  // TODO: otherwise, need to close the uv_handle now
+
+  // TODO: create the server_handle here
+
+  //
+
+  // TODO: could push the user callback here
+
+  //m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
 }
 
 
@@ -305,15 +321,65 @@ void io_loop::on_async()
     }
     else if (user_req->type == io_request::eAddServer)
     {
-      create_tcp_server_socket(atoi(user_req->port.c_str()),
-                               user_req->on_accept,
-                               std::move(user_req->listener_err));
+      // create_tcp_server_socket(atoi(user_req->port.c_str()),
+      //                          user_req->on_accept,
+      //                          std::move(user_req->listener_err));
+
+
+      // Create a tcp socket, and configure for listen
+      int port = atoi(user_req->port.c_str());
+      tcp_server * myserver = new tcp_server();
+      myserver->port   = port;
+      myserver->ioloop = this;
+      myserver->cb = std::move(user_req->on_accept);
+
+      uv_tcp_init(m_uv_loop, &myserver->uvh);
+
+      struct sockaddr_in addr;
+      uv_ip4_addr("0.0.0.0", port, &addr);
+
+      unsigned flags = 0;
+      int r;
+
+      r = uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
+      if (r == 0)
+        r = uv_listen((uv_stream_t *) &myserver->uvh, 5, __on_tcp_connect);
+
+      if (r == 0)
+      {
+        std::unique_ptr<server_handle> up ( new server_handle(&myserver->uvh, &m_kernel) );
+
+        // TODO: detect & handle case where server_handle was discarded
+        user_req->listener_err->set_value(0);
+        user_req->on_server_socket(up);
+        return;
+      }
+
+      user_req->listener_err->set_value(std::abs(r));
+
+
+      // TODO: get sp to the dealer, or the callback
+
+      // TODO: is was able to transfer back, then great
+
+      // TODO: otherwise, need to close the uv_handle now
+
+      // TODO: create the server_handle here
+
+      //
+
+      // TODO: could push the user callback here
+
+      //m_server_handles.push_back( std::unique_ptr<tcp_server>(myserver) );
+
+
+
     }
     else if (user_req->type == io_request::eCloseLoop)
     {
-      for (auto & i : m_server_handles)
-        uv_close((uv_handle_t*)i.get(), 0);
-
+      // for (auto & i : m_server_handles)
+      //   uv_close((uv_handle_t*)i.get(), 0);
+      std::cout << "@IO got closure event" << std::endl;
       uv_close((uv_handle_t*) m_async.get(), 0);
 
       // While there are active handles, progress the event loop here and on
@@ -326,6 +392,7 @@ void io_loop::on_async()
 
             if (ptr == 0)
             {
+              std::cout << "@IO ptr==0" << std::endl;
               // We are uv_walking a handle which does not have the data member
               // set. Common cause of this is a shutdown of the kernel & ioloop
               // while a wamp_connector exists which has not had its UV handle
@@ -337,15 +404,29 @@ void io_loop::on_async()
             else
             {
               assert(ptr->check() == uv_handle_data::DATA_CHECK);
-
-              if (ptr->type() == uv_handle_data::io_handle_tcp)
-                ptr->io_handle_ptr()->do_close();
+              switch (ptr->type())
+              {
+                case uv_handle_data::io_handle_tcp :
+                case uv_handle_data::io_handle_async :
+                  ptr->io_handle_ptr()->do_close();
+                  break;
+                case uv_handle_data::io_handle_server :
+                  ptr->server_handle_ptr()->do_close();
+                  break;
+              }
             }
           }
         }, nullptr);
 
       return; // don't process any more items in queue (should be none)
     }
+    else if (user_req->type == io_request::eCloseServerHandle)
+    {
+      uv_handle_data * ptr = (uv_handle_data*) user_req->tcp_handle->data;
+      assert(ptr->check() == uv_handle_data::DATA_CHECK);
+      ptr->server_handle_ptr()->do_close();
+    }
+
   }
 
 }
@@ -374,10 +455,10 @@ void io_loop::run_loop()
 }
 
 
-
 void io_loop::add_server(int port,
-                        std::promise<int> listen_err,
-                        socket_accept_cb cb)
+                         std::promise<int> listen_err,
+                         on_server_socket_cb __on_server_socket_cb,
+                         socket_accept_cb cb)
 {
   std::ostringstream oss;
   oss << port;
@@ -386,6 +467,7 @@ void io_loop::add_server(int port,
                                                  __logger,
                                                  oss.str(),
                                                  std::move(listen_err),
+                                                 std::move(__on_server_socket_cb),
                                                  std::move(cb) ) );
 
   push_request(std::move(r));
@@ -430,6 +512,13 @@ void io_loop::cancel_connect(uv_tcp_t * handle)
   push_request(std::move(r));
 }
 
+void io_loop::close_server_handle(uv_tcp_t * handle)
+{
+  std::unique_ptr<io_request> r( new io_request(io_request::eCloseServerHandle, __logger ) );
+  r->tcp_handle = handle;
+  push_request(std::move(r));
+}
+
 
 void io_loop::push_request(std::unique_ptr<io_request> r)
 {
@@ -464,5 +553,29 @@ void version_check_libuv(int compile_major, int compile_minor)
     throw std::runtime_error( oss.str() );
   }
 }
+
+  server_handle:: server_handle(uv_tcp_t*h, kernel * k)
+    : m_uv_handle(h),
+      m_state(eOpen),
+      m_shfut_io_closed(m_io_has_closed.get_future()),
+      m_kernel(k)
+  {
+    m_uv_handle->data = new uv_handle_data(uv_handle_data::io_handle_server, this);
+  }
+
+server_handle::~server_handle()
+{
+  {
+    std::lock_guard< std::mutex > guard (m_state_lock);
+    if (m_state == eOpen)
+    {
+      m_state = eClosing;
+      m_kernel->get_io()->close_server_handle(m_uv_handle);
+    }
+  }
+
+  m_shfut_io_closed.wait();
+}
+
 
 } // namespace XXX
