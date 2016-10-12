@@ -162,6 +162,7 @@ void io_loop::stop()
 {
   std::unique_ptr<io_request> r( new io_request( io_request::eCloseLoop,
                                                  __logger) );
+  std::cout << "io_loop::stop pushing" << std::endl;
   push_request(std::move(r));
 
   if (m_thread.joinable()) m_thread.join();
@@ -229,6 +230,8 @@ void io_loop::on_async()
 
   for (auto & user_req : work)
   {
+    std::cout << "IO user_req  " << user_req->type << std::endl;
+
     if (user_req->type == io_request::eCancelHandle)
     {
       auto handle_to_cancel = (uv_handle_t*) user_req->tcp_handle;
@@ -385,6 +388,7 @@ void io_loop::on_async()
       // While there are active handles, progress the event loop here and on
       // each iteration identify and request close any handles which have not
       // been requested to close.
+      std::cout << "@IO doing uv_walk" << std::endl;
       uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg) {
           if (!uv_is_closing(handle))
           {
@@ -438,10 +442,14 @@ void io_loop::run_loop()
   {
     try
     {
+      std::cout << "@IO doing uv_run" << std::endl;
       int r = uv_run(m_uv_loop, UV_RUN_DEFAULT);
 
       if (r == 0) /*  no more handles; we are shutting down */
+      {
+        std::cout << "@IO uv_run complete" << std::endl;
         return;
+      }
     }
     catch(std::exception & e)
     {
@@ -563,19 +571,51 @@ void version_check_libuv(int compile_major, int compile_minor)
     m_uv_handle->data = new uv_handle_data(uv_handle_data::io_handle_server, this);
   }
 
+
+  void server_handle::do_close()
+  {
+    std::cout << this << " " << "IO server_handle::do_close -->" << std::endl;
+    std::lock_guard< std::mutex > guard (m_state_lock);
+
+    // TODO: do I need to perform any pre check in here, eg should the state be
+    // open or something?
+
+    std::cout  << this << " "<< "IO server_handle::do_close uv_close" << std::endl;
+    uv_close((uv_handle_t*) m_uv_handle, [](uv_handle_t * h) {
+        delete h; });
+
+    m_state = eClosed;
+
+    std::cout  << this << " "<< "IO server_handle::do_close set_value" << std::endl;
+    m_io_has_closed.set_value();
+    std::cout  << this << " "<< "IO server_handle::do_close <--" << std::endl;
+  }
+
 server_handle::~server_handle()
 {
+  std::cout  << this << " "<< "~server_handle -->" << std::endl;
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
+    std::cout  << this << " "<< "~server_handle got lock" << std::endl;
     if (m_state == eOpen)
     {
       m_state = eClosing;
+      std::cout  << this << " "<< "~server_handle close_server_handle" << std::endl;
       m_kernel->get_io()->close_server_handle(m_uv_handle);
     }
   }
 
+  std::cout  << this << " "<< "~server_handle wait" << std::endl;
   m_shfut_io_closed.wait();
+  std::cout  << this << " "<< "~server_handle <--" << std::endl;
 }
 
+
+void server_handle::release()
+{
+  std::lock_guard< std::mutex > guard (m_state_lock);
+  m_uv_handle = nullptr;
+  m_state = eClosed;
+}
 
 } // namespace XXX

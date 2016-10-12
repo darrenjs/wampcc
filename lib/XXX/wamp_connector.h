@@ -45,11 +45,12 @@ public:
 
     m_result_fut.get();
 
-    if (m_connect_handle == nullptr)
+    // TODO: review this, is based on older code
+    if (m_sv.get() == nullptr)
       throw std::runtime_error("wamp connect request cancelled");
 
     std::unique_ptr<io_handle> socket = this->create_handle();
-    m_connect_handle = nullptr;
+    //m_connect_handle = nullptr;
 
     protocol_opts.connect_host = m_host;
     protocol_opts.connect_port = m_port;
@@ -93,8 +94,8 @@ private:
   t_on_complete_fn m_on_complete_fn;
 
   std::mutex m_mutex;
-  uv_tcp_t * m_connect_handle;
 
+  std::unique_ptr<server_handle> m_sv;
   std::promise<void> m_result_promise;
   std::future<void>  m_result_fut;
 };

@@ -40,22 +40,11 @@ public:
   server_handle(uv_tcp_t*h, kernel * k);
   ~server_handle();
 
-
-  void do_close()
-  {
-    std::lock_guard< std::mutex > guard (m_state_lock);
-
-    // TODO: do I need to perform any pre check in here, eg should the state be
-    // open or something?
-
-    uv_close((uv_handle_t*) m_uv_handle, [](uv_handle_t * h) {
-        delete h; });
-
-    m_state = eClosed;
-    m_io_has_closed.set_value();
-  }
+  void do_close();
 
   uv_tcp_t* m_uv_handle;
+
+  void release();
 
   enum State
   {

@@ -2,6 +2,8 @@
 
 #include "XXX/event_loop.h"
 
+#include <iostream>
+
 namespace XXX
 {
 
@@ -12,7 +14,6 @@ namespace XXX
     m_host(addr),
     m_port(port),
     m_on_complete_fn(fn),
-    m_connect_handle(nullptr),
     m_result_fut(m_result_promise.get_future())
   {
   }
@@ -20,9 +21,8 @@ namespace XXX
 
   wamp_connector::~wamp_connector()
   {
+    std::cout << "~wamp_connector" << std::endl;
     std::unique_lock<std::mutex> guard(m_mutex);
-    if (m_connect_handle)
-      m_kernel->get_io()->cancel_connect(m_connect_handle);
   }
 
 
@@ -52,10 +52,12 @@ namespace XXX
 
     {
       std::unique_lock<std::mutex> guard(sp->m_mutex);
-      sp->m_connect_handle = k->get_io()->connect(addr,port,
-                                                  resolve_hostname,
-                                                  success_fn,
-                                                  failure_fn);
+      auto ptr = k->get_io()->connect(addr,port,
+                                      resolve_hostname,
+                                      success_fn,
+                                      failure_fn);
+      std::unique_ptr<server_handle> sv ( new server_handle(ptr, sp->m_kernel));
+      sp->m_sv = std::move(sv);
     }
 
     return sp;
@@ -63,11 +65,13 @@ namespace XXX
 
   std::unique_ptr<io_handle> wamp_connector::create_handle()
   {
+    server_handle* ptr = m_sv.release();
     std::unique_ptr<io_handle> socket (
       new io_handle( *m_kernel,
-                     (uv_stream_t *) m_connect_handle,
+                     (uv_stream_t *) ptr->m_uv_handle,
                      m_kernel->get_io() ) );
 
+    delete ptr;
     return socket;
   }
 
@@ -75,14 +79,23 @@ namespace XXX
   bool wamp_connector::attempt_cancel()
   {
     std::unique_lock<std::mutex> guard(m_mutex);
-    if (m_connect_handle)
+    if (m_sv.get())
     {
-      m_kernel->get_io()->cancel_connect(m_connect_handle);
-      m_connect_handle = nullptr;
+      m_sv.reset();
       return true;
     }
     else
+    {
       return false;
+    }
+    // if (m_connect_handle)
+    // {
+    //   m_kernel->get_io()->cancel_connect(m_connect_handle);
+    //   m_connect_handle = nullptr;
+    //   return true;
+    // }
+    // else
+    //   return false;
   }
 
 
