@@ -24,7 +24,7 @@ void test_wamp_connector_unused(int port)
       "127.0.0.1", to_string(port),
       false);
 
-    TLOG("exiting scope (will trigger kernel, io_loop, ev_loop destruction)");
+    TLOG(std::this_thread::get_id() << " exiting scope (will trigger kernel, io_loop, ev_loop destruction)");
   }
   TLOG("scope complete");
 

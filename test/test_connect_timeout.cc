@@ -16,7 +16,7 @@ enum test_outcome
 };
 
 
-void on_wamp_connector_completed(std::shared_ptr<wamp_connector> wconn)
+void on_wamp_connector_completed(std::weak_ptr<wamp_connector> wconn)
 {
 }
 

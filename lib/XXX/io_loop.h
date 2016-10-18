@@ -22,6 +22,7 @@ class io_loop;
 class io_handle;
 struct io_request;
 class server_handle;
+class tcp_socket;
 
 typedef std::function<void(std::unique_ptr<server_handle>&)> on_server_socket_cb;
 typedef std::function<void(int port, std::unique_ptr<io_handle>)> socket_accept_cb;
@@ -66,7 +67,8 @@ public:
   enum ptr_type {
     io_handle_tcp,
     io_handle_async,
-    io_handle_server
+    io_handle_server,
+    e_tcp_socket
   };
 
   uv_handle_data(ptr_type t, void* ptr)
@@ -76,6 +78,9 @@ public:
   {
     switch (t)
     {
+      case e_tcp_socket:
+        m_tcp_socket_ptr = (tcp_socket*) ptr;
+        break;
       case io_handle_server:
         m_server_handle_ptr = (server_handle *) ptr;
         break;
@@ -93,6 +98,7 @@ public:
 
   io_handle* io_handle_ptr() { return m_io_handle_ptr; }
   server_handle* server_handle_ptr() { return m_server_handle_ptr; }
+  tcp_socket* tcp_socket_ptr() { return m_tcp_socket_ptr; }
 
 private:
   uint64_t m_check; /* retain as first member */
@@ -100,6 +106,7 @@ private:
   union {
     io_handle     * m_io_handle_ptr;
     server_handle * m_server_handle_ptr;
+    tcp_socket    * m_tcp_socket_ptr;
   };
 
   ptr_type m_type;
@@ -135,9 +142,17 @@ public:
                      std::function<void()> on_success,
                      std::function<void(std::exception_ptr)> on_failure);
 
+  void connect2(uv_tcp_t * handle,
+                std::string addr,
+                std::string port,
+                bool resolve_hostname,
+                std::function<void()> on_success,
+                std::function<void(std::exception_ptr)> on_failure);
+
   void cancel_connect(uv_tcp_t*);
 
   void close_server_handle(uv_tcp_t*);
+  void close_tcp_socket(uv_tcp_t*);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 

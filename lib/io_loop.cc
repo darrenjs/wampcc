@@ -3,6 +3,7 @@
 #include "XXX/log_macros.h"
 #include "XXX/io_handle.h"
 #include "XXX/kernel.h"
+#include "XXX/tcp_socket.h"
 
 #include <system_error>
 
@@ -11,6 +12,8 @@
 #include <assert.h>
 #include <iostream>
 
+
+int spin_count;
 
 static const char* safe_str(const char* s)
 {
@@ -28,7 +31,9 @@ struct io_request
     eAddServer,
     eAddConnection,
     eCloseLoop,
-    eCloseServerHandle
+    eCloseServerHandle,
+    eCloseTcpSocket,
+    eConnect,
   } type;
 
   logger & logptr;
@@ -230,7 +235,7 @@ void io_loop::on_async()
 
   for (auto & user_req : work)
   {
-    std::cout << "IO user_req  " << user_req->type << std::endl;
+    //std::cout<< std::this_thread::get_id() << " " << "IO user_req  " << user_req->type << std::endl;
 
     if (user_req->type == io_request::eCancelHandle)
     {
@@ -241,6 +246,88 @@ void io_loop::on_async()
           });
     }
     else if (user_req->type == io_request::eAddConnection)
+    {
+      std::unique_ptr<io_request> req( std::move(user_req) );
+
+      const struct sockaddr* addrptr;
+      struct sockaddr_in inetaddr;
+      memset(&inetaddr, 0, sizeof(inetaddr));
+
+      int r = 0;
+      uv_getaddrinfo_t resolver;
+      memset(&resolver, 0, sizeof(resolver));
+
+      if (req->resolve_hostname)
+      {
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = PF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
+        hints.ai_flags = 0;
+
+        r = uv_getaddrinfo(m_uv_loop, &resolver, nullptr,
+                            req->addr.c_str(), req->port.c_str(),
+                           &hints);
+
+        if (r<0)
+        {
+          // address resolution failed, to set an error on the promise
+          std::ostringstream oss;
+          oss << "uv_getaddrinfo: " << r << ", " << safe_str(uv_err_name(r))
+              << ", " << safe_str(uv_strerror(r));
+          req->on_connect_failure(
+            std::make_exception_ptr( std::runtime_error(oss.str()) )
+            );
+          return;
+        }
+
+        addrptr = resolver.addrinfo->ai_addr;
+      }
+      else
+      {
+        // use inet_pton functions
+        uv_ip4_addr(req->addr.c_str(), atoi(req->port.c_str()), &inetaddr);
+        addrptr = (const struct sockaddr*) &inetaddr;
+      }
+
+      std::unique_ptr<uv_connect_t> connect_req ( new uv_connect_t() );
+      connect_req->data = (void*) req.get();
+
+      LOG_INFO("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
+
+      r = uv_tcp_connect(
+        connect_req.get(),
+        req->tcp_handle,
+        addrptr,
+        [](uv_connect_t* __req, int status)
+        {
+          std::unique_ptr<uv_connect_t> connect_req(__req);
+          io_loop * ioloop = static_cast<io_loop* >(__req->handle->loop->data);
+          try
+          {
+            ioloop->on_tcp_connect_cb(__req, status);
+          }
+          catch (...){}
+        });
+
+      if (r == 0)
+      {
+        // resource  ownership transfered to UV callback
+        req.release();
+        connect_req.release();
+      }
+      else
+      {
+        std::ostringstream oss;
+        oss << "uv_tcp_connect: " << r << ", " << safe_str(uv_err_name(r))
+            << ", " << safe_str(uv_strerror(r));
+        req->on_connect_failure(
+          std::make_exception_ptr( std::runtime_error(oss.str()) )
+          );
+      }
+    }
+    else if (user_req->type == io_request::eConnect)
     {
       std::unique_ptr<io_request> req( std::move(user_req) );
 
@@ -388,8 +475,19 @@ void io_loop::on_async()
       // While there are active handles, progress the event loop here and on
       // each iteration identify and request close any handles which have not
       // been requested to close.
+      spin_count = 0;
       std::cout << "@IO doing uv_walk" << std::endl;
       uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg) {
+          spin_count++;
+
+          int b = uv_is_closing((const uv_handle_t* )handle);
+          std::cout << "h=" << (void*) handle << ", uv_is_closing=" << b << std::endl;
+
+          if (spin_count>10)
+          {
+            std::cout << "SPIN!" << std::endl;
+            sleep(300);
+          }
           if (!uv_is_closing(handle))
           {
             uv_handle_data * ptr = (uv_handle_data*) handle->data;
@@ -410,6 +508,9 @@ void io_loop::on_async()
               assert(ptr->check() == uv_handle_data::DATA_CHECK);
               switch (ptr->type())
               {
+                case uv_handle_data::e_tcp_socket:
+                  ptr->tcp_socket_ptr()->do_close();
+                  break;
                 case uv_handle_data::io_handle_tcp :
                 case uv_handle_data::io_handle_async :
                   ptr->io_handle_ptr()->do_close();
@@ -429,6 +530,12 @@ void io_loop::on_async()
       uv_handle_data * ptr = (uv_handle_data*) user_req->tcp_handle->data;
       assert(ptr->check() == uv_handle_data::DATA_CHECK);
       ptr->server_handle_ptr()->do_close();
+    }
+    else if (user_req->type == io_request::eCloseTcpSocket)
+    {
+      uv_handle_data * ptr = (uv_handle_data*) user_req->tcp_handle->data;
+      assert(ptr->check() == uv_handle_data::DATA_CHECK);
+      ptr->tcp_socket_ptr()->do_close();
     }
 
   }
@@ -512,6 +619,27 @@ uv_tcp_t* io_loop::connect(std::string addr,
   return tcp_handle;
 }
 
+void io_loop::connect2(uv_tcp_t * handle,
+                       std::string addr,
+                       std::string port,
+                       bool resolve_hostname,
+                       std::function<void()> on_success,
+                       std::function<void(std::exception_ptr)> on_failure)
+{
+  // create the handle, need it here, so that the caller can later request
+  // cancellation
+
+  std::unique_ptr<io_request> r( new io_request(io_request::eConnect, __logger ) );
+  r->tcp_handle = handle;
+  r->addr = addr;
+  r->port = port;
+  r->resolve_hostname = resolve_hostname;
+  r->on_connect_success = on_success;
+  r->on_connect_failure = on_failure;
+
+  push_request(std::move(r));
+}
+
 
 void io_loop::cancel_connect(uv_tcp_t * handle)
 {
@@ -523,6 +651,14 @@ void io_loop::cancel_connect(uv_tcp_t * handle)
 void io_loop::close_server_handle(uv_tcp_t * handle)
 {
   std::unique_ptr<io_request> r( new io_request(io_request::eCloseServerHandle, __logger ) );
+  r->tcp_handle = handle;
+  push_request(std::move(r));
+}
+
+
+void io_loop::close_tcp_socket(uv_tcp_t * handle)
+{
+  std::unique_ptr<io_request> r( new io_request(io_request::eCloseTcpSocket, __logger ) );
   r->tcp_handle = handle;
   push_request(std::move(r));
 }
@@ -605,7 +741,7 @@ server_handle::~server_handle()
     }
   }
 
-  std::cout  << this << " "<< "~server_handle wait" << std::endl;
+  std::cout<< std::this_thread::get_id() << " "   << this << " "<< "~server_handle wait" << std::endl;
   m_shfut_io_closed.wait();
   std::cout  << this << " "<< "~server_handle <--" << std::endl;
 }
