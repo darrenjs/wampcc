@@ -22,7 +22,7 @@ class wamp_connector
 {
 public:
 
-  typedef std::function<void(std::shared_ptr<wamp_connector>)> t_on_complete_fn;
+  typedef std::function<void(std::weak_ptr<wamp_connector>)> t_on_complete_fn;
 
   static std::shared_ptr<wamp_connector> create(kernel* k,
                                                 std::string addr,
