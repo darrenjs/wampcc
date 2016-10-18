@@ -34,25 +34,33 @@ namespace XXX
   {
     std::shared_ptr<wamp_connector> sp( new wamp_connector(k, fn, addr, port));
 
-    auto success_fn = [sp]() {
+    std::weak_ptr<wamp_connector> wp (sp);
+    kernel * kp = sp->m_kernel;
 
-      sp->m_result_promise.set_value();
-      if (sp->m_on_complete_fn)
-        sp->m_kernel->get_event_loop()->dispatch([sp](){sp->m_on_complete_fn(sp);});
+    auto success_fn = [wp,fn,kp]() {
+
+      if (auto sp = wp.lock())
+        sp->m_result_promise.set_value();
+
+      if (fn)
+        kp->get_event_loop()->dispatch([wp,fn](){fn(wp);});
 
     };
 
-    auto failure_fn = [sp](std::exception_ptr e) {
+    auto failure_fn = [wp,fn,kp](std::exception_ptr e) {
 
-      sp->m_result_promise.set_exception(std::move(e));
-      if (sp->m_on_complete_fn)
-        sp->m_kernel->get_event_loop()->dispatch([sp](){sp->m_on_complete_fn(sp);});
+      if (auto sp = wp.lock())
+        sp->m_result_promise.set_exception(std::move(e));
+
+      if (fn)
+        kp->get_event_loop()->dispatch([wp,fn](){fn(wp);});
 
     };
 
     {
       std::unique_lock<std::mutex> guard(sp->m_mutex);
-      auto ptr = k->get_io()->connect(addr,port,
+      auto ptr = k->get_io()->connect(addr,
+                                      port,
                                       resolve_hostname,
                                       success_fn,
                                       failure_fn);
