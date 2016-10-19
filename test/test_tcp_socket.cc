@@ -33,7 +33,7 @@ void test_orderly_connect_wait_close(int port)
     tcp_socket my_socket(the_kernel.get());
     async_value completed = my_socket.connect("127.0.0.1", port);
     completed.get_future().wait();
-    if (my_socket.is_open())
+    if (my_socket.is_connected())
     {
       cout << "MAIN connected\n";
     }
@@ -44,6 +44,8 @@ void test_orderly_connect_wait_close(int port)
   }
 }
 
+/* This used to cause a deadlock, think it was due to the presence of the
+ * second test in the same function. */
 void test_connect_and_delete_v1(int port)
 {
   cout << "---------- test_connect_and_delete_v1 ----------\n";
@@ -106,24 +108,65 @@ void test_connect_and_delete_v3(int port)
 
 }
 
+
+void test_connect_read_delete_v1(int port)
+{
+  cout << "---------- test_connect_read_delete_v1 ----------\n";
+
+  unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
+  {
+    tcp_socket my_socket_1(the_kernel.get());
+    my_socket_1.connect("127.0.0.1", port);
+    my_socket_1.start_read(0);
+  }
+
+  {
+    std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
+    sp_1->connect("127.0.0.1", port);
+    sp_1->close();
+    try
+    {
+      sp_1->start_read(0);
+      throw std::runtime_error("start_read expected to throw");
+    }
+    catch (...)
+    {
+      // good, caught exception
+    }
+  }
+
+}
+
+
+
+
 int main(int, char**)
 {
   int starting_port_number = 23011;
   int port;
 
-
-
+  auto all_tests = [](int port)
   {
-    internal_client iclient;
-    port = iclient.start(starting_port_number++);
-
-
-    /* one run of each test */
     test_uvwalk_initiates_close(port);
     test_connect_and_delete_v1(port);
     test_connect_and_delete_v2(port);
     test_connect_and_delete_v3(port);
     test_orderly_connect_wait_close(port);
+    test_connect_read_delete_v1(port);
+  };
+
+  {
+    internal_client iclient;
+    port = iclient.start(starting_port_number++);
+    all_tests(port);
+  }
+
+  {
+    internal_client iclient;
+    port = iclient.start(starting_port_number++);
+
+    for (int i = 0; i < 10; i++)
+      all_tests(port);
   }
 
   // {
@@ -134,7 +177,6 @@ int main(int, char**)
   // }
 
 
-  /* THIS TEST CAN DEADLOCK */
   {
     internal_client iclient;
     port = iclient.start(starting_port_number++);

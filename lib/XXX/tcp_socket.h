@@ -11,6 +11,7 @@
 
 namespace XXX {
 
+class io_listener;
 
 class async_value
 {
@@ -62,16 +63,22 @@ public:
   /** Attempt to connect the socket to a remote end point */
   async_value connect(std::string addr, int port);
 
-  bool is_open() const;
+  bool is_connected() const;
 
   void do_close();
 
   /** Return underlying file description, for informational purposes. */
   int fd() const;
 
-  void start_read();
+  /** Request socket begins reading inbound data */
+  void start_read(io_listener*);
+
+  /** Request socket close */
+  void close();
 
 private:
+
+  void on_read_cb(ssize_t, const uv_buf_t*);
 
   kernel * m_kernel;
   uv_tcp_t* m_uv_tcp;
@@ -87,6 +94,11 @@ private:
 
   std::promise<void>       m_io_closed_promise;
   std::shared_future<void> m_io_closed_future;
+
+  size_t m_bytes_written;
+  size_t m_bytes_read;
+
+  io_listener * m_listener ;
 };
 
 

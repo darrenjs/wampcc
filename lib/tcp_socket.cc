@@ -1,6 +1,7 @@
 #include <XXX/tcp_socket.h>
 #include <XXX/kernel.h>
 #include <XXX/io_loop.h>
+#include <XXX/io_listener.h>
 
 #include <iostream>
 
@@ -10,7 +11,10 @@ tcp_socket::tcp_socket(kernel* k)
   : m_kernel(k),
     m_uv_tcp( new uv_tcp_t() ),
     m_state(e_created),
-    m_io_closed_future(m_io_closed_promise.get_future())
+    m_io_closed_future(m_io_closed_promise.get_future()),
+    m_bytes_written(0),
+    m_bytes_read(0),
+    m_listener(nullptr)
 {
   uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
   m_uv_tcp->data = new uv_handle_data(uv_handle_data::e_tcp_socket, this);
@@ -26,18 +30,19 @@ tcp_socket::~tcp_socket()
     if ((m_state != e_closing) && (m_state != e_closed))
     {
       m_state = e_closing;
-      std::cout  << this << " "<< "~server_handle close_server_handle" << std::endl;
-      m_kernel->get_io()->close_tcp_socket(m_uv_tcp);
+      m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
     }
   }
 
   m_io_closed_future.wait();
   delete m_uv_tcp;
+
+  // TODO: delete the data member of the tcp handle
 //  std::cout  << this << " "<< "~tcp_socket <--" << std::endl;
 }
 
 
-bool tcp_socket::is_open() const
+bool tcp_socket::is_connected() const
 {
   std::unique_lock<std::mutex> guard(m_state_lock);
   return m_state == e_connected;
@@ -112,21 +117,79 @@ int tcp_socket::fd() const
 }
 
 
-void tcp_socket::start_read()
+static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
+                                  size_t suggested_size,
+                                  uv_buf_t* buf )
 {
-  // call on uv:  start_read
-
-/*
-  how do I have this callback?
-
-  i.e. i dont want all the code in the io_loop
-
-  and, i need to put in a callback pointer
-
-
-
-*/
+  // improve memory efficiency
+  *buf = uv_buf_init((char *) new char[suggested_size], suggested_size);
 }
 
+
+void tcp_socket::close()
+{
+  std::lock_guard< std::mutex > guard (m_state_lock);
+  if (m_state == e_closing || m_state == e_closed)
+    throw std::runtime_error("socket closing or closed");
+
+  m_state = e_closing;
+  m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
+}
+
+
+void tcp_socket::start_read(io_listener* p)
+{
+  m_listener = p;
+  auto fn = [this]() {
+    uv_read_start((uv_stream_t*)this->m_uv_tcp,
+                  iohandle_alloc_buffer,
+                  [](uv_stream_t* uvh, ssize_t nread, const uv_buf_t* buf) {
+                    uv_handle_data * ptr = (uv_handle_data*) uvh->data;
+                    ptr->tcp_socket_ptr()->on_read_cb(nread, buf);
+                  });
+  };
+
+  std::lock_guard< std::mutex > guard (m_state_lock);
+  if (m_state == e_closing || m_state == e_closed)
+    throw std::runtime_error("socket closing or closed");
+
+  m_kernel->get_io()->push_fn( std::move(fn) );
+}
+
+
+void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
+{
+  std::cout << "tcp_socket::on_read_cb" << std::endl;
+
+  /* IO thread */
+  try
+  {
+    if ((nread == UV_EOF) ||  (nread < 0))
+    {
+//      init_close();
+    }
+    else if (nread > 0)
+    {
+      m_bytes_read += nread;
+
+      // don't need null check, because socket reads only start after pointer
+      // has been provided
+      if (m_listener) // TODO: dont need this check
+        m_listener->io_on_read(buf->base, nread);
+    }
+    else if (nread == 0)
+    {
+      // spinning?
+    }
+  }
+  catch (...)
+  {
+//    log_exception(__logger, "IO thread in on_read_cb");
+//    init_close();
+  }
+
+
+  delete [] buf->base;
+}
 
 } // namespace XXX

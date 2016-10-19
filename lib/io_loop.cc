@@ -34,6 +34,7 @@ struct io_request
     eCloseServerHandle,
     eCloseTcpSocket,
     eConnect,
+    eFunction
   } type;
 
   logger & logptr;
@@ -46,7 +47,7 @@ struct io_request
   socket_accept_cb on_accept;
   std::function<void()> on_connect_success;
   std::function<void(std::exception_ptr)> on_connect_failure;
-
+  std::function<void()> user_fn;
   io_request(request_type __type,
              logger & __logger)
     : type(__type),
@@ -537,6 +538,14 @@ void io_loop::on_async()
       assert(ptr->check() == uv_handle_data::DATA_CHECK);
       ptr->tcp_socket_ptr()->do_close();
     }
+    else if (user_req->type == io_request::eFunction)
+    {
+      user_req->user_fn();
+    }
+    else
+    {
+      assert(false);
+    }
 
   }
 
@@ -666,12 +675,22 @@ void io_loop::close_tcp_socket(uv_tcp_t * handle)
 
 void io_loop::push_request(std::unique_ptr<io_request> r)
 {
+  // TODO: throw is the event loop is closed for new items
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     m_pending_requests.push_back( std::move(r) );
   }
 
   uv_async_send( m_async.get() ); // wake-up IO thread
+}
+
+
+void io_loop::push_fn(std::function<void()> fn)
+{
+  std::unique_ptr<io_request> r( new io_request( io_request::eFunction,
+                                                 __logger) );
+  r->user_fn = std::move(fn);
+  push_request(std::move(r));
 }
 
 
@@ -753,5 +772,6 @@ void server_handle::release()
   m_uv_handle = nullptr;
   m_state = eClosed;
 }
+
 
 } // namespace XXX

@@ -154,6 +154,9 @@ public:
   void close_server_handle(uv_tcp_t*);
   void close_tcp_socket(uv_tcp_t*);
 
+
+  void push_fn(std::function<void()>);
+
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
   logger & get_logger() const { return __logger; }
