@@ -170,6 +170,32 @@ inline char* skip_whitespace(char* str)
 /** Return local hostname, or throw upon failure. */
 std::string hostname();
 
+
+class scope_guard
+{
+public:
+    template<class Callable>
+    scope_guard(Callable && undo_func) : m_fn(std::forward<Callable>(undo_func)) {}
+
+    scope_guard(scope_guard && other) : m_fn(std::move(other.m_fn)) {
+        other.m_fn = nullptr;
+    }
+
+    ~scope_guard() {
+        if(m_fn) m_fn(); // must not throw
+    }
+
+    void dismiss() throw() {
+        m_fn = nullptr;
+    }
+
+    scope_guard(const scope_guard&) = delete;
+    void operator = (const scope_guard&) = delete;
+
+private:
+    std::function<void()> m_fn;
+};
+
 } // namespace XXX
 
 #endif

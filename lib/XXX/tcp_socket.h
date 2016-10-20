@@ -2,16 +2,22 @@
 #define XXX_TCP_SOCKET_H
 
 
-#include <uv.h>
 #include <XXX/kernel.h>
+
+#include <uv.h>
 
 #include <string>
 #include <future>
 #include <iostream>
+#include <vector>
+
+#include <string.h>
+#include <unistd.h>
 
 namespace XXX {
 
 class io_listener;
+class io_loop;
 
 class async_value
 {
@@ -50,38 +56,41 @@ private:
 };
 
 /**
- * Wrap a network socket
+ * Wrap a socket used for TCP stream communication
  */
 class tcp_socket
 {
 public:
   tcp_socket(kernel* k);
-  tcp_socket(const tcp_socket&) = delete;
+  tcp_socket(kernel* k, uv_tcp_t*);
   ~tcp_socket();
+
+  tcp_socket(const tcp_socket&) = delete;
   tcp_socket& operator=(const tcp_socket&) = delete;
 
-  /** Attempt to connect the socket to a remote end point */
+  /** Request TCP connection to a remote end point */
   async_value connect(std::string addr, int port);
-
-  bool is_connected() const;
-
-  void do_close();
-
-  /** Return underlying file description, for informational purposes. */
-  int fd() const;
 
   /** Request socket begins reading inbound data */
   void start_read(io_listener*);
 
+  /* Enqueue bytes to be sent */
+  void write(std::pair<const char*, size_t> * srcbuf, size_t count);
+
   /** Request socket close */
-  void close();
+  std::shared_future<void> close();
+
+  bool is_connected() const;
+  bool is_closing()   const;
+  bool is_closed()    const;
+
+  /** Return underlying file description */
+  int fd() const;
+
+  size_t bytes_read()    const { return m_bytes_read; }
+  size_t bytes_written() const { return m_bytes_written; }
 
 private:
-
-  void on_read_cb(ssize_t, const uv_buf_t*);
-
-  kernel * m_kernel;
-  uv_tcp_t* m_uv_tcp;
 
   enum socket_state
   {
@@ -89,18 +98,37 @@ private:
     e_connected,
     e_closing,
     e_closed,
-  } m_state;
+  };
+
+  tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
+  void on_read_cb(ssize_t, const uv_buf_t*);
+  void on_write_cb(uv_write_t *, int);
+  void close_once_on_io();
+  void do_write();
+  void do_close();
+
+  kernel * m_kernel;
+  logger & __logger;
+
+  uv_tcp_t* m_uv_tcp;
+
+  socket_state       m_state;
   mutable std::mutex m_state_lock;
 
   std::promise<void>       m_io_closed_promise;
   std::shared_future<void> m_io_closed_future;
 
+  std::atomic<size_t> m_bytes_pending_write;
   size_t m_bytes_written;
   size_t m_bytes_read;
 
   io_listener * m_listener ;
-};
 
+  std::vector< uv_buf_t > m_pending_write;
+  std::mutex              m_pending_write_lock;
+
+  friend io_loop;
+};
 
 } // namespace XXX
 
