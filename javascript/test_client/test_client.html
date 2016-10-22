@@ -310,7 +310,6 @@
         var newdiv = document.createElement("DIV");
         newdiv.className = "alert alert-info";
        
-
         var spanItem = document.createElement("SPAN");
         spanItem.className = "sent";
         senttext = datetimestamp();
@@ -407,7 +406,7 @@
         {
           var value = document.getElementById("rpccommand").value;
           wamp_session.request_id = wamp_session.request_id + 1;
-          wampCall = [48, wamp_session.request_id, {}, value, {}, []];
+          wampCall = [48, wamp_session.request_id, {}, value, [], {}];
           doSendJSON(wampCall);
 
         }
