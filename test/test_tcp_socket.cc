@@ -8,6 +8,22 @@ using namespace XXX;
 using namespace std;
 
 
+void test_unused_socket()
+{
+  cout << "---------- test_unused_socket ----------\n";
+  unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
+
+  tcp_socket sock1( the_kernel.get() );
+
+  vector< shared_ptr<tcp_socket> > sockets;
+  sockets.push_back( shared_ptr<tcp_socket>(new tcp_socket(the_kernel.get())) );
+  sockets.push_back( shared_ptr<tcp_socket>(new tcp_socket(the_kernel.get())) );
+
+  tcp_socket sock2( the_kernel.get() );
+
+  the_kernel.reset();
+}
+
 void test_uvwalk_initiates_close(int port)
 {
   cout << "---------- test_uvwalk_closes_sockets ----------\n";
@@ -31,16 +47,8 @@ void test_orderly_connect_wait_close(int port)
 
   {
     tcp_socket my_socket(the_kernel.get());
-    async_value completed = my_socket.connect("127.0.0.1", port);
+    auto_future completed = my_socket.connect("127.0.0.1", port);
     completed.get_future().wait();
-    if (my_socket.is_connected())
-    {
-      cout << "MAIN connected\n";
-    }
-    else
-    {
-      throw runtime_error("not connected");
-    }
   }
 }
 
@@ -86,10 +94,6 @@ void test_connect_and_delete_v3(int port)
     my_socket_2.connect("127.0.0.1", port);
     tcp_socket my_socket_3(the_kernel.get());
     my_socket_3.connect("127.0.0.1", port);
-    tcp_socket my_socket_4(the_kernel.get());
-    my_socket_4.connect("127.0.0.1", port);
-    tcp_socket my_socket_5(the_kernel.get());
-    my_socket_5.connect("127.0.0.1", port);
   }
 
   cout << "---------- test_connect_and_delete_v3+ ----------\n";
@@ -100,10 +104,6 @@ void test_connect_and_delete_v3(int port)
     sp_2->connect("127.0.0.1", port);
     std::shared_ptr<tcp_socket> sp_3(new tcp_socket(the_kernel.get()));
     sp_3->connect("127.0.0.1", port);
-    std::shared_ptr<tcp_socket> sp_4(new tcp_socket(the_kernel.get()));
-    sp_4->connect("127.0.0.1", port);
-    std::shared_ptr<tcp_socket> sp_5(new tcp_socket(the_kernel.get()));
-    sp_5->connect("127.0.0.1", port);
   }
 
 }
@@ -142,11 +142,12 @@ void test_connect_read_delete_v1(int port)
 
 int main(int, char**)
 {
-  int starting_port_number = 23011;
+  int starting_port_number = 23100;
   int port;
 
   auto all_tests = [](int port)
   {
+    test_unused_socket();
     test_uvwalk_initiates_close(port);
     test_connect_and_delete_v1(port);
     test_connect_and_delete_v2(port);
@@ -176,36 +177,36 @@ int main(int, char**)
   //     test_uvwalk_initiates_close(port);
   // }
 
-
+  {
+    for (int i = 0; i < 2000; ++i)
+      test_unused_socket();
+  }
   {
     internal_client iclient;
     port = iclient.start(starting_port_number++);
-    for (int i = 0; i < 10000; ++i)
+    for (int i = 0; i < 2000; ++i)
       test_connect_and_delete_v1(port);
   }
   {
     internal_client iclient;
     port = iclient.start(starting_port_number++);
-    for (int i = 0; i < 10000; ++i)
+    for (int i = 0; i < 2000; ++i)
       test_connect_and_delete_v2(port);
   }
   {
     internal_client iclient;
     port = iclient.start(starting_port_number++);
-    for (int i = 0; i < 1000; ++i)
+    for (int i = 0; i < 2000; ++i)
       test_connect_and_delete_v3(port);
   }
-
   {
     internal_client iclient;
     port = iclient.start(starting_port_number++);
-    for (int i = 0; i < 10000; ++i)
+    for (int i = 0; i < 2000; ++i)
       test_orderly_connect_wait_close(port);
   }
 
   cout << "tests complete\n";
-
-
 
   return 0;
 }

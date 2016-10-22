@@ -1,7 +1,6 @@
 #include "XXX/io_loop.h"
 
 #include "XXX/log_macros.h"
-#include "XXX/io_handle.h"
 #include "XXX/kernel.h"
 #include "XXX/tcp_socket.h"
 
@@ -11,9 +10,6 @@
 #include <string.h>
 #include <assert.h>
 #include <iostream>
-
-
-int spin_count;
 
 static const char* safe_str(const char* s)
 {
@@ -107,12 +103,11 @@ static void __on_tcp_connect(uv_stream_t* server, int status)
 
   if (uv_accept(server, (uv_stream_t *) client) == 0)
   {
-    io_handle* ioh = new io_handle( myio_loop->get_kernel(),
-                                  (uv_stream_t *) client, myio_loop);
+    tcp_socket * s = new tcp_socket(&myio_loop->get_kernel(), client);
 
     // register the stream before beginning read operations (which happens once
     // a protocol object has been constructed)
-    myserver->ioloop->add_passive_handle(myserver, ioh );
+    myserver->ioloop->add_passive_handle(myserver, s);
   }
   else
   {
@@ -168,7 +163,7 @@ void io_loop::stop()
 {
   std::unique_ptr<io_request> r( new io_request( io_request::eCloseLoop,
                                                  __logger) );
-  std::cout << "io_loop::stop pushing" << std::endl;
+
   push_request(std::move(r));
 
   if (m_thread.joinable()) m_thread.join();
@@ -236,8 +231,6 @@ void io_loop::on_async()
 
   for (auto & user_req : work)
   {
-    //std::cout<< std::this_thread::get_id() << " " << "IO user_req  " << user_req->type << std::endl;
-
     if (user_req->type == io_request::eCancelHandle)
     {
       auto handle_to_cancel = (uv_handle_t*) user_req->tcp_handle;
@@ -470,32 +463,21 @@ void io_loop::on_async()
     {
       // for (auto & i : m_server_handles)
       //   uv_close((uv_handle_t*)i.get(), 0);
-      std::cout << "@IO got closure event" << std::endl;
       uv_close((uv_handle_t*) m_async.get(), 0);
 
       // While there are active handles, progress the event loop here and on
       // each iteration identify and request close any handles which have not
       // been requested to close.
-      spin_count = 0;
-      std::cout << "@IO doing uv_walk" << std::endl;
       uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg) {
-          spin_count++;
 
-          int b = uv_is_closing((const uv_handle_t* )handle);
-          std::cout << "h=" << (void*) handle << ", uv_is_closing=" << b << std::endl;
+          uv_is_closing((const uv_handle_t* )handle);
 
-          if (spin_count>10)
-          {
-            std::cout << "SPIN!" << std::endl;
-            sleep(300);
-          }
           if (!uv_is_closing(handle))
           {
             uv_handle_data * ptr = (uv_handle_data*) handle->data;
 
             if (ptr == 0)
             {
-              std::cout << "@IO ptr==0" << std::endl;
               // We are uv_walking a handle which does not have the data member
               // set. Common cause of this is a shutdown of the kernel & ioloop
               // while a wamp_connector exists which has not had its UV handle
@@ -511,10 +493,6 @@ void io_loop::on_async()
               {
                 case uv_handle_data::e_tcp_socket:
                   ptr->tcp_socket_ptr()->do_close();
-                  break;
-                case uv_handle_data::io_handle_tcp :
-                case uv_handle_data::io_handle_async :
-                  ptr->io_handle_ptr()->do_close();
                   break;
                 case uv_handle_data::io_handle_server :
                   ptr->server_handle_ptr()->do_close();
@@ -558,14 +536,10 @@ void io_loop::run_loop()
   {
     try
     {
-      std::cout << "@IO doing uv_run" << std::endl;
       int r = uv_run(m_uv_loop, UV_RUN_DEFAULT);
 
       if (r == 0) /*  no more handles; we are shutting down */
-      {
-        std::cout << "@IO uv_run complete" << std::endl;
         return;
-      }
     }
     catch(std::exception & e)
     {
@@ -598,9 +572,9 @@ void io_loop::add_server(int port,
 }
 
 
-void io_loop::add_passive_handle(tcp_server* myserver, io_handle* iohandle)
+void io_loop::add_passive_handle(tcp_server* myserver, tcp_socket* iohandle)
 {
-  if (myserver->cb) myserver->cb(myserver->port, std::unique_ptr<io_handle>(iohandle));
+  if (myserver->cb) myserver->cb(myserver->port, std::unique_ptr<tcp_socket>(iohandle));
 }
 
 
@@ -729,40 +703,33 @@ void version_check_libuv(int compile_major, int compile_minor)
 
   void server_handle::do_close()
   {
-    std::cout << this << " " << "IO server_handle::do_close -->" << std::endl;
     std::lock_guard< std::mutex > guard (m_state_lock);
 
     // TODO: do I need to perform any pre check in here, eg should the state be
     // open or something?
 
-    std::cout  << this << " "<< "IO server_handle::do_close uv_close" << std::endl;
     uv_close((uv_handle_t*) m_uv_handle, [](uv_handle_t * h) {
         delete h; });
 
     m_state = eClosed;
 
-    std::cout  << this << " "<< "IO server_handle::do_close set_value" << std::endl;
     m_io_has_closed.set_value();
-    std::cout  << this << " "<< "IO server_handle::do_close <--" << std::endl;
   }
 
 server_handle::~server_handle()
 {
-  std::cout  << this << " "<< "~server_handle -->" << std::endl;
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
-    std::cout  << this << " "<< "~server_handle got lock" << std::endl;
+
     if (m_state == eOpen)
     {
       m_state = eClosing;
-      std::cout  << this << " "<< "~server_handle close_server_handle" << std::endl;
+
       m_kernel->get_io()->close_server_handle(m_uv_handle);
     }
   }
 
-  std::cout<< std::this_thread::get_id() << " "   << this << " "<< "~server_handle wait" << std::endl;
   m_shfut_io_closed.wait();
-  std::cout  << this << " "<< "~server_handle <--" << std::endl;
 }
 
 

@@ -20,22 +20,25 @@ void test_WS_destroyed_after_kernel(int port)
     unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
 
     /* attempt to connect the socket */
+    unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
     TLOG("attemping socket connection ...");
-    auto wconn = wamp_connector::create(
-      the_kernel.get(),
-      "127.0.0.1", to_string(port),
-      false);
+    auto autofut = sock->connect("127.0.0.1", port);
 
-    auto connect_status = wconn->completion_future().wait_for(chrono::milliseconds(1000));
+    auto connect_status = autofut.get_future().wait_for(chrono::milliseconds(1000));
     if (connect_status == future_status::timeout)
     {
-      throw runtime_error("expected -- should have connected");
+      cout << "expected -- should have connected\n";
+      return;
     }
     TLOG("got socket connection");
 
     /* attempt to create a session */
     TLOG("attemping session creation");
-    shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>( session_cb );
+    shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
+      *(the_kernel.get()),
+      std::move(sock),
+      session_cb, {});
+
     TLOG("got session");
 
     TLOG("assigning session to outer scope (causes wamp_session destruction after kernel destruction)");

@@ -4,7 +4,7 @@
 #include "XXX/kernel.h"
 #include "XXX/topic.h"
 #include "XXX/wamp_session.h"
-#include "XXX/wamp_connector.h"
+#include "XXX/tcp_socket.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/rawsocket_protocol.h"
 #include "XXX/dealer_service.h"

@@ -35,6 +35,15 @@ struct write_req
 };
 
 
+static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
+                                  size_t suggested_size,
+                                  uv_buf_t* buf )
+{
+  // improve memory efficiency
+  *buf = uv_buf_init((char *) new char[suggested_size], suggested_size);
+}
+
+
 tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
   : m_kernel(k),
     __logger(k->get_logger()),
@@ -82,6 +91,11 @@ tcp_socket::~tcp_socket()
   delete ptr;
 
   delete m_uv_tcp;
+
+  {
+    std::lock_guard<std::mutex> guard(m_pending_write_lock);
+    for (auto &i :m_pending_write ) delete [] i.base;
+  }
 }
 
 
@@ -91,11 +105,13 @@ bool tcp_socket::is_connected() const
   return m_state == e_connected;
 }
 
+
 bool tcp_socket::is_closing() const
 {
   std::unique_lock<std::mutex> guard(m_state_lock);
   return m_state == e_closing;
 }
+
 
 bool tcp_socket::is_closed() const
 {
@@ -104,24 +120,21 @@ bool tcp_socket::is_closed() const
 }
 
 
-async_value tcp_socket::connect(std::string addr, int port)
+auto_future tcp_socket::connect(std::string addr, int port)
 {
-  bool resolve_hostname = false;
+  bool resolve_hostname = true;
 
-  std::shared_ptr<std::promise<void>> completion_promise( new std::promise<void>() );
+  auto completion_promise = std::make_shared<std::promise<void>>();
 
   auto success_fn = [completion_promise,this]() {
-
     {
       std::unique_lock<std::mutex> guard(m_state_lock);
       m_state = e_connected;
     }
-    std::cout << "setting promise for success\n";
     completion_promise->set_value();
-
   };
+
   auto failure_fn = [completion_promise,this](std::exception_ptr e) {
-    std::cout << "setting promise for failure\n";
     completion_promise->set_value();
   };
 
@@ -134,7 +147,7 @@ async_value tcp_socket::connect(std::string addr, int port)
                                failure_fn);
 
 
-  return async_value( completion_promise );
+  return auto_future(completion_promise);
 }
 
 
@@ -142,34 +155,38 @@ void tcp_socket::do_close()
 {
   /* IO thread */
 
-  // TODO: not sure when I should lock in here.  Need to think of the race
-  // conditions again.  I cant remember what the race condition was.  If I
-  // ensure the the IO thread does not come directly in here, but instead
+  // do_close should only ever be called once by the IO thread, either triggered
+  // by pushing a close request or a call from uv_walk.
+  {
+    std::lock_guard< std::mutex > guard (m_state_lock);
+    m_state = e_closing;
+  }
 
   uv_close((uv_handle_t*) m_uv_tcp, [](uv_handle_t * h) {
+
       uv_handle_data * ptr = (uv_handle_data*) h->data;
       {
         std::lock_guard< std::mutex > guard (ptr->tcp_socket_ptr()->m_state_lock);
         ptr->tcp_socket_ptr()->m_state = e_closed;
       }
-      ptr->tcp_socket_ptr()->m_io_closed_promise.set_value();
-    });
 
+      // Notify owning session about end of file event. The owner must not try to
+      // delete this object from the current thread.
+      if (ptr->tcp_socket_ptr()->m_listener)
+        ptr->tcp_socket_ptr()->m_listener->io_on_close();
+
+      /* Careful ... once the promise is set, this object might be immediately
+       * deleted by a thread waiting on the associated future. So make this
+       * promise-write the last action. */
+      ptr->tcp_socket_ptr()->m_io_closed_promise.set_value();
+
+    });
 }
 
 
 int tcp_socket::fd() const
 {
   return m_uv_tcp->io_watcher.fd;
-}
-
-
-static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
-                                  size_t suggested_size,
-                                  uv_buf_t* buf )
-{
-  // improve memory efficiency
-  *buf = uv_buf_init((char *) new char[suggested_size], suggested_size);
 }
 
 
@@ -190,6 +207,7 @@ std::shared_future<void> tcp_socket::close()
 void tcp_socket::start_read(io_listener* p)
 {
   m_listener = p;
+
   auto fn = [this]() {
     uv_read_start((uv_stream_t*)this->m_uv_tcp,
                   iohandle_alloc_buffer,
@@ -222,9 +240,8 @@ void tcp_socket::close_once_on_io()
 
 void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 {
-  std::cout << "tcp_socket::on_read_cb" << std::endl;
-
   /* IO thread */
+
   try
   {
     if ((nread == UV_EOF) ||  (nread < 0))
@@ -259,7 +276,7 @@ void tcp_socket::write(std::pair<const char*, size_t> * srcbuf, size_t count)
   // improve memory usage here
   std::vector< uv_buf_t > bufs;
 
-  scope_guard buf_guard ([&bufs]() {
+  scope_guard buf_guard([&bufs]() {
       for (auto & i : bufs ) delete [] i.base;
     });
 
@@ -301,7 +318,8 @@ void tcp_socket::do_write()
   }
 
   size_t bytes_to_send=0;
-  for (size_t i = 0; i < copy.size(); i++) bytes_to_send += copy[i].len;
+  for (size_t i = 0; i < copy.size(); i++)
+    bytes_to_send += copy[i].len;
 
   const size_t pend_max = m_kernel->get_config().socket_max_pending_write_bytes;
 
@@ -351,7 +369,9 @@ void tcp_socket::on_write_cb(uv_write_t * req, int status)
     if (status == 0)
     {
       size_t total = 0;
-      for (size_t i = 0; i < req->nbufs; i++) total += req->bufsml[i].len;
+      for (size_t i = 0; i < req->nbufs; i++)
+        total += req->bufsml[i].len;
+
       m_bytes_written += total;
       if (m_bytes_pending_write > total)
         m_bytes_pending_write -= total;

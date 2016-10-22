@@ -9,7 +9,7 @@
 
 namespace XXX {
 
-class io_handle;
+class tcp_socket;
 
 class buffer
 {
@@ -120,7 +120,7 @@ public:
       ePassive
   };
 
-  protocol(io_handle*, t_msg_cb, connection_mode m);
+  protocol(tcp_socket*, t_msg_cb, connection_mode m);
 
   virtual int  required_timer_callback_interval_ms() { return 1000;}
   virtual void ev_on_timer() {}
@@ -136,7 +136,7 @@ protected:
 
   void decode_json(const char* ptr, size_t msglen);
 
-  io_handle * m_iohandle; /* non owning */
+  tcp_socket * m_socket; /* non owning */
   t_msg_cb    m_msg_processor;
   buffer m_buf;
 
@@ -144,7 +144,7 @@ private:
   connection_mode m_mode;
 };
 
-typedef std::function< std::unique_ptr<protocol> (io_handle*, protocol::t_msg_cb ) > protocol_builder_fn;
+typedef std::function< std::unique_ptr<protocol> (tcp_socket*, protocol::t_msg_cb ) > protocol_builder_fn;
 
 
 }

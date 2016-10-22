@@ -19,39 +19,38 @@ namespace XXX {
 class io_listener;
 class io_loop;
 
-class async_value
+class auto_future
 {
 public:
-  async_value(std::shared_ptr<std::promise<void> > p)
+  auto_future(std::shared_ptr<std::promise<void> > p)
     : m_auto_wait(true),
       m_promise(p),
       m_fut(p->get_future())
   {
   }
 
-  async_value(async_value&& rhs)
+  auto_future(auto_future&& rhs)
   : m_promise(std::move(rhs.m_promise)),
     m_fut(std::move(rhs.m_fut))
   {
   }
 
-  async_value() = delete;
-  async_value(const std::future<void>& f) = delete;
+  auto_future() = delete;
+  auto_future(const std::future<void>& f) = delete;
 
   void set_auto_wait(bool b) { m_auto_wait=b;}
 
-  ~async_value()
+  ~auto_future()
   {
     if (m_auto_wait && m_fut.valid())
       m_fut.wait();
   }
 
-  std::future<void>& get_future() { return m_fut; }
-
+  std::future<void> & get_future() { return m_fut; }
 
 private:
   bool m_auto_wait;
-  std::shared_ptr<std::promise<void>> m_promise;
+  std::shared_ptr<std::promise<void> > m_promise;
   std::future<void> m_fut;
 };
 
@@ -69,7 +68,7 @@ public:
   tcp_socket& operator=(const tcp_socket&) = delete;
 
   /** Request TCP connection to a remote end point */
-  async_value connect(std::string addr, int port);
+  auto_future connect(std::string addr, int port);
 
   /** Request socket begins reading inbound data */
   void start_read(io_listener*);

@@ -1,6 +1,6 @@
 #include "XXX/protocol.h"
 
-#include "XXX/io_handle.h"
+#include "XXX/tcp_socket.h"
 #include "XXX/utils.h"
 #include "XXX/rawsocket_protocol.h"
 #include "XXX/websocket_protocol.h"
@@ -76,8 +76,8 @@ namespace XXX {
   }
 
 
-protocol::protocol(io_handle* h, t_msg_cb cb, connection_mode _mode)
-  : m_iohandle(h),
+protocol::protocol(tcp_socket* h, t_msg_cb cb, connection_mode _mode)
+  : m_socket(h),
     m_msg_processor(cb),
     m_buf(1,1024),
     m_mode(_mode)

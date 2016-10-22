@@ -19,14 +19,13 @@ namespace XXX {
 class kernel;
 struct logger;
 class io_loop;
-class io_handle;
 struct io_request;
 class server_handle;
 class tcp_socket;
 
 typedef std::function<void(std::unique_ptr<server_handle>&)> on_server_socket_cb;
-typedef std::function<void(int port, std::unique_ptr<io_handle>)> socket_accept_cb;
-typedef std::function<void(io_handle*, int)> tcp_connect_cb;
+typedef std::function<void(int port, std::unique_ptr<tcp_socket>)> socket_accept_cb;
+
 
 // TODO: comment
 void version_check_libuv(int uv_major, int uv_minor);
@@ -65,15 +64,12 @@ public:
   enum { DATA_CHECK = 0x5555555555555555 };
 
   enum ptr_type {
-    io_handle_tcp,
-    io_handle_async,
     io_handle_server,
     e_tcp_socket
   };
 
   uv_handle_data(ptr_type t, void* ptr)
     : m_check( DATA_CHECK ),
-      m_io_handle_ptr(nullptr),
       m_type(t)
   {
     switch (t)
@@ -84,10 +80,6 @@ public:
       case io_handle_server:
         m_server_handle_ptr = (server_handle *) ptr;
         break;
-      case io_handle_tcp :
-      case io_handle_async :
-        m_io_handle_ptr = (io_handle*) ptr;
-        break;
     }
   }
 
@@ -96,7 +88,6 @@ public:
   uint64_t check() const { return m_check; }
   ptr_type type() const { return m_type; }
 
-  io_handle* io_handle_ptr() { return m_io_handle_ptr; }
   server_handle* server_handle_ptr() { return m_server_handle_ptr; }
   tcp_socket* tcp_socket_ptr() { return m_tcp_socket_ptr; }
 
@@ -104,7 +95,6 @@ private:
   uint64_t m_check; /* retain as first member */
 
   union {
-    io_handle     * m_io_handle_ptr;
     server_handle * m_server_handle_ptr;
     tcp_socket    * m_tcp_socket_ptr;
   };
@@ -132,7 +122,7 @@ public:
   void on_async();
 
 
-  void add_passive_handle(tcp_server* server, io_handle* iohandle);
+  void add_passive_handle(tcp_server* server, tcp_socket* iohandle);
 
   void add_server(int port, std::promise<int> listener_err, on_server_socket_cb, socket_accept_cb);
 

@@ -13,7 +13,7 @@
 
 namespace XXX {
 
-  class io_handle;
+  class tcp_socket;
   class kernel;
   class pre_session;
   class protocol;
@@ -26,11 +26,11 @@ namespace XXX {
   public:
 
     typedef std::function< void( std::weak_ptr<pre_session> ) > on_closed_fn;
-    typedef std::function< void ( protocol_builder_fn, std::unique_ptr<io_handle> ) > on_protocol_fn;
+    typedef std::function< void ( protocol_builder_fn, std::unique_ptr<tcp_socket> ) > on_protocol_fn;
 
     // pre_session can only be created as shared_ptr
     static std::shared_ptr<pre_session> create(kernel&,
-                                               std::unique_ptr<io_handle>,
+                                               std::unique_ptr<tcp_socket>,
                                                on_closed_fn state_cb,
                                                on_protocol_fn protocol_cb);
     ~pre_session();
@@ -51,7 +51,7 @@ namespace XXX {
   private:
 
     pre_session(kernel&,
-                std::unique_ptr<io_handle>,
+                std::unique_ptr<tcp_socket>,
                 on_closed_fn   __on_closed,
                 on_protocol_fn __on_protocol);
 
@@ -77,7 +77,7 @@ namespace XXX {
 
     uint64_t m_sid;
     buffer   m_buf;
-    std::unique_ptr<io_handle> m_handle;
+    std::unique_ptr<tcp_socket> m_socket;
 
     std::promise<void> m_has_closed;
     std::shared_future<void> m_shfut_has_closed;
@@ -89,7 +89,7 @@ namespace XXX {
 
     std::weak_ptr<pre_session> m_self_weak;
 
-    friend class io_handle;
+    friend class tcp_socket;
   };
 
 } // namespace XXX

@@ -1,6 +1,6 @@
 #include "XXX/pre_session.h"
 
-#include "XXX/io_handle.h"
+#include "XXX/tcp_socket.h"
 #include "XXX/protocol.h"
 #include "XXX/event_loop.h"
 #include "XXX/log_macros.h"
@@ -41,7 +41,7 @@ int pre_session::duration_since_creation() const
 
 
 pre_session::pre_session(kernel& __kernel,
-                         std::unique_ptr<io_handle> h,
+                         std::unique_ptr<tcp_socket> h,
                          on_closed_fn   __on_closed_cb,
                          on_protocol_fn protocol_cb)
   : m_state( eInit ),
@@ -49,18 +49,17 @@ pre_session::pre_session(kernel& __kernel,
     m_kernel(__kernel),
     m_sid(generate_unique_session_id()),
     m_buf(1,1024),
-    m_handle( std::move(h) ),
+    m_socket( std::move(h) ),
     m_shfut_has_closed(m_has_closed.get_future()),
     m_time_create(time(NULL)),
     m_notify_closed_cb(__on_closed_cb),
     m_protocol_cb(protocol_cb)
 {
-
 }
 
 
 std::shared_ptr<pre_session> pre_session::create(kernel& k,
-                                                 std::unique_ptr<io_handle> ioh,
+                                                 std::unique_ptr<tcp_socket> ioh,
                                                  on_closed_fn __on_closed_cb,
                                                  on_protocol_fn protocol_cb )
 {
@@ -73,7 +72,7 @@ std::shared_ptr<pre_session> pre_session::create(kernel& k,
   // can't put this initialisation step inside wamp_sesssion constructor,
   // because the shared pointer wont be created & available inside the
   // constructor
-  sp->m_handle->start_read( sp.get() );
+  sp->m_socket->start_read( sp.get() );
 
   // set up a timer to expire this session if it has not been successfully
   // opened with a maximum time duration
@@ -119,13 +118,17 @@ std::shared_future<void> pre_session::close()
   else
   {
     change_state(eClosing, eClosing);
-    m_handle->request_close();
+    try
+    {
+      m_socket->close();
+    }
+    catch (...) { /* ignore exceptions due to socket already closed */ }
   }
   return m_shfut_has_closed;
 }
 
 
-/* Called on the IO thread when the underlying io_handle object has closed all
+/* Called on the IO thread when the underlying tcp_socket object has closed all
  * its socket related resources (eg the tcp socket and timers).  This is the
  * last call that will be received on the IO thread.
  */
@@ -203,7 +206,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
     {
       rawsocket_protocol::options default_opts;
 
-      builder_fn = [&proto_actual, default_opts](io_handle* io,
+      builder_fn = [&proto_actual, default_opts](tcp_socket* io,
                                                  protocol::t_msg_cb _msg_cb)
         {
           std::unique_ptr<protocol> up (
@@ -220,7 +223,7 @@ void pre_session::io_on_read_impl(char* src, size_t len)
     else if (rd.avail() >= websocket_protocol::HEADER_SIZE &&
              http_parser::is_http_get(rd.ptr(), rd.avail()))
     {
-      builder_fn = [&proto_actual](io_handle* io,protocol::t_msg_cb _msg_cb)
+      builder_fn = [&proto_actual](tcp_socket* io,protocol::t_msg_cb _msg_cb)
         {
           std::unique_ptr<protocol> up (
             new websocket_protocol(io, _msg_cb,
@@ -244,11 +247,11 @@ void pre_session::io_on_read_impl(char* src, size_t len)
   {
     // this creates the concrete protocol, and a pointer to it is available
     // locally (in proto_actual)
-    m_protocol_cb( builder_fn, std::move(m_handle) );
+    m_protocol_cb( builder_fn, std::move(m_socket) );
 
     if (proto_actual)
     {
-      m_handle.reset();
+      m_socket.reset();
       m_state = eTransferedIO;
       m_has_closed.set_value();
       proto_actual->io_on_read(m_buf.data(), m_buf.data_size());

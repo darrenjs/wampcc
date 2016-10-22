@@ -37,14 +37,12 @@ void test_late_dealer_destructor_variants(int variant = 0)
 
   if (iclient.get_kernel())
   {
-    auto wconn = wamp_connector::create(
-      iclient.get_kernel(),
-      "127.0.0.1",to_string(port),
-      false);
+    tcp_socket my_socket(iclient.get_kernel());
+    auto autofut = my_socket.connect("127.0.0.1", port);
 
     if (variant == 1) iclient.reset_kernel();
 
-    wconn->completion_future().wait_for(chrono::milliseconds(1000));
+    autofut.get_future().wait_for(chrono::milliseconds(1000));
 
     if (variant == 2) iclient.reset_kernel();
   }

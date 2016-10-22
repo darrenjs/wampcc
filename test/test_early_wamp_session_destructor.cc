@@ -6,30 +6,34 @@ using namespace std;
 
 void test_WS_destroyed_before_kernel(int port)
 {
-  cout << "------------------------------\n";
-  cout << "control test\n";
-  cout << "------------------------------\n";
+  cout << "---------- test_WS_destroyed_before_kernel ----------\n";
 
   callback_status = e_callback_not_invoked;
 
   {
     unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
 
+    unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
+
     /* attempt to connect the socket */
     cout << "attemping socket connection ...\n";
-    auto wconn = wamp_connector::create(
-      the_kernel.get(),
-      "127.0.0.1", to_string(port),
-      false);
+    auto autofut = sock->connect("127.0.0.1", port);
 
-    auto connect_status = wconn->completion_future().wait_for(chrono::milliseconds(100));
+    auto connect_status = autofut.get_future().wait_for(chrono::milliseconds(100));
     if (connect_status == future_status::timeout)
-      throw runtime_error("expected -- should have connected");
+    {
+      cout << "    failed to connect\n";
+      return;
+    }
     cout << "    got socket connection\n";
 
     /* attempt to create a session */
     cout << "attemping session creation ...\n";
-    shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>(session_cb);
+    shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
+      *(the_kernel.get()),
+      std::move(sock),
+      session_cb, {});
+
     cout << "    got session\n";
 
     cout << "trigger ~wamp_session\n";
@@ -51,19 +55,21 @@ int main()
     int starting_port_number = 21000;
 
     // share a common internal_client
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 50; i++)
     {
       internal_client iclient;
       int port = iclient.start(starting_port_number++);
 
-      for (int j=0; j < 10; j++) {
+      for (int j=0; j < 100; j++) {
+        cout << "using shared iclient\n";
         test_WS_destroyed_before_kernel(port);
       }
     }
 
     // use one internal_client per test
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 5000; i++)
     {
+      cout << "using dedicated iclient\n";
       internal_client iclient;
       int port = iclient.start(starting_port_number++);
       test_WS_destroyed_before_kernel(port);

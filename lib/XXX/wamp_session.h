@@ -18,7 +18,7 @@ namespace XXX {
   class wamp_session;
   class kernel;
   class pubsub_man;
-  class io_handle;
+  class tcp_socket;
   struct logger;
 
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
@@ -135,7 +135,7 @@ namespace XXX {
     /** Create a server side session (i.e., the socket was accepted from a
      * remote client). */
     static std::shared_ptr<wamp_session> create(kernel&,
-                                                std::unique_ptr<io_handle>,
+                                                std::unique_ptr<tcp_socket>,
                                                 session_state_fn,
                                                 protocol_builder_fn ,
                                                 server_msg_handler,
@@ -145,13 +145,12 @@ namespace XXX {
      * a remote server). */
     template<typename T>
     static std::shared_ptr<wamp_session> create(kernel& k,
-                                                std::unique_ptr<io_handle> socket,
+                                                std::unique_ptr<tcp_socket> socket,
                                                 session_state_fn state_cb,
                                                 typename T::options _options)
     {
       protocol_builder_fn factory_fn;
-
-      factory_fn = [_options](io_handle* socket, protocol::t_msg_cb _msg_cb)
+      factory_fn = [_options](tcp_socket* socket, protocol::t_msg_cb _msg_cb)
         {
           std::unique_ptr<protocol> up (
             new T(socket, _msg_cb,
@@ -231,7 +230,7 @@ namespace XXX {
   private:
 
     wamp_session(kernel&,
-                 std::unique_ptr<io_handle>,
+                 std::unique_ptr<tcp_socket>,
                  session_state_fn state_cb,
                  protocol_builder_fn protocol_builder,
                  server_msg_handler,
@@ -250,7 +249,7 @@ namespace XXX {
 
     void send_msg(jalson::json_array&, bool final=false);
 
-    friend class io_handle;
+    friend class tcp_socket;
     friend class pubsub_man;
 
     enum SessionState
@@ -290,7 +289,7 @@ namespace XXX {
 
     uint64_t m_sid;
 
-    std::unique_ptr<io_handle> m_handle;
+    std::unique_ptr< tcp_socket> m_socket;
 
     std::promise<void> m_has_closed;
     std::shared_future<void> m_shfut_has_closed;

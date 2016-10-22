@@ -1,9 +1,9 @@
 #include "XXX/kernel.h"
 #include "XXX/topic.h"
 #include "XXX/wamp_session.h"
-#include "XXX/wamp_connector.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/rawsocket_protocol.h"
+#include "XXX/tcp_socket.h"
 
 #include <iostream>
 
@@ -15,84 +15,31 @@ enum test_outcome
   e_unexpected
 };
 
+/*
 
-void on_wamp_connector_completed(std::weak_ptr<wamp_connector> wconn)
-{
-}
+  $ telnet 255.255.255.255 55555
+  Trying 255.255.255.255...
+  telnet: Unable to connect to remote host: Network is unreachable
 
-
-test_outcome throw_on_unreachable_network()
-{
-  kernel the_kernel( {}, logger::nolog() );
-
-  auto wconn = wamp_connector::create(
-    &the_kernel,
-    "255.255.255.255", /* IP selected to be unreachable */
-    "55555",
-    false);
-
-  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
-  std::shared_ptr<wamp_session> session;
-
-  if (completed == std::future_status::ready)
-    try
-    {
-      session = wconn->create_session<rawsocket_protocol>( nullptr );
-    }
-    catch (std::exception& e)
-    {
-      std::cout << "expected connect error: " << e.what() << std::endl;
-      return e_expected;
-    }
-
-  return e_unexpected;
-}
-
-
-
-test_outcome throw_on_invalid_address()
+ */
+test_outcome unreachable_network()
 {
   kernel the_kernel( {}, logger::nolog() );
 
-  auto wconn = wamp_connector::create(
-    &the_kernel,
-    "0.42.42.42", /* Invalid argument */
-    "55555",
-    false);
+  std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
-  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
-  std::shared_ptr<wamp_session> session;
+  auto autofut = sock->connect("255.255.255.255", /* IP selected to be unreachable */
+                               55555);
+
+  auto completed = autofut.get_future().wait_for(std::chrono::milliseconds(200));
 
   if (completed == std::future_status::ready)
-    try
-    {
-      session = wconn->create_session<rawsocket_protocol>( nullptr );
-    }
-    catch (std::exception& e)
-    {
-      std::cout << "expected connect error: " << e.what() << std::endl;
-      return e_expected;
-    }
-
-  return e_unexpected;
-}
-
-
-
-
-test_outcome timeout_for_unreachable_connect()
-{
-  std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ) );
-
-  auto wconn = wamp_connector::create(
-    the_kernel.get(),
-    "10.0.0.0", "55555",
-    false, on_wamp_connector_completed);
-
-  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
-
-  if (completed == std::future_status::timeout)
   {
+    if (sock->is_connected())
+      return e_unexpected;
+
+    // otherwise, close the socket
+    sock->close();
     return e_expected;
   }
 
@@ -101,34 +48,49 @@ test_outcome timeout_for_unreachable_connect()
 
 
 
-test_outcome cancel_for_unreachable_connect()
+test_outcome invalid_address()
 {
-  std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ) );
+  kernel the_kernel( {}, logger::nolog() );
 
-  auto wconn = wamp_connector::create(
-    the_kernel.get(),
-    "10.0.0.0", "55555",
-    false, on_wamp_connector_completed);
+  std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
-  auto completed = wconn->completion_future().wait_for(std::chrono::milliseconds(50));
+  auto autofut = sock->connect("0.42.42.42", /* Invalid argument */
+                               55555);
+
+  auto completed = autofut.get_future().wait_for(std::chrono::milliseconds(50));
+
+  if (completed == std::future_status::ready)
+  {
+    if ( sock->is_connected())
+      return e_unexpected;
+
+    // otherwise, close the socket
+    sock->close();
+    return e_expected;
+  }
+
+  return e_unexpected;
+}
+
+
+/*
+ Attempting to connect to 10.0.0.0 55555 will normally just hang
+ */
+test_outcome timeout_for_unreachable_connect()
+{
+  kernel the_kernel( {}, logger::nolog() );
+
+  std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
+
+  auto autofut = sock->connect("10.0.0.0",
+                               55555);
+
+  auto completed = autofut.get_future().wait_for(std::chrono::milliseconds(50));
 
   if (completed == std::future_status::timeout)
   {
-    bool cancel_worked = wconn->attempt_cancel();
-    if (!cancel_worked)
-      return e_unexpected;
-
-    wconn->completion_future().wait();
-
-    try
-    {
-      auto session = wconn->create_session<rawsocket_protocol>( nullptr );
-    }
-    catch (std::exception& e)
-    {
-      return e_expected;
-    }
-
+    sock->close();
+    return e_expected ;
   }
 
   return e_unexpected;
@@ -136,10 +98,13 @@ test_outcome cancel_for_unreachable_connect()
 
 
 #define TEST( X )                                       \
+  {                                                     \
+  std::cout << "---------- " << #X << " ----------\n";   \
   if ( X () != e_expected)                              \
   {                                                     \
     std::cout << "FAIL for:  " << #X << std::endl;      \
-    result |= 1;                                        \
+    result = 1;                                        \
+  }                                                     \
   }
 
 
@@ -148,14 +113,17 @@ test_outcome cancel_for_unreachable_connect()
 int main()
 {
   int result = 0;
+  int loops = 100;
 
-  for (int i =0; i < 200; i++)
-  {
-    TEST( throw_on_unreachable_network );
-    TEST( throw_on_invalid_address );
+  for (int i =0; i < loops && !result; i++)
+    TEST( unreachable_network );
+
+  for (int i =0; i < loops && !result; i++)
+    TEST( invalid_address );
+
+  for (int i =0; i < loops && !result; i++)
     TEST( timeout_for_unreachable_connect );
-    TEST( cancel_for_unreachable_connect );
-  }
+
 
   /* We let any uncaught exceptions (which are not expected) to terminate main,
    * and cause test failure. */

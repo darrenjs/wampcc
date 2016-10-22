@@ -1,6 +1,6 @@
 #include "XXX/rawsocket_protocol.h"
 
-#include "XXX/io_handle.h"
+#include "XXX/tcp_socket.h"
 
 #include <sstream>
 
@@ -39,7 +39,7 @@ const char* rawsocket_protocol::handshake_error_code_to_sting(handshake_error_co
 }
 
 
-rawsocket_protocol::rawsocket_protocol(io_handle* h,
+rawsocket_protocol::rawsocket_protocol(tcp_socket* h,
                                        t_msg_cb msg_cb,
                                        connection_mode __mode,
                                        options __options)
@@ -62,7 +62,7 @@ void rawsocket_protocol::initiate(t_initiate_cb cb)
   std::pair<const char*, size_t> buf;
   buf.first  = &handshake[0];
   buf.second = HANDSHAKE_SIZE;
-  m_iohandle->write_bufs(&buf, 1, false);
+  m_socket->write(&buf, 1);
 }
 
 
@@ -176,7 +176,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
             bufs[0].second = FRAME_PREFIX_SIZE;
             bufs[1].first  = rd.ptr()+FRAME_PREFIX_SIZE;
             bufs[1].second = msglen;
-            m_iohandle->write_bufs(bufs, 2, false);
+            m_socket->write(bufs, 2);
             break;
           }
           case MSG_TYPE_PONG : break;
@@ -231,7 +231,7 @@ void rawsocket_protocol::send_msg(const jalson::json_array& jv)
 
   bufs[1].first  = (const char*)msg.c_str();
   bufs[1].second = msg.size();
-  m_iohandle->write_bufs(bufs, 2, false);
+  m_socket->write(bufs, 2);
 }
 
 
@@ -243,7 +243,7 @@ void rawsocket_protocol::reply_handshake(int high, int low)
   std::pair<const char*, size_t> bufs[1];
   bufs[0].first  = handshake;
   bufs[0].second = HANDSHAKE_SIZE;
-  m_iohandle->write_bufs(bufs, 1, false);
+  m_socket->write(bufs, 1);
 }
 
 }

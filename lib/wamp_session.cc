@@ -1,6 +1,6 @@
 #include "XXX/wamp_session.h"
 
-#include "XXX/io_handle.h"
+#include "XXX/tcp_socket.h"
 #include "XXX/protocol.h"
 #include "XXX/rpc_man.h"
 #include "XXX/event_loop.h"
@@ -65,7 +65,7 @@ static void check_size_at_least(size_t msg_len, size_t s)
 
 /* Constructor */
 wamp_session::wamp_session(kernel& __kernel,
-                           std::unique_ptr<io_handle> h,
+                           std::unique_ptr<tcp_socket> h,
                            session_state_fn state_cb,
                            protocol_builder_fn protocol_builder,
                            server_msg_handler handler,
@@ -74,7 +74,7 @@ wamp_session::wamp_session(kernel& __kernel,
     __logger(__kernel.get_logger()),
     m_kernel(__kernel),
     m_sid( generate_unique_session_id() ),
-    m_handle( std::move(h) ),
+    m_socket(std::move(h)),
     m_shfut_has_closed(m_has_closed.get_future()),
     m_hb_intvl(m_kernel.get_config().use_wamp_heartbeats?60:0),
     m_time_create(time(NULL)),
@@ -85,7 +85,7 @@ wamp_session::wamp_session(kernel& __kernel,
     m_server_handler(handler),
     m_proto(
       protocol_builder(
-        m_handle.get(),
+        m_socket.get(),
         [this](jalson::json_array msg, int msg_type)
         {
           /* process on the EV thread */
@@ -99,11 +99,12 @@ wamp_session::wamp_session(kernel& __kernel,
         }
         ))
 {
+  std::cout << "wamp_session created\n";
 }
 
 
 std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
-                                                   std::unique_ptr<io_handle> ioh,
+                                                   std::unique_ptr<tcp_socket> ioh,
                                                    session_state_fn state_cb,
                                                    protocol_builder_fn protocol_builder,
                                                    server_msg_handler handler,
@@ -118,7 +119,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
   // can't put this initialisation step inside wamp_sesssion constructor,
   // because the shared pointer wont be created & available inside the
   // constructor
-  sp->m_handle->start_read( sp.get() );
+  sp->m_socket->start_read( sp.get() );
 
   // set up a timer to expire this session if it has not been successfully
   // opened within a maximum time duration
@@ -165,18 +166,23 @@ std::shared_future<void> wamp_session::close()
   else
   {
     change_state(eClosing, eClosing);
-    m_handle->request_close();
+    try
+    {
+      m_socket->close();
+    }
+    catch (...) { /* ignore exceptions due to socket already closed */ }
   }
 
   return m_shfut_has_closed;
 }
 
-/* Called on the IO thread when the underlying io_handle object has closed all
+/* Called on the IO thread when the underlying tcp_socket object has closed all
  * its socket related resources (eg the tcp socket and timers).  This is the
  * last call that will be received on the IO thread.
  */
 void wamp_session::io_on_close()
 {
+  std::cout << "wamp_session::io_on_close" << std::endl;
   change_state(eClosed,eClosed);
 
   // push the final EV operation

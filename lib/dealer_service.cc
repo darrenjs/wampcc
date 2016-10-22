@@ -5,7 +5,7 @@
 #include "XXX/pubsub_man.h"
 #include "XXX/event_loop.h"
 #include "XXX/io_loop.h"
-#include "XXX/io_handle.h"
+#include "XXX/tcp_socket.h"
 #include "XXX/log_macros.h"
 #include "XXX/pre_session.h"
 
@@ -66,13 +66,13 @@ std::future<int> dealer_service::listen(int port,
     port,
     std::move(intPromise),
     cb,
-    [this, auth](int /* port */, std::unique_ptr<io_handle> ioh)
+    [this, auth](int /* port */, std::unique_ptr<tcp_socket> ioh)
     {
       /* This lambda is invoked on the IO thread the when a socket has been
        * accepted. */
 
       auto protocol_ready_cb = [this, auth]( protocol_builder_fn builder,
-                                             std::unique_ptr<io_handle> ioh)
+                                             std::unique_ptr<tcp_socket> ioh)
         {
           /* Called on the IO thread, from the pre_session, when the
            * pre_session has identified the wire protocol to use. */

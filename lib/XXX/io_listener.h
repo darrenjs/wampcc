@@ -5,8 +5,6 @@
 
 namespace XXX {
 
-class io_handle;
-
 class io_listener
 {
 public:

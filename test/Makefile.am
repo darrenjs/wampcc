@@ -17,10 +17,12 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(LIBUVHOME)/include						\
 
 AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 
-check_PROGRAMS=test_connect_timeout test_late_wamp_session_destructor		\
-test_early_wamp_session_destructor test_evthread_wamp_session_destructor	\
-test_unused_wamp_connector test_dealer_disconnect_when_has_connections		\
-test_late_dealer_destructor test_tcp_socket
+
+check_PROGRAMS=test_connect_timeout test_tcp_socket							\
+test_evthread_wamp_session_destructor test_early_wamp_session_destructor	\
+test_late_wamp_session_destructor test_late_dealer_destructor				\
+test_dealer_disconnect_when_has_connections
+
 noinst_PROGRAMS=$(check_PROGRAMS)
 TESTS=$(check_PROGRAMS)
 
@@ -36,10 +38,7 @@ test_early_wamp_session_destructor_LDADD=libgtest.la
 test_evthread_wamp_session_destructor_SOURCES=test_evthread_wamp_session_destructor.cc
 test_evthread_wamp_session_destructor_LDADD=libgtest.la
 
-test_unused_wamp_connector_SOURCES=test_unused_wamp_connector.cc
-test_unused_wamp_connector_LDADD=libgtest.la
-
-test_dealer_disconnect_when_has_connections_SOURCES=test_unused_wamp_connector.cc
+test_dealer_disconnect_when_has_connections_SOURCES=test_dealer_disconnect_when_has_connections.cc
 test_dealer_disconnect_when_has_connections_LDADD=libgtest.la
 
 test_late_dealer_destructor_SOURCES=test_late_dealer_destructor.cc

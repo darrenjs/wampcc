@@ -2,7 +2,7 @@
 #include "XXX/kernel.h"
 #include "XXX/topic.h"
 #include "XXX/wamp_session.h"
-#include "XXX/wamp_connector.h"
+#include "XXX/tcp_socket.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/rawsocket_protocol.h"
 
@@ -278,17 +278,11 @@ int main_impl(int argc, char** argv)
 
   g_kernel.reset( new XXX::kernel({}, __logger));
 
-
-
   /* Create a socket connector.  This will immediately make an attempt to
    * connect to the target end point.  The connector object is a source of async
    * events (the connect and disconnect call back), and so must be managed
    * asynchronously. */
-
-  auto wconn = XXX::wamp_connector::create(
-    g_kernel.get(),
-    "t420", "55555",
-    false);
+  std::unique_ptr<XXX::tcp_socket> sock( new XXX::tcp_socket(g_kernel.get()) );
 
   /* Wait until the connector has got a result. The result can be successful,
    * in which case a socket is available, or result could be a failure, in
@@ -296,19 +290,28 @@ int main_impl(int argc, char** argv)
   std::future_status status;
   do
   {
-    status = wconn->completion_future().wait_for(std::chrono::seconds(5));
+    auto af = sock->connect("t420", 55555);
+    status = af.get_future().wait_for(std::chrono::seconds(5));
 
     if (status == std::future_status::timeout)
-      throw std::runtime_error("time-out during transport connect");
+      throw std::runtime_error("time-out during connect");
 
   } while (status != std::future_status::ready);
 
   /* A result is available; our socket connection could be available. */
-  auto ws = wconn->create_session<XXX::rawsocket_protocol>(
-    [](XXX::session_handle wp, bool is_open) {
-      if (auto sp = wp.lock())
-        router_connection_cb(0, is_open);
-    });
+
+  if (!sock->is_connected())
+    throw std::runtime_error("socket not connected");
+
+  XXX::rawsocket_protocol::options opts;
+  std::shared_ptr<XXX::wamp_session> ws =
+    XXX::wamp_session::create<XXX::rawsocket_protocol>(
+      *(g_kernel.get()),
+      std::move(sock),
+      [](XXX::session_handle wp, bool is_open) {
+        if (auto sp = wp.lock())
+          router_connection_cb(0, is_open);
+      }, opts);
 
   if (!ws)
     throw std::runtime_error("failed to obtain WAMP session");
@@ -454,6 +457,7 @@ int main_impl(int argc, char** argv)
    * complete.  Once complete, we shall not receive anymore events from the
    * wamp_session object (and thus is safe to delete). */
 
+  std::cout << "calling ws->close();" << std::endl;
   auto fut_closed = ws->close();
   fut_closed.wait();
   ws.reset();

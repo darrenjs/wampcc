@@ -2,7 +2,7 @@
 #include "XXX/websocket_protocol.h"
 
 #include "XXX/utils.h"
-#include "XXX/io_handle.h"
+#include "XXX/tcp_socket.h"
 #include "XXX/http_parser.h"
 
 #include <iostream>
@@ -16,7 +16,7 @@
 namespace XXX
 {
 
-websocket_protocol::websocket_protocol(io_handle* h, t_msg_cb msg_cb, connection_mode _mode, options opts)
+websocket_protocol::websocket_protocol(tcp_socket* h, t_msg_cb msg_cb, connection_mode _mode, options opts)
   : protocol(h, msg_cb, _mode),
     m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eHandlingHttpResponse),
     m_http_parser(new http_parser(_mode==protocol::connection_mode::ePassive?
@@ -186,7 +186,7 @@ void websocket_protocol::send_msg(const jalson::json_array& ja)
   bufs[1].first  = (const char*)msg.c_str();;
   bufs[1].second = msg.size();
 
-  m_iohandle->write_bufs(bufs, 2, false);
+  m_socket->write(bufs, 2);
 }
 
 
@@ -237,7 +237,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               buf.first  = msg.c_str();
               buf.second = msg.size();
 
-              m_iohandle->write_bufs(&buf, 1, false);
+              m_socket->write(&buf, 1);
               m_state = eOpen;
             }
             else
@@ -314,10 +314,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             m_state = eClosing;
             frame_builder fb(OPCODE_CLOSE, true, 0);
             auto buf = fb.buf();
-            m_iohandle->write_bufs(&buf, 1, false);
+            m_socket->write(&buf, 1);
 
             // TODO: request for close should be initiaied from the owning session?
-            m_iohandle->request_close();
+            m_socket->close();
             break;
           };
           default: break;
@@ -397,7 +397,7 @@ void websocket_protocol::initiate(t_initiate_cb cb)
   bufs[0].first  = http_request.c_str();
   bufs[0].second = http_request.size();
 
-  m_iohandle->write_bufs(bufs, 1, false);
+  m_socket->write(bufs, 1);
 }
 
 
@@ -407,7 +407,7 @@ void websocket_protocol::ev_on_timer()
   {
     frame_builder fb(OPCODE_PING, true, 0);
     auto buf = fb.buf();
-    m_iohandle->write_bufs(&buf, 1, false);
+    m_socket->write(&buf, 1);
   }
 }
 

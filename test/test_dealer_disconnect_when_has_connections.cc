@@ -11,7 +11,7 @@ using namespace std;
 
 void test_WS_destroyed_after_kernel(int port)
 {
-  TLOG("----- test ~WS after ~kernel -----");
+  TLOG("----- test_WS_destroyed_after_kernel -----");
 
   callback_status = e_callback_not_invoked;
 
@@ -21,21 +21,22 @@ void test_WS_destroyed_after_kernel(int port)
 
     /* attempt to connect the socket */
     TLOG("attemping socket connection ...");
-    auto wconn = wamp_connector::create(
-      the_kernel.get(),
-      "127.0.0.1", to_string(port),
-      false);
+    unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
+    auto autofut = sock->connect("127.0.0.1", port);
+    auto connect_status = autofut.get_future().wait_for(chrono::milliseconds(100));
 
-    auto connect_status = wconn->completion_future().wait_for(chrono::milliseconds(1000));
     if (connect_status == future_status::timeout)
     {
-      throw runtime_error("expected -- should have connected");
+      throw runtime_error("unexpected -- should have connected");
     }
     TLOG("got socket connection");
 
     /* attempt to create a session */
     TLOG("attemping session creation");
-    shared_ptr<wamp_session> session = wconn->create_session<rawsocket_protocol>( session_cb );
+    shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
+      *(the_kernel.get()),
+      std::move(sock),
+      session_cb, {});
     TLOG("got session");
 
     TLOG("assigning session to outer scope (causes wamp_session destruction after kernel destruction)");
@@ -60,6 +61,8 @@ int main()
 {
   try
   {
+    throw std::runtime_error("TEST STILL UNDER DEVELOPMENT");
+
     int starting_port_number = 24000;
     int loops = 500;
 
@@ -71,7 +74,7 @@ int main()
       int port = iclient->start(starting_port_number++);
 
       // add connections
-      add_client_connections(port, 10);
+      //add_client_connections(port, 10);
 
       // drop the client
       iclient.reset();

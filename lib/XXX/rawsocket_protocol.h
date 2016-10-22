@@ -59,7 +59,7 @@ public:
   static constexpr unsigned char FRAME_PREFIX_SIZE = 4;
   static constexpr unsigned char MAGIC = 0x7F;
 
-  rawsocket_protocol(io_handle*, t_msg_cb, connection_mode, options);
+  rawsocket_protocol(tcp_socket*, t_msg_cb, connection_mode, options);
 
   void io_on_read(char*, size_t) override;
   void initiate(t_initiate_cb) override;
