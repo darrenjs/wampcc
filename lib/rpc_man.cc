@@ -12,8 +12,8 @@ namespace XXX {
 
 
 /* Constructor */
-rpc_man::rpc_man(kernel& k, rpc_added_cb cb)
-  : __logger(k.get_logger()),
+rpc_man::rpc_man(kernel* k, rpc_added_cb cb)
+  : __logger(k->get_logger()),
     m_rpc_added_cb(cb),
     m_next_regid(1)
 {

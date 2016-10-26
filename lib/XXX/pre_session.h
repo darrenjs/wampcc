@@ -29,7 +29,7 @@ namespace XXX {
     typedef std::function< void ( protocol_builder_fn, std::unique_ptr<tcp_socket> ) > on_protocol_fn;
 
     // pre_session can only be created as shared_ptr
-    static std::shared_ptr<pre_session> create(kernel&,
+    static std::shared_ptr<pre_session> create(kernel*,
                                                std::unique_ptr<tcp_socket>,
                                                on_closed_fn state_cb,
                                                on_protocol_fn protocol_cb);
@@ -50,7 +50,7 @@ namespace XXX {
 
   private:
 
-    pre_session(kernel&,
+    pre_session(kernel*,
                 std::unique_ptr<tcp_socket>,
                 on_closed_fn   __on_closed,
                 on_protocol_fn __on_protocol);
@@ -72,8 +72,8 @@ namespace XXX {
 
     void change_state(SessionState expected, SessionState next);
 
+    kernel * m_kernel;
     logger & __logger; /* name chosen for log macros */
-    kernel& m_kernel;
 
     uint64_t m_sid;
     buffer   m_buf;

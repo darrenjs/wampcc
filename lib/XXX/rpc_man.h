@@ -42,7 +42,7 @@ typedef std::function< void(const rpc_details&) > rpc_added_cb;
 class rpc_man
 {
 public:
-  rpc_man(kernel&, rpc_added_cb);
+  rpc_man(kernel*, rpc_added_cb);
 
   // return the registion id
   uint64_t handle_inbound_register(session_handle sh,

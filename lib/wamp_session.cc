@@ -64,19 +64,19 @@ static void check_size_at_least(size_t msg_len, size_t s)
 }
 
 /* Constructor */
-wamp_session::wamp_session(kernel& __kernel,
+wamp_session::wamp_session(kernel* __kernel,
                            std::unique_ptr<tcp_socket> h,
                            session_state_fn state_cb,
                            protocol_builder_fn protocol_builder,
                            server_msg_handler handler,
                            auth_provider auth)
   : m_state( eInit ),
-    __logger(__kernel.get_logger()),
+    __logger(__kernel->get_logger()),
     m_kernel(__kernel),
     m_sid( generate_unique_session_id() ),
     m_socket(std::move(h)),
     m_shfut_has_closed(m_has_closed.get_future()),
-    m_hb_intvl(m_kernel.get_config().use_wamp_heartbeats?60:0),
+    m_hb_intvl(m_kernel->get_config().use_wamp_heartbeats?60:0),
     m_time_create(time(NULL)),
     m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
@@ -95,7 +95,7 @@ wamp_session::wamp_session(kernel& __kernel,
               if (auto sp = wp.lock())
                 sp->process_message(msg_type, msg);
             };
-          m_kernel.get_event_loop()->dispatch(std::move(fn));
+          m_kernel->get_event_loop()->dispatch(std::move(fn));
         }
         ))
 {
@@ -103,7 +103,7 @@ wamp_session::wamp_session(kernel& __kernel,
 }
 
 
-std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
+std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    std::unique_ptr<tcp_socket> ioh,
                                                    session_state_fn state_cb,
                                                    protocol_builder_fn protocol_builder,
@@ -124,7 +124,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel& k,
   // set up a timer to expire this session if it has not been successfully
   // opened within a maximum time duration
   std::weak_ptr<wamp_session> wp = sp;
-  k.get_event_loop()->dispatch(
+  k->get_event_loop()->dispatch(
     std::chrono::milliseconds(MAX_PENDING_OPEN_MS),
     [wp]()
     {
@@ -188,7 +188,7 @@ void wamp_session::io_on_close()
   // push the final EV operation
   std::weak_ptr<wamp_session> wp = m_self_weak;
   auto user_cb = m_notify_state_change_fn;
-  m_kernel.get_event_loop()->dispatch(
+  m_kernel->get_event_loop()->dispatch(
     [wp, user_cb]()
     {
       /* EV thread */
@@ -352,13 +352,13 @@ void wamp_session::change_state(SessionState expected, SessionState next)
                   msg.push_back(HEARTBEAT);
                   sp->send_msg(msg);
 
-                  sp->m_kernel.get_event_loop()->dispatch( std::chrono::milliseconds(sp->m_hb_intvl*1000), sp->m_hb_func);
+                  sp->m_kernel->get_event_loop()->dispatch( std::chrono::milliseconds(sp->m_hb_intvl*1000), sp->m_hb_func);
                 }
               }
             }
             return 0;
           };
-        m_kernel.get_event_loop()->dispatch( std::chrono::milliseconds(m_hb_intvl*1000), m_hb_func);
+        m_kernel->get_event_loop()->dispatch( std::chrono::milliseconds(m_hb_intvl*1000), m_hb_func);
       }
     }
 
@@ -1616,7 +1616,7 @@ void wamp_session::drop_connection(std::string errmsg)
   catch (...) { /* ignore, we are closing anyway */ }
 
   std::weak_ptr<wamp_session> wp = handle();
-  m_kernel.get_event_loop()->dispatch(
+  m_kernel->get_event_loop()->dispatch(
     std::chrono::milliseconds(250),
     [wp]()
     {

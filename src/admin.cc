@@ -306,7 +306,7 @@ int main_impl(int argc, char** argv)
   XXX::rawsocket_protocol::options opts;
   std::shared_ptr<XXX::wamp_session> ws =
     XXX::wamp_session::create<XXX::rawsocket_protocol>(
-      *(g_kernel.get()),
+      g_kernel.get(),
       std::move(sock),
       [](XXX::session_handle wp, bool is_open) {
         if (auto sp = wp.lock())

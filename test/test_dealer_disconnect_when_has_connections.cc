@@ -34,7 +34,7 @@ void test_WS_destroyed_after_kernel(int port)
     /* attempt to create a session */
     TLOG("attemping session creation");
     shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
-      *(the_kernel.get()),
+      the_kernel.get(),
       std::move(sock),
       session_cb, {});
     TLOG("got session");
@@ -57,7 +57,7 @@ void test_WS_destroyed_after_kernel(int port)
 }
 
 
-int main()
+int main(int argc, char** argv)
 {
   try
   {
@@ -66,18 +66,21 @@ int main()
     int starting_port_number = 24000;
     int loops = 500;
 
-    // share a common internal_client
+    if (argc>1)
+      starting_port_number = atoi(argv[1]);
+
+    // share a common internal_server
     for (int i = 0; i < loops; i++)
     {
       // build a client
-      std::unique_ptr<internal_client> iclient(new internal_client());
-      int port = iclient->start(starting_port_number++);
+      std::unique_ptr<internal_server> iserver(new internal_server());
+      int port = iserver->start(starting_port_number++);
 
       // add connections
       //add_client_connections(port, 10);
 
       // drop the client
-      iclient.reset();
+      iserver.reset();
 
     }
 

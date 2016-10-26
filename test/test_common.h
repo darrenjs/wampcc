@@ -30,16 +30,16 @@ enum test_outcome
   e_unexpected
 };
 
-class internal_client  // TODO: rename as internal_server
+class internal_server
 {
 public:
-  internal_client()
+  internal_server()
     : m_kernel(new kernel({}, logger::nolog())),
-      m_dealer(new dealer_service(*(m_kernel.get()), nullptr ))
+      m_dealer(new dealer_service(m_kernel.get(), nullptr ))
   {
   }
 
-  ~internal_client()
+  ~internal_server()
   {
     m_dealer.reset();
     m_kernel.reset();

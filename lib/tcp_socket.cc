@@ -389,6 +389,22 @@ void tcp_socket::on_write_cb(uv_write_t * req, int status)
   catch (...){log_exception(__logger, "IO thread in on_write_cb");}
 }
 
+// void tcp_socket::do_listen(int port)
+// {
+//   /* IO thread */
+//   r = uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
+// }
+
+
+// void tcp_socket::listen(int port)
+// {
+//   auto fn = [this,port](){
+//     this->do_listen(port);
+//   }
+//   m_kernel->get_io()->push_fn( [this](){ this->do_write(); } );
+
+//   // push IO operational to do the following
+// }
 
 
 } // namespace XXX

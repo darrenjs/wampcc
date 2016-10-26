@@ -14,9 +14,9 @@
 
 namespace XXX {
 
-dealer_service::dealer_service(kernel & __svc, dealer_listener* l)
+dealer_service::dealer_service(kernel* __svc, dealer_listener* l)
   : m_kernel(__svc),
-    __logger(__svc.get_logger()),
+    __logger(__svc->get_logger()),
    m_rpcman( new rpc_man(__svc, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
    m_pubsub(new pubsub_man(__svc)),
    m_listener( l )
@@ -62,7 +62,7 @@ std::future<int> dealer_service::listen(int port,
       }
     };
 
-  m_kernel.get_io()->add_server(
+  m_kernel->get_io()->add_server(
     port,
     std::move(intPromise),
     cb,
@@ -171,7 +171,7 @@ void dealer_service::publish(const std::string& topic,
   std::weak_ptr<dealer_service> wp = this->shared_from_this();
 
   // TODO: how to use bind here, to pass options in as a move operation?
-  m_kernel.get_event_loop()->dispatch(
+  m_kernel->get_event_loop()->dispatch(
     [wp, topic, realm, args, options]()
     {
       if (auto sp = wp.lock())

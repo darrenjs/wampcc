@@ -134,7 +134,7 @@ namespace XXX {
 
     /** Create a server side session (i.e., the socket was accepted from a
      * remote client). */
-    static std::shared_ptr<wamp_session> create(kernel&,
+    static std::shared_ptr<wamp_session> create(kernel*,
                                                 std::unique_ptr<tcp_socket>,
                                                 session_state_fn,
                                                 protocol_builder_fn ,
@@ -144,7 +144,7 @@ namespace XXX {
     /** Create a client side session (i.e., the socket was actively connected to
      * a remote server). */
     template<typename T>
-    static std::shared_ptr<wamp_session> create(kernel& k,
+    static std::shared_ptr<wamp_session> create(kernel* k,
                                                 std::unique_ptr<tcp_socket> socket,
                                                 session_state_fn state_cb,
                                                 typename T::options _options)
@@ -229,7 +229,7 @@ namespace XXX {
 
   private:
 
-    wamp_session(kernel&,
+    wamp_session(kernel*,
                  std::unique_ptr<tcp_socket>,
                  session_state_fn state_cb,
                  protocol_builder_fn protocol_builder,
@@ -285,7 +285,7 @@ namespace XXX {
 
 
     logger & __logger; /* name chosen for log macros */
-    kernel& m_kernel;
+    kernel* m_kernel;
 
     uint64_t m_sid;
 

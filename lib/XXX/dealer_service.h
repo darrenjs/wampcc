@@ -25,7 +25,7 @@ struct dealer_listener
 class dealer_service : public std::enable_shared_from_this<dealer_service>
 {
 public:
-  dealer_service(kernel & __svc, dealer_listener*);
+  dealer_service(kernel *  __svc, dealer_listener*);
   ~dealer_service();
 
   /** Request asynchronous close */
@@ -63,7 +63,7 @@ private:
   dealer_service(const dealer_service&) = delete;
   dealer_service& operator=(const dealer_service&) = delete;
 
-  kernel & m_kernel;
+  kernel * m_kernel;
   logger & __logger; /* name chosen for log macros */
 
   std::recursive_mutex m_lock;

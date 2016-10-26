@@ -40,13 +40,13 @@ int pre_session::duration_since_creation() const
 }
 
 
-pre_session::pre_session(kernel& __kernel,
+pre_session::pre_session(kernel* __kernel,
                          std::unique_ptr<tcp_socket> h,
                          on_closed_fn   __on_closed_cb,
                          on_protocol_fn protocol_cb)
   : m_state( eInit ),
-    __logger(__kernel.get_logger()),
     m_kernel(__kernel),
+    __logger(__kernel->get_logger()),
     m_sid(generate_unique_session_id()),
     m_buf(1,1024),
     m_socket( std::move(h) ),
@@ -58,7 +58,7 @@ pre_session::pre_session(kernel& __kernel,
 }
 
 
-std::shared_ptr<pre_session> pre_session::create(kernel& k,
+std::shared_ptr<pre_session> pre_session::create(kernel* k,
                                                  std::unique_ptr<tcp_socket> ioh,
                                                  on_closed_fn __on_closed_cb,
                                                  on_protocol_fn protocol_cb )
@@ -77,7 +77,7 @@ std::shared_ptr<pre_session> pre_session::create(kernel& k,
   // set up a timer to expire this session if it has not been successfully
   // opened with a maximum time duration
   std::weak_ptr<pre_session> wp = sp;
-  k.get_event_loop()->dispatch(
+  k->get_event_loop()->dispatch(
     std::chrono::milliseconds(MAX_PENDING_OPEN_MS),
     [wp]()
     {
@@ -141,7 +141,7 @@ void pre_session::io_on_close()
   auto wp = m_self_weak;
   auto user_cb = m_notify_closed_cb;
 
-  m_kernel.get_event_loop()->dispatch(
+  m_kernel->get_event_loop()->dispatch(
     [wp, user_cb]()
     {
       /* EV thread */

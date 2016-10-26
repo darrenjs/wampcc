@@ -140,10 +140,13 @@ void test_connect_read_delete_v1(int port)
 
 
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
   int starting_port_number = 23100;
   int port;
+
+  if (argc>1)
+    starting_port_number = atoi(argv[1]);
 
   auto all_tests = [](int port)
   {
@@ -157,22 +160,22 @@ int main(int, char**)
   };
 
   {
-    internal_client iclient;
-    port = iclient.start(starting_port_number++);
+    internal_server iserver;
+    port = iserver.start(starting_port_number++);
     all_tests(port);
   }
 
   {
-    internal_client iclient;
-    port = iclient.start(starting_port_number++);
+    internal_server iserver;
+    port = iserver.start(starting_port_number++);
 
     for (int i = 0; i < 10; i++)
       all_tests(port);
   }
 
   // {
-  //   internal_client iclient;
-  //   port = iclient.start(starting_port_number++);
+  //   internal_server iserver;
+  //   port = iserver.start(starting_port_number++);
   //   for (int i = 0; i < 500; ++i)
   //     test_uvwalk_initiates_close(port);
   // }
@@ -182,26 +185,26 @@ int main(int, char**)
       test_unused_socket();
   }
   {
-    internal_client iclient;
-    port = iclient.start(starting_port_number++);
+    internal_server iserver;
+    port = iserver.start(starting_port_number++);
     for (int i = 0; i < 2000; ++i)
       test_connect_and_delete_v1(port);
   }
   {
-    internal_client iclient;
-    port = iclient.start(starting_port_number++);
+    internal_server iserver;
+    port = iserver.start(starting_port_number++);
     for (int i = 0; i < 2000; ++i)
       test_connect_and_delete_v2(port);
   }
   {
-    internal_client iclient;
-    port = iclient.start(starting_port_number++);
+    internal_server iserver;
+    port = iserver.start(starting_port_number++);
     for (int i = 0; i < 2000; ++i)
       test_connect_and_delete_v3(port);
   }
   {
-    internal_client iclient;
-    port = iclient.start(starting_port_number++);
+    internal_server iserver;
+    port = iserver.start(starting_port_number++);
     for (int i = 0; i < 2000; ++i)
       test_orderly_connect_wait_close(port);
   }

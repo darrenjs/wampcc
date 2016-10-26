@@ -73,6 +73,9 @@ public:
   /** Request socket begins reading inbound data */
   void start_read(io_listener*);
 
+  /** Request a bind and listen */
+  void listen(int port);
+
   /* Enqueue bytes to be sent */
   void write(std::pair<const char*, size_t> * srcbuf, size_t count);
 

@@ -17,12 +17,12 @@ void test_late_dealer_destructor_variants(int variant = 0)
   TLOG("----- "<< __FUNCTION__ << "(" << variant << ") -----");
 
   int port = -1;
-  internal_client iclient;
+  internal_server iserver;
   for (int i = 20000; i < 65000 && port==-1; i++)
   {
     try
     {
-      port = iclient.start(i);
+      port = iserver.start(i);
     }
     catch (...)
     {
@@ -33,18 +33,18 @@ void test_late_dealer_destructor_variants(int variant = 0)
   if (port == -1)
     throw runtime_error("test failed to run, no listen port available");
 
-  if (variant == 0) iclient.reset_kernel();
+  if (variant == 0) iserver.reset_kernel();
 
-  if (iclient.get_kernel())
+  if (iserver.get_kernel())
   {
-    tcp_socket my_socket(iclient.get_kernel());
+    tcp_socket my_socket(iserver.get_kernel());
     auto autofut = my_socket.connect("127.0.0.1", port);
 
-    if (variant == 1) iclient.reset_kernel();
+    if (variant == 1) iserver.reset_kernel();
 
     autofut.get_future().wait_for(chrono::milliseconds(1000));
 
-    if (variant == 2) iclient.reset_kernel();
+    if (variant == 2) iserver.reset_kernel();
   }
 }
 
@@ -62,12 +62,12 @@ void test_all_variants_of_test_late_dealer_destructor_variants()
 //     int port = -1;
 
 //     std::cout << "starting the ports\n";
-//     internal_client iclient;
+//     internal_server iserver;
 //     for (int i = 20000; i < 65000 && port==-1; i++)
 //     {
 //       try
 //       {
-//         port = iclient.start(i);
+//         port = iserver.start(i);
 //       }
 //       catch (...)
 //       {
@@ -84,7 +84,7 @@ void test_all_variants_of_test_late_dealer_destructor_variants()
 //       for (int i =0; i < 100; i++)
 //       {
 //         auto wconn = wamp_connector::create(
-//           iclient.get_kernel(),
+//           iserver.get_kernel(),
 //           "127.0.0.1",to_string(connect_port++),
 //           false);
 //         wconn->completion_future().wait_for(chrono::milliseconds(1000));
@@ -94,16 +94,16 @@ void test_all_variants_of_test_late_dealer_destructor_variants()
 //     TLOG("making short lived socket connections that reach end of scope");
 
 //     auto wconn = wamp_connector::create(
-//       iclient.get_kernel(),
+//       iserver.get_kernel(),
 //       "127.0.0.1",to_string(port),
 //       false);
 
-// //    iclient.reset_kernel();   <--- make another test, placing it here
+// //    iserver.reset_kernel();   <--- make another test, placing it here
 
 //     wconn->completion_future().wait_for(chrono::milliseconds(1000));
 
 //     // destroy kernel and IO resources prematurely
-//     iclient.reset_kernel();
+//     iserver.reset_kernel();
 //   }
 // }
 

@@ -85,7 +85,7 @@ int main(int /* argc */, char** /* argv */)
 {
   std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel({},__logger) );
 
-  std::shared_ptr<XXX::dealer_service> dealer ( new XXX::dealer_service(*(mycs.get()), nullptr ) );
+  std::shared_ptr<XXX::dealer_service> dealer ( new XXX::dealer_service(mycs.get(), nullptr ) );
   g_dealer = dealer;
 
   planets_topic.add_publisher("default_realm", g_dealer);

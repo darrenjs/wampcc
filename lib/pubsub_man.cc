@@ -102,8 +102,8 @@ private:
 };
 
 /* Constructor */
-pubsub_man::pubsub_man(kernel& k)
-  : __logger(k.get_logger()),
+pubsub_man::pubsub_man(kernel* k)
+  : __logger(k->get_logger()),
     m_next_subscription_id(1)  /* zero used for initial snapshot */
 {
 }

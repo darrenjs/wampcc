@@ -19,7 +19,7 @@ class kernel;
 class pubsub_man
 {
 public:
-  pubsub_man(kernel&);
+  pubsub_man(kernel*);
   ~pubsub_man();
 
   void inbound_publish(std::string realm,
