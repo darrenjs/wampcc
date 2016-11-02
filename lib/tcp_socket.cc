@@ -7,6 +7,8 @@
 
 #include <iostream>
 
+using namespace std;
+
 namespace XXX {
 
 
@@ -55,7 +57,7 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
     m_bytes_read(0),
     m_listener(nullptr)
 {
-  if (ss == e_created)
+  if (ss == e_init)
     uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
 
   m_uv_tcp->data = new uv_handle_data(uv_handle_data::e_tcp_socket, this);
@@ -63,7 +65,7 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
 
 
 tcp_socket::tcp_socket(kernel* k)
-  : tcp_socket(k, new uv_tcp_t(), e_created)
+  : tcp_socket(k, new uv_tcp_t(), e_init)
 {
 }
 
@@ -76,12 +78,27 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* s)
 
 tcp_socket::~tcp_socket()
 {
+  std::cout << "~tcp_socket" << std::endl;
   {
     std::unique_lock<std::mutex> guard(m_state_lock);
     if ((m_state != e_closing) && (m_state != e_closed))
     {
       m_state = e_closing;
-      m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
+
+      // TODO: what if this throws? At the minimum, we should catch it, which
+      // would imply the IO thread is in the process of shutting down.  During
+      // its shutdown, it should eventually delete the socket, so we should
+      // continue to wait.
+      try {
+        m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
+      } catch (...) {
+        // TODO: log a warning here
+        cout << "tcp_socket unable to request close, is io_loop already stopped?";
+      }
+    }
+    else
+    {
+      std::cout << "tcp_socket already closed ... nothing to do" << std::endl;
     }
   }
 
@@ -98,6 +115,12 @@ tcp_socket::~tcp_socket()
   }
 }
 
+
+bool tcp_socket::is_listening() const
+{
+  std::unique_lock<std::mutex> guard(m_state_lock);
+  return m_state == e_listening;
+}
 
 bool tcp_socket::is_connected() const
 {
@@ -120,7 +143,7 @@ bool tcp_socket::is_closed() const
 }
 
 
-auto_future tcp_socket::connect(std::string addr, int port)
+std::future<void> tcp_socket::connect(std::string addr, int port)
 {
   bool resolve_hostname = true;
 
@@ -128,26 +151,57 @@ auto_future tcp_socket::connect(std::string addr, int port)
 
   auto success_fn = [completion_promise,this]() {
     {
+      /* IO thread */
       std::unique_lock<std::mutex> guard(m_state_lock);
-      m_state = e_connected;
+      if (m_state == e_init)
+        m_state = e_connected;
     }
     completion_promise->set_value();
   };
 
   auto failure_fn = [completion_promise,this](std::exception_ptr e) {
-    completion_promise->set_value();
+    /* IO thread */
+    completion_promise->set_exception( e );
   };
 
   // std::unique_lock<std::mutex> guard(sp->m_mutex);
-  m_kernel->get_io()->connect2(m_uv_tcp,
-                               addr,
-                               std::to_string(port),
-                               resolve_hostname,
-                               success_fn,
-                               failure_fn);
+  m_kernel->get_io()->connect(m_uv_tcp,
+                              addr,
+                              std::to_string(port),
+                              resolve_hostname,
+                              success_fn,
+                              failure_fn);
 
 
-  return auto_future(completion_promise);
+  return completion_promise->get_future();
+}
+
+
+void tcp_socket::connect(std::string addr, int port, on_connect_cb user_cb)
+{
+  bool resolve_hostname = true;
+
+
+  auto success_fn = [user_cb,this]() {
+    {
+      std::unique_lock<std::mutex> guard(m_state_lock);
+      if (m_state == e_init)
+        m_state = e_connected;
+    }
+    user_cb(this,0);
+  };
+
+  auto failure_fn = [user_cb,this](std::exception_ptr e) {
+    user_cb(this,1);
+  };
+
+  // std::unique_lock<std::mutex> guard(sp->m_mutex);
+  m_kernel->get_io()->connect(m_uv_tcp,
+                              addr,
+                              std::to_string(port),
+                              resolve_hostname,
+                              success_fn,
+                              failure_fn);
 }
 
 
@@ -165,6 +219,9 @@ void tcp_socket::do_close()
   uv_close((uv_handle_t*) m_uv_tcp, [](uv_handle_t * h) {
 
       uv_handle_data * ptr = (uv_handle_data*) h->data;
+
+      on_close_cb user_close_fn = std::move(ptr->tcp_socket_ptr()->m_user_close_fn);
+
       {
         std::lock_guard< std::mutex > guard (ptr->tcp_socket_ptr()->m_state_lock);
         ptr->tcp_socket_ptr()->m_state = e_closed;
@@ -180,6 +237,8 @@ void tcp_socket::do_close()
        * promise-write the last action. */
       ptr->tcp_socket_ptr()->m_io_closed_promise.set_value();
 
+      if (user_close_fn)
+        user_close_fn();
     });
 }
 
@@ -191,14 +250,20 @@ int tcp_socket::fd() const
 
 
 /** User request to close socket */
-std::shared_future<void> tcp_socket::close()
+std::shared_future<void> tcp_socket::close(on_close_cb user_close_fn)
 {
   std::lock_guard< std::mutex > guard (m_state_lock);
+
   if (m_state == e_closing || m_state == e_closed)
     throw std::runtime_error("socket closing or closed");
 
+  m_user_close_fn = user_close_fn;
+
   m_state = e_closing;
-  m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
+  std::cout << "push_do_close" << std::endl;
+  m_kernel->get_io()->push_fn( [this]() {
+      this->do_close();
+    });
 
   return m_io_closed_future;
 }
@@ -221,10 +286,14 @@ void tcp_socket::start_read(io_listener* p)
   if (m_state == e_closing || m_state == e_closed)
     throw std::runtime_error("socket closing or closed");
 
+  std::cout << "push start read" << std::endl;
   m_kernel->get_io()->push_fn( std::move(fn) );
 }
 
 
+/* Push a close event, but unlike the user facing function 'close', does not
+ * throw an exception if already has been requested to close.
+ */
 void tcp_socket::close_once_on_io()
 {
   /* IO thread */
@@ -246,6 +315,7 @@ void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
   {
     if ((nread == UV_EOF) ||  (nread < 0))
     {
+      // TODO: introduce an EOF callback
       close_once_on_io();
     }
     else if (nread > 0)
@@ -389,22 +459,102 @@ void tcp_socket::on_write_cb(uv_write_t * req, int status)
   catch (...){log_exception(__logger, "IO thread in on_write_cb");}
 }
 
-// void tcp_socket::do_listen(int port)
-// {
-//   /* IO thread */
-//   r = uv_tcp_bind(&myserver->uvh, (const struct sockaddr*)&addr, flags);
-// }
+
+void tcp_socket::on_listen_cb(int status)
+{
+  /* IO thread */
+
+  if (status < 0)
+  {
+    // TODO: convert from UV to system error code
+    if (m_user_accept_fn)
+    {
+      std::unique_ptr<tcp_socket> no_socket;
+      m_user_accept_fn(this, no_socket, status);
+    }
+    return;
+  }
+
+  uv_tcp_t *client = new uv_tcp_t();
+  uv_tcp_init(m_kernel->get_io()->uv_loop(), client);
+
+  int r = uv_accept((uv_stream_t*) m_uv_tcp, (uv_stream_t*) client);
+  if (r == 0)
+  {
+    std::unique_ptr<tcp_socket> new_sock (new tcp_socket(m_kernel, client));
+
+    // TODO: convert from UV to system error code
+    if (m_user_accept_fn)
+      m_user_accept_fn(this, new_sock, r);
+
+    if (new_sock)
+    {
+      tcp_socket * ptr = new_sock.release();
+      ptr->close([ptr]() {
+          delete ptr;
+        });
+    }
+
+  }
+  else
+  {
+    uv_close((uv_handle_t *) client, [](uv_handle_t * h){ delete h; });
+  }
+
+}
 
 
-// void tcp_socket::listen(int port)
-// {
-//   auto fn = [this,port](){
-//     this->do_listen(port);
-//   }
-//   m_kernel->get_io()->push_fn( [this](){ this->do_write(); } );
+void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<int>> sp_promise)
+{
+  /* IO thread */
 
-//   // push IO operational to do the following
-// }
+
+  struct sockaddr_in addr;
+  uv_ip4_addr("0.0.0.0", port, &addr);
+
+  unsigned flags = 0;
+  int r;
+
+
+  r = uv_tcp_bind(m_uv_tcp, (const struct sockaddr*)&addr, flags);
+
+  if (r == 0)
+    r = uv_listen( (uv_stream_t*) m_uv_tcp, 5, [](uv_stream_t* server, int status) {
+        uv_handle_data* uvhd_ptr = (uv_handle_data*) server->data;
+        uvhd_ptr->tcp_socket_ptr()->on_listen_cb(status);
+      });
+
+  if (r==0)
+  {
+    std::lock_guard< std::mutex > guard (m_state_lock);
+    if (m_state == e_init)
+      m_state = e_listening;
+  }
+  // TODO: covert from UV to system error code
+  sp_promise->set_value(r);
+
+}
+
+
+std::future<int> tcp_socket::listen(int port, on_accept_cb user_fn)
+{
+  m_user_accept_fn = std::move(user_fn);
+
+  auto completion_promise = std::make_shared<std::promise<int>>();
+
+  {
+    std::lock_guard< std::mutex > guard (m_state_lock);
+    if (m_state == e_closing || m_state == e_closed)
+      throw std::runtime_error("socket closing or closed");
+
+      std::cout << "push do_listen" << std::endl;
+    m_kernel->get_io()->push_fn( [this,port,completion_promise](){
+        this->do_listen(port, completion_promise);
+      } );
+  }
+
+  return completion_promise->get_future();
+}
 
 
 } // namespace XXX

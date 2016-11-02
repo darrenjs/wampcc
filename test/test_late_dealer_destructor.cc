@@ -16,6 +16,8 @@ void test_late_dealer_destructor_variants(int variant = 0)
 {
   TLOG("----- "<< __FUNCTION__ << "(" << variant << ") -----");
 
+  static int count = 0;
+  cout << count++ << endl;
   int port = -1;
   internal_server iserver;
   for (int i = 20000; i < 65000 && port==-1; i++)
@@ -38,11 +40,11 @@ void test_late_dealer_destructor_variants(int variant = 0)
   if (iserver.get_kernel())
   {
     tcp_socket my_socket(iserver.get_kernel());
-    auto autofut = my_socket.connect("127.0.0.1", port);
+    auto fut = my_socket.connect("127.0.0.1", port);
 
     if (variant == 1) iserver.reset_kernel();
 
-    autofut.get_future().wait_for(chrono::milliseconds(1000));
+    fut.wait_for(chrono::milliseconds(1000));
 
     if (variant == 2) iserver.reset_kernel();
   }
@@ -52,7 +54,7 @@ void test_all_variants_of_test_late_dealer_destructor_variants()
 {
   auto variants = {0,1,2};
   for (int i : variants)
-    test_late_dealer_destructor_variants(i);
+    test_late_dealer_destructor_variants(1); // TODO: revert back to i instead of 1
 }
 
 // void test_late_dealer_destructor()

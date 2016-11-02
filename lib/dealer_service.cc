@@ -8,6 +8,7 @@
 #include "XXX/tcp_socket.h"
 #include "XXX/log_macros.h"
 #include "XXX/pre_session.h"
+#include "XXX/tcp_socket.h"
 
 #include <unistd.h>
 #include <string.h>
@@ -50,23 +51,8 @@ dealer_service::~dealer_service()
 std::future<int> dealer_service::listen(int port,
                                         auth_provider auth)
 {
-  std::promise<int> intPromise;
-  std::future<int> fut = intPromise.get_future();
 
-  std::weak_ptr<dealer_service> wp = shared_from_this();
-  auto cb = [wp](std::unique_ptr<server_handle>& up)
-    {
-      if (auto sp = wp.lock())
-      {
-        sp-> m_server_sockets.push_back( std::move(up) );
-      }
-    };
-
-  m_kernel->get_io()->add_server(
-    port,
-    std::move(intPromise),
-    cb,
-    [this, auth](int /* port */, std::unique_ptr<tcp_socket> ioh)
+  auto on_new_client = [this, auth](int /* port */, std::unique_ptr<tcp_socket> ioh)
     {
       /* This lambda is invoked on the IO thread the when a socket has been
        * accepted. */
@@ -142,7 +128,28 @@ std::future<int> dealer_service::listen(int port,
         m_pre_sessions[ sp->unique_id() ] = sp;
       }
 
-    } );
+    };
+
+
+  /* Create the actual IO server socket */
+  std::unique_ptr<tcp_socket> ts (new tcp_socket(m_kernel));
+  tcp_socket * ptr = ts.get();
+  m_server_sockets.push_back( std::move(ts) );
+
+  auto fut = ptr->listen(
+    port,
+    [on_new_client, port ](tcp_socket*, std::unique_ptr<tcp_socket>& clt, int ec){
+      /* IO thread */
+
+      if (!ec)
+      {
+        on_new_client(port, std::move(clt));
+      }
+      else
+      {
+        std::cout << "TODO: handle case of failure to accept client, ec " << ec << std::endl;
+      }
+    });
 
   return fut;
 }

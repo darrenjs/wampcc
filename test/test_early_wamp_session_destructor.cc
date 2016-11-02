@@ -17,9 +17,9 @@ void test_WS_destroyed_before_kernel(int port)
 
     /* attempt to connect the socket */
     cout << "attemping socket connection ...\n";
-    auto autofut = sock->connect("127.0.0.1", port);
+    auto fut = sock->connect("127.0.0.1", port);
 
-    auto connect_status = autofut.get_future().wait_for(chrono::milliseconds(100));
+    auto connect_status = fut.wait_for(chrono::milliseconds(100));
     if (connect_status == future_status::timeout)
     {
       cout << "    failed to connect\n";

@@ -18,10 +18,11 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(LIBUVHOME)/include						\
 AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 
 
-check_PROGRAMS=test_connect_timeout test_tcp_socket							\
+check_PROGRAMS=test_connect_timeout test_tcp_socket_connect					\
 test_evthread_wamp_session_destructor test_early_wamp_session_destructor	\
 test_late_wamp_session_destructor test_late_dealer_destructor				\
-test_dealer_disconnect_when_has_connections
+test_dealer_disconnect_when_has_connections test_tcp_socket_connect_cb		\
+test_tcp_socket_listen
 
 noinst_PROGRAMS=$(check_PROGRAMS)
 TESTS=$(check_PROGRAMS)
@@ -44,5 +45,13 @@ test_dealer_disconnect_when_has_connections_LDADD=libgtest.la
 test_late_dealer_destructor_SOURCES=test_late_dealer_destructor.cc
 test_late_dealer_destructor_LDADD=libgtest.la
 
-test_tcp_socket_SOURCES=test_tcp_socket.cc
-test_tcp_socket_LDADD=libgtest.la
+test_tcp_socket_connect_SOURCES=test_tcp_socket_connect.cc
+test_tcp_socket_connect_LDADD=libgtest.la
+
+test_tcp_socket_connect_cb_SOURCES=test_tcp_socket_connect_cb.cc
+test_tcp_socket_connect_cb_LDADD=libgtest.la
+
+test_tcp_socket_listen_SOURCES=test_tcp_socket_listen.cc
+test_tcp_socket_listen_LDADD=libgtest.la
+
+

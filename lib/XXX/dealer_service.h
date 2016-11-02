@@ -15,7 +15,6 @@ namespace XXX {
   class rpc_man;
   struct rpc_details;
   class pre_session;
-  class server_handle;
 
 struct dealer_listener
 {
@@ -79,7 +78,7 @@ private:
 
   dealer_listener* m_listener;
 
-  std::vector< std::unique_ptr<server_handle> > m_server_sockets;
+  std::vector< std::unique_ptr<tcp_socket> >    m_server_sockets;
 };
 
 } // namespace

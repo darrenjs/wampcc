@@ -28,10 +28,10 @@ test_outcome unreachable_network()
 
   std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
-  auto autofut = sock->connect("255.255.255.255", /* IP selected to be unreachable */
+  auto fut = sock->connect("255.255.255.255", /* IP selected to be unreachable */
                                55555);
 
-  auto completed = autofut.get_future().wait_for(std::chrono::milliseconds(200));
+  auto completed = fut.wait_for(std::chrono::milliseconds(200));
 
   if (completed == std::future_status::ready)
   {
@@ -54,14 +54,14 @@ test_outcome invalid_address()
 
   std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
-  auto autofut = sock->connect("0.42.42.42", /* Invalid argument */
+  auto fut = sock->connect("0.42.42.42", /* Invalid argument */
                                55555);
 
-  auto completed = autofut.get_future().wait_for(std::chrono::milliseconds(50));
+  auto completed = fut.wait_for(std::chrono::milliseconds(50));
 
   if (completed == std::future_status::ready)
   {
-    if ( sock->is_connected())
+    if (sock->is_connected())
       return e_unexpected;
 
     // otherwise, close the socket
@@ -82,10 +82,9 @@ test_outcome timeout_for_unreachable_connect()
 
   std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
-  auto autofut = sock->connect("10.0.0.0",
-                               55555);
+  auto fut = sock->connect("10.0.0.0", 55555);
 
-  auto completed = autofut.get_future().wait_for(std::chrono::milliseconds(50));
+  auto completed = fut.wait_for(std::chrono::milliseconds(50));
 
   if (completed == std::future_status::timeout)
   {

@@ -16,9 +16,9 @@ void test_WS_destroyed_on_ev_thread(int port)
     std::unique_ptr<XXX::tcp_socket> sock( new tcp_socket(the_kernel.get()) );
 
     cout << "attemping socket connection ...\n";
-    auto autofut = sock->connect("127.0.0.1", port);
+    auto fut = sock->connect("127.0.0.1", port);
 
-    auto connect_status =autofut.get_future().wait_for(chrono::milliseconds(100));
+    auto connect_status =fut.wait_for(chrono::milliseconds(100));
 
     if (connect_status == future_status::timeout)
       throw runtime_error("unexpected -- should have connected");

@@ -63,6 +63,7 @@ std::shared_ptr<pre_session> pre_session::create(kernel* k,
                                                  on_closed_fn __on_closed_cb,
                                                  on_protocol_fn protocol_cb )
 {
+  /* Can be IO thread */
   std::shared_ptr<pre_session> sp(
     new pre_session(k, std::move(ioh), __on_closed_cb, protocol_cb)
     );
@@ -72,7 +73,20 @@ std::shared_ptr<pre_session> pre_session::create(kernel* k,
   // can't put this initialisation step inside wamp_sesssion constructor,
   // because the shared pointer wont be created & available inside the
   // constructor
-  sp->m_socket->start_read( sp.get() );
+
+  std::cout << std::this_thread::get_id() << " calling start read "  <<std::endl;
+  try
+  {
+    throw std::runtime_error("TEST THROW");
+    sp->m_socket->start_read( sp.get() );
+    std::cout << std::this_thread::get_id() << " calling start read ... done"  <<std::endl;
+  }
+  catch (...)
+  {
+    std::cout << std::this_thread::get_id() << " calling start read ... caught exception"  <<std::endl;
+    throw;
+  }
+
 
   // set up a timer to expire this session if it has not been successfully
   // opened with a maximum time duration
@@ -95,6 +109,9 @@ std::shared_ptr<pre_session> pre_session::create(kernel* k,
 
 pre_session::~pre_session()
 {
+  // ANY thread, including IO
+
+  std::cout << std::this_thread::get_id() << " pre_session::~pre_session"  <<std::endl;
   // note: dont log in here, just in case logger has been deleted
 
   // request IO closure and wait for IO thread to complete its callbacks
@@ -105,7 +122,7 @@ pre_session::~pre_session()
 
 std::shared_future<void> pre_session::close()
 {
-  // ANY thread
+  // ANY thread, including IO
 
   /* Initiate the asynchronous close request. The sequence starts with a call to
    * close the underlying socket object.

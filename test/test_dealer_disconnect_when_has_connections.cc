@@ -22,8 +22,8 @@ void test_WS_destroyed_after_kernel(int port)
     /* attempt to connect the socket */
     TLOG("attemping socket connection ...");
     unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
-    auto autofut = sock->connect("127.0.0.1", port);
-    auto connect_status = autofut.get_future().wait_for(chrono::milliseconds(100));
+    auto fut = sock->connect("127.0.0.1", port);
+    auto connect_status = fut.wait_for(chrono::milliseconds(100));
 
     if (connect_status == future_status::timeout)
     {

@@ -290,11 +290,14 @@ int main_impl(int argc, char** argv)
   std::future_status status;
   do
   {
-    auto af = sock->connect("t420", 55555);
-    status = af.get_future().wait_for(std::chrono::seconds(5));
+    auto fut = sock->connect("t420", 55555);
+    status = fut.wait_for(std::chrono::seconds(3));
 
     if (status == std::future_status::timeout)
       throw std::runtime_error("time-out during connect");
+
+    if (status == std::future_status::ready)
+      fut.get();
 
   } while (status != std::future_status::ready);
 

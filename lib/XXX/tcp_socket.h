@@ -19,47 +19,18 @@ namespace XXX {
 class io_listener;
 class io_loop;
 
-class auto_future
-{
-public:
-  auto_future(std::shared_ptr<std::promise<void> > p)
-    : m_auto_wait(true),
-      m_promise(p),
-      m_fut(p->get_future())
-  {
-  }
-
-  auto_future(auto_future&& rhs)
-  : m_promise(std::move(rhs.m_promise)),
-    m_fut(std::move(rhs.m_fut))
-  {
-  }
-
-  auto_future() = delete;
-  auto_future(const std::future<void>& f) = delete;
-
-  void set_auto_wait(bool b) { m_auto_wait=b;}
-
-  ~auto_future()
-  {
-    if (m_auto_wait && m_fut.valid())
-      m_fut.wait();
-  }
-
-  std::future<void> & get_future() { return m_fut; }
-
-private:
-  bool m_auto_wait;
-  std::shared_ptr<std::promise<void> > m_promise;
-  std::future<void> m_fut;
-};
 
 /**
  * Wrap a socket used for TCP stream communication
  */
 class tcp_socket
 {
+  typedef std::function<void()> on_close_cb;
+  typedef std::function<void(tcp_socket* socket, int status)> on_connect_cb;
+  typedef std::function<void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, int status)> on_accept_cb;
+
 public:
+
   tcp_socket(kernel* k);
   tcp_socket(kernel* k, uv_tcp_t*);
   ~tcp_socket();
@@ -68,21 +39,23 @@ public:
   tcp_socket& operator=(const tcp_socket&) = delete;
 
   /** Request TCP connection to a remote end point */
-  auto_future connect(std::string addr, int port);
+  std::future<void> connect(std::string addr, int port);
+  void              connect(std::string addr, int port, on_connect_cb);
 
   /** Request socket begins reading inbound data */
   void start_read(io_listener*);
 
   /** Request a bind and listen */
-  void listen(int port);
+  std::future<int> listen(int port, on_accept_cb);
 
-  /* Enqueue bytes to be sent */
+  /* Request a write */
   void write(std::pair<const char*, size_t> * srcbuf, size_t count);
 
   /** Request socket close */
-  std::shared_future<void> close();
+  std::shared_future<void> close(on_close_cb = nullptr);
 
   bool is_connected() const;
+  bool is_listening() const;
   bool is_closing()   const;
   bool is_closed()    const;
 
@@ -92,12 +65,15 @@ public:
   size_t bytes_read()    const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }
 
+  std::shared_future<void> closed_future() const { return m_io_closed_future; }
+
 private:
 
   enum socket_state
   {
-    e_created,
+    e_init,
     e_connected,
+    e_listening,
     e_closing,
     e_closed,
   };
@@ -108,6 +84,8 @@ private:
   void close_once_on_io();
   void do_write();
   void do_close();
+  void do_listen(int, std::shared_ptr<std::promise<int>>);
+  void on_listen_cb(int);
 
   kernel * m_kernel;
   logger & __logger;
@@ -128,6 +106,9 @@ private:
 
   std::vector< uv_buf_t > m_pending_write;
   std::mutex              m_pending_write_lock;
+
+  on_accept_cb            m_user_accept_fn;
+  on_close_cb             m_user_close_fn;
 
   friend io_loop;
 };
