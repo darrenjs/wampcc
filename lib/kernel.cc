@@ -25,9 +25,7 @@ kernel::kernel(config __conf, logger nlog)
 /* Destructor */
 kernel::~kernel()
 {
-  std::cout << "~kernel" <<std::endl;
   m_io_loop->stop();
-  std::cout << "event stop" <<std::endl;
   m_evl->stop();
 }
 
