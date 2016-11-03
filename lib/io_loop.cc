@@ -159,7 +159,6 @@ void io_loop::on_async()
 
   for (auto & user_req : work)
   {
-    std::cout << std::this_thread::get_id() << " IO on async got work " << user_req->type <<std::endl;
     if (user_req->type == io_request::eCancelHandle)
     {
       auto handle_to_cancel = (uv_handle_t*) user_req->tcp_handle;
@@ -269,13 +268,11 @@ void io_loop::on_async()
 
   if (m_pending_requests_state == e_closed)
   {
-    std::cout << "IO handling io_request::eCloseLoop" << std::endl;
     uv_close((uv_handle_t*) m_async.get(), 0);
 
     // While there are active handles, progress the event loop here and on
     // each iteration identify and request close any handles which have not
     // been requested to close.
-    std::cout << "IO uv_walk" << std::endl;
     uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg) {
 
         uv_is_closing((const uv_handle_t* )handle);
@@ -367,7 +364,6 @@ void io_loop::cancel_connect(uv_tcp_t * handle)
 
 void io_loop::push_request(std::unique_ptr<io_request> r)
 {
-  std::cout << std::this_thread::get_id() << "--> pushing request " << r->type <<std::endl;
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
 
@@ -381,7 +377,6 @@ void io_loop::push_request(std::unique_ptr<io_request> r)
 
     if (r->type == io_request::eCloseLoop)
     {
-      std::cout << "pushing close" <<std::endl;
       m_pending_requests_state = e_closing;
     }
     m_pending_requests.push_back( std::move(r) );
