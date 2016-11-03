@@ -24,6 +24,16 @@
 namespace XXX {
 
 
+struct socket_listener : public io_listener
+{
+  virtual void io_on_read(char*, ssize_t n)
+  {
+    std::cout << "socket_listener: io_on_read, n=" << n << std::endl;
+  }
+};
+
+
+
 enum test_outcome
 {
   e_expected,

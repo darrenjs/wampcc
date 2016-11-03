@@ -117,25 +117,6 @@ void test_connect_and_delete(int port)
 
 
 
-class socket_listener : public io_listener
-{
-public:
-
-  /* Following this call, IO handle is invalidated and must not be used again */
-  virtual void io_on_close()
-  {
-    cout << "io_on_close" << endl;
-  }
-
-  virtual void io_on_read(char*, size_t)
-  {
-    cout << "io_on_read" << endl;
-  }
-
-};
-
-
-
 void test_connect_read_close(int port)
 {
   cout << "---------- test_connect_read_close ----------\n";

@@ -52,7 +52,9 @@ public:
   void write(std::pair<const char*, size_t> * srcbuf, size_t count);
 
   /** Request socket close */
-  std::shared_future<void> close(on_close_cb = nullptr);
+  std::shared_future<void> close();
+
+  bool close(on_close_cb);
 
   bool is_connected() const;
   bool is_listening() const;

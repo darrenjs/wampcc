@@ -78,7 +78,6 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* s)
 
 tcp_socket::~tcp_socket()
 {
-  std::cout << "~tcp_socket" << std::endl;
   {
     std::unique_lock<std::mutex> guard(m_state_lock);
     if ((m_state != e_closing) && (m_state != e_closed))
@@ -95,10 +94,6 @@ tcp_socket::~tcp_socket()
         // TODO: log a warning here
         cout << "tcp_socket unable to request close, is io_loop already stopped?";
       }
-    }
-    else
-    {
-      std::cout << "tcp_socket already closed ... nothing to do" << std::endl;
     }
   }
 
@@ -219,23 +214,19 @@ void tcp_socket::do_close()
   uv_close((uv_handle_t*) m_uv_tcp, [](uv_handle_t * h) {
 
       uv_handle_data * ptr = (uv_handle_data*) h->data;
+      tcp_socket * sock = ptr->tcp_socket_ptr();
 
-      on_close_cb user_close_fn = std::move(ptr->tcp_socket_ptr()->m_user_close_fn);
+      on_close_cb user_close_fn = std::move(sock->m_user_close_fn);
 
       {
-        std::lock_guard< std::mutex > guard (ptr->tcp_socket_ptr()->m_state_lock);
-        ptr->tcp_socket_ptr()->m_state = e_closed;
+        std::lock_guard< std::mutex > guard (sock->m_state_lock);
+        sock->m_state = e_closed;
       }
-
-      // Notify owning session about end of file event. The owner must not try to
-      // delete this object from the current thread.
-      if (ptr->tcp_socket_ptr()->m_listener)
-        ptr->tcp_socket_ptr()->m_listener->io_on_close();
 
       /* Careful ... once the promise is set, this object might be immediately
        * deleted by a thread waiting on the associated future. So make this
        * promise-write the last action. */
-      ptr->tcp_socket_ptr()->m_io_closed_promise.set_value();
+      sock->m_io_closed_promise.set_value();
 
       if (user_close_fn)
         user_close_fn();
@@ -250,17 +241,14 @@ int tcp_socket::fd() const
 
 
 /** User request to close socket */
-std::shared_future<void> tcp_socket::close(on_close_cb user_close_fn)
+std::shared_future<void> tcp_socket::close()
 {
   std::lock_guard< std::mutex > guard (m_state_lock);
 
   if (m_state == e_closing || m_state == e_closed)
     throw std::runtime_error("socket closing or closed");
 
-  m_user_close_fn = user_close_fn;
-
   m_state = e_closing;
-  std::cout << "push_do_close" << std::endl;
   m_kernel->get_io()->push_fn( [this]() {
       this->do_close();
     });
@@ -269,11 +257,39 @@ std::shared_future<void> tcp_socket::close(on_close_cb user_close_fn)
 }
 
 
+bool tcp_socket::close(on_close_cb user_on_close_fn)
+{
+  std::lock_guard< std::mutex > guard (m_state_lock);
+
+  // if socket has already been closed, it will not be possible to invoke the
+  // user on_close callback
+  if (m_state == e_closed)
+    return false;
+
+  m_user_close_fn = user_on_close_fn;
+
+  // push the close event ... this might throw if the IO loop is in processing
+  // of stopping
+  if (m_state != e_closing)
+    try {
+      // TODO: there might be other cases of throw, eg, memory
+      m_kernel->get_io()->push_fn( [this]() { this->do_close(); });
+      m_state = e_closing;
+    }
+    catch (...) { // TODO: capture exact exception type
+      LOG_WARN("cannot push tcp_socket close request; has kernel already stopped?");
+    }
+
+  return true;
+}
+
+
 void tcp_socket::start_read(io_listener* p)
 {
   m_listener = p;
 
   auto fn = [this]() {
+    // TODO: check return result, and return to user
     uv_read_start((uv_stream_t*)this->m_uv_tcp,
                   iohandle_alloc_buffer,
                   [](uv_stream_t* uvh, ssize_t nread, const uv_buf_t* buf) {
@@ -286,7 +302,6 @@ void tcp_socket::start_read(io_listener* p)
   if (m_state == e_closing || m_state == e_closed)
     throw std::runtime_error("socket closing or closed");
 
-  std::cout << "push start read" << std::endl;
   m_kernel->get_io()->push_fn( std::move(fn) );
 }
 
@@ -311,29 +326,25 @@ void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 {
   /* IO thread */
 
+  if (nread>0)
+    m_bytes_read += nread;
+
   try
   {
     if ((nread == UV_EOF) ||  (nread < 0))
     {
-      // TODO: introduce an EOF callback
-      close_once_on_io();
+      if (m_listener)
+        m_listener->io_on_read(nullptr, -1);
     }
-    else if (nread > 0)
+    else
     {
-      m_bytes_read += nread;
-
       if (m_listener)
         m_listener->io_on_read(buf->base, nread);
-    }
-    else if (nread == 0)
-    {
-      // spinning?
     }
   }
   catch (...)
   {
     log_exception(__logger, "IO thread in on_read_cb");
-    close_once_on_io();
   }
 
 
@@ -547,7 +558,6 @@ std::future<int> tcp_socket::listen(int port, on_accept_cb user_fn)
     if (m_state == e_closing || m_state == e_closed)
       throw std::runtime_error("socket closing or closed");
 
-      std::cout << "push do_listen" << std::endl;
     m_kernel->get_io()->push_fn( [this,port,completion_promise](){
         this->do_listen(port, completion_promise);
       } );

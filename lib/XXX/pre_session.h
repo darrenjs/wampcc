@@ -58,8 +58,7 @@ namespace XXX {
     pre_session(const pre_session&) = delete;
     pre_session& operator=(const pre_session&) = delete;
 
-    void io_on_close() override;
-    void io_on_read(char*, size_t) override;
+    void io_on_read(char*, ssize_t) override;
     void io_on_read_impl(char*, size_t);
 
     enum SessionState

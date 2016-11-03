@@ -11,7 +11,7 @@ using namespace std;
 
 void test_canonical_connect(int port)
 {
-  cout << "---------- test_canonical_connect ----------\n";
+  cout << "---------- " << __FUNCTION__ << " ----------\n";
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   {
@@ -39,7 +39,10 @@ void test_canonical_connect(int port)
 
     if (sock.is_connected() == false)
       throw runtime_error("expected to be connected");
+
+    sock.close().wait();
   }
+
 
   the_kernel.reset();
 }
@@ -190,12 +193,12 @@ int main(int argc, char** argv)
       all_tests(port);
   }
 
-  // {
-  //   internal_server iserver;
-  //   port = iserver.start(starting_port_number++);
-  //   for (int i = 0; i < 5000; ++i)
-  //     test_canonical_connect(port);
-  // }
+  {
+    internal_server iserver;
+    port = iserver.start(starting_port_number++);
+    for (int i = 0; i < 5000; ++i)
+      test_canonical_connect(port);
+  }
 
   {
     internal_server iserver;

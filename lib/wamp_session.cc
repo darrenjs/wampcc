@@ -143,11 +143,30 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
 /* Destructor */
 wamp_session::~wamp_session()
 {
-  // note: don't log in here, just in case logger has been deleted
+  // ANY thread, including IO
 
-  // request IO closure and wait for IO thread to complete its callbacks
-  // in this object, before we start deleting members
-  close().wait();
+  // note: dont log in here, just in case logger has been deleted
+
+  // Because it might be the IO thread that is executing this destructor, we
+  // take the asynchronous approach to closing and deleting the tcp_socket;
+  // i.e. we cannot take the synchronous approach because it is invalid to block
+  // on the IO thread.
+
+  tcp_socket * rawptr = m_socket.get();
+  if ( m_socket->close([rawptr](){
+        // socket deleted on IO thread
+        delete rawptr;
+      })
+    )
+  {
+    m_socket.release();
+  }
+  else
+  {
+    // unable to register on-close callback, hence wait for underway close to
+    // complete
+    m_socket->closed_future().wait();
+  }
 }
 
 
@@ -176,38 +195,43 @@ std::shared_future<void> wamp_session::close()
   return m_shfut_has_closed;
 }
 
-/* Called on the IO thread when the underlying tcp_socket object has closed all
- * its socket related resources (eg the tcp socket and timers).  This is the
- * last call that will be received on the IO thread.
- */
-void wamp_session::io_on_close()
-{
-  std::cout << "wamp_session::io_on_close" << std::endl;
-  change_state(eClosed,eClosed);
-
-  // push the final EV operation
-  std::weak_ptr<wamp_session> wp = m_self_weak;
-  auto user_cb = m_notify_state_change_fn;
-  m_kernel->get_event_loop()->dispatch(
-    [wp, user_cb]()
-    {
-      /* EV thread */
-      // if (auto sp=wp.lock())
-      // {
-      //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn -->" << "\n";
-      //   sp->m_notify_state_change_fn(sp, false);
-      //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn <--" << "\n";
-      // }
-      user_cb(wp, false);
-    } );
-
-  // setting the promise must be very last act in this method, since it likely
-  // this object will proceed to be deleted upon this event
-  m_has_closed.set_value();
-}
+// /* Called on the IO thread when the underlying tcp_socket object has closed all
+//  * its socket related resources (eg the tcp socket and timers).  This is the
+//  * last call that will be received on the IO thread.
+//  */
+// void wamp_session::io_on_close()
+// {
+//   // ok, if this was EOF instead, then need to request tcp_socket close
+// //  p->close();
 
 
-void wamp_session::io_on_read(char* src, size_t len)
+
+//   std::cout << "wamp_session::io_on_close" << std::endl;
+//   change_state(eClosed,eClosed);
+
+//   // push the final EV operation
+//   std::weak_ptr<wamp_session> wp = m_self_weak;
+//   auto user_cb = m_notify_state_change_fn;
+//   m_kernel->get_event_loop()->dispatch(
+//     [wp, user_cb]()
+//     {
+//       /* EV thread */
+//       // if (auto sp=wp.lock())
+//       // {
+//       //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn -->" << "\n";
+//       //   sp->m_notify_state_change_fn(sp, false);
+//       //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn <--" << "\n";
+//       // }
+//       user_cb(wp, false);
+//     } );
+
+//   // setting the promise must be very last act in this method, since it likely
+//   // this object will proceed to be deleted upon this event
+//   m_has_closed.set_value();
+// }
+
+
+void wamp_session::io_on_read(char* src, ssize_t len)
 {
   /* IO thread */
 
@@ -216,7 +240,10 @@ void wamp_session::io_on_read(char* src, size_t len)
 
   try
   {
-    m_proto->io_on_read(src,len);
+    if (len >= 0)
+      m_proto->io_on_read(src,len);
+	  else
+	    m_socket->close();
   }
   catch (...)
   {

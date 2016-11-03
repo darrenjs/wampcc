@@ -239,8 +239,7 @@ namespace XXX {
     wamp_session(const wamp_session&) = delete;
     wamp_session& operator=(const wamp_session&) = delete;
 
-    void io_on_close() override;
-    void io_on_read(char*, size_t) override;
+    void io_on_read(char*, ssize_t) override;
     void decode_and_process(char*, size_t len);
     void process_message(unsigned int, jalson::json_array&);
     void handle_exception();
