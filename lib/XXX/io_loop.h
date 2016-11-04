@@ -66,17 +66,24 @@ private:
 };
 
 
+class io_loop_closed : public std::runtime_error
+{
+public:
+  io_loop_closed();
+};
+
+
 /* IO Thread */
 class io_loop
 {
 public:
+
   io_loop(kernel&);
   ~io_loop();
 
   void stop();
 
   void on_async();
-
 
   void connect(uv_tcp_t * handle,
                std::string addr,
@@ -87,6 +94,9 @@ public:
 
   void cancel_connect(uv_tcp_t*);
 
+  /** Push a function for later invocation on the IO thread.  Throws
+   * io_loop_closed if the IO loop is closing or closed.
+   */
   void push_fn(std::function<void()>);
 
   uv_loop_t* uv_loop() { return m_uv_loop; }

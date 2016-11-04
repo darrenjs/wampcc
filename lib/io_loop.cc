@@ -53,6 +53,11 @@ struct io_request
 };
 
 
+io_loop_closed::io_loop_closed()
+  : std::runtime_error("io_loop closed")
+{
+}
+
 
 void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 {
@@ -368,19 +373,12 @@ void io_loop::push_request(std::unique_ptr<io_request> r)
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
 
     if (m_pending_requests_state == e_closed)
-    {
-      std::cout << "error can't push" <<std::endl;
-      // TODO: use application specific exception type?
-      throw std::runtime_error("IO loop closed for new events");
-    }
-
+      throw io_loop_closed();
 
     if (r->type == io_request::eCloseLoop)
-    {
       m_pending_requests_state = e_closing;
-    }
-    m_pending_requests.push_back( std::move(r) );
 
+    m_pending_requests.push_back( std::move(r) );
   }
 
   uv_async_send( m_async.get() ); // wake-up IO thread
