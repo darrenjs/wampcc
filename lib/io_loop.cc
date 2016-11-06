@@ -93,9 +93,9 @@ io_request::io_request(request_type __type,
 }
 
 
-io_loop::io_loop(kernel& k)
-  :  m_kernel(k),
-     __logger( k.get_logger() ),
+io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
+  : m_kernel(k),
+    __logger( k.get_logger() ),
     m_uv_loop( new uv_loop_t() ),
     m_async( new uv_async_t() ),
     m_pending_requests_state(e_open)
@@ -116,7 +116,14 @@ io_loop::io_loop(kernel& k)
   // policy for handling sigpipe using libuv.
   //  signal(SIGPIPE, SIG_IGN);
 
-  m_thread = std::thread(&io_loop::run_loop, this);
+  m_thread = std::thread([this, io_started_cb]() {
+      m_io_thread_id = std::this_thread::get_id();
+      if (io_started_cb)
+        try {
+          io_started_cb();
+        } catch(...){ /* ignore */}
+      this->io_loop::run_loop();
+    });
 }
 
 
@@ -309,12 +316,14 @@ void io_loop::on_async()
 }
 
 
-std::thread::id& io_loop::get_thread_id()  { return m_io_thread_id; }
+const std::thread::id& io_loop::get_thread_id()  const
+{
+  return m_io_thread_id;
+}
 
 
 void io_loop::run_loop()
 {
-  m_io_thread_id = std::this_thread::get_id();
   while ( true )
   {
     try

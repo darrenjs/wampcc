@@ -78,7 +78,7 @@ class io_loop
 {
 public:
 
-  io_loop(kernel&);
+  io_loop(kernel&, std::function<void()> io_starting_cb = nullptr);
   ~io_loop();
 
   void stop();
@@ -104,7 +104,11 @@ public:
   logger & get_logger() const { return __logger; }
   kernel & get_kernel() const { return m_kernel; }
 
-  std::thread::id& get_thread_id() ;
+  /**
+   * Return the thread ID of the IO loop. The return value is only defined after
+   * the IO loop has successfully started.
+   */
+  const std::thread::id& get_thread_id() const;
 
 private:
 
