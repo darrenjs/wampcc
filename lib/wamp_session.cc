@@ -8,6 +8,7 @@
 #include "XXX/utils.h"
 #include "XXX/kernel.h"
 #include "XXX/rawsocket_protocol.h"
+#include "XXX/io_loop.h"
 
 #include <jalson/jalson.h>
 
@@ -99,7 +100,6 @@ wamp_session::wamp_session(kernel* __kernel,
         }
         ))
 {
-  std::cout << "wamp_session created\n";
 }
 
 
@@ -152,20 +152,22 @@ wamp_session::~wamp_session()
   // i.e. we cannot take the synchronous approach because it is invalid to block
   // on the IO thread.
 
-  tcp_socket * rawptr = m_socket.get();
-  if ( m_socket->close([rawptr](){
-        // socket deleted on IO thread
-        delete rawptr;
-      })
-    )
+  if (!m_socket->is_closed())
   {
-    m_socket.release();
-  }
-  else
-  {
-    // unable to register on-close callback, hence wait for underway close to
-    // complete
-    m_socket->closed_future().wait();
+    if (std::this_thread::get_id() == m_kernel->get_io()->get_thread_id())
+    {
+      m_socket->reset_listener();
+      tcp_socket * rawptr = m_socket.get();
+      if ( m_socket->close([rawptr](){
+            delete rawptr; // socket deleted on IO thread
+          })
+        )
+      {
+        m_socket.release();
+      }
+    }
+    else
+      m_socket->close().wait();
   }
 }
 
@@ -187,7 +189,12 @@ std::shared_future<void> wamp_session::close()
     change_state(eClosing, eClosing);
     try
     {
-      m_socket->close();
+      auto sp = shared_from_this();
+      bool cb_registered = m_socket->close([sp]() {
+          sp->change_state(eClosed,eClosed);
+        });
+      if (!cb_registered)
+        change_state(eClosed,eClosed);
     }
     catch (...) { /* ignore exceptions due to socket already closed */ }
   }
@@ -242,8 +249,12 @@ void wamp_session::io_on_read(char* src, ssize_t len)
   {
     if (len >= 0)
       m_proto->io_on_read(src,len);
-	  else
-	    m_socket->close();
+    else
+    {
+      // TODO: review.  Do I need to use the callback? What is correct ordeR?
+      m_socket->close();
+      change_state(eClosed,eClosed);
+    }
   }
   catch (...)
   {
@@ -323,8 +334,22 @@ void wamp_session::change_state(SessionState expected, SessionState next)
 
   if (next == eClosed)
   {
-    LOG_INFO("session closed #" << m_sid);
-    m_state = eClosed;
+    m_state = eClosing;
+
+    // push the final EV operation
+    std::shared_ptr<wamp_session> sp = shared_from_this();
+    m_kernel->get_event_loop()->dispatch(
+      [sp]()
+      {
+        sp->m_state = eClosed;
+
+        // EV thread
+	      try {
+          sp->m_notify_state_change_fn(sp, false);
+        } catch (...) { /* ignore */ }
+        sp->m_has_closed.set_value();
+      } );
+
     return;
   }
 
@@ -981,7 +1006,8 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
       };
 
     {
-      if (user_cb_allowed()) iter->second.user_cb(invoke);
+      if (user_cb_allowed())
+        iter->second.user_cb(invoke);
     }
 
   }

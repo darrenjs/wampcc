@@ -51,7 +51,8 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
     __logger(k->get_logger()),
     m_uv_tcp( h ),
     m_state(ss),
-    m_io_closed_future(m_io_closed_promise.get_future()),
+    m_io_closed_promise(new std::promise<void> ),
+    m_io_closed_future(m_io_closed_promise->get_future()),
     m_bytes_pending_write(0),
     m_bytes_written(0),
     m_bytes_read(0),
@@ -97,7 +98,8 @@ tcp_socket::~tcp_socket()
     }
   }
 
-  m_io_closed_future.wait();
+  if (not is_closed())
+    m_io_closed_future.wait();
 
   uv_handle_data * ptr = (uv_handle_data *) m_uv_tcp->data;
   delete ptr;
@@ -204,8 +206,9 @@ void tcp_socket::do_close()
 {
   /* IO thread */
 
-  // do_close should only ever be called once by the IO thread, either triggered
-  // by pushing a close request or a call from uv_walk.
+
+  // this method should only ever be called once by the IO thread, either
+  // triggered by pushing a close request or a call from uv_walk.
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
     m_state = e_closing;
@@ -216,20 +219,28 @@ void tcp_socket::do_close()
       uv_handle_data * ptr = (uv_handle_data*) h->data;
       tcp_socket * sock = ptr->tcp_socket_ptr();
 
-      on_close_cb user_close_fn = std::move(sock->m_user_close_fn);
+      // Extract from the tcp_socket the child objects that need to have their
+      // lifetime extended beyond that of the parent tcp_socket, so that after
+      // setting of socket state to e_closed, these objects can still be used.
+      auto user_close_fn  = std::move(sock->m_user_close_fn);
+      auto closed_promise = std::move(sock->m_io_closed_promise);
 
+      /* Once the state is set to closed, the socket can be immediately deleted
+       * by another thread. So this must be the last action taken upon the sock
+       * ptr. */
       {
         std::lock_guard< std::mutex > guard (sock->m_state_lock);
         sock->m_state = e_closed;
       }
 
-      /* Careful ... once the promise is set, this object might be immediately
-       * deleted by a thread waiting on the associated future. So make this
-       * promise-write the last action. */
-      sock->m_io_closed_promise.set_value();
-
+      /* Run the user callback first. This callback must not perform a wait on
+       * the future, because that only gets set after the callback returns. */
       if (user_close_fn)
-        user_close_fn();
+        try {
+          user_close_fn();
+        } catch (...){}
+
+      closed_promise->set_value();
     });
 }
 
@@ -245,13 +256,13 @@ std::shared_future<void> tcp_socket::close()
 {
   std::lock_guard< std::mutex > guard (m_state_lock);
 
-  if (m_state == e_closing || m_state == e_closed)
-    throw std::runtime_error("socket closing or closed");
-
-  m_state = e_closing;
-  m_kernel->get_io()->push_fn( [this]() {
-      this->do_close();
-    });
+  if (m_state != e_closing && m_state != e_closed)
+  {
+    m_state = e_closing;
+    m_kernel->get_io()->push_fn([this]() {
+        this->do_close();
+      });
+  }
 
   return m_io_closed_future;
 }
@@ -303,6 +314,13 @@ void tcp_socket::start_read(io_listener* p)
     throw std::runtime_error("socket closing or closed");
 
   m_kernel->get_io()->push_fn( std::move(fn) );
+}
+
+
+
+void tcp_socket::reset_listener(io_listener* p )
+{
+  m_listener = p;
 }
 
 
@@ -471,6 +489,9 @@ void tcp_socket::on_write_cb(uv_write_t * req, int status)
 }
 
 
+/**
+ * Called on the IO thread when a new socket is available to be accepted.
+ */
 void tcp_socket::on_listen_cb(int status)
 {
   /* IO thread */
@@ -519,13 +540,11 @@ void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<int>> sp_promi
 {
   /* IO thread */
 
-
   struct sockaddr_in addr;
   uv_ip4_addr("0.0.0.0", port, &addr);
 
   unsigned flags = 0;
   int r;
-
 
   r = uv_tcp_bind(m_uv_tcp, (const struct sockaddr*)&addr, flags);
 
@@ -541,9 +560,9 @@ void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<int>> sp_promi
     if (m_state == e_init)
       m_state = e_listening;
   }
+
   // TODO: covert from UV to system error code
   sp_promise->set_value(r);
-
 }
 
 

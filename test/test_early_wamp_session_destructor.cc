@@ -4,6 +4,7 @@
 using namespace XXX;
 using namespace std;
 
+
 void test_WS_destroyed_before_kernel(int port)
 {
   cout << "---------- test_WS_destroyed_before_kernel ----------\n";
@@ -36,13 +37,16 @@ void test_WS_destroyed_before_kernel(int port)
 
     cout << "    got session\n";
 
+    cout << "calling: session->close().wait()\n";
+    session->close().wait();
     cout << "trigger ~wamp_session\n";
     session.reset();
     cout << "exiting scope (will trigger kernel, io_loop, ev_loop destruction)...\n";
-  }
-  cout << "    scope complete\n";
 
-  assert(callback_status == e_close_callback_without_sp);
+  }
+
+  // ensure callback was invoked
+  assert(callback_status == e_close_callback_with_sp);
 
   cout << "test success\n";
 }

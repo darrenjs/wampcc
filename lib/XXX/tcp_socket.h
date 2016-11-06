@@ -45,6 +45,8 @@ public:
   /** Request socket begins reading inbound data */
   void start_read(io_listener*);
 
+  void reset_listener(io_listener* = nullptr);
+
   /** Request a bind and listen */
   std::future<int> listen(int port, on_accept_cb);
 
@@ -97,7 +99,7 @@ private:
   socket_state       m_state;
   mutable std::mutex m_state_lock;
 
-  std::promise<void>       m_io_closed_promise;
+  std::unique_ptr< std::promise<void> > m_io_closed_promise;
   std::shared_future<void> m_io_closed_future;
 
   std::atomic<size_t> m_bytes_pending_write;

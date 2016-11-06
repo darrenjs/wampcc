@@ -104,6 +104,8 @@ public:
   logger & get_logger() const { return __logger; }
   kernel & get_kernel() const { return m_kernel; }
 
+  std::thread::id& get_thread_id() ;
+
 private:
 
   void run_loop();
@@ -123,6 +125,8 @@ private:
   std::mutex                                 m_pending_requests_lock;
 
   std::thread  m_thread; // should be final member
+
+  mutable std::thread::id m_io_thread_id;
 };
 
 } // namespace XXX

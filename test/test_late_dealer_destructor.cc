@@ -16,8 +16,6 @@ void test_late_dealer_destructor_variants(int variant = 0)
 {
   TLOG("----- "<< __FUNCTION__ << "(" << variant << ") -----");
 
-  static int count = 0;
-  cout << count++ << endl;
   int port = -1;
   internal_server iserver;
   for (int i = 20000; i < 65000 && port==-1; i++)

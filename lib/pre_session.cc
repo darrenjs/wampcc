@@ -9,6 +9,7 @@
 #include "XXX/rawsocket_protocol.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/http_parser.h"
+#include "XXX/io_loop.h"
 
 #include <iomanip>
 
@@ -115,20 +116,22 @@ pre_session::~pre_session()
   // i.e. we cannot take the synchronous approach because it is invalid to block
   // on the IO thread.
 
-  tcp_socket * rawptr = m_socket.get();
-  if ( m_socket->close([rawptr](){
-        // socket deleted on IO thread
-        delete rawptr;
-      })
-    )
+  if (not m_socket->is_closed())
   {
-    m_socket.release();
-  }
-  else
-  {
-    // unable to register on-close callback, hence wait for underway close to
-    // complete
-    m_socket->closed_future().wait();
+    if (std::this_thread::get_id() == m_kernel->get_io()->get_thread_id())
+    {
+      m_socket->reset_listener();
+      tcp_socket * rawptr = m_socket.get();
+      if ( m_socket->close([rawptr](){
+            delete rawptr; // socket deleted on IO thread
+          })
+        )
+      {
+        m_socket.release();
+      }
+    }
+    else
+      m_socket->close().wait();
   }
 }
 
@@ -150,7 +153,12 @@ std::shared_future<void> pre_session::close()
     change_state(eClosing, eClosing);
     try
     {
-      m_socket->close();
+      auto sp = shared_from_this();
+      bool cb_registered = m_socket->close([sp]() {
+          sp->change_state(eClosed,eClosed);
+        });
+      if (!cb_registered)
+        change_state(eClosed,eClosed);
     }
     catch (...) { /* ignore exceptions due to socket already closed */ }
   }
@@ -197,8 +205,12 @@ void pre_session::io_on_read(char* src, ssize_t len)
   {
     if (len >= 0 )
       io_on_read_impl(src,len);
-	  else
+    else
+    {
+      // TODO: review.  Do I need to use the callback? What is correct ordeR?
       m_socket->close();
+      change_state(eClosed,eClosed);
+    }
     return;
   }
   catch ( std::exception& e )
@@ -209,7 +221,6 @@ void pre_session::io_on_read(char* src, ssize_t len)
   {
     LOG_WARN("closing pre-session due to unknown exception");
   }
-  this->close();
 }
 
 

@@ -120,7 +120,7 @@ io_loop::io_loop(kernel& k)
 }
 
 
-// TODO: perhaps this should not be synchronous?
+// TODO: perhaps this should not be synchronous? Or rename?
 void io_loop::stop()
 {
   std::unique_ptr<io_request> r( new io_request( io_request::eCloseLoop,
@@ -129,16 +129,13 @@ void io_loop::stop()
   try {
     push_request(std::move(r));
   }
-  catch (...)
+  catch (io_loop_closed& e)
   {
-    // TODO: catch an warn any excption
-    std::cout << "caught exception from push" << std::endl;
+    /* ignore */
   }
 
   if (m_thread.joinable())
-  {
     m_thread.join();
-  }
 }
 
 
@@ -253,8 +250,6 @@ void io_loop::on_async()
           std::make_exception_ptr( std::runtime_error(oss.str()) )
           );
       }
-
-      std::cout << std::this_thread::get_id() << " IO request done r=" << r <<std::endl;
     }
     else if (user_req->type == io_request::eCloseLoop)
     {
@@ -314,8 +309,12 @@ void io_loop::on_async()
 }
 
 
+std::thread::id& io_loop::get_thread_id()  { return m_io_thread_id; }
+
+
 void io_loop::run_loop()
 {
+  m_io_thread_id = std::this_thread::get_id();
   while ( true )
   {
     try

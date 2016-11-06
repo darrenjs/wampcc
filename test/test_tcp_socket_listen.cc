@@ -114,7 +114,7 @@ void test_listen_duplicate_port(int port)
 
 void test_listen_close(int port)
 {
-  cout << "---------- test_listen_close ----------\n";
+  cout << "---------- " << __FUNCTION__ << " ----------\n";
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
@@ -144,11 +144,10 @@ void test_listen_close(int port)
 /* Test that a new client can be received on the on_accept callback, but not be
  * used. The socket will thus need to be deleted on the IO thread, which is
  * something that can normally result in immediate deadlock.
-
  */
 void test_unused_client(int port)
 {
-  cout << "---------- test_unused_client ----------\n";
+  cout << "---------- " << __FUNCTION__ << " ----------\n";
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
@@ -184,7 +183,6 @@ void test_unused_client(int port)
       assert(sever_sock.is_connected() == false);
       cout << "socket failed to listen, status: " << result << endl;
     }
-
 
   }
 }
