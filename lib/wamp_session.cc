@@ -97,6 +97,11 @@ wamp_session::wamp_session(kernel* __kernel,
                 sp->process_message(msg_type, msg);
             };
           m_kernel->get_event_loop()->dispatch(std::move(fn));
+        },
+        {
+          [this](std::unique_ptr<protocol>&new_proto){
+            this->upgrade_protocol(new_proto);
+          }
         }
         ))
 {
@@ -251,7 +256,7 @@ void wamp_session::io_on_read(char* src, ssize_t len)
       m_proto->io_on_read(src,len);
     else
     {
-      // TODO: review.  Do I need to use the callback? What is correct ordeR?
+      // TODO: review.  Do I need to use the callback? What is correct order?
       m_socket->close();
       change_state(eClosed,eClosed);
     }
@@ -1678,9 +1683,16 @@ void wamp_session::drop_connection(std::string errmsg)
     });
 }
 
+
 bool wamp_session::is_passive() const
 {
   return m_proto->mode() == protocol::connection_mode::ePassive;
+}
+
+
+void wamp_session::upgrade_protocol(std::unique_ptr<protocol>& new_proto)
+{
+  m_proto.swap(new_proto);
 }
 
 

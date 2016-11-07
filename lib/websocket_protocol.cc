@@ -16,8 +16,12 @@
 namespace XXX
 {
 
-websocket_protocol::websocket_protocol(tcp_socket* h, t_msg_cb msg_cb, connection_mode _mode, options opts)
-  : protocol(h, msg_cb, _mode),
+websocket_protocol::websocket_protocol(tcp_socket* h,
+                                       t_msg_cb msg_cb,
+                                       protocol::protocol_callbacks callbacks,
+                                       connection_mode _mode,
+                                       options opts)
+  : protocol(h, msg_cb, callbacks, _mode),
     m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eHandlingHttpResponse),
     m_http_parser(new http_parser(_mode==protocol::connection_mode::ePassive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
@@ -192,7 +196,9 @@ void websocket_protocol::send_msg(const jalson::json_array& ja)
 
 void websocket_protocol::io_on_read(char* src, size_t len)
 {
-  while (len) /* IO thread */
+  /* IO thread */
+
+  do
   {
     size_t consume_len = m_buf.consume(src, len);
     src += consume_len;
@@ -363,7 +369,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
     }
 
     m_buf.discard_read( rd ); /* shift unused bytes to front of buffer */
-  } // while(len)
+  } while(len);
 }
 
 

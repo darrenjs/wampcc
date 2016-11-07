@@ -41,9 +41,10 @@ const char* rawsocket_protocol::handshake_error_code_to_sting(handshake_error_co
 
 rawsocket_protocol::rawsocket_protocol(tcp_socket* h,
                                        t_msg_cb msg_cb,
+                                       protocol::protocol_callbacks callbacks,
                                        connection_mode __mode,
                                        options __options)
-  : protocol(h, msg_cb, __mode),
+  : protocol(h, msg_cb, callbacks, __mode),
     m_options(__options),
     m_self_max_msg_size( 1<<(9+m_options.inbound_max_msg_size) ),
     m_peer_max_msg_size(0)
@@ -70,7 +71,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
 {
   /* IO thread */
 
-  while (len)
+  do
   {
     size_t consume_len = m_buf.consume(src, len);
     src += consume_len;
@@ -189,7 +190,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
     }
 
     m_buf.discard_read( rd ); /* shift unused bytes to front of buffer */
-  } // while(len)
+  } while(len);
 
 }
 

@@ -7,8 +7,8 @@
 #include "XXX/io_loop.h"
 #include "XXX/tcp_socket.h"
 #include "XXX/log_macros.h"
-#include "XXX/pre_session.h"
 #include "XXX/tcp_socket.h"
+#include "XXX/protocol.h"
 
 #include <unistd.h>
 #include <string.h>
@@ -29,12 +29,10 @@ dealer_service::dealer_service(kernel* __svc, dealer_listener* l)
 dealer_service::~dealer_service()
 {
   std::map<t_sid, std::shared_ptr<wamp_session> > sessions;
-  std::map<t_sid, std::shared_ptr<pre_session>  > pre_sessions;
 
   {
     std::lock_guard<std::mutex> guard(m_sesions_lock);
     m_sessions.swap( sessions );
-    m_pre_sessions.swap( pre_sessions );
   }
 
   std::unique_lock<std::recursive_mutex> guard(m_lock);
@@ -43,7 +41,6 @@ dealer_service::~dealer_service()
   // trigger the destructors on sessions & pre_sessions, so that they are all
   // closed before dealer destruction can complete
   sessions.clear();
-  pre_sessions.clear();
   m_server_sockets.clear();
 }
 
@@ -52,84 +49,67 @@ std::future<int> dealer_service::listen(int port,
                                         auth_provider auth)
 {
 
-  auto on_new_client = [this, auth](int /* port */, std::unique_ptr<tcp_socket> ioh)
+  auto on_new_client = [this, auth](int /* port */, std::unique_ptr<tcp_socket> sock)
     {
-      /* This lambda is invoked on the IO thread the when a socket has been
-       * accepted. */
+      /* IO thread */
 
-      auto protocol_ready_cb = [this, auth]( protocol_builder_fn builder,
-                                             std::unique_ptr<tcp_socket> ioh)
-        {
-          /* Called on the IO thread, from the pre_session, when the
-           * pre_session has identified the wire protocol to use. */
+      /* This lambda is invoked the when a socket has been accepted. */
 
-          server_msg_handler handlers;
+      server_msg_handler handlers;
 
-          handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
-            this->handle_inbound_call(s,u,std::move(args),f);
-          };
+      handlers.inbound_call = [this](wamp_session* s, std::string u, wamp_args args, wamp_invocation_reply_fn f) {
+        this->handle_inbound_call(s,u,std::move(args),f);
+      };
 
-          handlers.handle_inbound_publish = [this](wamp_session* sptr, std::string uri, jalson::json_object options, wamp_args args)
-          {
-            // TODO: break this out into a separte method, and handle error
-            m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
-          };
+      handlers.handle_inbound_publish = [this](wamp_session* sptr, std::string uri, jalson::json_object options, wamp_args args)
+      {
+        // TODO: break this out into a separte method, and handle error
+        m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
+      };
 
-          handlers.inbound_subscribe = [this](wamp_session* p, t_request_id request_id, std::string uri, jalson::json_object& options) {
-            return this->m_pubsub->subscribe(p, request_id, uri, options);
-          };
+      handlers.inbound_subscribe = [this](wamp_session* p, t_request_id request_id, std::string uri, jalson::json_object& options) {
+        return this->m_pubsub->subscribe(p, request_id, uri, options);
+      };
 
-          handlers.inbound_unsubscribe = [this](wamp_session* p, t_request_id request_id, t_subscription_id sub_id) {
-            this->m_pubsub->unsubscribe(p, request_id, sub_id);
-          };
+      handlers.inbound_unsubscribe = [this](wamp_session* p, t_request_id request_id, t_subscription_id sub_id) {
+        this->m_pubsub->unsubscribe(p, request_id, sub_id);
+      };
 
-          handlers.inbound_register = [this](std::weak_ptr<wamp_session> h,
-                                             std::string realm,
-                                             std::string uri) {
-            return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
-          };
+      handlers.inbound_register = [this](std::weak_ptr<wamp_session> h,
+                                         std::string realm,
+                                         std::string uri) {
+        return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
+      };
 
-          int fd = ioh->fd();
+      int fd = sock->fd();
 
-          std::shared_ptr<wamp_session> sp =
-          wamp_session::create( m_kernel,
-                                std::move(ioh),
-                                [this](std::weak_ptr<wamp_session> s, bool b){ this->handle_session_state_change(s,b); },
-                                builder,
-                                handlers,
-                                auth);
-          {
-            std::lock_guard<std::mutex> guard(m_sesions_lock);
-            m_sessions[ sp->unique_id() ] = sp;
-          }
+      protocol_builder_fn builder_fn;
+      builder_fn = [](tcp_socket* sock,
+                      protocol::t_msg_cb _msg_cb, protocol::protocol_callbacks callbacks)
+      {
+        std::unique_ptr<protocol> up (
+          new selector_protocol(sock, _msg_cb, callbacks)
+          );
 
-          LOG_INFO( "session created #" << sp->unique_id()
-                    << ", protocol: " << sp->protocol_name()
-                    << ", fd: " << fd);
-        };
+        return up;
+      };
 
-      auto on_closed = [this](std::weak_ptr<pre_session> sh)
-        {
-          /* EV thread */
-          if (auto sp = sh.lock())
-          {
-            std::lock_guard<std::mutex> guard(m_sesions_lock);
-            m_pre_sessions.erase( sp->unique_id() );
-          }
-        };
-
-      auto sp = pre_session::create(m_kernel,
-                                    std::move(ioh),
-                                    on_closed,
-                                    protocol_ready_cb);
-
+      std::shared_ptr<wamp_session> sp =
+      wamp_session::create( m_kernel,
+                            std::move(sock),
+                            [this](std::weak_ptr<wamp_session> s, bool b){ this->handle_session_state_change(s,b); },
+                            builder_fn,
+                            handlers,
+                            auth);
       {
         std::lock_guard<std::mutex> guard(m_sesions_lock);
-        m_pre_sessions[ sp->unique_id() ] = sp;
+        m_sessions[ sp->unique_id() ] = sp;
       }
 
+      LOG_INFO( "session created #" << sp->unique_id()
+                << ", protocol: " << sp->protocol_name()
+                << ", fd: " << fd);
     };
-
 
   /* Create the actual IO server socket */
   std::unique_ptr<tcp_socket> ts (new tcp_socket(m_kernel));

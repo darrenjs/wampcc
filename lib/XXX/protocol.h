@@ -110,6 +110,11 @@ public:
     std::string connect_port;
   };
 
+  struct protocol_callbacks
+  {
+    std::function<void(std::unique_ptr<protocol>&)> upgrade_protocol;
+  };
+
 
   typedef std::function<void(jalson::json_array msg, int msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
@@ -120,7 +125,7 @@ public:
       ePassive
   };
 
-  protocol(tcp_socket*, t_msg_cb, connection_mode m);
+  protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connection_mode m);
 
   virtual int  required_timer_callback_interval_ms() { return 1000;}
   virtual void ev_on_timer() {}
@@ -132,19 +137,47 @@ public:
 
   connection_mode mode() const { return m_mode; }
 
+  void set_buffer(buffer& b) { m_buf = b; }
+
 protected:
 
   void decode_json(const char* ptr, size_t msglen);
 
   tcp_socket * m_socket; /* non owning */
   t_msg_cb    m_msg_processor;
+  protocol_callbacks m_callbacks;
   buffer m_buf;
 
 private:
   connection_mode m_mode;
 };
 
-typedef std::function< std::unique_ptr<protocol> (tcp_socket*, protocol::t_msg_cb ) > protocol_builder_fn;
+  typedef std::function< std::unique_ptr<protocol> (tcp_socket*, protocol::t_msg_cb,
+                                                    protocol::protocol_callbacks) > protocol_builder_fn;
+
+
+class selector_protocol : public protocol
+{
+public:
+  static constexpr const char* NAME = "selector";
+
+  selector_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks);
+
+  void io_on_read(char*, size_t) override;
+
+  void initiate(t_initiate_cb) override
+  {
+    throw std::runtime_error("selector_protocol cannot initiate");
+  }
+
+  const char* name() const override { return NAME; }
+
+  void send_msg(const jalson::json_array& j) override
+  {
+    throw std::runtime_error("selector_protocol cannot send");
+  }
+
+};
 
 
 }

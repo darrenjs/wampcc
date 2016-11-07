@@ -51,7 +51,7 @@ namespace XXX {
     if (space() < len) grow_by(len-space());
 
     size_t consume_len = std::min(space(), len);
-    if (consume_len == 0)
+    if (len && consume_len == 0)
       throw std::runtime_error("buffer full, cannot consume more data");
 
     memcpy(m_mem.data() + m_bytes_avail, src, consume_len);
@@ -76,10 +76,11 @@ namespace XXX {
   }
 
 
-protocol::protocol(tcp_socket* h, t_msg_cb cb, connection_mode _mode)
+  protocol::protocol(tcp_socket* h, t_msg_cb cb, protocol_callbacks callbacks, connection_mode _mode)
   : m_socket(h),
     m_msg_processor(cb),
     m_buf(1,1024),
+    m_callbacks(callbacks),
     m_mode(_mode)
 {
 }
@@ -108,6 +109,69 @@ void protocol::decode_json(const char* ptr, size_t msglen)
     throw protocol_error(e.what());
   }
 }
+
+selector_protocol::selector_protocol(tcp_socket* sock,
+                                       t_msg_cb msg_cb,
+                                       protocol::protocol_callbacks callbacks)
+  : protocol(sock, msg_cb, callbacks, connection_mode::ePassive)
+{
+}
+
+
+void selector_protocol::io_on_read(char* src, size_t len)
+{
+  size_t consumed = m_buf.consume(src, len);
+  src += consumed;
+  len -= consumed;
+
+  // Ensure that all bytes were consumed (ie len==0), since we will need to
+  // pass everything onto any protocol instance that gets created. We don't
+  // have any way to handle left over data in 'src' after the concrete
+  // protocol is constructed (since it will then take over socket read
+  // callbacks).
+  if (len)
+    throw handshake_error("failed to consume all bytes read from socket");
+
+  auto rd = m_buf.read_ptr();
+
+  if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE
+      && rd[0] == rawsocket_protocol::MAGIC)
+  {
+    rawsocket_protocol::options default_opts;
+      std::unique_ptr<protocol> up (
+        new rawsocket_protocol(m_socket,
+                               m_msg_processor,
+                               m_callbacks,
+                               protocol::connection_mode::ePassive,
+                               default_opts) );
+      protocol * new_proto_ptr = up.get();
+      up->set_buffer(m_buf); // TODO: inefficient
+      m_callbacks.upgrade_protocol(up);
+      new_proto_ptr->io_on_read(nullptr,0);
+
+  }
+  else if (rd.avail() >= websocket_protocol::HEADER_SIZE &&
+           http_parser::is_http_get(rd.ptr(), rd.avail()))
+  {
+    websocket_protocol::options default_opts;
+    std::unique_ptr<protocol> up (
+      new websocket_protocol(m_socket,
+                             m_msg_processor,
+                             m_callbacks,
+                             protocol::connection_mode::ePassive,
+                             default_opts));
+      protocol * new_proto_ptr = up.get();
+      up->set_buffer(m_buf); // TODO: inefficient
+      m_callbacks.upgrade_protocol(up);
+      new_proto_ptr->io_on_read(nullptr,0);
+  }
+  else if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE &&
+           rd.avail() >= websocket_protocol::HEADER_SIZE)
+  {
+      throw handshake_error("unknown wire protocol");
+  }
+}
+
 
 
 } // namespace

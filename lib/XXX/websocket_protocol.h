@@ -28,7 +28,7 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
-  websocket_protocol(tcp_socket*, t_msg_cb, connection_mode _mode, options);
+  websocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connection_mode _mode, options);
 
   int  required_timer_callback_interval_ms() override { return 2000;}
   void ev_on_timer() override;

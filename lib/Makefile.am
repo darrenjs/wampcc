@@ -26,8 +26,7 @@ XXX/websocket_protocol.h  XXX/tcp_socket.h
 libXXX_la_SOURCES = tcp_socket.cc dealer_service.cc event_loop.cc			\
 example_models.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc topic.cc	\
 utils.cc wamp_session.cc protocol.cc rawsocket_protocol.cc					\
-websocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc	\
-pre_session.cc
+websocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc
 
 
 # Include compile and link flags for an individual library.

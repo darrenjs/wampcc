@@ -150,10 +150,10 @@ namespace XXX {
                                                 typename T::options _options)
     {
       protocol_builder_fn factory_fn;
-      factory_fn = [_options](tcp_socket* socket, protocol::t_msg_cb _msg_cb)
+      factory_fn = [_options](tcp_socket* socket, protocol::t_msg_cb _msg_cb, protocol::protocol_callbacks callbacks)
         {
           std::unique_ptr<protocol> up (
-            new T(socket, _msg_cb,
+            new T(socket, _msg_cb, callbacks,
                   protocol::connection_mode::eActive, _options)
             );
           return up;
@@ -247,6 +247,8 @@ namespace XXX {
     void update_state_for_outbound(const jalson::json_array& msg);
 
     void send_msg(jalson::json_array&, bool final=false);
+
+    void upgrade_protocol(std::unique_ptr<protocol>&);
 
     friend class tcp_socket;
     friend class pubsub_man;
