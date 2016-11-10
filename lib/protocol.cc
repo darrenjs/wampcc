@@ -52,7 +52,7 @@ namespace XXX {
 
     size_t consume_len = std::min(space(), len);
     if (len && consume_len == 0)
-      throw std::runtime_error("buffer full, cannot consume more data");
+      throw std::runtime_error("buffer full, cannot consume data");
 
     memcpy(m_mem.data() + m_bytes_avail, src, consume_len);
     m_bytes_avail += consume_len;
@@ -76,11 +76,16 @@ namespace XXX {
   }
 
 
-  protocol::protocol(tcp_socket* h, t_msg_cb cb, protocol_callbacks callbacks, connection_mode _mode)
+  protocol::protocol(tcp_socket* h,
+                     t_msg_cb cb,
+                     protocol_callbacks callbacks,
+                     connection_mode _mode,
+                     size_t buf_initial_size,
+                     size_t buf_max_size)
   : m_socket(h),
     m_msg_processor(cb),
-    m_buf(1,1024),
     m_callbacks(callbacks),
+    m_buf(buf_initial_size, buf_max_size),
     m_mode(_mode)
 {
 }
@@ -113,31 +118,26 @@ void protocol::decode_json(const char* ptr, size_t msglen)
 selector_protocol::selector_protocol(tcp_socket* sock,
                                        t_msg_cb msg_cb,
                                        protocol::protocol_callbacks callbacks)
-  : protocol(sock, msg_cb, callbacks, connection_mode::ePassive)
+  : protocol(sock, msg_cb, callbacks, connection_mode::ePassive,
+             1, buffer_size_required())
 {
 }
 
 
 void selector_protocol::io_on_read(char* src, size_t len)
 {
-  size_t consumed = m_buf.consume(src, len);
-  src += consumed;
-  len -= consumed;
-
-  // Ensure that all bytes were consumed (ie len==0), since we will need to
-  // pass everything onto any protocol instance that gets created. We don't
-  // have any way to handle left over data in 'src' after the concrete
-  // protocol is constructed (since it will then take over socket read
-  // callbacks).
-  if (len)
-    throw handshake_error("failed to consume all bytes read from socket");
-
-  auto rd = m_buf.read_ptr();
-
-  if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE
-      && rd[0] == rawsocket_protocol::MAGIC)
+  while(len)
   {
-    rawsocket_protocol::options default_opts;
+    size_t consumed = m_buf.consume(src, len);
+    src += consumed;
+    len -= consumed;
+
+    auto rd = m_buf.read_ptr();
+
+    if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE
+        && rd[0] == rawsocket_protocol::MAGIC)
+    {
+      rawsocket_protocol::options default_opts;
       std::unique_ptr<protocol> up (
         new rawsocket_protocol(m_socket,
                                m_msg_processor,
@@ -145,33 +145,43 @@ void selector_protocol::io_on_read(char* src, size_t len)
                                protocol::connection_mode::ePassive,
                                default_opts) );
       protocol * new_proto_ptr = up.get();
-      up->set_buffer(m_buf); // TODO: inefficient
       m_callbacks.upgrade_protocol(up);
-      new_proto_ptr->io_on_read(nullptr,0);
 
-  }
-  else if (rd.avail() >= websocket_protocol::HEADER_SIZE &&
-           http_parser::is_http_get(rd.ptr(), rd.avail()))
-  {
-    websocket_protocol::options default_opts;
-    std::unique_ptr<protocol> up (
-      new websocket_protocol(m_socket,
-                             m_msg_processor,
-                             m_callbacks,
-                             protocol::connection_mode::ePassive,
-                             default_opts));
+      new_proto_ptr->io_on_read(m_buf.data(), m_buf.data_size());
+      if (len) new_proto_ptr->io_on_read(src, len );
+      break;
+    }
+    else if (rd.avail() >= websocket_protocol::HEADER_SIZE &&
+             http_parser::is_http_get(rd.ptr(), rd.avail()))
+    {
+      websocket_protocol::options default_opts;
+      std::unique_ptr<protocol> up (
+        new websocket_protocol(m_socket,
+                               m_msg_processor,
+                               m_callbacks,
+                               protocol::connection_mode::ePassive,
+                               default_opts));
       protocol * new_proto_ptr = up.get();
-      up->set_buffer(m_buf); // TODO: inefficient
       m_callbacks.upgrade_protocol(up);
-      new_proto_ptr->io_on_read(nullptr,0);
-  }
-  else if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE &&
-           rd.avail() >= websocket_protocol::HEADER_SIZE)
-  {
+
+      new_proto_ptr->io_on_read(m_buf.data(), m_buf.data_size());
+      if (len) new_proto_ptr->io_on_read(src, len );
+      break;
+    }
+    else if (rd.avail() >= buffer_size_required())
+    {
       throw handshake_error("unknown wire protocol");
+    }
+
+    m_buf.discard_read( rd ); /* shift unused bytes to front of buffer */
   }
 }
 
 
+size_t selector_protocol::buffer_size_required()
+{
+  return std::max((size_t) rawsocket_protocol::HANDSHAKE_SIZE,
+                  (size_t) websocket_protocol::HEADER_SIZE);
+}
 
 } // namespace

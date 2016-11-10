@@ -198,7 +198,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 {
   /* IO thread */
 
-  do
+  while(len)
   {
     size_t consume_len = m_buf.consume(src, len);
     src += consume_len;
@@ -369,7 +369,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
     }
 
     m_buf.discard_read( rd ); /* shift unused bytes to front of buffer */
-  } while(len);
+  }
 }
 
 

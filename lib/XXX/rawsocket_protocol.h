@@ -55,8 +55,8 @@ public:
 
   static constexpr const char* NAME = "rawsocket";
 
-  static constexpr unsigned char HANDSHAKE_SIZE = 4;
-  static constexpr unsigned char FRAME_PREFIX_SIZE = 4;
+  static constexpr int           HANDSHAKE_SIZE = 4;
+  static constexpr int           FRAME_PREFIX_SIZE = 4;
   static constexpr unsigned char MAGIC = 0x7F;
 
   rawsocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks callbacks, connection_mode, options);

@@ -125,7 +125,8 @@ public:
       ePassive
   };
 
-  protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connection_mode m);
+  protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connection_mode m,
+           size_t buf_initial_size=1, size_t buf_max_size=1024);
 
   virtual int  required_timer_callback_interval_ms() { return 1000;}
   virtual void ev_on_timer() {}
@@ -136,8 +137,6 @@ public:
   virtual void send_msg(const jalson::json_array& j) = 0;
 
   connection_mode mode() const { return m_mode; }
-
-  void set_buffer(buffer& b) { m_buf = b; }
 
 protected:
 
@@ -177,6 +176,7 @@ public:
     throw std::runtime_error("selector_protocol cannot send");
   }
 
+  static size_t buffer_size_required();
 };
 
 

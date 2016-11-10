@@ -18,8 +18,8 @@ public:
   };
   static constexpr const char* NAME = "websocket";
 
-  static constexpr const unsigned char HEADER_SIZE = 4; /* "GET " */
-  static constexpr const char*               MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  static constexpr const int    HEADER_SIZE = 4; /* "GET " */
+  static constexpr const char*  MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
   static const int OPCODE_CONTINUE = 0x0;
   static const int OPCODE_TEXT     = 0x1;
