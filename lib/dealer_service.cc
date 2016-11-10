@@ -28,20 +28,33 @@ dealer_service::dealer_service(kernel* __svc, dealer_listener* l)
 
 dealer_service::~dealer_service()
 {
-  std::map<t_sid, std::shared_ptr<wamp_session> > sessions;
+  // TODO: need to detect if dealer is going to try to delete the wamp_session
+  // on the EV thread.
 
+  /* First we shutdown the server sockets, so that we dont have IO callbacks
+   * entering into self as the destructor is underway. */
+  for (auto &sock : m_server_sockets)
+    sock->close();
+  for (auto &sock : m_server_sockets)
+    sock->closed_future().wait();
+  m_server_sockets.clear();
+
+
+  /* Next close our wamp_sessions */
+  std::map<t_sid, std::shared_ptr<wamp_session> > sessions;
   {
     std::lock_guard<std::mutex> guard(m_sesions_lock);
-    m_sessions.swap( sessions );
+    m_sessions.swap(sessions);
   }
+  for (auto & item : sessions)
+    item.second->close();
+  for (auto & item : sessions)
+    item.second->closed_future().wait();
+  sessions.clear();
+
 
   std::unique_lock<std::recursive_mutex> guard(m_lock);
   m_listener = nullptr;
-
-  // trigger the destructors on sessions & pre_sessions, so that they are all
-  // closed before dealer destruction can complete
-  sessions.clear();
-  m_server_sockets.clear();
 }
 
 
@@ -104,6 +117,8 @@ std::future<int> dealer_service::listen(int port,
       {
         std::lock_guard<std::mutex> guard(m_sesions_lock);
         m_sessions[ sp->unique_id() ] = sp;
+
+        std::cout << "added session " << sp.get() << ", size=" << m_sessions.size() << std::endl;
       }
 
       LOG_INFO( "session created #" << sp->unique_id()
@@ -267,6 +282,7 @@ void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp,
   /* EV thread */
   if (auto session = wp.lock())
   {
+    std::cout << "handle_session_state_change for " << session.get() << std::endl;
     if (!is_open)
     {
       m_rpcman->session_closed(session);

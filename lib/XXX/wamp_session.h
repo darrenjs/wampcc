@@ -227,6 +227,10 @@ namespace XXX {
 
     const char* protocol_name() const { return m_proto->name(); }
 
+
+    std::shared_future<void>  closed_future() const { return m_shfut_has_closed; }
+    std::shared_future<void>& closed_future()       { return m_shfut_has_closed; }
+
   private:
 
     wamp_session(kernel*,
