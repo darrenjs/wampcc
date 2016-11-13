@@ -176,6 +176,7 @@ namespace XXX {
     session_handle handle() { return shared_from_this(); }
 
     bool is_open() const;
+    bool is_closed() const;
     bool is_pending_open() const;
 
     /* Number of seconds since session constructed  */
@@ -278,8 +279,10 @@ namespace XXX {
 
       eStateMax
     } m_state;
+    mutable std::mutex m_state_lock;
 
     void change_state(SessionState expected, SessionState next);
+    void initiate_close();
 
     void handle_HELLO(jalson::json_array& ja);
     void handle_CHALLENGE(jalson::json_array& ja);

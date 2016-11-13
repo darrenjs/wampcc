@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 
 #define MAX_PENDING_OPEN_MS 5000
@@ -181,66 +182,33 @@ std::shared_future<void> wamp_session::close()
 {
   // ANY thread
 
-  /* Initiate the asynchronous close request. The sequence starts with a call to
-   * close the underlying socket object.
-   */
+  // TODO: is thre a race here, ie, mutex is not full scope of function?
+  {
+    std::unique_lock<std::mutex> guard(m_state_lock);
+    if (m_state == eClosing || m_state == eClosed)
+      return m_shfut_has_closed; /* dont need to do anything */
+  }
 
-  if (m_state == eClosing || m_state == eClosed)
+  try
   {
-    /* dont need to do anything */
-  }
-  else
-  {
-    change_state(eClosing, eClosing);
-    try
+    auto sp = shared_from_this();
+
+    // try to register the wamp_session close on a socket callback
+    bool cb_registered = m_socket->close([sp]() {
+        sp->initiate_close();
+      });
+
+    // if we could not register on a socket callback, close directly
+    if (!cb_registered)
     {
-      auto sp = shared_from_this();
-      bool cb_registered = m_socket->close([sp]() {
-          sp->change_state(eClosed,eClosed);
-        });
-      if (!cb_registered)
-        change_state(eClosed,eClosed);
+       sp->initiate_close();
     }
-    catch (...) { /* ignore exceptions due to socket already closed */ }
   }
+  catch (...) { /* ignore exceptions due to socket already closed */ }
+
 
   return m_shfut_has_closed;
 }
-
-// /* Called on the IO thread when the underlying tcp_socket object has closed all
-//  * its socket related resources (eg the tcp socket and timers).  This is the
-//  * last call that will be received on the IO thread.
-//  */
-// void wamp_session::io_on_close()
-// {
-//   // ok, if this was EOF instead, then need to request tcp_socket close
-// //  p->close();
-
-
-
-//   std::cout << "wamp_session::io_on_close" << std::endl;
-//   change_state(eClosed,eClosed);
-
-//   // push the final EV operation
-//   std::weak_ptr<wamp_session> wp = m_self_weak;
-//   auto user_cb = m_notify_state_change_fn;
-//   m_kernel->get_event_loop()->dispatch(
-//     [wp, user_cb]()
-//     {
-//       /* EV thread */
-//       // if (auto sp=wp.lock())
-//       // {
-//       //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn -->" << "\n";
-//       //   sp->m_notify_state_change_fn(sp, false);
-//       //   std::cout << std::this_thread::get_id() << " " << "EV calling sp->m_notify_state_change_fn <--" << "\n";
-//       // }
-//       user_cb(wp, false);
-//     } );
-
-//   // setting the promise must be very last act in this method, since it likely
-//   // this object will proceed to be deleted upon this event
-//   m_has_closed.set_value();
-// }
 
 
 void wamp_session::io_on_read(char* src, ssize_t len)
@@ -257,8 +225,10 @@ void wamp_session::io_on_read(char* src, ssize_t len)
     else
     {
       // TODO: review.  Do I need to use the callback? What is correct order?
+      // Should we instead try to register a callback on the socket so that the
+      // wamp_session is closed on that callback (as it is in the wamp_session::close)?
       m_socket->close();
-      change_state(eClosed,eClosed);
+      initiate_close();
     }
   }
   catch (...)
@@ -284,7 +254,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen)
+      if (!is_open())
       {
         LOG_ERROR("unexpected message sent while session not open");
         this->close();
@@ -303,7 +273,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else
     {
-      if (m_state != eOpen)
+      if (!is_open())
       {
         LOG_ERROR("unexpected message sent while session not open");
         this->close();
@@ -333,36 +303,40 @@ const char* wamp_session::state_to_str(wamp_session::SessionState s)
 }
 
 
-void wamp_session::change_state(SessionState expected, SessionState next)
+void wamp_session::initiate_close()
 {
-  if (m_state == eClosed) return;
+  /* ANY thread */
 
-  if (next == eClosed)
-  {
-    m_state = eClosing;
+  std::unique_lock<std::mutex> guard(m_state_lock);
 
-    // push the final EV operation
-    std::shared_ptr<wamp_session> sp = shared_from_this();
-    m_kernel->get_event_loop()->dispatch(
+  /* must only perform close once */
+  if (m_state == eClosing || m_state == eClosed)
+    return;
+
+  m_state = eClosing;
+
+  // push the final EV operation
+  std::shared_ptr<wamp_session> sp = shared_from_this();
+  m_kernel->get_event_loop()->dispatch(
       [sp]()
       {
+        /* EV thread */
         sp->m_state = eClosed;
 
         // EV thread
-	      try {
+        try {
           sp->m_notify_state_change_fn(sp, false);
         } catch (...) { /* ignore */ }
         sp->m_has_closed.set_value();
       } );
+}
 
-    return;
-  }
 
-  if (next == eClosing)
-  {
-    m_state = eClosing;
-    return;
-  }
+void wamp_session::change_state(SessionState expected, SessionState next)
+{
+  std::unique_lock<std::mutex> guard(m_state_lock);
+
+  if (m_state == eClosed) return;
 
   if (m_state == expected)
   {
@@ -424,7 +398,6 @@ void wamp_session::change_state(SessionState expected, SessionState next)
   {
     LOG_ERROR("wamp_session state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
   }
-
 }
 
 
@@ -433,7 +406,8 @@ void wamp_session::process_message(unsigned int message_type,
 {
   /* EV thread */
 
-  if (m_state == eClosing || m_state == eClosed) return;
+  if (is_closed())
+    return;
 
   m_time_last_msg_recv = time(NULL);
 
@@ -464,7 +438,7 @@ void wamp_session::process_message(unsigned int message_type,
       }
       else
       {
-        if (m_state != eOpen)
+        if (!is_open())
           throw protocol_error("received request before session is open");
       }
 
@@ -508,7 +482,6 @@ void wamp_session::process_message(unsigned int message_type,
     }
     else
     {
-
       if (message_type == CHALLENGE)
       {
         change_state(eSentHello, eRecvChallenge);
@@ -518,13 +491,13 @@ void wamp_session::process_message(unsigned int message_type,
       else if (message_type == WELCOME)
       {
         change_state(eSentAuth, eOpen);
-        if (m_state == eOpen)
+        if (is_open())
           notify_session_open();
         return;
       }
       else
       {
-        if (m_state != eOpen)
+        if (not is_open())
           throw protocol_error("received request before session is open");
       }
 
@@ -619,7 +592,7 @@ void wamp_session::handle_exception()
 
 void wamp_session::send_msg(jalson::json_array& jv, bool)
 {
-  if (m_state == eClosing || m_state == eClosed) return;
+  if (is_closed()) return;
 
   update_state_for_outbound(jv);
 
@@ -796,7 +769,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 
     send_msg( msg );
 
-    if (m_state == eOpen)
+    if (is_open())
       notify_session_open();
   }
   else
@@ -823,12 +796,19 @@ void wamp_session::notify_session_open()
 
 bool wamp_session::is_open() const
 {
+  std::unique_lock<std::mutex> guard(m_state_lock);
   return m_state == eOpen;
 }
 
+bool wamp_session::is_closed() const
+{
+  std::unique_lock<std::mutex> guard(m_state_lock);
+  return m_state == eClosed;
+}
 
 bool wamp_session::is_pending_open() const
 {
+  std::unique_lock<std::mutex> guard(m_state_lock);
   return (m_state != eOpen && m_state != eClosed && m_state != eClosing);
 }
 
