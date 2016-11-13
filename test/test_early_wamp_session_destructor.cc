@@ -7,7 +7,7 @@ using namespace std;
 
 void test_WS_destroyed_before_kernel(int port)
 {
-  cout << "---------- test_WS_destroyed_before_kernel ----------\n";
+  cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
   callback_status = e_callback_not_invoked;
 
@@ -67,8 +67,8 @@ int main(int argc, char** argv)
       internal_server iserver;
       int port = iserver.start(starting_port_number++);
 
+      cout << "using shared iserver\n";
       for (int j=0; j < 100; j++) {
-        cout << "using shared iserver\n";
         test_WS_destroyed_before_kernel(port);
       }
     }
