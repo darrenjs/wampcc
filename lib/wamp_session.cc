@@ -200,9 +200,7 @@ std::shared_future<void> wamp_session::close()
 
     // if we could not register on a socket callback, close directly
     if (!cb_registered)
-    {
        sp->initiate_close();
-    }
   }
   catch (...) { /* ignore exceptions due to socket already closed */ }
 
@@ -317,18 +315,19 @@ void wamp_session::initiate_close()
 
   // push the final EV operation
   std::shared_ptr<wamp_session> sp = shared_from_this();
-  m_kernel->get_event_loop()->dispatch(
-      [sp]()
+  m_kernel->get_event_loop()->dispatch([sp](){
+      /* EV thread */
       {
-        /* EV thread */
+        std::unique_lock<std::mutex> guard(sp->m_state_lock);
         sp->m_state = eClosed;
+      }
 
-        // EV thread
-        try {
-          sp->m_notify_state_change_fn(sp, false);
-        } catch (...) { /* ignore */ }
-        sp->m_has_closed.set_value();
-      } );
+      try {
+        sp->m_notify_state_change_fn(sp, false);
+      }
+      catch (...) { /* ignore */ }
+      sp->m_has_closed.set_value();
+    } );
 }
 
 
@@ -397,6 +396,7 @@ void wamp_session::change_state(SessionState expected, SessionState next)
   else
   {
     LOG_ERROR("wamp_session state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
+    initiate_close();
   }
 }
 
