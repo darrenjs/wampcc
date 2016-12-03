@@ -25,6 +25,9 @@ kernel::kernel(config __conf, logger nlog)
 /* Destructor */
 kernel::~kernel()
 {
+  /* stop IO loop first, which will include closing all outstanding socket
+   * resources, and as that happens, events are pushed onto the event queue
+   * which is still operational */
   m_io_loop->stop();
   m_evl->stop();
 }
