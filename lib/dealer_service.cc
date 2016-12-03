@@ -118,7 +118,10 @@ std::future<int> dealer_service::listen(int port,
         std::lock_guard<std::mutex> guard(m_sesions_lock);
         m_sessions[ sp->unique_id() ] = sp;
 
-        std::cout << "added session " << sp.get() << ", size=" << m_sessions.size() << std::endl;
+        // DJS -- test code to drop a connection
+        // m_kernel->get_event_loop()->dispatch(std::chrono::milliseconds(5000),
+        //                                      [sp](){ sp->close(); return 0; } );
+
       }
 
       LOG_INFO( "session created #" << sp->unique_id()
@@ -282,7 +285,6 @@ void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp,
   /* EV thread */
   if (auto session = wp.lock())
   {
-    std::cout << "handle_session_state_change for " << session.get() << std::endl;
     if (!is_open)
     {
       m_rpcman->session_closed(session);
