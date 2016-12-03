@@ -91,9 +91,9 @@ tcp_socket::~tcp_socket()
       // continue to wait.
       try {
         m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
-      } catch (...) {
-        // TODO: log a warning here
-        cout << "tcp_socket unable to request close, is io_loop already stopped?";
+      }
+      catch (io_loop_closed & e) {
+        LOG_WARN("cannot push tcp_socket close request; has kernel already stopped?");
       }
     }
   }
@@ -153,6 +153,7 @@ std::future<void> tcp_socket::connect(std::string addr, int port)
       if (m_state == e_init)
         m_state = e_connected;
     }
+
     completion_promise->set_value();
   };
 
@@ -206,7 +207,6 @@ void tcp_socket::do_close()
 {
   /* IO thread */
 
-
   // this method should only ever be called once by the IO thread, either
   // triggered by pushing a close request or a call from uv_walk.
   {
@@ -239,7 +239,6 @@ void tcp_socket::do_close()
         try {
           user_close_fn();
         } catch (...){}
-
       closed_promise->set_value();
     });
 }
@@ -272,10 +271,13 @@ bool tcp_socket::close(on_close_cb user_on_close_fn)
 {
   std::lock_guard< std::mutex > guard (m_state_lock);
 
-  // if socket has already been closed, it will not be possible to invoke the
-  // user on_close callback
+  // if socket has already been closed, it will not be possible to later invoke
+  // the user provided on-close callback
   if (m_state == e_closed)
     return false;
+
+
+  // TODO: what if this method has already been called before? What if we are already in e_closing?
 
   m_user_close_fn = user_on_close_fn;
 
@@ -287,7 +289,7 @@ bool tcp_socket::close(on_close_cb user_on_close_fn)
       m_kernel->get_io()->push_fn( [this]() { this->do_close(); });
       m_state = e_closing;
     }
-    catch (...) { // TODO: capture exact exception type
+    catch (io_loop_closed & e) {
       LOG_WARN("cannot push tcp_socket close request; has kernel already stopped?");
     }
 
@@ -343,13 +345,12 @@ void tcp_socket::close_once_on_io()
 void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 {
   /* IO thread */
-
   if (nread>0)
     m_bytes_read += nread;
 
   try
   {
-    if ((nread == UV_EOF) ||  (nread < 0))
+    if ((nread == UV_EOF) || (nread < 0))
     {
       if (m_listener)
         m_listener->io_on_read(nullptr, -1);
@@ -364,7 +365,6 @@ void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
   {
     log_exception(__logger, "IO thread in on_read_cb");
   }
-
 
   delete [] buf->base;
 }
