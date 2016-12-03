@@ -282,8 +282,6 @@ void io_loop::on_async()
     // been requested to close.
     uv_walk(m_uv_loop, [](uv_handle_t* handle, void* arg) {
 
-        uv_is_closing((const uv_handle_t* )handle);
-
         if (!uv_is_closing(handle))
         {
           uv_handle_data * ptr = (uv_handle_data*) handle->data;
@@ -404,7 +402,7 @@ void io_loop::push_fn(std::function<void()> fn)
 
 void version_check_libuv(int compile_major, int compile_minor)
 {
-  // version that our library was build against
+  // version that our library was built against
   int library_major = UV_VERSION_MAJOR;
   int library_minor = UV_VERSION_MINOR;
 
