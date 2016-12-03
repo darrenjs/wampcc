@@ -4,18 +4,21 @@ using namespace XXX;
 using namespace std;
 
 // logging control
-#ifdef TLOG
-#undef TLOG
-#define TLOG(X)
-#endif
+// #ifdef TLOG
+// #undef TLOG
+// #define TLOG(X)
+// #endif
 
 void test_WS_destroyed_after_kernel(int port)
 {
-  TLOG("----- test ~WS after ~kernel -----");
+  TLOG("----- "<< __FUNCTION__<<" -----");
 
   callback_status = e_callback_not_invoked;
 
+  // Store a wamp_session resource outside of the kernel scope, so that we can
+  // have a wamp_session that outlives the kernel.
   shared_ptr<wamp_session> ws_outer;
+
   {
     unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
 
@@ -30,7 +33,6 @@ void test_WS_destroyed_after_kernel(int port)
       cout << "expected -- should have connected\n";
       return;
     }
-    TLOG("got socket connection");
 
     /* attempt to create a session */
     TLOG("attemping session creation");
@@ -39,21 +41,27 @@ void test_WS_destroyed_after_kernel(int port)
       std::move(sock),
       session_cb, {});
 
-    TLOG("got session");
+    TLOG("got session #" << session->unique_id());
 
-    TLOG("assigning session to outer scope (causes wamp_session destruction after kernel destruction)");
     ws_outer = session;
+
     TLOG("exiting scope (will trigger kernel, io_loop, ev_loop destruction)");
+
   }
-  TLOG("scope complete");
+
+  TLOG("** scope complete");
+
+
   TLOG("triggering ~wamp_session...");
   ws_outer.reset();
-  TLOG("complete");
 
   // In this test, the kernel is deleted before the wamp_session is deleted (due
-  // to the outer shared_ptr holding on to it). This ordering means that the
-  // wamp_session is still available during the wamp_session callback.
-  assert(callback_status == e_close_callback_with_sp);
+  // to the outer shared_ptr holding on to it). The test below is to determine
+  // if the wamp_session close-callback was triggered.  As of 30/11/16, the
+  // design is that is wont be called back, because as the tcp_socket is force
+  // closes during kernel unwind, that in itself does not cause a callback into
+  // the wamp_session to say the session is closed.
+  assert(callback_status == e_callback_not_invoked);
 
   TLOG("test success");
 }

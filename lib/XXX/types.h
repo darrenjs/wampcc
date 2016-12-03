@@ -33,6 +33,7 @@ namespace XXX
 // protocol extensions
 #define WAMP_RUNTIME_ERROR "wamp.error.runtime_error"
 #define WAMP_ERROR_BAD_PROTOCOL "wamp.error.bad_protocol"
+#define WAMP_ERROR_UNEXPECTED_STATE "wamp.error.unexpected_state"
 
 enum WampMsgType
 {

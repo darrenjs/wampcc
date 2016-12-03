@@ -274,15 +274,18 @@ namespace XXX {
 
       // main states
       eOpen,
-      eClosing,
-      eClosed,
 
-      eStateMax
+      // close handshake
+      e_wait_peer_goodbye, // TODO: add to tostr() func.
+
+
+      eClosing,
+      eClosed
     } m_state;
     mutable std::mutex m_state_lock;
 
     void change_state(SessionState expected, SessionState next);
-    void initiate_close();
+    void initiate_close(std::lock_guard<std::mutex>&);
 
     void handle_HELLO(jalson::json_array& ja);
     void handle_CHALLENGE(jalson::json_array& ja);
@@ -337,6 +340,8 @@ namespace XXX {
     void process_inbound_subscribe(jalson::json_array &);
     void process_inbound_unsubscribe(jalson::json_array &);
     void process_inbound_register(jalson::json_array &);
+    void process_inbound_goodbye(jalson::json_array &);
+    void process_inbound_abort(jalson::json_array &);
 
     void invocation_yield(int request_id,
                           wamp_args args);
@@ -346,8 +351,11 @@ namespace XXX {
                           wamp_args args,
                           std::string error_uri);
 
+    jalson::json_array build_goodbye_message(std::string);
+    jalson::json_array build_abort_message(std::string);
 
     void drop_connection(std::string);
+    void drop_connection_impl(std::string, std::lock_guard<std::mutex>&);
 
     bool user_cb_allowed() const { return m_state != eClosed; }
 
