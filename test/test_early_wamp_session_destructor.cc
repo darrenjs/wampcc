@@ -39,7 +39,7 @@ void test_WS_destroyed_before_kernel(int port)
 
     cout << "calling: session->close().wait()\n";
     session->close().wait();
-    cout << "trigger ~wamp_session\n";
+    cout << "trigger ~wamp_session for " << session->unique_id() << "\n";
     session.reset();
     cout << "exiting scope (will trigger kernel, io_loop, ev_loop destruction)...\n";
 
