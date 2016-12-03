@@ -59,6 +59,7 @@ enum AdminEvent
   eNone,
   eRPCSent,
   eReplyReceived,
+  eClosed
 };
 
 std::mutex              event_queue_mutex;
@@ -133,7 +134,13 @@ void router_connection_cb(int errcode,
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
   if (!is_open)
+  {
     std::cout << "WAMP session closed, errcode " << errcode << std::endl;
+
+    std::unique_lock< std::mutex > guard( event_queue_mutex );
+    event_queue.push( eClosed );
+    event_queue_condition.notify_one();
+  }
   else
     g_handshake_success = true;
 
@@ -432,7 +439,7 @@ int main_impl(int argc, char** argv)
 
 
 
-  while (long_wait || wait_reply)
+  while ((long_wait || wait_reply) && ws->is_open())
   {
     std::unique_lock< std::mutex > guard( event_queue_mutex );
 
@@ -448,7 +455,8 @@ int main_impl(int argc, char** argv)
       {
         case eNone : break;
         case eRPCSent : break;  /* resets the timer */
-        case eReplyReceived : wait_reply = false; ;break;
+        case eReplyReceived : wait_reply = false; break;
+        case eClosed: break;
       }
     }
 
