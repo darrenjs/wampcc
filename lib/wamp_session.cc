@@ -70,6 +70,7 @@ static void check_size_at_least(size_t msg_len, size_t s)
 
 /* Constructor */
 wamp_session::wamp_session(kernel* __kernel,
+                           t_session_mode conn_mode,
                            std::unique_ptr<tcp_socket> h,
                            session_state_fn state_cb,
                            protocol_builder_fn protocol_builder,
@@ -80,6 +81,7 @@ wamp_session::wamp_session(kernel* __kernel,
     m_kernel(__kernel),
     m_sid( generate_unique_session_id() ),
     m_socket(std::move(h)),
+    m_session_mode(conn_mode),
     m_shfut_has_closed(m_has_closed.get_future()),
     m_hb_intvl(m_kernel->get_config().use_wamp_heartbeats?60:0),
     m_time_create(time(NULL)),
@@ -112,15 +114,29 @@ wamp_session::wamp_session(kernel* __kernel,
 }
 
 
+
 std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
-                                                   std::unique_ptr<tcp_socket> ioh,
+                                                   std::unique_ptr<tcp_socket> sock,
                                                    session_state_fn state_cb,
                                                    protocol_builder_fn protocol_builder,
                                                    server_msg_handler handler,
                                                    auth_provider auth)
 {
+  return create_impl(k, t_session_mode::server, std::move(sock),
+                     state_cb, protocol_builder, handler, auth);
+}
+
+
+std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
+                                                        t_session_mode conn_mode,
+                                                        std::unique_ptr<tcp_socket> ioh,
+                                                        session_state_fn state_cb,
+                                                        protocol_builder_fn protocol_builder,
+                                                        server_msg_handler handler,
+                                                        auth_provider auth)
+{
   std::shared_ptr<wamp_session> sp(
-    new wamp_session(k, std::move(ioh), state_cb, protocol_builder, handler, auth)
+    new wamp_session(k, conn_mode, std::move(ioh), state_cb, protocol_builder, handler, auth)
       );
 
   sp->m_self_weak = sp;
@@ -161,7 +177,6 @@ wamp_session::~wamp_session()
   // i.e. we cannot take the synchronous approach because it is invalid to block
   // on the IO thread.
 
-  // TODO: maybe we should check the thread ID first?
   if (!m_socket->is_closed())
   {
     if (std::this_thread::get_id() == m_kernel->get_io()->get_thread_id())
@@ -235,7 +250,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 {
   int message_type = msg[0].as_uint();
 
-  if (is_passive())
+  if (session_mode() == t_session_mode::client)
   {
     if (message_type == CHALLENGE)
     {
@@ -427,7 +442,7 @@ void wamp_session::process_message(unsigned int message_type,
     if (message_type == GOODBYE)
       return process_inbound_goodbye( ja );
 
-    if (is_passive())
+    if (session_mode() == t_session_mode::client)
     {
       if (message_type == HELLO)
       {
@@ -1239,7 +1254,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
   jalson::json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
-  if (is_passive())
+  if (session_mode() == t_session_mode::client)
   {
     switch (orig_request_type)
     {
@@ -1770,11 +1785,6 @@ void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
 
       sp->m_has_closed.set_value();
     } );
-}
-
-bool wamp_session::is_passive() const
-{
-  return m_proto->mode() == protocol::connection_mode::ePassive;
 }
 
 

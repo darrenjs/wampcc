@@ -132,6 +132,8 @@ namespace XXX {
   {
   public:
 
+    enum class t_session_mode {client, server};
+
     /** Create a server side session (i.e., the socket was accepted from a
      * remote client). */
     static std::shared_ptr<wamp_session> create(kernel*,
@@ -147,20 +149,22 @@ namespace XXX {
     static std::shared_ptr<wamp_session> create(kernel* k,
                                                 std::unique_ptr<tcp_socket> socket,
                                                 session_state_fn state_cb,
-                                                typename T::options _options)
+                                                typename T::options protocol_options)
     {
       protocol_builder_fn factory_fn;
-      factory_fn = [_options](tcp_socket* socket, protocol::t_msg_cb _msg_cb, protocol::protocol_callbacks callbacks)
+      factory_fn = [protocol_options](tcp_socket* socket,
+                                      protocol::t_msg_cb _msg_cb,
+                                      protocol::protocol_callbacks callbacks)
         {
           std::unique_ptr<protocol> up (
             new T(socket, _msg_cb, callbacks,
-                  protocol::connection_mode::eActive, _options)
+                  protocol::connection_mode::eActive, protocol_options)
             );
           return up;
         };
 
-      return wamp_session::create(k, std::move(socket), state_cb, factory_fn,
-                                  server_msg_handler(), auth_provider());
+      return wamp_session::create_impl(k, t_session_mode::client, std::move(socket),
+                                       state_cb, factory_fn, server_msg_handler(), auth_provider());
     }
 
 
@@ -223,18 +227,25 @@ namespace XXX {
 
     t_sid unique_id() const { return m_sid; }
 
-    /** Is session passive (i.e. server side) or active (client). */
-    bool is_passive() const;
+    t_session_mode session_mode() const { return m_session_mode; }
 
     const char* protocol_name() const { return m_proto->name(); }
-
 
     std::shared_future<void>  closed_future() const { return m_shfut_has_closed; }
     std::shared_future<void>& closed_future()       { return m_shfut_has_closed; }
 
-  private:
+  private:;
+
+    static std::shared_ptr<wamp_session> create_impl(kernel*,
+                                                     t_session_mode,
+                                                     std::unique_ptr<tcp_socket>,
+                                                     session_state_fn,
+                                                     protocol_builder_fn ,
+                                                     server_msg_handler,
+                                                     auth_provider);
 
     wamp_session(kernel*,
+                 t_session_mode,
                  std::unique_ptr<tcp_socket>,
                  session_state_fn state_cb,
                  protocol_builder_fn protocol_builder,
@@ -299,8 +310,9 @@ namespace XXX {
     kernel* m_kernel;
 
     uint64_t m_sid;
-
     std::unique_ptr< tcp_socket> m_socket;
+
+    t_session_mode m_session_mode;
 
     std::promise<void> m_has_closed;
     std::shared_future<void> m_shfut_has_closed;
@@ -404,6 +416,8 @@ namespace XXX {
     std::unique_ptr<protocol> m_proto;
 
     std::promise< void > m_promise_on_open;
+
+
   };
 
 } // namespace XXX
