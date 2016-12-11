@@ -30,6 +30,9 @@ public:
   void dispatch(std::function<void()> fn);
   void dispatch(std::chrono::milliseconds, std::function<int()> fn);
 
+  /** Test whether the current thread is the EV thread */
+  bool this_thread_is_ev() const;
+
   // void add_hb_target(hb_func);
 
 private:
@@ -58,8 +61,9 @@ private:
   // std::list< hb_func > m_hb_targets;
   // std::mutex           m_hb_targets_mutex;
 
+  synchronized_optional<std::thread::id> m_ev_thread_id;
 
-  std::thread m_thread;  // must be final member, prevent race conditions
+  std::thread m_thread; // must be final member to prevent race conditions
 };
 
 } // namespace XXX

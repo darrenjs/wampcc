@@ -77,7 +77,8 @@ void event_loop::stop()
     m_condvar.notify_one();
   }
 
-  if (m_thread.joinable()) m_thread.join();
+  if (m_thread.joinable())
+    m_thread.join();
 }
 
 
@@ -251,12 +252,22 @@ void event_loop::eventloop()
 }
 
 
+/* Entry point for the kernel's EV thread */
 void event_loop::eventmain()
 {
+  scope_guard undo_thread_id([this](){ m_ev_thread_id.release(); });
+  m_ev_thread_id.set_value(std::this_thread::get_id());
+
+  // TODO: use handle_exception pattern for exceptions in this function
   if (m_kernel->get_config().event_loop_start_fn)
-    try {
+    try
+    {
       m_kernel->get_config().event_loop_start_fn();
-    } catch(...){}
+    }
+    catch(...)
+    {
+      LOG_WARN("ignoring exception in eventmain");
+    }
 
   while (m_continue)
   {
@@ -266,21 +277,29 @@ void event_loop::eventmain()
     }
     catch (const std::exception& e)
     {
-      LOG_ERROR("ignoring exception in eventmain: " << e.what());
+      LOG_WARN("ignoring exception in eventmain: " << e.what());
     }
     catch (...)
     {
-      LOG_ERROR("ignoring unknown exception in eventmain");
+      LOG_WARN("ignoring unknown exception in eventmain");
     }
   }
 
   if (m_kernel->get_config().event_loop_end_fn)
-    try {
+    try
+    {
       m_kernel->get_config().event_loop_end_fn();
-    } catch(...){}
-
+    }
+    catch(...)
+    {
+      LOG_WARN("ignoring exception in eventmain");
+    }
 }
 
 
+bool event_loop::this_thread_is_ev() const
+{
+  return m_ev_thread_id.compare(std::this_thread::get_id());
+}
 
 } // namespace XXX

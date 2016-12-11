@@ -3,6 +3,7 @@
 #include "XXX/log_macros.h"
 #include "XXX/kernel.h"
 #include "XXX/tcp_socket.h"
+#include "XXX/utils.h"
 
 #include <system_error>
 
@@ -116,13 +117,20 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
   // policy for handling sigpipe using libuv.
   //  signal(SIGPIPE, SIG_IGN);
 
-  m_thread = std::thread([this, io_started_cb]() {
-      m_io_thread_id = std::this_thread::get_id();
+  m_thread = std::thread([this, io_started_cb](){
+
+      scope_guard undo_thread_id([this](){ m_io_thread_id.release(); });
+      m_io_thread_id.set_value(std::this_thread::get_id());
+
       if (io_started_cb)
         try {
           io_started_cb();
         } catch(...){ /* ignore */}
-      this->io_loop::run_loop();
+
+      try {
+        io_loop::run_loop();
+      } catch(...){ /* ignore */}
+
     });
 }
 
@@ -314,9 +322,9 @@ void io_loop::on_async()
 }
 
 
-const std::thread::id& io_loop::get_thread_id()  const
+bool io_loop::this_thread_is_io() const
 {
-  return m_io_thread_id;
+  return m_io_thread_id.compare(std::this_thread::get_id());
 }
 
 

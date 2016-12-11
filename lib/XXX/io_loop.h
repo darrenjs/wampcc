@@ -104,11 +104,8 @@ public:
   logger & get_logger() const { return __logger; }
   kernel & get_kernel() const { return m_kernel; }
 
-  /**
-   * Return the thread ID of the IO loop. The return value is only defined after
-   * the IO loop has successfully started.
-   */
-  const std::thread::id& get_thread_id() const;
+  /** Test whether current thread is the IO thread */
+  bool this_thread_is_io() const;
 
 private:
 
@@ -128,9 +125,9 @@ private:
   std::vector< std::unique_ptr<io_request> > m_pending_requests;
   std::mutex                                 m_pending_requests_lock;
 
-  std::thread  m_thread; // should be final member
+  synchronized_optional<std::thread::id> m_io_thread_id;
 
-  mutable std::thread::id m_io_thread_id;
+  std::thread m_thread; // must be final member to prevent race conditions
 };
 
 } // namespace XXX

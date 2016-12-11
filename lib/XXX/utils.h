@@ -185,7 +185,7 @@ public:
         if(m_fn) m_fn(); // must not throw
     }
 
-    void dismiss() throw() {
+    void dismiss() noexcept {
         m_fn = nullptr;
     }
 

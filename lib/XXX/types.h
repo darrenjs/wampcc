@@ -4,6 +4,7 @@
 #include <jalson/jalson.h>
 
 #include <functional>
+#include <mutex>
 #include <string>
 #include <memory>
 #include <stdint.h>
@@ -80,6 +81,52 @@ struct wamp_args
   jalson::json_array  args_list;
   jalson::json_object args_dict;
 };
+
+
+/** Optionally store a value of value of type T.  Methods to assign 
+	  the value and compare with it are protected by an internal mutex.
+*/
+template <typename T>
+class synchronized_optional
+{
+public:
+  synchronized_optional()
+    : m_valid(false)
+  {
+  }
+
+  void set_value(const T& new_value)
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_value = new_value;
+    m_valid = true;
+  }
+
+  void set_value(T&& new_value)
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_value = std::move(new_value);
+    m_valid = true;
+  }
+
+  void release()
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    m_valid = false;
+  }
+
+  bool compare(const T& value) const
+  {
+    std::unique_lock<std::mutex> guard(m_mutex);
+    return m_valid && m_value == value;
+  }
+
+private:
+  mutable std::mutex m_mutex;
+  bool m_valid;
+  T m_value;
+};
+
 
 } // namespace
 
