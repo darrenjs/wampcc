@@ -179,7 +179,7 @@ wamp_session::~wamp_session()
 
   if (!m_socket->is_closed())
   {
-    if (std::this_thread::get_id() == m_kernel->get_io()->get_thread_id())
+    if (m_kernel->get_io()->this_thread_is_io())
     {
       m_socket->reset_listener();
       tcp_socket * rawptr = m_socket.get();
@@ -411,9 +411,7 @@ void wamp_session::process_inbound_goodbye(jalson::json_array &)
 
     // we are not expecting a GOODBYE from the peer, so send a reply
     try {
-      m_proto->send_msg(
-        build_goodbye_message(WAMP_ERROR_GOODBYE_AND_OUT
-          ));
+      m_proto->send_msg(build_goodbye_message(WAMP_ERROR_GOODBYE_AND_OUT));
     }
     catch (...) {
       initiate_close(guard);
@@ -1754,43 +1752,79 @@ void wamp_session::drop_connection_impl(std::string reason,
 
 void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
 {
+  /* ANY thread */
+
   if (m_state == eClosing || m_state == eClosed)
     return;
 
   m_state = eClosing;
 
   // TODO: what if the EV thread is closed?
-  // push the final EV operation
   std::shared_ptr<wamp_session> sp = shared_from_this();
-  m_kernel->get_event_loop()->dispatch([sp](){
-
-
-      // TODO: review this order.  Possibly, the user callback should go first?
-      // The promise assignment must be last, so that user can rely on it to
-      // indicate when all wamp_session callbacks into user code have been
-      // complete.
-
-      /* EV thread */
-      {
-        std::lock_guard<std::mutex> guard(sp->m_state_lock);
-        sp->m_state = eClosed;
-      }
-
-      try {
-        sp->m_notify_state_change_fn(sp, false);
-      }
-      catch (...) {
-        /* ignore */
-      }
-
-      sp->m_has_closed.set_value();
-    } );
+  m_kernel->get_event_loop()->dispatch([sp](){ sp->transition_to_closed(); });
 }
 
 
 void wamp_session::upgrade_protocol(std::unique_ptr<protocol>& new_proto)
 {
   m_proto.swap(new_proto);
+}
+
+
+void wamp_session::fast_close()
+{
+  /* ANY thread */
+
+  if (m_kernel->get_event_loop()->this_thread_is_ev())
+  {
+    transition_to_closed();
+  }
+  else
+  {
+    {
+      std::lock_guard<std::mutex> guard(m_state_lock);
+      if (m_state != eClosed)
+        initiate_close(guard);
+      else
+        return;
+    }
+    m_shfut_has_closed.wait();
+  }
+}
+
+
+/* Implement the actual state transition to closed */
+void wamp_session::transition_to_closed()
+{
+  /* EV thread */
+
+  assert(m_kernel->get_event_loop()->this_thread_is_ev() == true);
+
+  // Make final check of session state to ensure that only a single callback
+  // will be made into the user callback. Even though this is also protected
+  // when the event is initially dispatched, later code modification might
+  // attempt to push additional close callbacks.
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    if (m_state != eClosed)
+      m_state = eClosed;
+    else
+      return;
+  }
+
+  // The order of invoking the user callback and setting the promise is
+  // deliberately chosen here.  The promise assignment must be last, so that
+  // user can rely on it to indicate when all wamp_session callbacks into
+  // user code have been complete.
+
+  try {
+    m_notify_state_change_fn(shared_from_this(), false);
+  }
+  catch (...) {
+    /* ignore */
+  }
+
+  m_has_closed.set_value();
 }
 
 

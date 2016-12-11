@@ -116,6 +116,36 @@ void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
 }
 
 
+std::shared_ptr<wamp_session> establish_session(std::unique_ptr<kernel> & the_kernel, int port)
+{
+  static int count = 0;
+  count++;
+
+  std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
+
+  auto fut = sock->connect("127.0.0.1", port);
+
+  auto connect_status = fut.wait_for(std::chrono::milliseconds(100));
+  if (connect_status == std::future_status::timeout)
+  {
+    return std::shared_ptr<wamp_session>();
+  }
+
+  /* attempt to create a session */
+  std::shared_ptr<wamp_session> session;
+  if (count % 2)
+    session = wamp_session::create<rawsocket_protocol>(
+      the_kernel.get(),
+      std::move(sock),
+      session_cb, {});
+  else
+    session = wamp_session::create<websocket_protocol>(
+      the_kernel.get(),
+      std::move(sock),
+      session_cb, {});
+
+  return session;
+}
 
 }
 

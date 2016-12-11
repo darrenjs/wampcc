@@ -174,8 +174,11 @@ namespace XXX {
 
     ~wamp_session();
 
-    /** Request asynchronous close of the session */
+    /** Request asynchronous graceful session close */
     std::shared_future<void> close();
+
+    /** Perform synchronous fast (ungraceful) session close */
+    void fast_close();
 
     session_handle handle() { return shared_from_this(); }
 
@@ -297,6 +300,7 @@ namespace XXX {
 
     void change_state(SessionState expected, SessionState next);
     void initiate_close(std::lock_guard<std::mutex>&);
+    void transition_to_closed();
 
     void handle_HELLO(jalson::json_array& ja);
     void handle_CHALLENGE(jalson::json_array& ja);
