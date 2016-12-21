@@ -22,7 +22,7 @@
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
 #AM_CPPFLAGS = -I$(top_srcdir)/libcpp11  -Wall -g3 -ggdb  -I$(XLOGHOME)/include
-AM_CPPFLAGS =  -I$(top_srcdir)/lib -I$(LIBUVHOME)/include -I$(JALSONHOME)/include -Wall -g3 -ggdb -std=c++0x -O0
+AM_CPPFLAGS =   -I$(jalsoninc) -I$(top_srcdir)/lib -I$(LIBUVHOME)/include  -Wall -g3 -ggdb -std=c++0x -O0
 
 AM_LDFLAGS=-lpthread
 
@@ -30,11 +30,11 @@ AM_LDFLAGS=-lpthread
 bin_PROGRAMS = admin client
 
 admin_SOURCES=admin.cc
-admin_LDADD=-L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
+admin_LDADD=-L../lib -lXXX  $(LIBLS) -L$(jalsonlib) -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 admin_LDFLAGS=-L../lib -pthread
 
 client_SOURCES=client.cc
-client_LDADD=-L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
+client_LDADD=-L../lib -lXXX  $(LIBLS) -L$(jalsonlib) -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 client_LDFLAGS=-L../lib -pthread
 
 

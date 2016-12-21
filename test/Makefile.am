@@ -12,10 +12,10 @@ libgtest_la_LDFLAGS  = -pthread
 
 # Define compile & link flags for each target
 AM_CPPFLAGS = -I$(top_srcdir)/lib -I$(LIBUVHOME)/include						\
--I$(JALSONHOME)/include -I$(top_srcdir)/external/googletest/googletest/include			\
+-I$(jalsoninc) -I$(top_srcdir)/external/googletest/googletest/include			\
 -I$(top_srcdir)/external/googletest/googletest -Wall -g3 -ggdb -std=c++0x -O0 -pthread
 
-AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS) -L$(JALSONHOME)/lib -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
+AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS)  -L$(jalsonlib) -ljalson -L$(LIBUVHOME)/lib -luv -lcrypto -lpthread
 
 
 check_PROGRAMS=test_connect_timeout test_tcp_socket_connect					\

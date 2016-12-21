@@ -4,6 +4,8 @@
 AC_INIT([XXX], [1.0.0], [XXX-bug-report@darrenjs.net], [XXX], [ ] )
 AC_PREREQ([2.59])
 
+AC_CONFIG_AUX_DIR([.])
+
 # This macro causes the environment variables, $host, $build and $target to be
 # defined.
 AC_CANONICAL_SYSTEM
@@ -13,10 +15,8 @@ AM_INIT_AUTOMAKE([1.10 no-define -Wall foreign subdir-objects] )
 
 AC_CONFIG_HEADERS([config.h])
 
-
 AC_PROG_CXX
 AC_LANG([C++])
-
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -27,8 +27,6 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 
 #========== Checks for programs ==========
-
-
 
 AC_PROG_CXX
 AC_PROG_CC
@@ -53,6 +51,18 @@ AC_CHECK_HEADERS([stdlib.h string.h strings.h unistd.h getopt.h])
 AC_HEADER_STDBOOL
 AC_C_CONST
 AC_C_INLINE
+
+##
+## jalson - can either be included with the source code, or pulled in externally
+## (although latter not yet implemented)
+##
+
+AC_MSG_NOTICE([Using bundled jalson])
+internal_jalson=1
+jalsoninc="../$srcdir/jalson/libjalson"
+jalsonlib="../jalson/libjalson"
+AC_SUBST(jalsoninc)
+AC_SUBST(jalsonlib)
 
 ##########################################################################
 # optional support for the admin static target
@@ -81,6 +91,8 @@ src/Makefile
 lib/Makefile
 test/Makefile
 ])
+
+AC_CONFIG_SUBDIRS([jalson])
 
 # Trigger the generation of our makefiles
 AC_OUTPUT

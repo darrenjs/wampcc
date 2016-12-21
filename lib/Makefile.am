@@ -1,8 +1,5 @@
-
-
-
-AM_CPPFLAGS = -Wall -g3 -ggdb -I$(top_srcdir)/external/http_parser
-AM_CXXFLAGS = -I$(LIBUVHOME)/include -I$(JALSONHOME)/include -Wall  -std=c++11
+AM_CPPFLAGS = -Wall -g3 -ggdb -I$(top_srcdir)/external/http_parser  -I$(jalsoninc)
+AM_CXXFLAGS = -I$(LIBUVHOME)/include -Wall  -std=c++11
 
 AM_LDFLAGS=-lpthread
 
