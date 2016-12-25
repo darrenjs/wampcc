@@ -47,6 +47,8 @@ struct user_options
   int verbose = 0;
   bool no_uri_check = false;
 
+  std::string arg_list;
+  std::string arg_dict;
 } uopts;
 
 
@@ -178,9 +180,12 @@ static void process_options(int argc, char** argv)
   };
 */
 
+  // these enums are used for options that don't have a short version
   enum
   {
-    NO_URI_CHECK = 1
+    NO_URI_CHECK = 1,
+    ARGLIST,
+    ARGDICT
   };
 
 //  int digit_optind = 0;
@@ -195,7 +200,9 @@ static void process_options(int argc, char** argv)
     {"username",  required_argument, 0, 'U'},
     {"password",  required_argument, 0, 'P'},
     {"realm",     required_argument, 0, 'R'},
-    {"no-uri-check", no_argument , 0, NO_URI_CHECK},
+    {"arglist",   required_argument, 0, ARGLIST},
+    {"argdict",   required_argument, 0, ARGDICT},
+    {"no-uri-check", no_argument ,   0, NO_URI_CHECK},
     {NULL, 0, NULL, 0}
   };
   const char* optstr="hvds:p:m:r:c:U:P:R:";
@@ -222,6 +229,8 @@ static void process_options(int argc, char** argv)
     {
       case 0: /* got long option */ break;
       case NO_URI_CHECK : uopts.no_uri_check = true; break;
+      case ARGLIST : uopts.arg_list = optarg; break;
+      case ARGDICT : uopts.arg_dict  = optarg; break;
       case 'd' : uopts.verbose++; break;
       case 'h' : usage();
       case 'v' : version();
@@ -283,6 +292,37 @@ int main_impl(int argc, char** argv)
 {
   process_options(argc, argv);
 
+  // take CALL parameters from command line
+  XXX::wamp_args args;
+  if (!uopts.arg_list.empty())
+  {
+    try
+    {
+      auto jv = jalson::decode(uopts.arg_list.c_str(), uopts.arg_list.size());
+      if (!jv.is_array())
+        throw std::runtime_error("expected JSON array");
+      args.args_list = jv.as_array();
+    }
+    catch (std::exception& e)
+    {
+      throw std::runtime_error(std::string("invalid arglist parameter, ") + e.what());
+    }
+  }
+  if (!uopts.arg_dict.empty())
+  {
+    try
+    {
+      auto jv = jalson::decode(uopts.arg_dict.c_str(), uopts.arg_dict.size());
+      if (!jv.is_object())
+        throw std::runtime_error("expected JSON object");
+      args.args_dict = jv.as_object();
+    }
+    catch (std::exception& e)
+    {
+      throw std::runtime_error(std::string("invalid argdict parameter, ") + e.what());
+    }
+  }
+
   g_kernel.reset( new XXX::kernel({}, __logger));
 
   /* Create a socket connector.  This will immediately make an attempt to
@@ -313,7 +353,7 @@ int main_impl(int argc, char** argv)
   if (!sock->is_connected())
     throw std::runtime_error("socket not connected");
 
-  XXX::rawsocket_protocol::options opts;
+  XXX::rawsocket_protocol::options proto_opts;
   std::shared_ptr<XXX::wamp_session> ws =
     XXX::wamp_session::create<XXX::rawsocket_protocol>(
       g_kernel.get(),
@@ -321,7 +361,7 @@ int main_impl(int argc, char** argv)
       [](XXX::session_handle wp, bool is_open) {
         if (auto sp = wp.lock())
           router_connection_cb(0, is_open);
-      }, opts);
+      }, proto_opts);
 
   if (!ws)
     throw std::runtime_error("failed to obtain WAMP session");
@@ -354,16 +394,8 @@ int main_impl(int argc, char** argv)
 
   std::cout << "WAMP session open" << std::endl;
 
-  // TODO: take CALL parameters from command line
-  XXX::wamp_args args;
-  jalson::json_array ja;
-  ja.push_back( "hello" );
-  ja.push_back( "world" );
-  args.args_list = ja ;
-
   bool long_wait = false;
   bool wait_reply = false;
-
 
   XXX::basic_list my_list;
 
@@ -387,9 +419,8 @@ int main_impl(int argc, char** argv)
   // XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list> >
   //   sub_planets2(ws, "planets", h2 );
 
-  XXX::model_subscription< XXX::basic_list_subscription_handler<> >
-    sub_planets3(ws, "planets", my_list);
-
+  // XXX::model_subscription< XXX::basic_list_subscription_handler<> >
+  //   sub_planets3(ws, "planets", my_list);
 
   // subscribe to user topics
   jalson::json_object sub_options { {KEY_PATCH, 1} };
@@ -402,9 +433,9 @@ int main_impl(int argc, char** argv)
   if (!uopts.register_procedure.empty())
   {
     ws->provide(uopts.register_procedure,
-                   jalson::json_object(),
-                  procedure_cb,
-                   (void*) cb1.get());
+                jalson::json_object(),
+                procedure_cb,
+                (void*) cb1.get());
     long_wait = true;
   }
 
