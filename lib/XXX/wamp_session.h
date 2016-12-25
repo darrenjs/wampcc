@@ -93,6 +93,8 @@ namespace XXX {
     jalson::json_object details;
     void *              user;
 
+    // TODO: maybe have these as private, and provide instead function calls?
+    // That way we can have default paramters.
     std::function<void(jalson::json_array, jalson::json_object)> yield;
     std::function<void(std::string, jalson::json_array, jalson::json_object)> error;
   };
