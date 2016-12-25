@@ -43,10 +43,14 @@ public:
   {
   }
 
+  // TODO: once we have common base class for both wamp_session &
+  // internal_session, then only one method will be required here.
   void add_publisher(std::weak_ptr<wamp_session> wp);
 
   void add_publisher(std::string realm,
                      std::weak_ptr<dealer_service>);
+
+  const std::string& uri() const { return m_uri; }
 
 private:
 
@@ -62,6 +66,7 @@ class basic_text
 public:
   typedef std::string internal_impl;
 
+  // TODO: rename (and keep consistent with list document)
   struct observer
   {
     std::function< void(const std::string&) > on_change;
@@ -71,6 +76,7 @@ public:
 
   basic_text() = default;
   basic_text(std::string);
+  basic_text(const basic_text&);
 
   std::string value() const;
 
