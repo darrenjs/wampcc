@@ -85,7 +85,7 @@ int main(int /* argc */, char** /* argv */)
 {
   std::unique_ptr<XXX::kernel> mycs ( new XXX::kernel({},__logger) );
 
-  std::shared_ptr<XXX::dealer_service> dealer ( new XXX::dealer_service(mycs.get(), nullptr ) );
+  std::shared_ptr<XXX::dealer_service> dealer ( new XXX::dealer_service(mycs.get(), nullptr) );
   g_dealer = dealer;
 
   planets_topic.add_publisher("default_realm", g_dealer);
@@ -117,15 +117,15 @@ int main(int /* argc */, char** /* argv */)
   std::unique_ptr<callback_t> cb1( new callback_t(mycs.get(),"my_run") );
   std::unique_ptr<callback_t> cb2( new callback_t(mycs.get(),"my_error") );
 
-  dealer->register_procedure("default_realm",
-                             "run",
-                             jalson::json_object(),
-                             procedure_cb, (void*) cb1.get());
+  dealer->provide("default_realm",
+                  "run",
+                  jalson::json_object(),
+                  procedure_cb, (void*) cb1.get());
 
-  dealer->register_procedure("default_realm",
-                             "erun",
-                             jalson::json_object(),
-                             procedure_error_cb, (void*) cb2.get());
+  dealer->provide("default_realm",
+                  "erun",
+                  jalson::json_object(),
+                  procedure_error_cb, (void*) cb2.get());
 
   while(1) sleep(10);
 

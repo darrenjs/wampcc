@@ -27,24 +27,25 @@ public:
   ~dealer_service();
 
   /** Request asynchronous close */
-  std::future<void> close();
-
-  // publish to an internal topic
-  void publish(const std::string& topic,
-               const std::string& realm,
-               const jalson::json_object& options,
-               wamp_args);
+//  std::future<void> close();
 
   /* Asynchronously begin accepting connections on the given port. If the bind
    * and or listen fails, a non-zero error code is returned in the future. */
   std::future<int> listen(int port,
                           auth_provider auth); // TODO: needs interface argument
 
-  void register_procedure(const std::string& realm,
-                          const std::string& uri,
-                          const jalson::json_object& options,
-                          rpc_cb cb,
-                          void * data);
+  /** Publish to an internal topic */
+  void publish(const std::string& realm,
+               const std::string& uri,
+               const jalson::json_object& options,
+               wamp_args args);
+
+  /** Provide an internal RPC */
+  void provide(const std::string& realm,
+               const std::string& uri,
+               const jalson::json_object& options,
+               rpc_cb cb,
+               void * data = nullptr);
 
 private:
 
@@ -76,6 +77,7 @@ private:
 
   dealer_listener* m_listener;
 
+  // TODO: no mutex is protecting this?
   std::vector< std::unique_ptr<tcp_socket> >    m_server_sockets;
 };
 

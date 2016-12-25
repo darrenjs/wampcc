@@ -29,7 +29,7 @@ dealer_service::dealer_service(kernel* __svc, dealer_listener* l)
 dealer_service::~dealer_service()
 {
   // TODO: need to detect if dealer is going to try to delete the wamp_session
-  // on the EV thread.
+  // on the EV thread -- not able to perform the wait here in such cases.
 
   /* First we shutdown the server sockets, so that we dont have IO callbacks
    * entering into self as the destructor is underway. */
@@ -153,21 +153,19 @@ std::future<int> dealer_service::listen(int port,
 }
 
 
-void dealer_service::register_procedure(const std::string& realm,
-                                        const std::string& uri,
-                                        const jalson::json_object& options,
-                                        rpc_cb user_cb,
-                                        void * user_data)
+void dealer_service::provide(const std::string& realm,
+                             const std::string& uri,
+                             const jalson::json_object& options,
+                             rpc_cb user_cb,
+                             void * user_data)
 {
-
   // TODO: dispatch this on the event thread?
   m_rpcman->register_internal_rpc_2(realm, uri, options, user_cb, user_data);
-
 }
 
 
-void dealer_service::publish(const std::string& topic,
-                             const std::string& realm,
+void dealer_service::publish(const std::string& realm,
+                             const std::string& topic,
                              const jalson::json_object& options,
                              wamp_args args)
 {
@@ -296,23 +294,29 @@ void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp,
   }
 }
 
+// std::future<void> dealer_service::close()
+// {
+//   // ANY thread
 
-std::future<void> dealer_service::close()
-{
-  // ANY thread
+//   {
+//     std::lock_guard<std::mutex> guard(m_sesions_lock);
+//     for (auto & item : m_sessions)
+//     {
+//       std::cout << "dealer_service closing session \n";
+//       item.second->close();
+//       std::cout << "dealer_service closing session ... done \n";
+//     }
+//   }
 
-  {
-    std::lock_guard<std::mutex> guard(m_sesions_lock);
-    for (auto & item : m_sessions)
-    {
-      item.second->close();
-    }
-  }
+//   for (auto & socket : m_server_sockets)
+//   {
+//     socket->close();
+//   }
 
-  // TODO: next, need to remove all listen sockets we have
-
-  return m_promise_on_close.get_future();
-}
+//   // TODO: next, need to remove all listen sockets we have
+//   std::cout << "dealer_service returning future\n";
+//   return m_promise_on_close.get_future();
+// }
 
 void dealer_service::check_has_closed()
 {
