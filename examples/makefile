@@ -1,21 +1,16 @@
 
 ifeq ($(XXX_HOME),)
- $(error XXX_HOME not defined -- you should source a build env script)
+ $(error XXX_HOME undefined - set XXX_HOME to where XXX was make-installed)
 endif
 
 XXX_INC=-I$(XXX_HOME)/include
-XXX_LIBS=-L$(XXX_HOME)/lib -lXXX
+XXX_LIBS=-L$(XXX_HOME)/lib -lXXX -ljalson
 XXX_LIBA=$(XXX_HOME)/lib/libXXX.a
 
 LIBUV_HOME=/home/darrens/opt/libuv-1.8.0
 LIBUV_INC=-I$(LIBUV_HOME)/include
 LIBUV_LIBS=-L$(LIBUV_HOME)/lib -luv
 LIBUV_LIBA=$(LIBUV_HOME)/lib/libuv.a
-
-JALSON_HOME=/home/darrens/opt/jalson-1.0
-JALSON_INC=-I$(JALSON_HOME)/include
-JALSON_LIBS=-L$(JALSON_HOME)/lib -ljalson
-JALSON_LIBA=$(JALSON_HOME)/lib/libjalson.a
 
 JANSSON_HOME=/home/darrens/opt/jansson-2.7
 JANSSON_LIBS=-L$(JANSSON_HOME)/lib -ljansson
