@@ -102,11 +102,11 @@ static const char* level_str(logger::Level l)
 {
   switch(l)
   {
-    case logger::eError : return "ERROR";
-    case logger::eWarn  : return "WARN";
-    case logger::eInfo  : return "INFO";
-    case logger::eDebug : return "DEBUG";
-    default : return "UNKNOWN";
+    case logger::eError : return "ERROR ";
+    case logger::eWarn  : return "WARN  ";
+    case logger::eInfo  : return "INFO  ";
+    case logger::eDebug : return "DEBUG ";
+    default             : return "????? ";
   }
 }
 
@@ -141,7 +141,7 @@ void stdout_logger::stdout_logger::write(logger::Level l,
   std::lock_guard<std::mutex> lock( m_mutex );
   m_stream << timestamp;
   m_stream << tid << " ";
-  m_stream << level_str(l) << " : ";
+  m_stream << level_str(l) << " ";
   m_stream << s;
 
   if (m_incsource && file)
