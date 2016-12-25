@@ -21,6 +21,12 @@ basic_text::basic_text(std::string s)
 {
 }
 
+basic_text::basic_text(const basic_text& src)
+  : m_impl(src.m_impl)
+  /* TODO: should this also copy the observers? And, what about thread safety, ie, when reading the source? */
+{
+}
+
 
 std::string basic_text::value() const
 {
@@ -138,10 +144,10 @@ void topic::add_publisher(std::string realm,
       pub_args.args_list.push_back( patch );
 
       if (auto sp=dealer.lock())
-        sp->publish( m_uri,
-                     realm,
-                     { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
-                     std::move(pub_args) );
+        sp->publish(realm,
+                    m_uri,
+                    { {KEY_PATCH, 1}, {KEY_SNAPSHOT, 1} },
+                    std::move(pub_args) );
     };
 
   obs.on_update = [=](const jalson::json_array& patch,
@@ -152,10 +158,10 @@ void topic::add_publisher(std::string realm,
       pub_args.args_list.push_back( event );
 
       if (auto sp=dealer.lock())
-        sp->publish( m_uri,
-                     realm,
-                     { {KEY_PATCH,1} },
-                     std::move(pub_args) );
+        sp->publish(realm,
+                    m_uri,
+                    { {KEY_PATCH,1} },
+                    std::move(pub_args) );
     };
 
   m_attach_to_model( std::move(obs) );
