@@ -250,7 +250,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 {
   int message_type = msg[0].as_uint();
 
-  if (session_mode() == t_session_mode::client)
+  if (session_mode() == t_session_mode::server)
   {
     if (message_type == CHALLENGE)
     {
@@ -440,7 +440,7 @@ void wamp_session::process_message(unsigned int message_type,
     if (message_type == GOODBYE)
       return process_inbound_goodbye( ja );
 
-    if (session_mode() == t_session_mode::client)
+    if (session_mode() == t_session_mode::server)
     {
       if (message_type == HELLO)
       {
@@ -1252,7 +1252,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
   jalson::json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
-  if (session_mode() == t_session_mode::client)
+  if (session_mode() == t_session_mode::server)
   {
     switch (orig_request_type)
     {
@@ -1285,7 +1285,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
         break;
       }
       default:
-        LOG_WARN("wamp error response has unexpected request type " << orig_request_type);
+        LOG_WARN("wamp error response has unexpected original request type " << orig_request_type);
         break;
     }
   }
@@ -1336,7 +1336,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
         break;
       }
       default:
-        LOG_WARN("wamp error response has unexpected request type " << orig_request_type);
+        LOG_WARN("wamp error response has unexpected original request type " << orig_request_type);
         break;
     }
   }
