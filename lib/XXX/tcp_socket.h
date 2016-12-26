@@ -19,9 +19,8 @@ namespace XXX {
 class io_listener;
 class io_loop;
 
-
 /**
- * Wrap a socket used for TCP stream communication
+ * Represent a TCP socket, in both server mode and client mode.
  */
 class tcp_socket
 {
@@ -45,6 +44,8 @@ public:
   /** Request socket begins reading inbound data */
   void start_read(io_listener*);
 
+  /** Reassign the listener object, to that callbacks can be directed to a
+   * different object. Should only be called on the IO thread. */
   void reset_listener(io_listener* = nullptr);
 
   /** Request a bind and listen */
@@ -53,9 +54,17 @@ public:
   /* Request a write */
   void write(std::pair<const char*, size_t> * srcbuf, size_t count);
 
-  /** Request socket close */
+  /** Request asynchronous socket close. To detect when close has occured, the
+   * caller can wait upon the returned future.  Throws io_loop_closed if IO loop
+   * has already been closed. */
   std::shared_future<void> close();
 
+  /** Request asynchronous socket close, and recieve notification via the
+   * specified callback. If the tcp_socket is not currently closed then the
+   * provided callback is invoked at the time of socket closure and true is
+   * returned.  Otherwise, if the socket is already closed, the callback is
+   * never invoked and false is returned. Throws io_loop_closed if IO loop has
+   * already been closed. */
   bool close(on_close_cb);
 
   bool is_connected() const;

@@ -216,25 +216,35 @@ void tcp_socket::do_close()
 
   uv_close((uv_handle_t*) m_uv_tcp, [](uv_handle_t * h) {
 
+      /* callback invoked upon uv_close completion */
+
       uv_handle_data * ptr = (uv_handle_data*) h->data;
       tcp_socket * sock = ptr->tcp_socket_ptr();
 
-      // Extract from the tcp_socket the child objects that need to have their
-      // lifetime extended beyond that of the parent tcp_socket, so that after
-      // setting of socket state to e_closed, these objects can still be used.
-      auto user_close_fn  = std::move(sock->m_user_close_fn);
-      auto closed_promise = std::move(sock->m_io_closed_promise);
+      decltype(sock->m_user_close_fn)     user_close_fn;
+      decltype(sock->m_io_closed_promise) closed_promise;
 
-      /* Once the state is set to closed, the socket can be immediately deleted
-       * by another thread. So this must be the last action taken upon the sock
-       * ptr. */
+      /* Once the state is set to e_closed, this tcp_socket object may be
+       * immediately deleted by another thread. So this must be the last action
+       * that makes use of the tcp_socket members. */
       {
         std::lock_guard< std::mutex > guard (sock->m_state_lock);
         sock->m_state = e_closed;
+
+        /* Extract from the tcp_socket the child objects that need to have their
+         * lifetime extended beyond that of the parent tcp_socket, so that after
+         * setting of socket state to e_closed, these objects can still be
+         * used. It is also important that the user-close-fn is copied inside
+         * this critical section, and not before the lock is taken.*/
+        user_close_fn  = std::move(sock->m_user_close_fn);
+        closed_promise = std::move(sock->m_io_closed_promise);
       }
 
-      /* Run the user callback first. This callback must not perform a wait on
-       * the future, because that only gets set after the callback returns. */
+      /* Run the user callback first, and then set the promise (the promise is
+       * set as the last action, so that an owner of tcp_socket can wait on a
+       * future to know when all callbacks are complete). This user callback
+       * must not perform a wait on the future, because that only gets set after
+       * the callback returns. */
       if (user_close_fn)
         try {
           user_close_fn();
@@ -258,9 +268,7 @@ std::shared_future<void> tcp_socket::close()
   if (m_state != e_closing && m_state != e_closed)
   {
     m_state = e_closing;
-    m_kernel->get_io()->push_fn([this]() {
-        this->do_close();
-      });
+    m_kernel->get_io()->push_fn([this]() { this->do_close(); }); // can throw
   }
 
   return m_io_closed_future;
@@ -269,29 +277,26 @@ std::shared_future<void> tcp_socket::close()
 
 bool tcp_socket::close(on_close_cb user_on_close_fn)
 {
+  /* Note that it is safe for this to be called when state is e_closing.  In
+   * such a situation the on-close callback is due to be invoked very soon (on
+   * the IO thread), but because we hold the lock here, the callback function
+   * can be altered before it gets invoked (see the uv_close callback).
+   */
+
   std::lock_guard< std::mutex > guard (m_state_lock);
 
-  // if socket has already been closed, it will not be possible to later invoke
-  // the user provided on-close callback
+  // if tcp_socket is already closed, it will not be possible to later invoke
+  // the user provided on-close callback, so return false
   if (m_state == e_closed)
     return false;
 
-
-  // TODO: what if this method has already been called before? What if we are already in e_closing?
-
   m_user_close_fn = user_on_close_fn;
 
-  // push the close event ... this might throw if the IO loop is in processing
-  // of stopping
   if (m_state != e_closing)
-    try {
-      // TODO: there might be other cases of throw, eg, memory
-      m_kernel->get_io()->push_fn( [this]() { this->do_close(); });
-      m_state = e_closing;
-    }
-    catch (io_loop_closed & e) {
-      LOG_WARN("cannot push tcp_socket close request; has kernel already stopped?");
-    }
+  {
+    m_state = e_closing;
+    m_kernel->get_io()->push_fn( [this]() { this->do_close(); }); // can throw
+  }
 
   return true;
 }
