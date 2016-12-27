@@ -40,11 +40,14 @@ void basic_text::assign(std::string s)
   static auto fn = [](observer& ob, const std::string& val)
     { ob.on_change(val); };
 
-  std::lock(m_write_mutex, m_read_mutex);
+  std::lock(m_write_mutex, m_read_mutex); // lock both mutexes
+
   std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
 
   {
-    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
+    std::unique_lock<std::mutex> rguard(m_read_mutex, std::adopt_lock);
+    if (m_impl == s)
+      return;
     m_impl = std::move(s);
   }
 
