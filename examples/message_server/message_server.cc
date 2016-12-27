@@ -109,13 +109,17 @@ void message_server::rpc_message_set(XXX::wamp_invocation& invocation)
   if (invocation.arg_list[0].is_string() == false)
     throw std::runtime_error("message_key must be a string");
 
+  if (invocation.arg_list.size() < 2)
+    throw std::runtime_error("missing value");
+
+  if (invocation.arg_list[1].is_string() == false)
+    throw std::runtime_error("value must be a string");
+
   std::string key = invocation.arg_list[0].as_string();
 
   jalson::json_value topic_value;
   if (invocation.arg_list.size() > 1)
     topic_value = invocation.arg_list[1];
-
-  std::cout << "message update, key ["<<key << "] value: " << topic_value << "\n";
 
   std::map<std::string, message_topic>::iterator iter;
   {
