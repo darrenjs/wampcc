@@ -36,7 +36,8 @@ class managed_topic
 public:
 
   managed_topic(size_t __subscription_id)
-  :  m_subscription_id(__subscription_id)
+  :  m_subscription_id(__subscription_id),
+     m_is_valid(false)
   {
   }
 
@@ -79,8 +80,21 @@ public:
       m_subscribers.erase(it);
   }
 
-  jalson::json_value& image() { return m_image; }
+  /** Indicate whether an image exists for this topic.  This will be false until
+   * the first update arrives from the topic publisher. */
+  bool is_valid() const { return m_is_valid;}
+
   const jalson::json_value& image() const { return m_image; }
+
+  /** Accept a json-model update sent by a topic publisher.  This is represented
+   * as a json patch, which is applied to the image. */
+  void update_image(const jalson::json_array& patchset)
+  {
+    m_image.patch(patchset);
+
+    // only set as valid once a patch has successfully been applied.
+    m_is_valid = true;
+  }
 
   std::vector< std::weak_ptr<wamp_session> > &  subscribers()  {return m_subscribers;}
   const std::vector< std::weak_ptr<wamp_session> > &  subscribers() const {return m_subscribers;}
@@ -99,6 +113,9 @@ private:
   // serialisation for all subscribers.  Might have to change later if more
   // complex subscription features are supported.
   size_t m_subscription_id;
+
+  // Track whether this image has ever applied an update
+  bool m_is_valid;
 };
 
 /* Constructor */
@@ -113,9 +130,6 @@ pubsub_man::~pubsub_man()
   // destructor needed here so that unique_ptr can see the definition of
   // managed_topic
 }
-
-
-
 
 managed_topic* pubsub_man::find_topic(const std::string& topic,
                                       const std::string& realm,
@@ -142,7 +156,7 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
     {
       std::unique_ptr<managed_topic> ptr(new managed_topic(m_next_subscription_id++));
       m_subscription_registry[ptr->subscription_id()] = ptr.get();
-      auto result = realm_iter->second.insert(std::make_pair(topic, std::move( ptr )));
+      auto result = realm_iter->second.insert(std::make_pair(topic, std::move(ptr)));
       topic_iter = result.first;
     }
     else return nullptr;
@@ -173,7 +187,7 @@ void pubsub_man::update_topic(const std::string& topic,
     //std::cout << "@" << topic << ", patch\n";
     //std::cout << "BEFORE: " << mt->image << "\n";
     //std::cout << "PATCH : " << args.args_list << "\n";
-    mt->image().patch(args.args_list[0].as_array());
+    mt->update_image(args.args_list[0].as_array());
     //std::cout << "AFTER : "  << mt->image << "\n";
     //std::cout << "-------\n";
   }
@@ -264,15 +278,16 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   // find or create a topic
   managed_topic* mt = find_topic(topic, sptr->realm(), true);
 
-  if (!mt) throw wamp_error(WAMP_ERROR_INVALID_URI);
+  if (!mt)
+    throw wamp_error(WAMP_ERROR_INVALID_URI);
 
   LOG_INFO("session " << sptr->unique_id() << " subscribed to '"<< topic << "'");
 
   jalson::json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
   sptr->send_msg(msg);
 
-  /* for stateful topic must send initial snapshot */
-  if (options.find(KEY_PATCH) != options.end())
+  /* for stateful topic must send initial snapshot (only if an image exists) */
+  if (mt->is_valid() && (options.find(KEY_PATCH) != options.end()))
   {
     XXX::wamp_args pub_args;
     pub_args.args_list = jalson::json_array();
@@ -305,7 +320,6 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 }
 
 
-
 void pubsub_man::unsubscribe(wamp_session* sptr,
                              t_request_id request_id,
                              t_subscription_id sub_id)
@@ -326,6 +340,7 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
     throw wamp_error(WAMP_ERROR_NO_SUCH_SUBSCRIPTION);
   }
 }
+
 
 void pubsub_man::session_closed(session_handle /*sh*/)
 {
