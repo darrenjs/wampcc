@@ -119,7 +119,7 @@ public:
   model_subscription(std::shared_ptr<XXX::wamp_session>& ws,
                      std::string uri,
                      MArgs&... args)
-    : model_subscription( ws, uri, T( args... ) )
+    : model_subscription( ws, uri, T( args... ) ) // delegate construction
   {
   }
 
@@ -129,7 +129,6 @@ private:
   std::string m_uri;
   T m_event_handler;
 };
-
 
 
 class basic_list
