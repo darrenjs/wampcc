@@ -17,13 +17,14 @@ lib_LTLIBRARIES = libXXX.la
 nobase_include_HEADERS = XXX/types.h XXX/kernel.h XXX/wamp_session.h			\
 XXX/dealer_service.h XXX/topic.h XXX/io_listener.h XXX/protocol.h XXX/io_loop.h	\
 XXX/rawsocket_protocol.h XXX/websocket_protocol.h								\
-XXX/tcp_socket.h XXX/utils.h
+XXX/tcp_socket.h XXX/utils.h XXX/data_model.h
 
 # List the sources for an individual library
 libXXX_la_SOURCES = tcp_socket.cc dealer_service.cc event_loop.cc			\
 example_models.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc topic.cc	\
 utils.cc wamp_session.cc protocol.cc rawsocket_protocol.cc					\
-websocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc
+websocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc	\
+data_model.cc
 
 
 # Include compile and link flags for an individual library.
