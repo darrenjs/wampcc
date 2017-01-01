@@ -8,103 +8,11 @@
 
 namespace XXX {
 
-const std::string basic_text::key_reset("x");
 
 const std::string basic_list::key_reset("x");
 const std::string basic_list::key_insert("i");
 const std::string basic_list::key_remove("e");
 const std::string basic_list::key_modify("m");
-
-
-basic_text::basic_text(std::string s)
-  : m_impl( std::move(s) )
-{
-}
-
-basic_text::basic_text(const basic_text& src)
-  : m_impl(src.m_impl)
-  /* TODO: should this also copy the observers? And, what about thread safety, ie, when reading the source? */
-{
-}
-
-
-std::string basic_text::value() const
-{
-  std::unique_lock<std::mutex> rguard(m_read_mutex);
-  return m_impl;
-}
-
-
-void basic_text::assign(std::string s)
-{
-  static auto fn = [](observer& ob, const std::string& val)
-    { ob.on_change(val); };
-
-  std::lock(m_write_mutex, m_read_mutex); // lock both mutexes
-
-  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
-
-  {
-    std::unique_lock<std::mutex> rguard(m_read_mutex, std::adopt_lock);
-    if (m_impl == s)
-      return;
-    m_impl = std::move(s);
-  }
-
-  m_observers.notify( fn, m_impl );
-}
-
-
-void basic_text::add_observer(observer)
-{
-  std::lock(m_write_mutex, m_read_mutex);
-  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
-  std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
-}
-
-
-void basic_text::add_observer(patch_observer pub)
-{
-  observer ob;
-
-  ob.on_change = [pub](const std::string& val)
-    {
-      jalson::json_array patch;
-      jalson::json_object& operation = jalson::append_object(patch);
-      operation["op"]    = "replace";
-      operation["path"]  = "/body/value";
-      operation["value"] = val;
-
-      pub.on_update(patch, { key_reset });
-    };
-
-
-  jalson::json_value model = jalson::json_value::make_object();
-  jalson::json_array patch;
-
-
-  std::lock(m_write_mutex, m_read_mutex);
-  std::unique_lock<std::mutex> wguard(m_write_mutex, std::adopt_lock);
-
-  {
-    std::unique_lock<std::mutex> rguard(m_read_mutex,  std::adopt_lock);
-
-    // obtain snapshot
-    jalson::json_object & head = insert_object(model.as_object(), "head");
-    jalson::json_object & body = insert_object(model.as_object(), "body");
-    head["type"] = "basic_text";
-    head["version"] = 0;
-    body["value"] = m_impl;
-
-    jalson::json_object& operation = jalson::append_object(patch);
-    operation["op"]   = "replace";
-    operation["path"] = "";  /* replace whole document */
-    operation["value"] = std::move(model);
-  }
-
-  pub.on_snapshot(patch);
-  m_observers.add(std::move(ob));
-}
 
 
 void topic::add_publisher(std::weak_ptr<wamp_session> wp)

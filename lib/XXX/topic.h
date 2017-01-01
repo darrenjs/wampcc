@@ -61,39 +61,6 @@ private:
 };
 
 
-class basic_text
-{
-public:
-  typedef std::string internal_impl;
-
-  // TODO: rename (and keep consistent with list document)
-  struct observer
-  {
-    std::function< void(const std::string&) > on_change;
-  };
-
-  static const std::string key_reset;
-
-  basic_text() = default;
-  basic_text(std::string);
-  basic_text(const basic_text&);
-
-  std::string value() const;
-
-  void assign(std::string);
-
-  void add_observer(observer);
-  void add_observer(patch_observer);
-
-private:
-  internal_impl m_impl;
-  std::mutex m_write_mutex;
-  mutable std::mutex m_read_mutex;
-  observer_list<observer> m_observers;
-};
-
-
-
 template<typename T>
 class model_subscription
 {
