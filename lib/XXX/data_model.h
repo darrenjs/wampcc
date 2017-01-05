@@ -33,7 +33,7 @@ public:
   virtual jalson::json_value snapshot() const = 0;
 
   /** Obtain a model_publisher, which is used to publish updates to the data
-    * model on a particular topic URI. */
+   * model on a particular topic URI. */
   model_publisher* create_publisher(std::string topic_uri);
 
 protected:
@@ -107,52 +107,168 @@ private:
 };
 
 
-/* Handle a subscription to a basic text data source.  Converts topic-model
- * snapshot and events (which arrive as JSON patches) into model actions and
- * observer callbacks. */
-class string_model_subscription_handler
+
+class model_sub_base
+{
+public:
+
+
+  model_sub_base(std::shared_ptr<XXX::wamp_session>& ws,
+                 std::string topic_uri);
+
+  virtual ~model_sub_base() = 0;
+
+  const std::string& topic_uri() const { return m_uri; }
+
+protected:
+  std::string m_uri;
+  std::weak_ptr<XXX::wamp_session> m_session;
+};
+
+
+template<typename T, typename V>
+class jmodel_common : public model_sub_base
+{
+public:
+  typedef V  value_type;
+
+
+  jmodel_common(std::shared_ptr<XXX::wamp_session>& ws,
+                std::string topic_uri)
+    : model_sub_base(ws, topic_uri)
+  {
+    // auto fn = [this](wamp_subscription_event e)
+    //   {
+    //     if (e.type == wamp_subscription_event::update)
+    //       this->on_update(std::move(e.details), std::move(e.args));
+    //   };
+
+    // ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
+  }
+
+
+  // typename T::model_type value() const
+  // {
+  //   std::lock_guard<std::mutex> guard(m_value_mutex);
+  //   return m_value;
+  // }
+
+protected:
+//  typename T::model_type  m_value;
+  mutable std::mutex      m_value_mutex;
+//  typename T::observer    m_observer;
+};
+
+
+class jmodel_sub;
+struct jmodel_types
+{
+  struct observer
+  {
+    std::function< void(jmodel_sub&) > on_snapshot;
+  };
+
+  typedef jalson::json_value model_type;
+
+  void hander()
+  {
+  }
+
+};
+
+
+// class jmodel_sub : public jmodel_common<jmodel_types>
+// {
+// public:
+//   jmodel_sub
+// };
+
+
+
+// class jmodel_sub2 : public jmodel_common<jmodel_sub2, jalson::json_value>
+// {
+// public:
+//   typedef jalson::json_value model_type;
+
+//   struct observer
+//   {
+//     std::function< void(jmodel_sub2&) > on_snapshot;
+//     std::function< void(jmodel_sub2&) > on_error;
+//     std::function< void(jmodel_sub2&) > on_change;
+//   };
+
+//   jmodel_sub2(std::shared_ptr<XXX::wamp_session>& ws,
+//               std::string topic_uri,
+//               observer ob)
+//     : jmodel_common(ws, std::move(topic_uri))
+//   {
+//   }
+
+// private:
+
+//   void on_update(jalson::json_object options, wamp_args args)
+//   {
+//   }
+
+// };
+
+
+
+
+
+class jmodel_sub : public model_sub_base
 {
 public:
 
   struct observer
   {
-    std::function< void(const string_model_subscription_handler&) > on_snapshot;
-    std::function< void(const string_model_subscription_handler&) > on_event;
+    std::function< void() > on_snapshot;
+    std::function< void() > on_error;
+    std::function< void() > on_change;
+
   };
 
-  string_model_subscription_handler(observer ob)
-  : m_observer(std::move(ob))
-  {
-    // TODO: check both callbacks are defined
-  }
-
-  string_model_subscription_handler(const string_model_subscription_handler& rhs)
-  : m_observer(rhs.m_observer),
-    m_value(rhs.value())
-  {
-  }
-
-  void on_event(const jalson::json_object& details,
-                const jalson::json_array&  args_list,
-                const jalson::json_object& args_dict);
-
-  string_model::internal_impl value() const
-  {
-    std::unique_lock<std::mutex> guard(m_value_mutex);
-    return m_value;
-  }
+  jmodel_sub(std::shared_ptr<XXX::wamp_session>& ws,
+             std::string topic_uri,
+             observer);
 
 private:
+
+  void on_update(jalson::json_object options, wamp_args args);
+
+  jalson::json_value m_jmodel;
   observer m_observer;
+};
+
+
+
+class string_model_sub : public model_sub_base
+{
+public:
+
+  struct observer
+  {
+    std::function< void() > on_change;
+  };
+
+  string_model_sub(std::shared_ptr<XXX::wamp_session>& ws,
+                   std::string topic_uri,
+                   observer);
+
+private:
+
+  void on_update(jalson::json_object options, wamp_args args);
 
   /* A mutex associated with the internal value is provided, because the arrival
    * of snapshot & events via the EV thread can happen at any time, and might
    * occur simultaneously with user use of an accessor method. */
-  string_model::internal_impl m_value;
-  mutable std::mutex        m_value_mutex;
+  std::string        m_value;
+  mutable std::mutex m_value_mutex;
+
+  observer m_observer;
 };
 
 
-}
+} // namespace
 
 #endif

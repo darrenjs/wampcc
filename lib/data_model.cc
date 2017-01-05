@@ -96,7 +96,6 @@ void model_publisher::add_publisher(std::string realm,
 }
 
 
-
 void model_publisher::publish_update(jalson::json_array patch,
                                      jalson::json_array event)
 {
@@ -159,102 +158,162 @@ void string_model::assign(std::string s)
     m_value = std::move(s);
   }
 
-  /* Create publication, which comprises two parts:
-     (1) the json-model patch
-     (2) the rich-model event description.
-  */
+  if (!m_publishers.empty())
+  {
+    /* Create publication, which comprises two parts:
+       (1) the json-model patch
+       (2) the rich-model event description.
+    */
+    jalson::json_array patch;
+    jalson::json_object& operation = jalson::append_object(patch);
+    operation.insert({"op","replace"});
+    operation.insert({"path","/body/value"});
+    operation.insert({"value",std::move(tmp)});
 
-  jalson::json_array patch;
-  jalson::json_object& operation = jalson::append_object(patch);
-  operation["op"]    = "replace";
-  operation["path"]  = "/body/value";
-  operation["value"] = std::move(tmp);
+    // string_model model is so simple that an event description is not needed
+    jalson::json_array event;
 
-  // string_model model is so simple that an event description is not needed
-  jalson::json_array event;
-
-  // push the update to all model publishers
-  for (auto & publisher : m_publishers)
-    try {
-      publisher->publish_update(patch, event);
-    }
-    catch (...) { /* ignore exceptions */ }
+    // push the update to all model publishers
+    for (auto & publisher : m_publishers)
+      try {
+        publisher->publish_update(patch, event);
+      }
+      catch (...) { /* ignore exceptions */ }
+  }
 }
 
 
 jalson::json_value string_model::snapshot() const
 {
-  /* Create the snapshot.  We breifly hold the value mutex during this stage,
-   * because we need to read from the value. */
-
   jalson::json_value jmodel = jalson::json_value::make_object();
   jalson::json_object & head = insert_object(jmodel.as_object(), "head");
   jalson::json_object & body = insert_object(jmodel.as_object(), "body");
-  head["type"] = "string_model";
-  head["version"] = 0;
-  {
-    std::lock_guard<std::mutex> rguard(m_value_mutex, std::adopt_lock);
-    body["value"] = m_value;
-  }
+  head.emplace("type",   "string_model");
+  head.emplace("version", 0);
+  auto iter = body.insert({"value",jalson::json_string()}).first;
 
-  jalson::json_array snapshot;
-  jalson::json_object& operation = jalson::append_object(snapshot);
-  operation["op"]   = "replace";
-  operation["path"] = "";  /* replace whole document */
-  operation["value"] = jmodel;
+  {
+    std::lock_guard<std::mutex> guard(m_value_mutex);
+    iter->second.as_string() = m_value;
+  }
 
   return jmodel;
 }
 
 //======================================================================
 
-void string_model_subscription_handler::on_event(const jalson::json_object& details,
-                                               const jalson::json_array& args_list,
-                                               const jalson::json_object& /*args_dict*/)
+
+model_sub_base::model_sub_base(std::shared_ptr<XXX::wamp_session>& ws,
+                               std::string topic_uri)
+  : m_uri(topic_uri),
+    m_session(ws)
+{
+}
+
+
+model_sub_base::~model_sub_base()
+{
+}
+
+
+jmodel_sub::jmodel_sub(std::shared_ptr<XXX::wamp_session>& ws,
+                       std::string topic_uri,
+                       observer ob)
+  : model_sub_base(ws, topic_uri)
+{
+  auto fn = [this](wamp_subscription_event e)
+    {
+      if (e.type == wamp_subscription_event::update)
+        this->on_update(std::move(e.details), std::move(e.args));
+    };
+
+  ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
+}
+
+
+void jmodel_sub::on_update(jalson::json_object options,
+                           wamp_args args)
+{
+  std::cout << "got jmodel update, " << args.args_list << std::endl;
+  if (options.find(KEY_PATCH) != options.end())
+  {
+    auto & patchset = args.args_list[0].as_array();
+    m_jmodel.patch(patchset);
+
+    std::cout << "model is now: " << m_jmodel << std::endl;
+    //m_observer.on_change();
+  }
+  else
+  {
+    // TODO: raise an error?
+  }
+}
+
+//======================================================================
+
+string_model_sub::string_model_sub(std::shared_ptr<XXX::wamp_session>& ws,
+                                   std::string topic_uri,
+                                   observer obs)
+  : model_sub_base(ws, topic_uri),
+    m_observer(obs)
+{
+  if (!m_observer.on_change)
+    m_observer.on_change = [](){};
+
+  auto fn = [this](wamp_subscription_event e)
+    {
+      if (e.type == wamp_subscription_event::update)
+        this->on_update(std::move(e.details), std::move(e.args));
+    };
+
+  ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
+}
+
+
+void string_model_sub::on_update(jalson::json_object options,
+                                 wamp_args args)
 {
   /* EV thread */
 
-   /* Note, the string_model model is so simple that we dont have a need for the
-    * event decription */
-   const jalson::json_array * patchset = nullptr;
-   if (args_list.size() > 0 && args_list[0].is_array())
-     patchset = &args_list[0].as_array();
+  /* Note, the string_model model is so simple that an event description is not
+   * needed */
+  const jalson::json_array * patchset = nullptr;
+  if (args.args_list.size() > 0 && args.args_list[0].is_array())
+    patchset = &args.args_list[0].as_array();
 
-   // const jalson::json_array * event    = nullptr;
-   // if (args_list.size()>1 && args_list[1].is_array())
-   //   event = &args_list[1].as_array();
+  // TODO: this will be a common pattern to check for a snapshot
+  if ( patchset &&
+       (patchset->size()==1) &&
+       (options.find(KEY_SNAPSHOT) != options.end()) && // is snapshot
+       patchset->operator[](0).is_object()
+    )
+  { //   [ patch ]
+    const auto & patch       = patchset->operator[](0).as_object();
+    const auto & patch_value = jalson::get_ref(patch, "value").as_object();
+    const auto & body        = jalson::get_ref(patch_value, "body").as_object();
+    const auto & body_value  = jalson::get_ref(body, "value").as_string();
 
-   // TODO: this will be a common pattern to check for a snapshot
-   if ( patchset &&
-        (patchset->size()==1) &&
-        ( details.find(KEY_SNAPSHOT) != details.end() ) && // is snapshot
-        patchset->operator[](0).is_object()
-     )
-   {
-     const auto & patch = patchset->operator[](0).as_object();
-     const auto & patch_value   = jalson::get_ref(patch, "value").as_object();
-     const auto & body          = jalson::get_ref(patch_value, "body").as_object();
-     const auto & body_value    = jalson::get_ref(body, "value").as_string();
+    {
+      std::lock_guard<std::mutex> guard(m_value_mutex);
+      m_value = body_value;
+    }
+    std::cout << "string_model_sub, snapshot=" << m_value << std::endl;
+    m_observer.on_change();
+  }
+  else if (patchset)
+  {
+    const auto & patch = patchset->operator[](0).as_object();
+    auto value = std::move(jalson::get_ref(patch, "value").as_string());
 
-     {
-       std::lock_guard<std::mutex> guard(m_value_mutex);
-       m_value = body_value;
-     }
+    {
+      std::lock_guard<std::mutex> guard(m_value_mutex);
+      m_value = std::move(value);
+    }
 
-     m_observer.on_snapshot(*this);
-   }
-   else if (patchset)
-   {
-     const auto & patch = patchset->operator[](0).as_object();
-     const auto & value = jalson::get_ref(patch, "value").as_string();
+    std::cout << "string_model_sub, update=" << m_value << std::endl;
+    m_observer.on_change();
+  }
 
-     {
-       std::lock_guard<std::mutex> guard(m_value_mutex);
-       m_value = value;
-     }
-
-     m_observer.on_event(*this);
-   }
 }
 
 
