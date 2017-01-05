@@ -61,43 +61,6 @@ private:
 };
 
 
-template<typename T>
-class model_subscription
-{
-public:
-  model_subscription(std::shared_ptr<XXX::wamp_session>& ws,
-                     std::string uri,
-                     T handler)
-    : m_uri( std::move(uri) ),
-      m_event_handler( std::move(handler) )
-  {
-
-    auto fn = [=](wamp_subscription_event e)
-    {
-      if (e.type == wamp_subscription_event::update)
-        m_event_handler.on_event(e.details, e.args.args_list, e.args.args_dict);
-    };
-
-    ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
-  }
-
-
-  template<typename... MArgs>
-  model_subscription(std::shared_ptr<XXX::wamp_session>& ws,
-                     std::string uri,
-                     MArgs&... args)
-    : model_subscription( ws, uri, T( args... ) ) // delegate construction
-  {
-  }
-
-  const std::string& topic_uri() const { return m_uri; }
-
-private:
-  std::string m_uri;
-  T m_event_handler;
-};
-
-
 class basic_list
 {
 public:
