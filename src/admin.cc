@@ -1,4 +1,3 @@
-
 #include "XXX/kernel.h"
 #include "XXX/topic.h"
 #include "XXX/wamp_session.h"
@@ -104,7 +103,7 @@ void call_cb(XXX::wamp_call_result r)
 
   if (r.was_error)
   {
-    std::cout << "received error, error=" << r.error_uri << ", args="
+    std::cout << "received error, " << r.error_uri << ", args="
               << r.args.args_list << ", cb_user_data: " << msg
               << ", reqid: " << r.reqid
               << ", proc:" << r.procedure ;
@@ -124,7 +123,7 @@ void call_cb(XXX::wamp_call_result r)
 /* called upon subscribed and update events */
 void subscribe_cb(XXX::wamp_subscription_event ev)
 {
-  std::cout << "received topic update!!! evtype: " << ev.type << ", args_list: " << ev.args.args_list
+  std::cout << "topic update: evtype: " << ev.type << ", args_list: " << ev.args.args_list
             << ", args_dict:" << ev.args.args_dict << "\n";
 }
 
@@ -325,19 +324,15 @@ int main_impl(int argc, char** argv)
 
   g_kernel.reset( new XXX::kernel({}, __logger));
 
-  /* Create a socket connector.  This will immediately make an attempt to
-   * connect to the target end point.  The connector object is a source of async
-   * events (the connect and disconnect call back), and so must be managed
-   * asynchronously. */
   std::unique_ptr<XXX::tcp_socket> sock( new XXX::tcp_socket(g_kernel.get()) );
 
-  /* Wait until the connector has got a result. The result can be successful,
-   * in which case a socket is available, or result could be a failure, in
-   * which case either an exception will be available or a null pointer. */
   std::future_status status;
   do
   {
-    auto fut = sock->connect("t420", 55555);
+    /* Make an attempt to connect to the target end point */
+    auto fut = sock->connect("127.0.0.1", 55555);
+
+  /* Wait for a connection result */
     status = fut.wait_for(std::chrono::seconds(3));
 
     if (status == std::future_status::timeout)
