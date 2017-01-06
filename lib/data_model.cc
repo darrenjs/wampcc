@@ -216,31 +216,19 @@ model_sub_base::~model_sub_base()
 }
 
 
-jmodel_sub::jmodel_sub(std::shared_ptr<XXX::wamp_session>& ws,
-                       std::string topic_uri,
-                       observer ob)
-  : model_sub_base(ws, topic_uri)
-{
-  auto fn = [this](wamp_subscription_event e)
-    {
-      if (e.type == wamp_subscription_event::update)
-        this->on_update(std::move(e.details), std::move(e.args));
-    };
 
-  ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
-}
-
-
-void jmodel_sub::on_update(jalson::json_object options,
-                           wamp_args args)
+void jmodel_subscription::on_update(jalson::json_object options,
+                                    wamp_args args)
 {
   std::cout << "got jmodel update, " << args.args_list << std::endl;
   if (options.find(KEY_PATCH) != options.end())
   {
     auto & patchset = args.args_list[0].as_array();
-    m_jmodel.patch(patchset);
-
-    std::cout << "model is now: " << m_jmodel << std::endl;
+    {
+      std::lock_guard<std::mutex> guard(m_value_mutex);
+      m_value.patch(patchset);
+      std::cout << "model is now: " << m_value << std::endl;
+    }
     //m_observer.on_change();
   }
   else
@@ -251,27 +239,9 @@ void jmodel_sub::on_update(jalson::json_object options,
 
 //======================================================================
 
-string_model_sub::string_model_sub(std::shared_ptr<XXX::wamp_session>& ws,
-                                   std::string topic_uri,
-                                   observer obs)
-  : model_sub_base(ws, topic_uri),
-    m_observer(obs)
-{
-  if (!m_observer.on_change)
-    m_observer.on_change = [](){};
 
-  auto fn = [this](wamp_subscription_event e)
-    {
-      if (e.type == wamp_subscription_event::update)
-        this->on_update(std::move(e.details), std::move(e.args));
-    };
-
-  ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
-}
-
-
-void string_model_sub::on_update(jalson::json_object options,
-                                 wamp_args args)
+void string_subscription::on_update(jalson::json_object options,
+                                    wamp_args args)
 {
   /* EV thread */
 
@@ -298,7 +268,7 @@ void string_model_sub::on_update(jalson::json_object options,
       m_value = body_value;
     }
     std::cout << "string_model_sub, snapshot=" << m_value << std::endl;
-    m_observer.on_change();
+    m_observer.on_change(*this);
   }
   else if (patchset)
   {
@@ -311,9 +281,8 @@ void string_model_sub::on_update(jalson::json_object options,
     }
 
     std::cout << "string_model_sub, update=" << m_value << std::endl;
-    m_observer.on_change();
+    m_observer.on_change(*this);
   }
-
 }
 
 
