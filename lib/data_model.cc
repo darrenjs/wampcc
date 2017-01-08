@@ -126,6 +126,11 @@ void model_publisher::publish_update(jalson::json_array patch,
 
 //======================================================================
 
+const std::string list_model::key_reset("x");
+const std::string list_model::key_insert("i");
+const std::string list_model::key_remove("e");
+const std::string list_model::key_modify("m");
+
 string_model::string_model(std::string s)
   : m_value( std::move(s) )
 {
@@ -150,6 +155,7 @@ void string_model::assign(std::string s)
 {
   std::string tmp;
   std::lock_guard<std::mutex> publisher_guard(m_publishers_mutex);
+
   {
     std::lock_guard<std::mutex> value_guard(m_value_mutex);
     if (m_value == s)
@@ -171,12 +177,12 @@ void string_model::assign(std::string s)
     operation.insert({"value",std::move(tmp)});
 
     // string_model model is so simple that an event description is not needed
-    jalson::json_array event;
+    jalson::json_array rich_event;
 
     // push the update to all model publishers
     for (auto & publisher : m_publishers)
       try {
-        publisher->publish_update(patch, event);
+        publisher->publish_update(patch, rich_event);
       }
       catch (...) { /* ignore exceptions */ }
   }
@@ -283,6 +289,197 @@ void string_subscription::on_update(jalson::json_object options,
     std::cout << "string_model_sub, update=" << m_value << std::endl;
     m_observer.on_change(*this);
   }
+}
+
+
+//======================================================================
+
+
+void list_model::reset(internal_impl value)
+{
+  std::lock(m_publishers_mutex, m_value_mutex);
+  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+
+  internal_impl copy;
+  if (!m_publishers.empty())
+    copy = value;
+
+  {
+    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
+    m_value = std::move(value);
+  }
+
+  if (!m_publishers.empty())
+  {
+    /* Create publication, which comprises two parts:
+       (1) the json-model patch
+       (2) the rich-model event description.
+    */
+
+    jalson::json_array patch;
+    jalson::json_object& operation = jalson::append_object(patch);
+    operation.insert({"op", "replace"});
+    operation.insert({"path", "/body/value"});
+    operation.insert({"value", std::move(copy)});;
+
+    // TODO: replace this with the proper event key
+    char c = '?';
+    jalson::json_array rich_event = { c };
+
+    // push the update to all model publishers
+    for (auto & publisher : m_publishers)
+      try {
+        publisher->publish_update(patch, rich_event);
+      }
+      catch (...) { /* ignore exceptions */ }
+  }
+}
+
+
+void list_model::insert(size_t pos, jalson::json_value value)
+{
+  std::lock(m_publishers_mutex, m_value_mutex);
+  insert_impl(pos, std::move(value));
+}
+
+
+void list_model::push_back(jalson::json_value val)
+{
+  std::lock(m_publishers_mutex, m_value_mutex);
+  insert_impl(m_value.size(), std::move(val));
+}
+
+
+void list_model::insert_impl(size_t pos, jalson::json_value value)
+{
+  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+
+  {
+    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
+    if (m_value.size() >= pos)
+      m_value.insert(m_value.begin() + pos, value);
+    else
+      throw bad_index(pos);
+  }
+
+  if (!m_publishers.empty())
+  {
+    /* Create publication, which comprises two parts:
+       (1) the json-model patch
+       (2) the rich-model event description.
+    */
+    jalson::json_array patch;
+    jalson::json_object& operation = jalson::append_object(patch);
+    operation["op"]    = "add";
+    operation["path"]  = "/body/value/" + std::to_string(pos);
+    operation["value"] = value;
+
+    jalson::json_array rich_event = {key_insert, pos};
+
+    // push the update to all model publishers
+    for (auto & publisher : m_publishers)
+      try {
+        publisher->publish_update(patch, rich_event);
+      }
+      catch (...) { /* ignore exceptions */ }
+  }
+}
+
+
+void list_model::replace(size_t pos, jalson::json_value new_value)
+{
+  std::lock(m_publishers_mutex, m_value_mutex);
+  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+
+  jalson::json_value copy;
+  if (!m_publishers.empty())
+    copy = new_value;
+
+  {
+    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
+    if (m_value.size() > pos)
+      m_value[pos] = std::move(new_value);
+    else
+      throw bad_index(pos);
+  }
+
+  if (!m_publishers.empty())
+  {
+    /* Create publication, which comprises two parts:
+       (1) the json-model patch
+       (2) the rich-model event description.
+    */
+
+    jalson::json_array patch;
+    jalson::json_object& operation = jalson::append_object(patch);
+    operation["op"]    = "replace";
+    operation["path"]  = "/body/value/" + std::to_string(pos);
+    operation["value"] = std::move(copy);
+
+    jalson::json_array rich_event = {key_modify, pos};
+
+    // push the update to all model publishers
+    for (auto & publisher : m_publishers)
+      try {
+        publisher->publish_update(patch, rich_event);
+      }
+      catch (...) { /* ignore exceptions */ }
+  }
+}
+
+
+void list_model::erase(size_t pos)
+{
+  std::lock(m_publishers_mutex, m_value_mutex);
+  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+
+  {
+    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
+    if (m_value.size() > pos)
+      m_value.erase(m_value.begin() + pos);
+    else
+      throw bad_index(pos);
+  }
+
+  if (!m_publishers.empty())
+  {
+    /* Create publication, which comprises two parts:
+       (1) the json-model patch
+       (2) the rich-model event description.
+    */
+
+    jalson::json_array patch;
+    jalson::json_object& operation = jalson::append_object(patch);
+    operation["op"]   = "remove";
+    operation["path"] = "/body/value/" + std::to_string(pos);
+
+    jalson::json_array rich_event = { key_remove, pos };
+
+    // push the update to all model publishers
+    for (auto & publisher : m_publishers)
+      try {
+        publisher->publish_update(patch, rich_event);
+      }
+      catch (...) { /* ignore exceptions */ }
+  }
+}
+
+
+jalson::json_value list_model::snapshot() const
+{
+  jalson::json_value jmodel = jalson::json_value::make_object();
+  jalson::json_object & head = insert_object(jmodel.as_object(), "head");
+  jalson::json_object & body = insert_object(jmodel.as_object(), "body");
+  head.insert({"type",   "list_model"}); // TODO: should be a constant
+  head.insert({"version",  0 });
+  auto iter = body.insert({"value",jalson::json_array()}).first;
+
+  {
+    std::lock_guard<std::mutex> guard(m_value_mutex);
+    iter->second.as_array() = m_value;
+  }
+
+  return jmodel;
 }
 
 

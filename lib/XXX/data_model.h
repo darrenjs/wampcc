@@ -30,6 +30,7 @@ public:
   data_model(const data_model&);
   virtual ~data_model() = 0;
 
+  /** Get the json-model representative of current state */
   virtual jalson::json_value snapshot() const = 0;
 
   /** Obtain a model_publisher, which is used to publish updates to the data
@@ -212,6 +213,54 @@ private:
 
   friend base_type;
 };
+
+
+
+
+/* */
+class list_model : public data_model
+{
+public:
+  typedef std::vector< jalson::json_value > internal_impl ;
+
+  static const std::string key_reset;
+  static const std::string key_insert;
+  static const std::string key_remove;
+  static const std::string key_modify;
+
+  // modification rich api
+  void reset(internal_impl);
+  void insert(size_t, jalson::json_value);
+  void push_back(jalson::json_value);
+  void replace(size_t pos, jalson::json_value);
+  void erase(size_t pos);
+
+  class bad_index : public std::runtime_error
+  {
+  public:
+    bad_index(size_t i) : std::runtime_error("bad index"), m_i(i) {}
+    size_t index() const { return m_i; }
+  private:
+    size_t m_i;
+  };
+
+  /** Get a copy of the internal value */
+  internal_impl value() const;
+
+  jalson::json_value snapshot() const override;
+
+private:
+
+  void insert_impl(size_t, jalson::json_value);
+
+  /* The data model internal representation.  Some kind of representation of
+   * current model state is required so that a snapshot can be provided when a
+   * new publisher is added. This can either be a rich-model or a json-model. */
+  internal_impl      m_value;
+  mutable std::mutex m_value_mutex;
+};
+
+
 
 
 } // namespace
