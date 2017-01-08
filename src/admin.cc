@@ -156,8 +156,29 @@ static void die(std::string e)
   exit( 1 );
 }
 
+
 static void usage()
 {
+  std::cout << "usage: admin [OPTIONS] ADDRESS PORT" << std::endl;
+  std::cout << "Options:" << std::endl;
+  std::cout << "  -U, --username=ARG"     << "\t\t" << "specify a session username" << std::endl;
+  std::cout << "  -P, --password=ARG"     << "\t\t" << "specify a session password" << std::endl;
+  std::cout << "  -R, --realm=ARG"        << "\t\t" << "specify a session realm" << std::endl;
+  std::cout << "  -s, --subscribe=URI"    << "\t\t" << "subscribe to topic" << std::endl;
+  std::cout << "  -p, --publish=URI"      << "\t\t" << "publish to topic" << std::endl;
+  //std::cout << "  -r, --register=URI"     << "\t\t" << "register procedure" << std::endl;
+  std::cout << "  -c, --call=URI"         << "\t\t" << "call procedure" << std::endl;
+  std::cout << "  --arglist=ARG"          << "\t\t\t" << "wamp argument list, ARG is a JSON array" << std::endl;
+  std::cout << "  --argdict=ARG"          << "\t\t\t" << "wamp argument dictionary, ARG is a JSON object" << std::endl;
+
+  std::cout << "  -h, -help"              << "\t\t\t" << "display this help" << std::endl;
+  std::cout << "  -v, --version"          << "\t\t\t" << "print program version" << std::endl;
+
+  std::cout << std::endl << "Examples:" <<std::endl;
+  std::cout << std::endl << "Call a procedure with JSON argument as array and object" << std::endl;
+  std::cout << "  admin -U peter -P secret2 -R public -c set_color --arglist '[\"green\", \"light\"]'"   << std::endl;
+  std::cout << "  admin -U peter -P secret2 -R public -c set_color --argdict '{\"foreground\" : \"red\"}'" << std::endl;
+
   exit(0);
 }
 
