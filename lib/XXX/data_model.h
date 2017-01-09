@@ -178,14 +178,12 @@ public:
   };
 
   jmodel_subscription(std::shared_ptr<XXX::wamp_session>& ws,
-     std::string topic_uri)
-    : base_type(ws, std::move(topic_uri))
-  {
-  }
+                      std::string topic_uri,
+                      observer);
 
 private:
   void on_update(jalson::json_object options, wamp_args args);
-
+  observer m_observer;
   friend base_type;
 };
 
@@ -200,21 +198,13 @@ public:
   };
 
   string_subscription(std::shared_ptr<XXX::wamp_session>& ws,
-                      std::string topic_uri)
-    : base_type(ws, std::move(topic_uri))
-  {
-  }
+                      std::string topic_uri, observer);
 
 private:
-
   void on_update(jalson::json_object options, wamp_args args);
-
   observer m_observer;
-
   friend base_type;
 };
-
-
 
 
 /* */
@@ -261,6 +251,27 @@ private:
 };
 
 
+class list_subscription : public jmodel_common<list_subscription, list_model::internal_impl >
+{
+public:
+
+  struct observer
+  {
+    std::function< void(const list_subscription&) > on_reset;
+    std::function< void(const list_subscription&, size_t pos) > on_insert;
+    std::function< void(const list_subscription&, size_t pos) > on_erase;
+    std::function< void(const list_subscription&, size_t pos) > on_replace;
+  };
+
+  list_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+                    std::string topic_uri,
+                    observer ob);
+
+private:
+  void on_update(jalson::json_object options, wamp_args args);
+  observer m_observer;
+  friend base_type;
+};
 
 
 } // namespace

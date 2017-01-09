@@ -2,6 +2,9 @@
 #include "XXX/dealer_service.h"
 
 
+#define THROW_FOR_INVALID_FN( X ) \
+if (m_observer. X) throw std::runtime_error("observer." #X " must be valid");
+
 namespace XXX {
 
 data_model::data_model()
@@ -208,7 +211,6 @@ jalson::json_value string_model::snapshot() const
 
 //======================================================================
 
-
 model_sub_base::model_sub_base(std::shared_ptr<XXX::wamp_session>& ws,
                                std::string topic_uri)
   : m_uri(topic_uri),
@@ -221,7 +223,16 @@ model_sub_base::~model_sub_base()
 {
 }
 
+//======================================================================
 
+jmodel_subscription::jmodel_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+                                         std::string topic_uri,
+                                         observer obs)
+  : base_type(ws, std::move(topic_uri)),
+    m_observer(std::move(obs))
+{
+  THROW_FOR_INVALID_FN( on_change );
+}
 
 void jmodel_subscription::on_update(jalson::json_object options,
                                     wamp_args args)
@@ -244,6 +255,15 @@ void jmodel_subscription::on_update(jalson::json_object options,
 }
 
 //======================================================================
+
+string_subscription::string_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+                                         std::string topic_uri,
+                                         observer ob)
+  : base_type(ws, std::move(topic_uri)),
+    m_observer(std::move(ob))
+{
+  THROW_FOR_INVALID_FN( on_change );
+}
 
 
 void string_subscription::on_update(jalson::json_object options,
@@ -291,9 +311,7 @@ void string_subscription::on_update(jalson::json_object options,
   }
 }
 
-
 //======================================================================
-
 
 void list_model::reset(internal_impl value)
 {
@@ -481,6 +499,102 @@ jalson::json_value list_model::snapshot() const
 
   return jmodel;
 }
+
+//======================================================================
+
+list_subscription::list_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+                                     std::string topic_uri,
+                                     observer ob)
+  : base_type(ws, std::move(topic_uri)),
+    m_observer(std::move(ob))
+{
+  THROW_FOR_INVALID_FN( on_reset );
+  THROW_FOR_INVALID_FN( on_insert );
+  THROW_FOR_INVALID_FN( on_erase );
+  THROW_FOR_INVALID_FN( on_replace );
+}
+
+
+void list_subscription::on_update(jalson::json_object details,
+                                  wamp_args args)
+{
+  const jalson::json_array& args_list = args.args_list;
+  jalson::json_value jv = args.args_list;
+  //  std::cout << "handler::on_event, " << jv << "\n" << "details:"<< jalson::json_value( details ) << "\n";
+  const jalson::json_array * patch = nullptr;
+  const jalson::json_array * event = nullptr;
+
+  if (args_list.size() > 0 && args_list[0].is_array())
+    patch = &args_list[0].as_array();
+
+  if (args_list.size()>1 && args_list[1].is_array())
+    event = &args_list[1].as_array();
+  // TODO: check details; needs to have { ... "_p": 1 ... }
+
+  if ( patch &&
+       (patch->size()==1) &&
+       ( details.find(KEY_SNAPSHOT) != details.end() ) && // is snapshot
+       patch->operator[](0).is_object()
+    )
+  {
+    const jalson::json_object & patch_replace = patch->operator[](0).as_object();
+    const jalson::json_object & patch_value   = jalson::get_ref(patch_replace, "value").as_object();
+    const jalson::json_object & body   = jalson::get_ref(patch_value, "body").as_object();
+    const jalson::json_array  & body_value = jalson::get_ref(body, "value").as_array();
+    {
+      std::lock_guard<std::mutex> guard(m_value_mutex);
+      m_value = body_value;
+    }
+    m_observer.on_reset( *this );
+  }
+  else if (patch)
+  {
+    if (event &&
+        event->size()>1 &&
+        event->at(0).is_string() &&
+        event->at(1).is_int() &&
+        event->at(0).as_string() == list_model::key_insert &&
+        patch &&
+        patch->size()>0 &&
+        patch->at(0).is_object()
+      )
+    {
+      auto it = patch->at(0).as_object().find("value");
+      if (it != patch->at(0).as_object().end())
+      {
+        m_observer.on_insert(*this, event->at(1).as_int());
+      }
+    }
+    else if (event &&
+             event->size()>=2 &&
+             event->at(0).is_string() &&
+             event->at(1).is_int() &&
+             event->at(0).as_string() == list_model::key_remove
+      )
+    {
+      m_observer.on_erase(*this, event->at(1).as_int());
+    }
+    else if (event &&
+             event->size()>=2 &&
+             event->at(0).is_string() &&
+             event->at(1).is_int() &&
+             event->at(0).as_string() == list_model::key_modify &&
+             patch &&
+             patch->size()>0 &&
+             patch->at(0).is_object()
+      )
+    {
+      auto it = patch->at(0).as_object().find("value");
+      if (it != patch->at(0).as_object().end())
+      {
+        m_observer.on_replace(*this, event->at(1).as_int());
+      }
+    }
+  }
+
+}
+
+//======================================================================
 
 
 } // namespace
