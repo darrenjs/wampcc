@@ -1,6 +1,6 @@
 #include "XXX/pubsub_man.h"
 
-#include "XXX/topic.h"
+#include "XXX/data_model.h"
 #include "XXX/event_loop.h"
 #include "XXX/log_macros.h"
 #include "XXX/wamp_session.h"

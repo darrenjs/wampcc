@@ -1,5 +1,4 @@
 #include "XXX/kernel.h"
-#include "XXX/topic.h"
 #include "XXX/wamp_session.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/rawsocket_protocol.h"

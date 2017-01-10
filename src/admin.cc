@@ -1,5 +1,7 @@
 #include "XXX/kernel.h"
-#include "XXX/topic.h"
+
+#include "XXX/utils.h"
+#include "XXX/data_model.h"
 #include "XXX/wamp_session.h"
 #include "XXX/tcp_socket.h"
 #include "XXX/websocket_protocol.h"
@@ -413,30 +415,23 @@ int main_impl(int argc, char** argv)
   bool long_wait = false;
   bool wait_reply = false;
 
-  XXX::basic_list my_list;
+  // XXX::basic_list my_list;
+  // XXX::basic_list::list_events obs;
+  // auto displayer = [&my_list]()
+  //   {
+  //     jalson::json_array value = my_list.copy_value();
+  //     std::cout << "list: ";
+  //     for (auto & item : value)
+  //       std::cout << item << ",";
+  //     std::cout << std::endl;
+  //   };
+  // obs.on_insert = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
+  // obs.on_replace = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
+  // obs.on_erase = [&my_list, displayer](size_t) {displayer();};
+  // obs.on_reset = [&my_list, displayer](const XXX::basic_list::internal_impl&) {displayer();};
+  // my_list.add_observer(obs);
 
-  XXX::basic_list::list_events obs;
-  auto displayer = [&my_list]()
-    {
-      jalson::json_array value = my_list.copy_value();
-      std::cout << "list: ";
-      for (auto & item : value)
-        std::cout << item << ",";
-      std::cout << std::endl;
-    };
-  obs.on_insert = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
-  obs.on_replace = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
-  obs.on_erase = [&my_list, displayer](size_t) {displayer();};
-  obs.on_reset = [&my_list, displayer](const XXX::basic_list::internal_impl&) {displayer();};
-  my_list.add_observer(obs);
 
-
-  // XXX::basic_list_subscription_handler<XXX::basic_list>  h2( my_list );
-  // XXX::model_subscription< XXX::basic_list_subscription_handler<XXX::basic_list> >
-  //   sub_planets2(ws, "planets", h2 );
-
-  // XXX::model_subscription< XXX::basic_list_subscription_handler<> >
-  //   sub_planets3(ws, "planets", my_list);
 
   // subscribe to user topics
   jalson::json_object sub_options { {KEY_PATCH, 1} };

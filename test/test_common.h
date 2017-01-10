@@ -2,7 +2,6 @@
 #define XXX_TEST_COMMON_H
 
 #include "XXX/kernel.h"
-#include "XXX/topic.h"
 #include "XXX/wamp_session.h"
 #include "XXX/tcp_socket.h"
 #include "XXX/websocket_protocol.h"
