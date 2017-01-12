@@ -23,8 +23,24 @@
 auto __logger = XXX::logger::stdlog(std::cout,
                                     XXX::logger::levels_upto(XXX::logger::eInfo), 1);
 
-
 std::unique_ptr<XXX::kernel> g_kernel;
+
+
+// replace with optional<> if C++17 present
+template <typename T> struct user_optional
+{
+  user_optional& operator=(T v)
+  {
+    m_value.first = std::move(v);
+    m_value.second = true;
+    return *this;
+  }
+  constexpr T& value() const { return m_value.first; }
+  T& value() { return m_value.first; }
+  constexpr operator bool() const { return m_value.second; }
+private:
+  std::pair<T,bool> m_value;
+};
 
 
 struct user_options
@@ -33,8 +49,8 @@ struct user_options
   std::string password;
   std::string realm;
 
-  std::string addr;
-  std::string port;
+  user_optional<std::string> addr;
+  user_optional<std::string> port;
   std::string cmd;
   std::list< std::string > cmdargs;
   std::list< std::string > subscribe_topics;
@@ -278,6 +294,9 @@ static void process_options(int argc, char** argv)
   if (optind < argc) uopts.cmd  = argv[optind++];
   while (optind < argc) uopts.cmdargs.push_back(argv[optind++]);
 
+  if (!uopts.addr) die("missing address");
+  if (!uopts.port) die("missing port");
+
   // check topics
   if (uopts.no_uri_check == false)
   {
@@ -353,7 +372,7 @@ int main_impl(int argc, char** argv)
   do
   {
     /* Make an attempt to connect to the target end point */
-    auto fut = sock->connect("127.0.0.1", 55555);
+    auto fut = sock->connect(uopts.addr.value(), atoi(uopts.port.value().c_str()));
 
   /* Wait for a connection result */
     status = fut.wait_for(std::chrono::seconds(3));
