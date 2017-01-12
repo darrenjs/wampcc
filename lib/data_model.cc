@@ -313,6 +313,11 @@ void string_subscription::on_update(jalson::json_object options,
 
 //======================================================================
 
+list_model::internal_impl list_model::value() const
+{
+  std::lock_guard<std::mutex> guard(m_value_mutex);
+  return m_value;
+}
 void list_model::reset(internal_impl value)
 {
   std::lock(m_publishers_mutex, m_value_mutex);
