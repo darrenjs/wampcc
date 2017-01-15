@@ -47,6 +47,10 @@ m4_ifdef([AX_CXX_COMPILE_STDCXX_11], [
 AC_HEADER_STDC
 AC_CHECK_HEADERS([stdlib.h string.h strings.h unistd.h getopt.h])
 
+AC_CHECK_HEADER(openssl/hmac.h, [openssl_hmac=1], [openssl_hmac=0])
+if test "x$openssl_hmac" = "x0" ; then
+    AC_MSG_ERROR([system header not found: openssl/hmac.h - please check the openssl dev package in installed on your system ])
+fi
 
 AC_HEADER_STDBOOL
 AC_C_CONST
