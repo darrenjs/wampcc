@@ -30,15 +30,15 @@ public:
 
   virtual ~data_model() = 0;
 
-  /** Get the json-model representative of current state */
-  virtual jalson::json_value snapshot() const = 0;
-
   /** Obtain a model_topic, which is used to publish updates to the data model
    * on a particular topic URI. The lifetime of the returned refernce is managed
    * by the data_model instance. */
   model_topic& get_topic(const std::string& uri);
 
 protected:
+
+  /** Get the json-model representative of current state */
+  virtual jalson::json_value snapshot() const = 0;
 
   void publish(const jalson::json_array&, const jalson::json_array&);
 

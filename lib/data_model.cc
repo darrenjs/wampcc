@@ -90,6 +90,8 @@ XXX::wamp_args model_topic::prepare_snapshot()
 
 void model_topic::add_publisher(std::weak_ptr<wamp_session> wp)
 {
+  /* Lock convention: the model_topics_mutex must be taken and held before the
+   * value mutex is taken (the value mutex is take during the snapshot). */
   std::lock_guard<std::mutex> guard(m_data_model->m_model_topics_mutex);
 
   XXX::wamp_args pub_args = prepare_snapshot();
@@ -104,8 +106,10 @@ void model_topic::add_publisher(std::weak_ptr<wamp_session> wp)
 
 
 void model_topic::add_publisher(std::string realm,
-                                    std::weak_ptr<dealer_service> dealer)
+                                std::weak_ptr<dealer_service> dealer)
 {
+  /* Lock convention: the model_topics_mutex must be taken and held before the
+   * value mutex is taken (the value mutex is take during the snapshot). */
   std::lock_guard<std::mutex> guard(m_data_model->m_model_topics_mutex);
 
   XXX::wamp_args pub_args = prepare_snapshot();
@@ -176,6 +180,9 @@ std::string string_model::value() const
 
 void string_model::assign(std::string s)
 {
+  /* Lock convention: the model_topics_mutex must be taken and held before the
+   * value mutex is taken (the value mutex is take during the snapshot). */
+
   std::string tmp;
   std::lock_guard<std::mutex> publisher_guard(m_model_topics_mutex);
 
@@ -209,17 +216,18 @@ void string_model::assign(std::string s)
 
 jalson::json_value string_model::snapshot() const
 {
+  internal_impl tmp;
+  {
+    std::lock_guard<std::mutex> guard(m_value_mutex);
+    tmp = m_value;
+  }
+
   jalson::json_value jmodel = jalson::json_value::make_object();
   jalson::json_object & head = insert_object(jmodel.as_object(), "head");
   jalson::json_object & body = insert_object(jmodel.as_object(), "body");
   head.emplace("type",   "string_model");
   head.emplace("version", 0);
-  auto iter = body.insert({"value",jalson::json_string()}).first;
-
-  {
-    std::lock_guard<std::mutex> guard(m_value_mutex);
-    iter->second.as_string() = m_value;
-  }
+  body.insert({"value",std::move(tmp)});
 
   return jmodel;
 }
@@ -333,17 +341,21 @@ list_model::internal_impl list_model::value() const
   std::lock_guard<std::mutex> guard(m_value_mutex);
   return m_value;
 }
+
+
 void list_model::reset(internal_impl value)
 {
-  std::lock(m_model_topics_mutex, m_value_mutex);
-  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
+  /* Lock convention: the model_topics_mutex must be taken and held before the
+   * value mutex is taken (the value mutex is take during the snapshot). */
+
+  std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
 
   internal_impl copy;
   if (!m_model_topics.empty())
     copy = value;
 
   {
-    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
+    std::lock_guard<std::mutex> value_guard(m_value_mutex);
     m_value = std::move(value);
   }
 
@@ -371,29 +383,28 @@ void list_model::reset(internal_impl value)
 
 void list_model::insert(size_t pos, jalson::json_value value)
 {
-  std::lock(m_model_topics_mutex, m_value_mutex);
+  std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
+  std::lock_guard<std::mutex> value_guard(m_value_mutex);
+
   insert_impl(pos, std::move(value));
 }
 
 
 void list_model::push_back(jalson::json_value val)
 {
-  std::lock(m_model_topics_mutex, m_value_mutex);
+  std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
+  std::lock_guard<std::mutex> value_guard(m_value_mutex);
+
   insert_impl(m_value.size(), std::move(val));
 }
 
 
 void list_model::insert_impl(size_t pos, jalson::json_value value)
 {
-  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
-
-  {
-    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
-    if (m_value.size() >= pos)
-      m_value.insert(m_value.begin() + pos, value);
-    else
-      throw bad_index(pos);
-  }
+  if (m_value.size() >= pos)
+    m_value.insert(m_value.begin() + pos, value);
+  else
+    throw bad_index(pos);
 
   if (!m_model_topics.empty())
   {
@@ -416,15 +427,14 @@ void list_model::insert_impl(size_t pos, jalson::json_value value)
 
 void list_model::replace(size_t pos, jalson::json_value new_value)
 {
-  std::lock(m_model_topics_mutex, m_value_mutex);
-  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
+  std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
 
   jalson::json_value copy;
   if (!m_model_topics.empty())
     copy = new_value;
 
   {
-    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
+    std::lock_guard<std::mutex> value_guard(m_value_mutex);
     if (m_value.size() > pos)
       m_value[pos] = std::move(new_value);
     else
@@ -453,11 +463,10 @@ void list_model::replace(size_t pos, jalson::json_value new_value)
 
 void list_model::erase(size_t pos)
 {
-  std::lock(m_model_topics_mutex, m_value_mutex);
-  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
+  std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
 
   {
-    std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
+    std::lock_guard<std::mutex> value_guard(m_value_mutex);
     if (m_value.size() > pos)
       m_value.erase(m_value.begin() + pos);
     else
@@ -485,17 +494,18 @@ void list_model::erase(size_t pos)
 
 jalson::json_value list_model::snapshot() const
 {
+  internal_impl tmp;
+  {
+    std::lock_guard<std::mutex> guard(m_value_mutex);
+    tmp = m_value;
+  }
+
   jalson::json_value jmodel = jalson::json_value::make_object();
   jalson::json_object & head = insert_object(jmodel.as_object(), "head");
   jalson::json_object & body = insert_object(jmodel.as_object(), "body");
   head.insert({"type",   "list_model"}); // TODO: should be a constant
   head.insert({"version",  0 });
-  auto iter = body.insert({"value",jalson::json_array()}).first;
-
-  {
-    std::lock_guard<std::mutex> guard(m_value_mutex);
-    iter->second.as_array() = m_value;
-  }
+  body.insert({"value",std::move(tmp)});
 
   return jmodel;
 }
