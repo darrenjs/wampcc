@@ -88,7 +88,10 @@ tcp_socket::~tcp_socket()
       // TODO: what if this throws? At the minimum, we should catch it, which
       // would imply the IO thread is in the process of shutting down.  During
       // its shutdown, it should eventually delete the socket, so we should
-      // continue to wait.
+      // continue to wait.  Note, there is a later wait, but that should only be
+      // called if the push suceeded (ie, did not throw an exception).  Also,
+      // need to consider what thread we might be on; add a test case for being
+      // on the IO thread.
       try {
         m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
       }
@@ -178,7 +181,6 @@ std::future<void> tcp_socket::connect(std::string addr, int port)
 void tcp_socket::connect(std::string addr, int port, on_connect_cb user_cb)
 {
   bool resolve_hostname = true;
-
 
   auto success_fn = [user_cb,this]() {
     {

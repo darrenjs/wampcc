@@ -1,5 +1,4 @@
 #include "XXX/kernel.h"
-#include "XXX/topic.h"
 #include "XXX/data_model.h"
 #include "XXX/wamp_session.h"
 #include "XXX/dealer_service.h"
@@ -11,6 +10,7 @@ class message_server
 {
 public:
   message_server();
+
   ~message_server();
 
 
@@ -25,25 +25,21 @@ private:
   struct message_topic
   {
     XXX::string_model data;
-    XXX::model_publisher * publisher;
+    XXX::model_topic & publisher;
+
     message_topic(const std::string& uri)
-      : publisher(data.create_publisher(uri))
+      : publisher(data.get_topic(uri))
     {
-      std::cout << "message_topic(uri)" << std::endl;
     }
+
     message_topic(const message_topic& rhs)
     : data(rhs.data),
-      publisher(data.create_publisher(rhs.publisher->uri()))
+      publisher(data.get_topic(rhs.publisher.uri()))
     {
-      std::cout << "message_topic(copy)" << std::endl;}
-    // message_topic(message_topic&& rhs)
-    // : data(std::move(rhs.data)),
-    //   publisher(data.create_publisher(rhs.publisher->uri()))
-    // {
-    //   throw std::runtime_error("move not ready");
-    // }
-
+    }
   };
+
+
   std::map<std::string, message_topic> m_topics;
   std::mutex m_topics_mutex;
 
@@ -139,9 +135,11 @@ void message_server::rpc_message_set(XXX::wamp_invocation& invocation)
 
     if (iter == m_topics.end())
     {
-      iter = m_topics.insert(std::make_pair(key, message_topic(key))).first;
+      std::cout << "Creating new topic: " << key << std::endl;
+      // using emplace, because havent yet written the move constructors
+      iter = m_topics.emplace( key, key ).first;
       iter->second.data.assign(topic_value.as_string());
-      iter->second.publisher->add_publisher(m_public_realm, m_dealer);
+      iter->second.publisher.add_publisher(m_public_realm, m_dealer);
     }
     else
       iter->second.data.assign(topic_value.as_string());

@@ -1,6 +1,7 @@
 #include "XXX/data_model.h"
 #include "XXX/dealer_service.h"
 
+#include <iostream> // TODO: delete me
 
 #define THROW_FOR_INVALID_FN( X ) \
 if (m_observer. X) throw std::runtime_error("observer." #X " must be valid");
@@ -9,20 +10,14 @@ namespace XXX {
 
 data_model::data_model()
 {
-   std::cout << "data_model::data_model()" << std::endl;
 }
-
-
-// TODO: dont think I can have this kind of copy constructor anymore, because
-// now the datamodel owns the publishers ... i.e. a copy constructor that also copies the wamp_sessions
-
-// TODO: think about whether it makes sense to copy a data-model, including its
-// publishers, although, also consider the need for techincal copies (eg when adding things to a vector etc) ,,, prefer a move
 
 
 data_model::data_model(const data_model& rhs)
 {
-   std::cout << "data_model::data_model(copy)" << std::endl;
+  /* Note that the list of observers is deliberately not copied, since it would
+   * not make sense for an end observer (ie wamp_session or dealer) to be
+   * connected to sources of a data model; could lead to conflicting updates. */
 }
 
 
@@ -31,23 +26,48 @@ data_model::~data_model()
 }
 
 
-model_publisher* data_model::create_publisher(std::string topic_uri)
+model_topic& data_model::get_topic(const std::string& uri)
 {
-  std::unique_ptr<model_publisher> uptr(new model_publisher(topic_uri, this));
+  std::lock_guard<std::mutex> guard(m_model_topics_mutex);
 
-  model_publisher* ptr = uptr.get();
+  auto it = m_model_topic_lookup.find(uri);
 
+  if (it != m_model_topic_lookup.end())
   {
-    std::lock_guard<std::mutex> guard(m_publishers_mutex);
-    m_publishers.push_back(std::move(uptr));
+    return *(it->second.get());
   }
+  else
+  {
+    std::unique_ptr<model_topic> uptr(new model_topic(uri, this));
+    auto ptr = uptr.get();
+    m_model_topic_lookup.insert( std::make_pair(uri, std::move(uptr)) );
+    m_model_topics.push_back(ptr);
+    return *ptr;
+  }
+}
 
-  return ptr;
+
+void data_model::publish(const jalson::json_array& patch,
+                         const jalson::json_array& rich_event)
+{
+  /* caller must have locked m_model_topics_mutex */
+
+  for (auto & topic : m_model_topics)
+    try {
+      topic->publish_update(patch, rich_event);
+    }
+    catch (...) { /* ignore exceptions */ }
 }
 
 //======================================================================
 
-XXX::wamp_args model_publisher::prepare_snapshot()
+model_topic::model_topic(std::string uri, data_model * model)
+  : m_data_model(model),
+    m_uri(uri)
+{
+}
+
+XXX::wamp_args model_topic::prepare_snapshot()
 {
   jalson::json_array patch;
 
@@ -68,9 +88,9 @@ XXX::wamp_args model_publisher::prepare_snapshot()
 // TODO: once we have common base class for both wamp_session &
 // internal_session, then only one method will be required here.
 
-void model_publisher::add_publisher(std::weak_ptr<wamp_session> wp)
+void model_topic::add_publisher(std::weak_ptr<wamp_session> wp)
 {
-  std::lock_guard<std::mutex> guard(m_data_model->publisher_mutex());
+  std::lock_guard<std::mutex> guard(m_data_model->m_model_topics_mutex);
 
   XXX::wamp_args pub_args = prepare_snapshot();
 
@@ -83,10 +103,10 @@ void model_publisher::add_publisher(std::weak_ptr<wamp_session> wp)
 }
 
 
-void model_publisher::add_publisher(std::string realm,
+void model_topic::add_publisher(std::string realm,
                                     std::weak_ptr<dealer_service> dealer)
 {
-  std::lock_guard<std::mutex> guard(m_data_model->publisher_mutex());
+  std::lock_guard<std::mutex> guard(m_data_model->m_model_topics_mutex);
 
   XXX::wamp_args pub_args = prepare_snapshot();
 
@@ -99,8 +119,8 @@ void model_publisher::add_publisher(std::string realm,
 }
 
 
-void model_publisher::publish_update(jalson::json_array patch,
-                                     jalson::json_array event)
+void model_topic::publish_update(jalson::json_array patch,
+                                 jalson::json_array event)
 {
   XXX::wamp_args pub_args;
   pub_args.args_list.push_back( std::move(patch) );
@@ -157,7 +177,7 @@ std::string string_model::value() const
 void string_model::assign(std::string s)
 {
   std::string tmp;
-  std::lock_guard<std::mutex> publisher_guard(m_publishers_mutex);
+  std::lock_guard<std::mutex> publisher_guard(m_model_topics_mutex);
 
   {
     std::lock_guard<std::mutex> value_guard(m_value_mutex);
@@ -167,7 +187,7 @@ void string_model::assign(std::string s)
     m_value = std::move(s);
   }
 
-  if (!m_publishers.empty())
+  if (!m_model_topics.empty())
   {
     /* Create publication, which comprises two parts:
        (1) the json-model patch
@@ -182,12 +202,7 @@ void string_model::assign(std::string s)
     // string_model model is so simple that an event description is not needed
     jalson::json_array rich_event;
 
-    // push the update to all model publishers
-    for (auto & publisher : m_publishers)
-      try {
-        publisher->publish_update(patch, rich_event);
-      }
-      catch (...) { /* ignore exceptions */ }
+    publish(patch, rich_event);
   }
 }
 
@@ -320,11 +335,11 @@ list_model::internal_impl list_model::value() const
 }
 void list_model::reset(internal_impl value)
 {
-  std::lock(m_publishers_mutex, m_value_mutex);
-  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+  std::lock(m_model_topics_mutex, m_value_mutex);
+  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
 
   internal_impl copy;
-  if (!m_publishers.empty())
+  if (!m_model_topics.empty())
     copy = value;
 
   {
@@ -332,7 +347,7 @@ void list_model::reset(internal_impl value)
     m_value = std::move(value);
   }
 
-  if (!m_publishers.empty())
+  if (!m_model_topics.empty())
   {
     /* Create publication, which comprises two parts:
        (1) the json-model patch
@@ -349,33 +364,28 @@ void list_model::reset(internal_impl value)
     char c = '?';
     jalson::json_array rich_event = { c };
 
-    // push the update to all model publishers
-    for (auto & publisher : m_publishers)
-      try {
-        publisher->publish_update(patch, rich_event);
-      }
-      catch (...) { /* ignore exceptions */ }
+    publish(patch, rich_event);
   }
 }
 
 
 void list_model::insert(size_t pos, jalson::json_value value)
 {
-  std::lock(m_publishers_mutex, m_value_mutex);
+  std::lock(m_model_topics_mutex, m_value_mutex);
   insert_impl(pos, std::move(value));
 }
 
 
 void list_model::push_back(jalson::json_value val)
 {
-  std::lock(m_publishers_mutex, m_value_mutex);
+  std::lock(m_model_topics_mutex, m_value_mutex);
   insert_impl(m_value.size(), std::move(val));
 }
 
 
 void list_model::insert_impl(size_t pos, jalson::json_value value)
 {
-  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
 
   {
     std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
@@ -385,7 +395,7 @@ void list_model::insert_impl(size_t pos, jalson::json_value value)
       throw bad_index(pos);
   }
 
-  if (!m_publishers.empty())
+  if (!m_model_topics.empty())
   {
     /* Create publication, which comprises two parts:
        (1) the json-model patch
@@ -399,23 +409,18 @@ void list_model::insert_impl(size_t pos, jalson::json_value value)
 
     jalson::json_array rich_event = {key_insert, pos};
 
-    // push the update to all model publishers
-    for (auto & publisher : m_publishers)
-      try {
-        publisher->publish_update(patch, rich_event);
-      }
-      catch (...) { /* ignore exceptions */ }
+    publish(patch, rich_event);
   }
 }
 
 
 void list_model::replace(size_t pos, jalson::json_value new_value)
 {
-  std::lock(m_publishers_mutex, m_value_mutex);
-  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+  std::lock(m_model_topics_mutex, m_value_mutex);
+  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
 
   jalson::json_value copy;
-  if (!m_publishers.empty())
+  if (!m_model_topics.empty())
     copy = new_value;
 
   {
@@ -426,7 +431,7 @@ void list_model::replace(size_t pos, jalson::json_value new_value)
       throw bad_index(pos);
   }
 
-  if (!m_publishers.empty())
+  if (!m_model_topics.empty())
   {
     /* Create publication, which comprises two parts:
        (1) the json-model patch
@@ -441,20 +446,15 @@ void list_model::replace(size_t pos, jalson::json_value new_value)
 
     jalson::json_array rich_event = {key_modify, pos};
 
-    // push the update to all model publishers
-    for (auto & publisher : m_publishers)
-      try {
-        publisher->publish_update(patch, rich_event);
-      }
-      catch (...) { /* ignore exceptions */ }
+    publish(patch, rich_event);
   }
 }
 
 
 void list_model::erase(size_t pos)
 {
-  std::lock(m_publishers_mutex, m_value_mutex);
-  std::unique_lock<std::mutex> pub_guard(m_publishers_mutex, std::adopt_lock);
+  std::lock(m_model_topics_mutex, m_value_mutex);
+  std::unique_lock<std::mutex> pub_guard(m_model_topics_mutex, std::adopt_lock);
 
   {
     std::unique_lock<std::mutex> value_guard(m_value_mutex, std::adopt_lock);
@@ -464,7 +464,7 @@ void list_model::erase(size_t pos)
       throw bad_index(pos);
   }
 
-  if (!m_publishers.empty())
+  if (!m_model_topics.empty())
   {
     /* Create publication, which comprises two parts:
        (1) the json-model patch
@@ -478,12 +478,7 @@ void list_model::erase(size_t pos)
 
     jalson::json_array rich_event = { key_remove, pos };
 
-    // push the update to all model publishers
-    for (auto & publisher : m_publishers)
-      try {
-        publisher->publish_update(patch, rich_event);
-      }
-      catch (...) { /* ignore exceptions */ }
+    publish(patch, rich_event);
   }
 }
 

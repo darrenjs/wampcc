@@ -1,5 +1,4 @@
 #include "XXX/kernel.h"
-#include "XXX/topic.h"
 #include "XXX/data_model.h"
 #include "XXX/tcp_socket.h"
 #include "XXX/wamp_session.h"

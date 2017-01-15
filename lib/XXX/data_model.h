@@ -11,100 +11,65 @@
 #include <mutex>
 #include <list>
 
-#include <iostream> // TODO: delete me
-
 #define KEY_PATCH    "_p"
 #define KEY_SNAPSHOT "_snap"
 
 namespace XXX {
 
 class dealer_service;
-class model_publisher;
+class model_topic;
 
-
-/** Abstract base class for all JSON data models */
+/** Abstract base class for all JSON patch-based data models */
 class data_model
 {
 public:
   data_model();
+
+  /** Copy constructor.  The list of observers is not copied. */
   data_model(const data_model&);
+
   virtual ~data_model() = 0;
 
   /** Get the json-model representative of current state */
   virtual jalson::json_value snapshot() const = 0;
 
-  /** Obtain a model_publisher, which is used to publish updates to the data
-   * model on a particular topic URI. */
-  model_publisher* create_publisher(std::string topic_uri);
+  /** Obtain a model_topic, which is used to publish updates to the data model
+   * on a particular topic URI. The lifetime of the returned refernce is managed
+   * by the data_model instance. */
+  model_topic& get_topic(const std::string& uri);
 
 protected:
 
-  std::mutex& publisher_mutex() { return m_publishers_mutex; }
+  void publish(const jalson::json_array&, const jalson::json_array&);
 
-  std::vector<std::unique_ptr<model_publisher>> m_publishers;
-  mutable std::mutex                            m_publishers_mutex;
+  mutable std::mutex m_model_topics_mutex;
+  std::map<std::string, std::unique_ptr<model_topic>> m_model_topic_lookup;
+  std::vector<model_topic*> m_model_topics;
 
-  friend class model_publisher;
+  friend class model_topic;
 };
 
 
 /**
- * Allow a data model to be published as a topic with a specific URI
+ * Allow a data model to be published as a topic with a specific URI. Instances
+ * of these are created by calling data_model::get_topic
  */
-class model_publisher
+class model_topic
 {
 public:
-
-  model_publisher(std::string uri, data_model * model)
-    : m_data_model(model),
-      m_uri(uri)
-  {
-  }
-
   void add_publisher(std::weak_ptr<wamp_session> wp);
-
-  void add_publisher(std::string realm,
-                     std::weak_ptr<dealer_service>);
-
+  void add_publisher(std::string realm, std::weak_ptr<dealer_service>);
   const std::string& uri() const { return m_uri; }
 
-  void publish_update(jalson::json_array patch, jalson::json_array event);
-
 private:
-
+  void publish_update(jalson::json_array patch, jalson::json_array event);
+  model_topic(std::string, data_model*);
   XXX::wamp_args prepare_snapshot();
-
   data_model * m_data_model;
   std::string m_uri;
   std::vector<std::weak_ptr<wamp_session>> m_sessions;
-  std::vector< std::pair<std::string /* realm */, std::weak_ptr<dealer_service> > > m_dealers;
-};
-
-
-/* */
-class string_model : public data_model
-{
-public:
-  typedef std::string internal_impl;
-
-  string_model() = default;
-  string_model(std::string);
-  string_model(const string_model&);
-
-  std::string value() const;
-
-  jalson::json_value snapshot() const override;
-
-  // Rich API for modifying model state
-  void assign(std::string);
-
-private:
-
-  /* The data model internal representation.  Some kind of representation of
-   * current model state is required so that a snapshot can be provided when a
-   * new publisher is added. This can either be a rich-model or a json-model. */
-  internal_impl      m_value;
-  mutable std::mutex m_value_mutex;
+  std::vector<std::pair<std::string /* realm */, std::weak_ptr<dealer_service>>> m_dealers;
+  friend data_model;
 };
 
 
@@ -160,11 +125,7 @@ protected:
   mutable std::mutex m_value_mutex;
 
 private:
-    // Convenience method for CRTP
-    T* derived()
-    {
-      return static_cast<T*>(this);
-    }
+    T* derived() { return static_cast<T*>(this); }// utilty for CRTP
 };
 
 
@@ -185,6 +146,33 @@ private:
   void on_update(jalson::json_object options, wamp_args args);
   observer m_observer;
   friend base_type;
+};
+
+
+/* */
+class string_model : public data_model
+{
+public:
+  typedef std::string internal_impl;
+
+  string_model() = default;
+  string_model(std::string);
+  string_model(const string_model&);
+
+  std::string value() const;
+
+  jalson::json_value snapshot() const override;
+
+  // Rich API for modifying model state
+  void assign(std::string);
+
+private:
+
+  /* The data model internal representation.  Some kind of representation of
+   * current model state is required so that a snapshot can be provided when a
+   * new publisher is added. This can either be a rich-model or a json-model. */
+  internal_impl      m_value;
+  mutable std::mutex m_value_mutex;
 };
 
 

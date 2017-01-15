@@ -113,7 +113,7 @@ void planets_list::thread_main()
 
 
 planets_list planets;
-XXX::model_publisher * publisher =  planets.model.create_publisher("planets");
+XXX::model_topic & topic =  planets.model.get_topic("planets");
 
 
 
@@ -132,7 +132,7 @@ int main(int /* argc */, char** /* argv */)
   g_dealer = dealer;
 
   std::string realm = "default_realm";
-  publisher->add_publisher(realm, g_dealer);
+  topic.add_publisher(realm, g_dealer);
 
   XXX::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
