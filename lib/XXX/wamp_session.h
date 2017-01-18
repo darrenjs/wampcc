@@ -53,12 +53,10 @@ namespace XXX {
   {
     enum
     {
-      started,
+      started = 0,
       failed,
-      update,
-      finished
+      update
     } type;
-    std::string uri;
     jalson::json_object details;
     wamp_args args;
     void* user;
@@ -169,7 +167,6 @@ namespace XXX {
                                        state_cb, factory_fn, server_msg_handler(), auth_provider());
     }
 
-
     /** Should be called client session once the session has been created, to
      * begin the HELLO sequence. */
     std::future<void> initiate_hello(client_credentials);
@@ -203,7 +200,6 @@ namespace XXX {
     const std::string& realm() const;
 
     int hb_interval_secs() const { return m_hb_intvl; }
-
 
     t_request_id provide(std::string uri,
                          const jalson::json_object& options,

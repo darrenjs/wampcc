@@ -1102,7 +1102,6 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
         {
           wamp_subscription_event ev;
           ev.type = wamp_subscription_event::started;
-          ev.uri = temp.uri;
           temp.user_cb( ev );
         }
 
@@ -1131,7 +1130,6 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
       {
         wamp_subscription_event ev;
         ev.type = wamp_subscription_event::update;
-        ev.uri  = iter->second.uri;
         ev.details = std::move( details );
         ev.args.args_list = args_list;
         ev.args.args_dict = args_dict;
