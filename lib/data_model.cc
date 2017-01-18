@@ -4,7 +4,7 @@
 #include <iostream> // TODO: delete me
 
 #define THROW_FOR_INVALID_FN( X ) \
-if (m_observer. X) throw std::runtime_error("observer." #X " must be valid");
+if (not m_observer. X) throw std::runtime_error("observer." #X " must be valid");
 
 namespace XXX {
 
@@ -316,7 +316,6 @@ void string_subscription::on_update(jalson::json_object options,
       std::lock_guard<std::mutex> guard(m_value_mutex);
       m_value = body_value;
     }
-    std::cout << "string_model_sub, snapshot=" << m_value << std::endl;
     m_observer.on_change(*this);
   }
   else if (patchset)
@@ -329,7 +328,6 @@ void string_subscription::on_update(jalson::json_object options,
       m_value = std::move(value);
     }
 
-    std::cout << "string_model_sub, update=" << m_value << std::endl;
     m_observer.on_change(*this);
   }
 }
