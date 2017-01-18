@@ -7,9 +7,31 @@
 #include <memory>
 #include <iostream>
 
+
+void on_string_change(const XXX::string_subscription& sub)
+{
+  std::cout << "on_string_change: " << sub.value() << std::endl;
+}
+
+
+// void on_subscription(XXX::wamp_subscription_event subev)
+// {
+//   switch (subev.type)
+//   {
+//     case XXX::wamp_subscription_event::started : std::cout << "subscription started\n"; break;
+//     case XXX::wamp_subscription_event::failed :  std::cout << "subscription failed\n"; break;
+//     case XXX::wamp_subscription_event::update :  std::cout << "subscription update\n"; break;
+//   };
+
+//   std::cout << "details: " << subev.details << std::endl;
+//   std::cout << "args.list: " << subev.args.args_list << std::endl;
+//   std::cout << "args.dict: " << subev.args.args_dict << std::endl;
+// }
+
+
 /* Make repeated attempts to connect to the end-point, with each failed attempt
- * as separated by a rest interval before the next attempt. When a successful
- * connection is established, the connected socket is returned.*/
+ * separated by a rest interval before the next attempt. When a successful
+ * connection is established, the connected socket is returned. */
 std::unique_ptr<XXX::tcp_socket> get_tcp_connection(const char* address,
                                                     int port,
                                                     XXX::kernel & the_kernel,
@@ -102,11 +124,11 @@ int main_impl(int argc, char** argv)
       /* --- Session is now open --- */
       std::cout << "session open" << std::endl;
 
-      // subscription arguments
-      XXX::wamp_args args;
 
       /* Subscribe to a topic */
+
       std::string topic_uri = "xxxx";
+      XXX::string_subscription string_sub(session, topic_uri, {on_string_change});
 
       // Wait until we get disconnected
       promise_on_close.get_future().wait();
@@ -115,7 +137,6 @@ int main_impl(int argc, char** argv)
     catch (std::exception & e)
     {
       std::cout << "wamp session error, " << e.what() << std::endl;
-
     }
 
     // perform proper cleanup and deletion of leftover session object
