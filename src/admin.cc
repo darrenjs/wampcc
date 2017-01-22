@@ -141,7 +141,7 @@ void call_cb(XXX::wamp_call_result r)
 /* called upon subscribed and update events */
 void subscribe_cb(XXX::wamp_subscription_event ev)
 {
-  std::cout << "topic update: evtype: " << ev.type << ", args_list: " << ev.args.args_list
+  std::cout << "topic update: " << ", args_list: " << ev.args.args_list
             << ", args_dict:" << ev.args.args_dict << "\n";
 }
 
@@ -184,7 +184,7 @@ static void usage()
   std::cout << "  -R, --realm=ARG"        << "\t\t" << "specify a session realm" << std::endl;
   std::cout << "  -s, --subscribe=URI"    << "\t\t" << "subscribe to topic" << std::endl;
   std::cout << "  -p, --publish=URI"      << "\t\t" << "publish to topic" << std::endl;
-  //std::cout << "  -r, --register=URI"     << "\t\t" << "register procedure" << std::endl;
+  //std::cout << "  -r, -register=URI"     << "\t\t" << "register procedure" << std::endl;
   std::cout << "  -c, --call=URI"         << "\t\t" << "call procedure" << std::endl;
   std::cout << "  --arglist=ARG"          << "\t\t\t" << "wamp argument list, ARG is a JSON array" << std::endl;
   std::cout << "  --argdict=ARG"          << "\t\t\t" << "wamp argument dictionary, ARG is a JSON object" << std::endl;
@@ -453,10 +453,11 @@ int main_impl(int argc, char** argv)
 
 
   // subscribe to user topics
+  XXX::subscribed_cb scb; // TODO:
   jalson::json_object sub_options { {KEY_PATCH, 1} };
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
-    ws->subscribe(topic, sub_options, subscribe_cb, nullptr);
+    ws->subscribe(topic, sub_options, scb, subscribe_cb, nullptr);
 
   // register
   std::unique_ptr<callback_t> cb1( new callback_t(g_kernel.get(),"my_hello") );

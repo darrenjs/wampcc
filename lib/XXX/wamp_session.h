@@ -51,18 +51,16 @@ namespace XXX {
 
   struct wamp_subscription_event
   {
-    enum
-    {
-      started = 0,
-      failed,
-      update
-    } type;
     jalson::json_object details;
     wamp_args args;
     void* user;
   };
-  typedef std::function< void (wamp_subscription_event) > subscription_cb;
+  typedef std::function< void (wamp_subscription_event) > subscription_event_cb;
 
+  /** Callback invoked when a subscription request is successful or fails.
+      Error contains the error code when the subscription is not successful.
+  */
+  typedef std::function< void (t_request_id, bool successful, std::string error) > subscribed_cb;
 
   struct wamp_call_result
   {
@@ -206,9 +204,10 @@ namespace XXX {
                          rpc_cb cb,
                          void * data = nullptr);
 
-    t_request_id subscribe(const std::string& uri,
-                           const jalson::json_object& options,
-                           subscription_cb cb,
+    t_request_id subscribe(std::string uri,
+                           jalson::json_object options,
+                           subscribed_cb,
+                           subscription_event_cb cb,
                            void * user = nullptr);
 
     t_request_id call(std::string uri,
@@ -384,8 +383,10 @@ namespace XXX {
 
     struct subscription
     {
+      t_request_id request_id;
       std::string uri;
-      subscription_cb user_cb;
+      subscribed_cb request_cb;
+      subscription_event_cb event_cb;
       void * user_data;
     };
 
@@ -401,7 +402,6 @@ namespace XXX {
     {
       wamp_invocation_reply_fn reply_fn;
     };
-
 
     mutable std::mutex m_pending_lock;
     std::map<t_request_id, subscription>    m_pending_subscribe;

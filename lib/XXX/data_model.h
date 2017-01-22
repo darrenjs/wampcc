@@ -101,13 +101,14 @@ public:
     : model_sub_base(ws, topic_uri)
   {
     auto this_derived = derived();
+    XXX::subscribed_cb scb;  // TODO
+
     auto fn = [this_derived](wamp_subscription_event e)
       {
-        if (e.type == wamp_subscription_event::update)
-          this_derived->on_update(std::move(e.details), std::move(e.args));
+        this_derived->on_update(std::move(e.details), std::move(e.args));
       };
 
-    ws->subscribe(m_uri, {{KEY_PATCH, 1}}, std::move(fn), nullptr);
+    ws->subscribe(m_uri, {{KEY_PATCH, 1}}, scb, std::move(fn), nullptr);
   }
 
   value_type value() const

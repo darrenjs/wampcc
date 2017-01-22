@@ -1025,10 +1025,11 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
 }
 
 
-t_request_id wamp_session::subscribe(const std::string& uri,
-                                const jalson::json_object& options,
-                                subscription_cb cb,
-                                void * user)
+t_request_id wamp_session::subscribe(std::string uri,
+                                     jalson::json_object options,
+                                     subscribed_cb req_cb,
+                                     subscription_event_cb event_cb,
+                                     void * user)
 {
   jalson::json_array msg;
   msg.push_back( SUBSCRIBE );
@@ -1037,8 +1038,9 @@ t_request_id wamp_session::subscribe(const std::string& uri,
   msg.push_back( uri );
 
   subscription sub;
-  sub.uri = uri;
-  sub.user_cb = cb;
+  sub.uri = std::move(uri);
+  sub.request_cb = std::move(req_cb);
+  sub.event_cb= std::move(event_cb);
   sub.user_data = user;
 
   t_request_id request_id;
@@ -1047,6 +1049,7 @@ t_request_id wamp_session::subscribe(const std::string& uri,
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
+    sub.request_id = request_id;
 
     {
       std::unique_lock<std::mutex> guard(m_pending_lock);
@@ -1072,22 +1075,24 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
       throw protocol_error("subscription ID must be unsigned int");
   t_subscription_id subscription_id = msg[2].as_uint();
 
+
+  // reduce locking scope ... TODO: probably not a good idea here.
   subscription temp;
   bool found = false;
   {
     std::unique_lock<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_subscribe.find( request_id );
 
+    // TODO: act upon error if it is already found, ie, peer has sent a
+    // non-unique id
     if (iter != m_pending_subscribe.end())
     {
       found = true;
       temp = iter->second;
-
       m_subscriptions[subscription_id] = std::move(iter->second);
       m_pending_subscribe.erase(iter);
     }
   }
-
 
   if (found)
   {
@@ -1095,16 +1100,11 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
            << " with  subscription_id " << subscription_id);
 
     // user callback
-    if (temp.user_cb)
+    if (temp.request_cb)
       try
       {
         if (user_cb_allowed())
-        {
-          wamp_subscription_event ev;
-          ev.type = wamp_subscription_event::started;
-          temp.user_cb( ev );
-        }
-
+          temp.request_cb(temp.request_id, true, {});
       } catch(...){ log_exception(__logger, "inbound subscribed user callback"); }
   }
 }
@@ -1129,12 +1129,11 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
       if (user_cb_allowed())
       {
         wamp_subscription_event ev;
-        ev.type = wamp_subscription_event::update;
         ev.details = std::move( details );
         ev.args.args_list = args_list;
         ev.args.args_dict = args_dict;
         ev.user = iter->second.user_data;
-        iter->second.user_cb( ev );
+        iter->second.event_cb( ev );
       }
     } catch (...){ log_exception(__logger, "inbound event user callback"); }
 

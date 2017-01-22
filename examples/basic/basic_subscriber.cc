@@ -48,13 +48,11 @@ int main(int, char**)
       throw std::runtime_error("time-out during session logon");
 
     /* Session is now open, subscribe to a topic. */
-    session->subscribe("coin_toss", {}, [](wamp_subscription_event ev){
-        if (ev.type == wamp_subscription_event::update)
-        {
-          for (auto & x : ev.args.args_list)
-            std::cout << x << " ";
-          std::cout << std::endl;
-        }
+    XXX::subscribed_cb cb = [](XXX::t_request_id, bool successful, std::string error){}; // TODO
+    session->subscribe("coin_toss", {}, cb, [](wamp_subscription_event ev){
+        for (auto & x : ev.args.args_list)
+          std::cout << x << " ";
+        std::cout << std::endl;
       });
 
     ready_to_exit.get_future().wait();
