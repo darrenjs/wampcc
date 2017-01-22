@@ -83,8 +83,8 @@ struct wamp_args
 };
 
 
-/** Optionally store a value of value of type T.  Methods to assign 
-	  the value and compare with it are protected by an internal mutex.
+/** Optionally store a value of value of type T.  Methods to assign
+    the value and compare with it are protected by an internal mutex.
 */
 template <typename T>
 class synchronized_optional
