@@ -1,7 +1,7 @@
 #include "XXX/kernel.h"
 #include "XXX/tcp_socket.h"
 #include "XXX/wamp_session.h"
-#include "XXX/websocket_protocol.h"
+#include "XXX/rawsocket_protocol.h"
 
 #include <memory>
 #include <random>
@@ -24,7 +24,7 @@ int main(int, char**)
 
     std::promise<void> ready_to_exit;
 
-    std::shared_ptr<wamp_session> session = wamp_session::create<websocket_protocol>(
+    std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
       [&ready_to_exit](XXX::session_handle, bool is_open){
@@ -48,12 +48,25 @@ int main(int, char**)
       throw std::runtime_error("time-out during session logon");
 
     /* Session is now open, subscribe to a topic. */
-    XXX::subscribed_cb cb = [](XXX::t_request_id, bool successful, std::string error){}; // TODO
-    session->subscribe("coin_toss", {}, cb, [](wamp_subscription_event ev){
-        for (auto & x : ev.args.args_list)
-          std::cout << x << " ";
-        std::cout << std::endl;
-      });
+    XXX::subscribed_cb my_subscribed_cb = [session](XXX::t_request_id request_id, std::string uri, bool successful, std::string error)
+      {
+        if (successful)
+        {
+          std::cout << "subscription successful for '"<<uri << "'" << std::endl;
+        }
+        else
+        {
+          std::cout << "subscription failed for '"<< uri << "', error: " << error << std::endl;
+          session->close();
+        }
+      };
+    session->subscribe("coin_toss", {},
+                       std::move(my_subscribed_cb),
+                       [](wamp_subscription_event ev){
+                         for (auto & x : ev.args.args_list)
+                           std::cout << x << " ";
+                         std::cout << std::endl;
+                       });
 
     ready_to_exit.get_future().wait();
 

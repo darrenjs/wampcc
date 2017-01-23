@@ -1037,7 +1037,7 @@ t_request_id wamp_session::subscribe(std::string uri,
   msg.push_back( options );
   msg.push_back( uri );
 
-  subscription sub;
+  subscribe_request sub;
   sub.uri = std::move(uri);
   sub.request_cb = std::move(req_cb);
   sub.event_cb= std::move(event_cb);
@@ -1049,7 +1049,6 @@ t_request_id wamp_session::subscribe(std::string uri,
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
-    sub.request_id = request_id;
 
     {
       std::unique_lock<std::mutex> guard(m_pending_lock);
@@ -1075,38 +1074,43 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
       throw protocol_error("subscription ID must be unsigned int");
   t_subscription_id subscription_id = msg[2].as_uint();
 
-
-  // reduce locking scope ... TODO: probably not a good idea here.
-  subscription temp;
-  bool found = false;
+  // reduce locking scope
+  subscribe_request temp;
   {
     std::unique_lock<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_subscribe.find( request_id );
 
-    // TODO: act upon error if it is already found, ie, peer has sent a
-    // non-unique id
     if (iter != m_pending_subscribe.end())
     {
-      found = true;
-      temp = iter->second;
-      m_subscriptions[subscription_id] = std::move(iter->second);
+      temp = std::move(iter->second);
       m_pending_subscribe.erase(iter);
+    }
+    else
+    {
+      LOG_WARN("no pending subscribe for subscribed response with request_id "
+               << request_id);
+      return;
     }
   }
 
-  if (found)
-  {
-    LOG_INFO("Subscribed to topic '"<< temp.uri <<"'"
-           << " with  subscription_id " << subscription_id);
+  // TODO: act upon error if it is already found, ie, peer has sent a
+  // non-unique id
+  subscription sub;
+  sub.event_cb = std::move(temp.event_cb);
+  sub.user_data = temp.user_data;
+  m_subscriptions[subscription_id] = std::move(sub);
 
-    // user callback
-    if (temp.request_cb)
-      try
-      {
-        if (user_cb_allowed())
-          temp.request_cb(temp.request_id, true, {});
-      } catch(...){ log_exception(__logger, "inbound subscribed user callback"); }
-  }
+  LOG_INFO("Subscribed to topic '"<< temp.uri <<"'"
+           << " with subscription_id " << subscription_id);
+
+  // invoke user callback if permitted, and handle exception
+  if (temp.request_cb && user_cb_allowed())
+    try {
+      temp.request_cb(request_id, temp.uri, true, {});
+    }
+    catch(...) {
+      log_exception(__logger, "inbound subscribed user callback");
+    }
 }
 
 
@@ -1227,7 +1231,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
     r.details = options;
 
     try {
-      if (user_cb_allowed()) orig_call.user_cb(std::move(r));
+      orig_call.user_cb(std::move(r));
     }
     catch(...) {
       log_exception(__logger, "inbound result user callback");
@@ -1320,18 +1324,49 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
             r.details = details;
 
             try {
-              if (user_cb_allowed()) orig_call.user_cb(std::move(r));
+              orig_call.user_cb(std::move(r));
             }
             catch(...){ log_exception(__logger, "inbound call error user callback");}
           }
         }
         else
         {
-          LOG_WARN("no pending call associated with call error response, for request_id "
+          LOG_WARN("no pending call for error response with request_id "
                    << request_id);
         }
         break;
       }
+      case SUBSCRIBE :
+      {
+        /* dont hold any locks when calling the user */
+        subscribe_request orig_request;
+        {
+          std::unique_lock<std::mutex> guard(m_pending_lock);
+          auto iter = m_pending_subscribe.find( request_id );
+          if (iter != m_pending_subscribe.end())
+          {
+            orig_request = std::move(iter->second);
+            m_pending_subscribe.erase(iter);
+          }
+          else
+          {
+            LOG_WARN("no pending subscribe for error response with request_id "
+                     << request_id);
+            break;
+          }
+        }
+
+        // invoke user callback if permitted, and handle exception
+        if (orig_request.request_cb && user_cb_allowed())
+          try {
+            orig_request.request_cb(request_id, orig_request.uri, false, std::move(error_uri));
+          }
+          catch(...) {
+            log_exception(__logger, "inbound subscribed user callback");
+          }
+
+        break;
+      };
       default:
         LOG_WARN("wamp error response has unexpected original request type " << orig_request_type);
         break;

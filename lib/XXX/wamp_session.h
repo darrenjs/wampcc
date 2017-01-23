@@ -60,7 +60,8 @@ namespace XXX {
   /** Callback invoked when a subscription request is successful or fails.
       Error contains the error code when the subscription is not successful.
   */
-  typedef std::function< void (t_request_id, bool successful, std::string error) > subscribed_cb;
+  typedef std::function< void (t_request_id, std::string uri,
+                               bool successful, std::string error) > subscribed_cb;
 
   struct wamp_call_result
   {
@@ -287,8 +288,7 @@ namespace XXX {
       eOpen,
 
       // close handshake
-      e_wait_peer_goodbye, // TODO: add to tostr() func.
-
+      e_wait_peer_goodbye,
 
       eClosing,
       eClosed
@@ -381,11 +381,16 @@ namespace XXX {
       void * user_data;
     };
 
-    struct subscription
+    struct subscribe_request
     {
-      t_request_id request_id;
       std::string uri;
       subscribed_cb request_cb;
+      subscription_event_cb event_cb;
+      void * user_data;
+    };
+
+    struct subscription
+    {
       subscription_event_cb event_cb;
       void * user_data;
     };
@@ -404,10 +409,10 @@ namespace XXX {
     };
 
     mutable std::mutex m_pending_lock;
-    std::map<t_request_id, subscription>    m_pending_subscribe;
-    std::map<t_request_id, procedure>       m_pending_register;
-    std::map<t_request_id, wamp_call>       m_pending_call;
-    std::map<t_request_id, wamp_invocation> m_pending_invocation;
+    std::map<t_request_id, subscribe_request> m_pending_subscribe;
+    std::map<t_request_id, procedure>         m_pending_register;
+    std::map<t_request_id, wamp_call>         m_pending_call;
+    std::map<t_request_id, wamp_invocation>   m_pending_invocation;
 
     // TODO: procedures -- not currently locked, however, need to add locking once
     // unprovide() is added, and if it is implemented synchronously.
@@ -418,8 +423,6 @@ namespace XXX {
     std::unique_ptr<protocol> m_proto;
 
     std::promise< void > m_promise_on_open;
-
-
   };
 
 } // namespace XXX

@@ -23,9 +23,8 @@ if __name__ == "__main__":
     serv.bind((HOST, PORT))
     serv.listen(5)
     serv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    print 'listening ...'
-
     while True:
+        print 'listening for next client on ' + HOST + ":" +  str(PORT)
         conn, addr = serv.accept()
         print 'client connected ... ', addr
         client_state = session_state.handshaking
@@ -39,7 +38,6 @@ if __name__ == "__main__":
 
             print "recv: " + str(nread) + ", " + binascii.hexlify(buf[:nread]);
             if (client_state == session_state.handshaking):
-                print "sending handshake"
                 handshake = wamplite.rawsocket_handshake_array()
                 conn.send(handshake);
                 client_state = session_state.receiving_hello
@@ -48,7 +46,6 @@ if __name__ == "__main__":
                 jsonmsg = wamplite.rawsocket_unpack(buf)
                 print "json:", jsonmsg
                 wamp_msg_type=jsonmsg[0]
-                print "message type:" + str(wamp_msg_type)
                 if (wamp_msg_type == wamplite.WampMsgType.SUBSCRIBE):
                     print "rejecting subscription request"
                     request_id=jsonmsg[1]
