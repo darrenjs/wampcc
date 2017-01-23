@@ -163,13 +163,12 @@ void message_server::rpc_message_list(XXX::wamp_invocation& invocation)
 }
 
 
-
 int main(int argc, char** argv)
 {
   try
   {
-    message_server mserv;
-    mserv.shutdown_future().wait();
+    message_server my_server;
+    my_server.shutdown_future().wait();
     return 0;
   }
   catch (std::exception& e)
