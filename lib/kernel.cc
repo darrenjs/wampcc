@@ -102,11 +102,11 @@ static const char* level_str(logger::Level l)
 {
   switch(l)
   {
-    case logger::eError : return "ERROR ";
-    case logger::eWarn  : return "WARN  ";
-    case logger::eInfo  : return "INFO  ";
-    case logger::eDebug : return "DEBUG ";
-    default             : return "????? ";
+    case logger::eError : return "ERROR";
+    case logger::eWarn  : return " WARN";
+    case logger::eInfo  : return " INFO";
+    case logger::eDebug : return "DEBUG";
+    default             : return "?????";
   }
 }
 
