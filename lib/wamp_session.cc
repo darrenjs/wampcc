@@ -1057,7 +1057,7 @@ t_request_id wamp_session::subscribe(std::string uri,
     send_msg( msg );
   }
 
-  LOG_INFO("Sending SUBSCRIBE request for topic '" << uri << "', request_id " << request_id);
+  LOG_INFO("sending subscribe for topic '" << std::move(uri) << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1093,20 +1093,33 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
     }
   }
 
-  // TODO: act upon error if it is already found, ie, peer has sent a
-  // non-unique id
-  subscription sub;
-  sub.event_cb = std::move(temp.event_cb);
-  sub.user_data = temp.user_data;
-  m_subscriptions[subscription_id] = std::move(sub);
-
-  LOG_INFO("Subscribed to topic '"<< temp.uri <<"'"
+  LOG_INFO("subscribed to topic '"<< temp.uri <<"'"
            << " with subscription_id " << subscription_id);
+
+  auto iter = m_subscriptions.find(subscription_id);
+  if (iter != m_subscriptions.end())
+  {
+    /* This is permitted by WAMP specification, ie multiple subscriptions to a
+     * topic.  However for such situations, each identical subscription will use
+     * the same subscription ID and only be published once.  Given this is
+     * unusal behaviour we raise a warning.  We also use the request callback in
+     * replace of the previous callback. */
+    LOG_WARN("multiple subscriptions made to topic '"<< temp.uri <<"'");
+    iter->second.event_cb  = std::move(temp.event_cb);
+    iter->second.user_data = temp.user_data;
+  }
+  else
+  {
+    subscription sub;
+    sub.event_cb = std::move(temp.event_cb);
+    sub.user_data = temp.user_data;
+    m_subscriptions.insert({subscription_id, std::move(sub)});
+  }
 
   // invoke user callback if permitted, and handle exception
   if (temp.request_cb && user_cb_allowed())
     try {
-      temp.request_cb(request_id, temp.uri, true, {});
+      temp.request_cb(request_id, temp.uri, true, subscription_id, {});
     }
     catch(...) {
       log_exception(__logger, "inbound subscribed user callback");
@@ -1133,6 +1146,7 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
       if (user_cb_allowed())
       {
         wamp_subscription_event ev;
+        ev.subscription_id = subscription_id;
         ev.details = std::move( details );
         ev.args.args_list = args_list;
         ev.args.args_dict = args_dict;
@@ -1359,7 +1373,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
         // invoke user callback if permitted, and handle exception
         if (orig_request.request_cb && user_cb_allowed())
           try {
-            orig_request.request_cb(request_id, orig_request.uri, false, std::move(error_uri));
+            orig_request.request_cb(request_id, orig_request.uri, false, 0, std::move(error_uri));
           }
           catch(...) {
             log_exception(__logger, "inbound subscribed user callback");
@@ -1772,7 +1786,7 @@ void wamp_session::drop_connection_impl(std::string reason,
     try
     {
       // TODO: ideally, we want a close-after-send option on the tcp_socket, so
-      // that we can call initiaite_close_impl as soon as we have written the
+      // that we can call initiate_close_impl as soon as we have written the
       // last message.
       m_proto->send_msg(build_abort_message(reason));
     }

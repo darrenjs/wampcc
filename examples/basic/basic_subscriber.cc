@@ -13,7 +13,7 @@ int main(int, char**)
 {
   try
   {
-    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ));
+    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::stdlog(std::cout, 0xFF, 1) ));
 
     std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
     auto fut = sock->connect("127.0.0.1", 55555);
@@ -48,11 +48,12 @@ int main(int, char**)
       throw std::runtime_error("time-out during session logon");
 
     /* Session is now open, subscribe to a topic. */
-    XXX::subscribed_cb my_subscribed_cb = [session](XXX::t_request_id request_id, std::string uri, bool successful, std::string error)
+    XXX::subscribed_cb my_subscribed_cb = [session](XXX::t_request_id request_id, std::string uri, bool successful,
+                                                    t_subscription_id subid, std::string error)
       {
         if (successful)
         {
-          std::cout << "subscription successful for '"<<uri << "'" << std::endl;
+          std::cout << "subscription successful for '"<<uri << "', subscription_id " << subid << std::endl;
         }
         else
         {
@@ -61,12 +62,23 @@ int main(int, char**)
         }
       };
     session->subscribe("coin_toss", {},
-                       std::move(my_subscribed_cb),
+                       my_subscribed_cb,
                        [](wamp_subscription_event ev){
                          for (auto & x : ev.args.args_list)
                            std::cout << x << " ";
                          std::cout << std::endl;
                        });
+
+    /* Opps! This is a duplicate subscription.  This is okay; we will actually
+     * only subscribe once. */
+    session->subscribe("coin_toss", {},
+                       my_subscribed_cb,
+                       [](wamp_subscription_event ev){
+                         for (auto & x : ev.args.args_list)
+                           std::cout << x << " ";
+                         std::cout << std::endl;
+                       });
+
 
     ready_to_exit.get_future().wait();
 

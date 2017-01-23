@@ -141,7 +141,7 @@ void call_cb(XXX::wamp_call_result r)
 /* called upon subscribed and update events */
 void subscribe_cb(XXX::wamp_subscription_event ev)
 {
-  std::cout << "topic update: " << ", args_list: " << ev.args.args_list
+  std::cout << "topic update: subscription_id: " << ev.subscription_id << ", args_list: " << ev.args.args_list
             << ", args_dict:" << ev.args.args_dict << "\n";
 }
 
@@ -473,12 +473,11 @@ int main_impl(int argc, char** argv)
   // publish
   if (!uopts.publish_topic.empty())
   {
-    // XXX::wamp_args pub_args;
-    // pub_args.args_list = jalson::json_value::make_array();
-    // pub_args.args_list.as_array().push_back(uopts.publish_message);
-    // ws->publish(uopts.publish_topic,
-    //             jalson::json_object(),
-    //             pub_args);
+    XXX::wamp_args pub_args;
+    pub_args.args_list.push_back(uopts.publish_message);
+    ws->publish(uopts.publish_topic,
+                jalson::json_object(),
+                pub_args);
 
     // XXX::basic_text_model tm;
     // XXX::topic publisher(uopts.publish_topic, &tm);

@@ -51,6 +51,7 @@ namespace XXX {
 
   struct wamp_subscription_event
   {
+    t_subscription_id subscription_id;
     jalson::json_object details;
     wamp_args args;
     void* user;
@@ -60,8 +61,11 @@ namespace XXX {
   /** Callback invoked when a subscription request is successful or fails.
       Error contains the error code when the subscription is not successful.
   */
-  typedef std::function< void (t_request_id, std::string uri,
-                               bool successful, std::string error) > subscribed_cb;
+  typedef std::function< void (t_request_id,
+                               std::string uri,
+                               bool success,
+                               t_subscription_id,
+                               std::string error ) > subscribed_cb;
 
   struct wamp_call_result
   {
@@ -205,6 +209,16 @@ namespace XXX {
                          rpc_cb cb,
                          void * data = nullptr);
 
+    /** Subscribe to a topic. The subscribed_cb callback is invoked upon success
+     * or failure of the request. Subsequent topic updates which can follow a
+     * successful subscription are delivered via the subscription_event_cb
+     * callback.
+     *
+     * Note that while unadvised, a topic can be subscribed to more than once.
+     * Doing so does not multiply the subsequent topic events, however, it is
+     * the event-callback associated with the most recent subscription that is
+     * used to deliver topic events.
+     */
     t_request_id subscribe(std::string uri,
                            jalson::json_object options,
                            subscribed_cb,
@@ -417,6 +431,8 @@ namespace XXX {
     // TODO: procedures -- not currently locked, however, need to add locking once
     // unprovide() is added, and if it is implemented synchronously.
     std::map<t_request_id, procedure> m_procedures;
+
+    // TODO: what locking is required for m_subscriptions ?
     std::map<t_subscription_id, subscription> m_subscriptions;
 
     std::function<int()> m_hb_func;
