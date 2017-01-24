@@ -13,7 +13,7 @@ int main(int, char**)
 {
   try
   {
-    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::stdlog(std::cout, 0xFF, 1) ));
+    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::stdout() ));
 
     std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
     auto fut = sock->connect("127.0.0.1", 55555);

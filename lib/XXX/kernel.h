@@ -16,8 +16,8 @@ class uri_regex;
  */
 struct logger
 {
-  enum Level {eError = 0x2,
-              eWarn  = 0x4,
+  enum Level {eError = 0x02,
+              eWarn  = 0x04,
               eInfo  = 0x10,
               eDebug = 0x40};
 
@@ -31,6 +31,9 @@ struct logger
 
   /** create a logger for stdout or stderr */
   static logger stdlog(std::ostream&, int level_mask, bool inc_file_line);
+
+  /** create a logger for stdout that logs error,warn and info */
+  static logger stdout();
 
   /** create a logger that does not log anything */
   static logger nolog();

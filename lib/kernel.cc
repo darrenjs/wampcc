@@ -97,6 +97,11 @@ logger logger::stdlog(std::ostream& ostr,
   return my_logger;
 }
 
+logger logger::stdout()
+{
+  return stdlog(std::cout, levels_upto(eInfo), true);
+}
+
 
 static const char* level_str(logger::Level l)
 {
