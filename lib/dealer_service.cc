@@ -53,7 +53,7 @@ dealer_service::~dealer_service()
   sessions.clear();
 
 
-  std::unique_lock<std::recursive_mutex> guard(m_lock);
+  std::lock_guard<std::recursive_mutex> guard(m_lock);
   m_listener = nullptr;
 }
 
@@ -189,7 +189,7 @@ void dealer_service::publish(const std::string& realm,
 
 void dealer_service::rpc_registered_cb(const rpc_details& r)
 {
-  std::unique_lock<std::recursive_mutex> guard(m_lock);
+  std::lock_guard<std::recursive_mutex> guard(m_lock);
   if (m_listener) m_listener->rpc_registered( r.uri );
 }
 

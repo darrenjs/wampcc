@@ -80,7 +80,7 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* s)
 tcp_socket::~tcp_socket()
 {
   {
-    std::unique_lock<std::mutex> guard(m_state_lock);
+    std::lock_guard<std::mutex> guard(m_state_lock);
     if ((m_state != e_closing) && (m_state != e_closed))
     {
       m_state = e_closing;
@@ -118,27 +118,27 @@ tcp_socket::~tcp_socket()
 
 bool tcp_socket::is_listening() const
 {
-  std::unique_lock<std::mutex> guard(m_state_lock);
+  std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == e_listening;
 }
 
 bool tcp_socket::is_connected() const
 {
-  std::unique_lock<std::mutex> guard(m_state_lock);
+  std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == e_connected;
 }
 
 
 bool tcp_socket::is_closing() const
 {
-  std::unique_lock<std::mutex> guard(m_state_lock);
+  std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == e_closing;
 }
 
 
 bool tcp_socket::is_closed() const
 {
-  std::unique_lock<std::mutex> guard(m_state_lock);
+  std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == e_closed;
 }
 
@@ -152,7 +152,7 @@ std::future<void> tcp_socket::connect(std::string addr, int port)
   auto success_fn = [completion_promise,this]() {
     {
       /* IO thread */
-      std::unique_lock<std::mutex> guard(m_state_lock);
+      std::lock_guard<std::mutex> guard(m_state_lock);
       if (m_state == e_init)
         m_state = e_connected;
     }
@@ -184,7 +184,7 @@ void tcp_socket::connect(std::string addr, int port, on_connect_cb user_cb)
 
   auto success_fn = [user_cb,this]() {
     {
-      std::unique_lock<std::mutex> guard(m_state_lock);
+      std::lock_guard<std::mutex> guard(m_state_lock);
       if (m_state == e_init)
         m_state = e_connected;
     }

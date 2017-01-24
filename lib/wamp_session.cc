@@ -636,7 +636,7 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   {
     // update the realm & authid, and protect from multiple assignments to the
     // value, so that it cannot be changed once set
-    std::unique_lock<std::mutex> guard(m_realm_lock);
+    std::lock_guard<std::mutex> guard(m_realm_lock);
     if (m_realm.empty())  m_realm  = realm;
     if (m_authid.empty()) m_authid = authid;
   }
@@ -676,7 +676,7 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   std::string challengestr = jalson::encode( challenge );
 
   {
-    std::unique_lock<std::mutex> guard(m_realm_lock);
+    std::lock_guard<std::mutex> guard(m_realm_lock);
     if (m_challenge.empty())
       m_challenge = challengestr;
     else
@@ -752,7 +752,7 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 
   std::string orig_challenge;
   {
-    std::unique_lock<std::mutex> guard(m_realm_lock);
+    std::lock_guard<std::mutex> guard(m_realm_lock);
     orig_challenge = m_challenge;
   }
 
@@ -818,19 +818,19 @@ void wamp_session::notify_session_open()
 
 bool wamp_session::is_open() const
 {
-  std::unique_lock<std::mutex> guard(m_state_lock);
+  std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == eOpen;
 }
 
 bool wamp_session::is_closed() const
 {
-  std::unique_lock<std::mutex> guard(m_state_lock);
+  std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == eClosed;
 }
 
 bool wamp_session::is_pending_open() const
 {
-  std::unique_lock<std::mutex> guard(m_state_lock);
+  std::lock_guard<std::mutex> guard(m_state_lock);
   return (m_state != eOpen && m_state != eClosed && m_state != eClosing);
 }
 
@@ -843,7 +843,7 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
     throw std::runtime_error("user-secret function cannot be undefined");
 
   {
-    std::unique_lock<std::mutex> guard(m_realm_lock);
+    std::lock_guard<std::mutex> guard(m_realm_lock);
 
     if (cc.realm.empty())
       throw std::runtime_error("realm cannot be empty");
@@ -900,7 +900,7 @@ int wamp_session::duration_since_creation() const
 const std::string& wamp_session::realm() const
 {
   // need this lock, because realm might be updated from IO thread during logon
-  std::unique_lock<std::mutex> guard(m_realm_lock);
+  std::lock_guard<std::mutex> guard(m_realm_lock);
   return m_realm;
 }
 
@@ -924,13 +924,13 @@ t_request_id wamp_session::provide(std::string uri,
 
   t_request_id request_id;
   {
-    std::unique_lock<std::mutex> guard(m_request_lock);
+    std::lock_guard<std::mutex> guard(m_request_lock);
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
 
     {
-      std::unique_lock<std::mutex> guard(m_pending_lock);
+      std::lock_guard<std::mutex> guard(m_pending_lock);
       m_pending_register[request_id] = p;
     }
 
@@ -954,7 +954,7 @@ void wamp_session::process_inbound_registered(jalson::json_array & msg)
     throw protocol_error("registration ID must be unsigned int");
   uint64_t registration_id = msg[2].as_uint();
 
-  std::unique_lock<std::mutex> guard(m_pending_lock);
+  std::lock_guard<std::mutex> guard(m_pending_lock);
   auto iter = m_pending_register.find( request_id );
 
   if (iter != m_pending_register.end())
@@ -1045,13 +1045,13 @@ t_request_id wamp_session::subscribe(std::string uri,
 
   t_request_id request_id;
   {
-    std::unique_lock<std::mutex> guard(m_request_lock);
+    std::lock_guard<std::mutex> guard(m_request_lock);
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
 
     {
-      std::unique_lock<std::mutex> guard(m_pending_lock);
+      std::lock_guard<std::mutex> guard(m_pending_lock);
       m_pending_subscribe[request_id] = std::move(sub);
     }
     send_msg( msg );
@@ -1077,7 +1077,7 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
   // reduce locking scope
   subscribe_request temp;
   {
-    std::unique_lock<std::mutex> guard(m_pending_lock);
+    std::lock_guard<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_subscribe.find( request_id );
 
     if (iter != m_pending_subscribe.end())
@@ -1188,13 +1188,13 @@ t_request_id wamp_session::call(std::string uri,
 
   t_request_id request_id;
   {
-    std::unique_lock<std::mutex> guard(m_request_lock);
+    std::lock_guard<std::mutex> guard(m_request_lock);
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
 
     {
-      std::unique_lock<std::mutex> guard(m_pending_lock);
+      std::lock_guard<std::mutex> guard(m_pending_lock);
       m_pending_call[request_id] = std::move(mycall);
     }
 
@@ -1221,7 +1221,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
   wamp_call orig_call;
 
   {
-    std::unique_lock<std::mutex> guard(m_pending_lock);
+    std::lock_guard<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_call.find( request_id );
     if (iter != m_pending_call.end())
     {
@@ -1276,7 +1276,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
         wamp_invocation orig_request;
 
         {
-          std::unique_lock<std::mutex> guard(m_pending_lock);
+          std::lock_guard<std::mutex> guard(m_pending_lock);
           auto iter = m_pending_invocation.find( request_id );
           if (iter != m_pending_invocation.end())
           {
@@ -1314,7 +1314,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
         bool found = false;
 
         {
-          std::unique_lock<std::mutex> guard(m_pending_lock);
+          std::lock_guard<std::mutex> guard(m_pending_lock);
           auto iter = m_pending_call.find( request_id );
           if (iter != m_pending_call.end())
           {
@@ -1355,7 +1355,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
         /* dont hold any locks when calling the user */
         subscribe_request orig_request;
         {
-          std::unique_lock<std::mutex> guard(m_pending_lock);
+          std::lock_guard<std::mutex> guard(m_pending_lock);
           auto iter = m_pending_subscribe.find( request_id );
           if (iter != m_pending_subscribe.end())
           {
@@ -1409,7 +1409,7 @@ t_request_id wamp_session::publish(std::string uri,
   t_request_id request_id;
 
   {
-    std::unique_lock<std::mutex> guard(m_request_lock);
+    std::lock_guard<std::mutex> guard(m_request_lock);
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
@@ -1508,13 +1508,13 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
   my_invocation.reply_fn = fn;
 
   {
-    std::unique_lock<std::mutex> guard(m_request_lock);
+    std::lock_guard<std::mutex> guard(m_request_lock);
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
 
     {
-      std::unique_lock<std::mutex> guard(m_pending_lock);
+      std::lock_guard<std::mutex> guard(m_pending_lock);
       m_pending_invocation[request_id] = std::move(my_invocation);
     }
 
@@ -1796,6 +1796,9 @@ void wamp_session::drop_connection_impl(std::string reason,
 }
 
 
+/* Initiate the session close. The state mutex must be provided as an argument.
+ * All this methods does it check existing state, and if not closed, request
+ * actual closure on the event thread. */
 void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
 {
   /* ANY thread */
@@ -1839,17 +1842,18 @@ void wamp_session::fast_close()
 }
 
 
-/* Implement the actual state transition to closed */
+/* Implement the actual state transition to closed. This must only be called via
+ * the EV thread. */
 void wamp_session::transition_to_closed()
 {
   /* EV thread */
 
   assert(m_kernel->get_event_loop()->this_thread_is_ev() == true);
 
-  // Make final check of session state to ensure that only a single callback
-  // will be made into the user callback. Even though this is also protected
-  // when the event is initially dispatched, later code modification might
-  // attempt to push additional close callbacks.
+  // Make final check of session state to ensure that user callback is only ever
+  // called once. Even though this is also protected when the event is initially
+  // dispatched, later code modification might attempt to push additional close
+  // callbacks.
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
     if (m_state != eClosed)
@@ -1858,10 +1862,12 @@ void wamp_session::transition_to_closed()
       return;
   }
 
-  // The order of invoking the user callback and setting the promise is
-  // deliberately chosen here.  The promise assignment must be last, so that
-  // user can rely on it to indicate when all wamp_session callbacks into
-  // user code have been complete.
+  // The order of invoking the user callback and setting the has-closed promise
+  // is deliberately chosen here.  The promise assignment must be last, so that
+  // user can rely on it to indicate when all wamp_session callbacks into user
+  // code have been complete. But it also implies that during the user callback,
+  // the has-closed future cannot be waited on; that would be a programming
+  // error.
 
   try {
     m_notify_state_change_fn(shared_from_this(), false);

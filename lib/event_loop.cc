@@ -72,7 +72,7 @@ event_loop::~event_loop()
 void event_loop::stop()
 {
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
     m_queue.push_back(m_kill_event);
     m_condvar.notify_one();
   }
@@ -87,7 +87,7 @@ void event_loop::dispatch(std::function<void()> fn)
   auto event = std::make_shared<ev_function_dispatch>(std::move(fn));
 
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
     m_queue.push_back( std::move(event) );
     m_condvar.notify_one();
   }
@@ -105,7 +105,7 @@ void event_loop::dispatch(std::chrono::milliseconds delay, std::shared_ptr<event
   auto event  = std::make_pair(tp_due, std::move(sp));
 
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
     m_schedule.insert( std::move(event) );
     m_condvar.notify_one();
   }
@@ -121,7 +121,7 @@ void event_loop::dispatch(std::chrono::milliseconds delay, std::shared_ptr<event
 
 //     std::list< hb_func > hb_tmp;
 //     {
-//       std::unique_lock<std::mutex> guard(m_hb_targets_mutex);
+//       std::lock_guard<std::mutex> guard(m_hb_targets_mutex);
 //       hb_tmp.swap( m_hb_targets );
 //     }
 

@@ -132,7 +132,7 @@ void call_cb(XXX::wamp_call_result r)
               << ", reqid: " << r.reqid
               << ", proc:" << r.procedure;
   }
-  std::unique_lock< std::mutex > guard( event_queue_mutex );
+  std::lock_guard< std::mutex > guard( event_queue_mutex );
   event_queue.push( eReplyReceived );
   event_queue_condition.notify_one();
 }
@@ -155,7 +155,7 @@ void router_connection_cb(int errcode,
   {
     std::cout << "WAMP session closed, errcode " << errcode << std::endl;
 
-    std::unique_lock< std::mutex > guard( event_queue_mutex );
+    std::lock_guard< std::mutex > guard( event_queue_mutex );
     event_queue.push( eClosed );
     event_queue_condition.notify_one();
   }
