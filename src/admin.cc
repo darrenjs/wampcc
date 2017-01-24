@@ -56,7 +56,6 @@ struct user_options
   std::list< std::string > subscribe_topics;
 
   std::string publish_topic;
-  std::string publish_message;
 
   std::string register_procedure;
   std::string call_procedure;
@@ -268,13 +267,12 @@ static void process_options(int argc, char** argv)
       case 0: /* got long option */ break;
       case NO_URI_CHECK : uopts.no_uri_check = true; break;
       case ARGLIST : uopts.arg_list = optarg; break;
-      case ARGDICT : uopts.arg_dict  = optarg; break;
+      case ARGDICT : uopts.arg_dict = optarg; break;
       case 'd' : uopts.verbose++; break;
       case 'h' : usage();
       case 'v' : version();
       case 's' : uopts.subscribe_topics.push_back(optarg); break;
       case 'p' : uopts.publish_topic = optarg; break;
-      case 'm' : uopts.publish_message = optarg; break;
       case 'r' : uopts.register_procedure = optarg; break;
       case 'c' : uopts.call_procedure = optarg; break;
       case 'U' : uopts.username = optarg; break;
@@ -473,11 +471,9 @@ int main_impl(int argc, char** argv)
   // publish
   if (!uopts.publish_topic.empty())
   {
-    XXX::wamp_args pub_args;
-    pub_args.args_list.push_back(uopts.publish_message);
     ws->publish(uopts.publish_topic,
                 jalson::json_object(),
-                pub_args);
+                args);
 
     // XXX::basic_text_model tm;
     // XXX::topic publisher(uopts.publish_topic, &tm);

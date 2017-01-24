@@ -17,7 +17,7 @@ lib_LTLIBRARIES = libXXX.la
 nobase_include_HEADERS = XXX/types.h XXX/kernel.h XXX/wamp_session.h			\
 XXX/dealer_service.h  XXX/io_listener.h XXX/protocol.h \
 XXX/rawsocket_protocol.h XXX/websocket_protocol.h								\
-XXX/tcp_socket.h XXX/utils.h XXX/data_model.h
+XXX/tcp_socket.h XXX/data_model.h
 
 # List the sources for an individual library
 libXXX_la_SOURCES = tcp_socket.cc dealer_service.cc event_loop.cc			\

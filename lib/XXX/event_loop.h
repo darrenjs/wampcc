@@ -1,7 +1,7 @@
 #ifndef XXX_EVENT_LOOP_H
 #define XXX_EVENT_LOOP_H
 
-#include "XXX/types.h"
+#include "XXX/utils.h"
 
 #include <chrono>
 #include <condition_variable>

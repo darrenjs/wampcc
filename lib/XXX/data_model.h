@@ -2,7 +2,6 @@
 #define XXX_DATA_MODEL_H
 
 #include "XXX/types.h"
-#include "XXX/utils.h"
 #include "XXX/wamp_session.h"
 
 #include <jalson/jalson.h>
