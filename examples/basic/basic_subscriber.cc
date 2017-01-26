@@ -9,28 +9,41 @@
 
 using namespace XXX;
 
-int main(int, char**)
+std::tuple<std::string, int> get_addr_port(int argc, char** argv)
+{
+  if (argc != 3)
+    throw std::runtime_error("arguments must be: ADDR PORT");
+  return std::tuple<std::string,int>(argv[1], std::stoi(argv[2]));
+}
+
+int main(int argc, char** argv)
 {
   try
   {
+    auto endpoint = get_addr_port(argc, argv);
+
     std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::stdout() ));
 
     std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
-    auto fut = sock->connect("127.0.0.1", 55555);
+    auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
     if (status != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
-    std::promise<void> ready_to_exit;
+    std::mutex session_closed_mutex;
+    std::condition_variable session_closed_convar;
+    bool session_has_closed = false;
 
     std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
-      [&ready_to_exit](XXX::session_handle, bool is_open){
+      [&](XXX::session_handle, bool is_open){
         if (!is_open)
           try {
-            ready_to_exit.set_value();
+            std::lock_guard<std::mutex> guard(session_closed_mutex);
+            session_has_closed = true;
+            session_closed_convar.notify_one();
           } catch (...) {}
       },
       {});
@@ -79,8 +92,28 @@ int main(int, char**)
                          std::cout << std::endl;
                        });
 
+    /* stay subscribed for a short interval */
+    {
+      std::unique_lock<std::mutex> guard(session_closed_mutex);
+      session_closed_convar.wait_for(guard, std::chrono::seconds(5),
+                                     [&](){ return session_has_closed; });
+    }
 
-    ready_to_exit.get_future().wait();
+    /* if we still have an open session, then now unsubscribe */
+    if (session->is_open())
+    {
+      std::cout << "doing the unsubscribe\n";
+      //session->unsubscribe(subscription_id, subscribed_cb);
+    }
+
+    /* wait for session to be closed by peer */
+    {
+      std::unique_lock<std::mutex> guard(session_closed_mutex);
+      session_closed_convar.wait(guard, [&](){ return session_has_closed; });
+    }
+
+    /* cleanly shutdown the session */
+    session->close().wait();
 
     return 0;
   }

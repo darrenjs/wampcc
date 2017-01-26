@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <iostream>
+#include <sstream>
 
 class message_server
 {
@@ -81,7 +82,26 @@ message_server::message_server()
   m_dealer->provide(m_public_realm,  "message_list", {}, [this](XXX::wamp_invocation& wi){rpc_message_list(wi);});
   m_dealer->provide(m_private_realm, "shutdown",     {}, [this](XXX::wamp_invocation& wi){rpc_shutdown(wi);});
 
-  m_dealer->listen(55555, server_auth);
+  int port = 55555;
+  auto fut = m_dealer->listen(port, server_auth);
+  std::future_status status = fut.wait_for(std::chrono::seconds(1));
+  switch(status)
+  {
+    case std::future_status::timeout :
+      throw std::runtime_error("timeout during socket listen");
+    case std::future_status::deferred :
+      throw std::runtime_error("socket listen not attempted");
+    case std::future_status::ready :
+      int error = fut.get();
+      if (error != 0)
+      {
+        std::ostringstream os;
+        os << "listen failed on port " << port << ", error " << error;
+        throw std::runtime_error(os.str());
+      }
+      else
+        std::cout << "listening on port " << port << std::endl;
+  }
 }
 
 
