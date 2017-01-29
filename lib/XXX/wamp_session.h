@@ -11,6 +11,7 @@
 #include <mutex>
 #include <memory>
 #include <future>
+#include <set>
 
 namespace XXX {
 
@@ -24,10 +25,30 @@ namespace XXX {
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
   typedef std::function< void(std::weak_ptr<wamp_session>, bool) > session_state_fn;
 
+  /** Handler interface for server-side authentication.  An instance of
+   * auth_provider must be provided to each server-side wamp_session, which
+   * allows that session to perform authentication with the peer. */
   struct auth_provider
   {
+    enum t_auth_required
+    {
+      e_forbidden,    /* user not permitted */
+      e_open,         /* user allowed without authentication */
+      e_authenticate  /* user must authenticate */
+    };
+
+    /* auth_plan combines auth requirement plus list of supported methods */
+    typedef std::tuple<t_auth_required, std::set<std::string>> auth_plan;
+
     std::function<std::string(const std::string& realm)> provider_name;
-    std::function<bool(const std::string& user, const std::string& realm)> permit_user_realm;
+
+    /* Deal with request for user access to realm. Must return the
+     * authentication requirement and a set of supported authentication
+     * methods. */
+    std::function<
+      auth_plan
+      (const std::string& user, const std::string& realm) > permit_user_realm;
+
     std::function<std::string(const std::string& user, const std::string& realm)> get_user_secret;
   };
 
@@ -188,13 +209,13 @@ namespace XXX {
     bool is_closed() const;
     bool is_pending_open() const;
 
-    /* Number of seconds since session constructed  */
+    /** Number of seconds since session constructed  */
     int duration_since_creation() const;
 
-    /* Time since last message */
+    /** Time since last message */
     int duration_since_last() const;
 
-    /* Does this session use heartbeats? */
+    /** Does this session use heartbeats? */
     bool uses_heartbeats() const;
 
     /** Return the realm, or empty string if a realm has not yet been provided,
@@ -286,40 +307,34 @@ namespace XXX {
 
     enum SessionState
     {
-      eInit = 0,
+      eInit               = (1<<1),
 
-      // for active client
-      eRecvHello,
-      eSentChallenge,
-      eRecvAuth,
+      eRecvHello          = (1<<2),  //
+      eSentChallenge      = (1<<3),  //  server only
+      eRecvAuth           = (1<<4),  //
 
-      // next are client state values
-      eSentHello,
-      eRecvChallenge,
-      eSentAuth,
+      eSentHello          = (1<<5),  //
+      eRecvChallenge      = (1<<6),  //  client only
+      eSentAuth           = (1<<7),  //
 
-      // main states
-      eOpen,
-
-      // close handshake
-      e_wait_peer_goodbye,
-
-      eClosing,
-      eClosed
+      eOpen               = (1<<8),
+      e_wait_peer_goodbye = (1<<9),
+      eClosing            = (1<<10),
+      eClosed             = (1<<11)
     } m_state;
     mutable std::mutex m_state_lock;
 
-    void change_state(SessionState expected, SessionState next);
+    void change_state(unsigned expected, SessionState next);
     void initiate_close(std::lock_guard<std::mutex>&);
     void transition_to_closed();
 
     void handle_HELLO(jalson::json_array& ja);
     void handle_CHALLENGE(jalson::json_array& ja);
     void handle_AUTHENTICATE(jalson::json_array& ja);
+    void send_WELCOME();
 
     void notify_session_open();
     static const char* state_to_str(wamp_session::SessionState);
-
 
     logger & __logger; /* name chosen for log macros */
     kernel* m_kernel;
@@ -351,6 +366,7 @@ namespace XXX {
     mutable std::mutex m_realm_lock;
 
     auth_provider m_auth_proivder;
+    bool m_server_requires_auth;
 
     session_state_fn m_notify_state_change_fn;
     std::weak_ptr<wamp_session> m_self_weak;

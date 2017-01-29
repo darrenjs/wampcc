@@ -102,7 +102,7 @@ int main_impl(int argc, char** argv)
       /* Logon to a WAMP realm, which completes asynchronously, so we need wait
        * for session to fully open */
       XXX::client_credentials credentials;
-      credentials.realm="public";
+      credentials.realm="default_realm";
       credentials.authid="peter";
       credentials.authmethods = {"wampcra"};
       credentials.secret_fn = []() -> std::string { return "secret2"; };

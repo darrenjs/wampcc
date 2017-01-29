@@ -54,7 +54,7 @@ private:
 
 
 message_server::message_server()
-  : m_public_realm("public"),
+  : m_public_realm("default_realm"),
     m_private_realm("private"),
     m_kernel(new XXX::kernel({}, XXX::logger::stdlog(std::cout,
                                                      XXX::logger::levels_all(),
@@ -63,18 +63,17 @@ message_server::message_server()
     m_shutdown_future(m_shutdown_pomise.get_future())
 
 {
-  // TODO: how do we control who is able to connect to the dealer service? That
-  // aspect needs to be managed from this class, i.e., we are the owner of the
-  // actual message server.
-
-  // TODO: here, we are using the same auth structures that a client would
-  // use. Is that correct?
-
-  // TODO: improve the auth object. how to allow open authentication?  e.g some
-  // domains are public; others are private
   XXX::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
-  server_auth.permit_user_realm = [](const std::string& /*user*/, const std::string& /*realm*/){ return true; };
+  server_auth.permit_user_realm = [&](const std::string& /*user*/,
+                                      const std::string& realm){
+    if (realm == m_public_realm)
+      return XXX::auth_provider::auth_plan(XXX::auth_provider::e_open, {});
+    else if (realm == m_private_realm)
+      return XXX::auth_provider::auth_plan(XXX::auth_provider::e_authenticate, {"wampcra"});
+    else
+      return XXX::auth_provider::auth_plan(XXX::auth_provider::e_forbidden, {});
+  };
   server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
 
   // TODO: would be preferable to obtain an internal_session object, and use that to register the RPC's etc.

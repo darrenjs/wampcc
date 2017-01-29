@@ -124,8 +124,8 @@ std::future<int> dealer_service::listen(int port,
 
       }
 
-      LOG_INFO( "session created #" << sp->unique_id()
-                << ", protocol: " << sp->protocol_name()
+      LOG_INFO( "session #" << sp->unique_id()
+                << " created, protocol: " << sp->protocol_name()
                 << ", fd: " << fd);
     };
 

@@ -12,6 +12,7 @@
 
 #include <jalson/jalson.h>
 
+#include <algorithm>
 #include <memory>
 #include <iomanip>
 #include <iostream>
@@ -19,8 +20,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
-
-using namespace std;
 
 // TODO: make session configurable
 #define MAX_PENDING_OPEN_MS 5000
@@ -88,6 +87,7 @@ wamp_session::wamp_session(kernel* __kernel,
     m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
     m_auth_proivder(std::move(auth)),
+    m_server_requires_auth(true), /* assume server requires auth by default */
     m_notify_state_change_fn(state_cb),
     m_server_handler(handler),
     m_proto(
@@ -111,6 +111,7 @@ wamp_session::wamp_session(kernel* __kernel,
         }
         ))
 {
+  static_assert(sizeof(m_state)>1, "m_state not large enough");
 }
 
 
@@ -258,7 +259,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     }
     else if (message_type == WELCOME)
     {
-      change_state(eRecvAuth, eOpen);
+      change_state(m_server_requires_auth?eRecvAuth:eRecvHello, eOpen);
     }
     else
     {
@@ -311,14 +312,14 @@ const char* wamp_session::state_to_str(wamp_session::SessionState s)
 }
 
 
-void wamp_session::change_state(SessionState expected, SessionState next)
+void wamp_session::change_state(unsigned expected, SessionState next)
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
 
   if (m_state == eClosed)
     return;
 
-  if (m_state == expected)
+  if (m_state bitand expected)
   {
     LOG_INFO("wamp_session state: from " << state_to_str(m_state) << " to " << state_to_str(next));
     m_state = next;
@@ -508,7 +509,7 @@ void wamp_session::process_message(unsigned int message_type,
       }
       else if (message_type == WELCOME)
       {
-        change_state(eSentAuth, eOpen);
+        change_state(eSentAuth|eSentHello, eOpen);
         if (is_open())
           notify_session_open();
         return;
@@ -580,7 +581,7 @@ void wamp_session::handle_exception()
   }
   catch ( auth_error& e )
   {
-    LOG_WARN("auth error: " << e.what());
+    LOG_WARN("session #" << unique_id() << " auth error: " << e.what());
     drop_connection(e.error_uri());
   }
   catch ( protocol_error& e )
@@ -612,8 +613,8 @@ void wamp_session::send_msg(jalson::json_array& jv, bool)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state == eClosing || m_state == eClosed || m_state == e_wait_peer_goodbye)
-      return ;
+    if (m_state bitand (eClosing|eClosed|e_wait_peer_goodbye))
+      return;
   }
 
   update_state_for_outbound(jv);
@@ -641,29 +642,54 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
     if (m_authid.empty()) m_authid = authid;
   }
 
-  if (m_auth_proivder.permit_user_realm(authid, realm) == false)
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                     "auth_provider rejected user/realm");
+  auth_provider::t_auth_required auth_required;
+  std::set<std::string>          server_auth_methods;
+  std::tie(auth_required,server_auth_methods) = m_auth_proivder.permit_user_realm(authid, realm);
 
-  /* verify the supported auth methods */
-
-  // look for the "wampcra"
-  bool wampcra_found = false;
-  jalson::json_array methods = jalson::get_copy(authopts,"authmethods", jalson::json_value::make_array()).as_array();
-  for (size_t i = 0; i < methods.size() && !wampcra_found; ++i)
+  if (auth_required == auth_provider::e_open)
   {
-    if ( methods[i].is_string() )
-    {
-      std::string str = methods[i].as_string();
-      if (str == "wampcra") wampcra_found = true;
-    }
+    m_server_requires_auth = false;
+    send_WELCOME();
+    return;
+  }
+  else if (auth_required != auth_provider::e_authenticate)
+  {
+    if (auth_required == auth_provider::e_forbidden)
+      throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                       "auth_provider rejected user for realm");
   }
 
-  if (!wampcra_found)
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                     "no supported auth method advertised during logon");
+  /* --- Authentication required --- */
 
-  /* Construct the challenge */
+  // initial implementation is basic; we just try to find if "wampcra" is
+  // supported by both server and client
+
+  jalson::json_array client_methods = jalson::get_copy(authopts, "authmethods",
+                                                       jalson::json_value::make_array()).as_array();
+  std::set<std::string> client_unique_methods;
+
+  for (auto & item : client_methods)
+    if (item.is_string())
+      client_unique_methods.insert(item.as_string());
+
+  std::set<std::string> intersect;
+  std::set_intersection(server_auth_methods.begin(),
+                        server_auth_methods.end(),
+                        client_unique_methods.begin(),
+                        client_unique_methods.end(),
+                        std::inserter(intersect,intersect.begin()));
+
+  /* Handle case of no supported authentication methods */
+  if (intersect.empty())
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "no auth methods available");
+
+  /* For now the only supported method is 'wampcra'. */
+  if (intersect.find("wampcra") == intersect.end())
+    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                     "wampcra not available for both client and server");
+
+  /* --- Perform wampcra authentication --- */
 
   jalson::json_object challenge;
   challenge["nonce"] = random_ascii_string(30);
@@ -778,27 +804,33 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 
   if (digest == peer_digest)
   {
-    jalson::json_object details;
-    details["roles"] = jalson::json_object( {
-        {"broker", jalson::json_value::make_object()},
-        {"dealer", jalson::json_value::make_object()}} );
-
-    jalson::json_array msg {
-      WELCOME,
-        m_sid,
-        std::move( details )
-        };
-
-    send_msg( msg );
-
-    if (is_open())
-      notify_session_open();
+    send_WELCOME();
   }
   else
   {
     throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
                      "client failed challenge-response-authentication");
   }
+}
+
+
+void wamp_session::send_WELCOME()
+{
+  jalson::json_object details;
+  details["roles"] = jalson::json_object( {
+      {"broker", jalson::json_value::make_object()},
+      {"dealer", jalson::json_value::make_object()}} );
+
+  jalson::json_array msg {
+    WELCOME,
+      m_sid,
+      std::move( details )
+      };
+
+  send_msg( msg );
+
+  if (is_open())
+    notify_session_open();
 }
 
 
@@ -1745,10 +1777,10 @@ void wamp_session::drop_connection_impl(std::string reason,
 {
   /* ANY thread */
 
-  if (m_state == eClosing || m_state == eClosed || m_state == e_wait_peer_goodbye)
+  if (m_state bitand (eClosing|eClosed|e_wait_peer_goodbye))
     return;
 
-  LOG_INFO("terminating session #" << unique_id() << ", reason: " << reason);
+  LOG_INFO("session #" << unique_id() << " terminating, reason: " << reason);
 
   if (m_state == eOpen)
   {
@@ -1803,10 +1835,11 @@ void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
 {
   /* ANY thread */
 
-  if (m_state == eClosing || m_state == eClosed)
+  if (m_state bitand (eClosing|eClosed))
     return;
 
   m_state = eClosing;
+  LOG_INFO("session #" << unique_id() << " closing");
 
   // TODO: what if the EV thread is closed?
   std::shared_ptr<wamp_session> sp = shared_from_this();
@@ -1856,10 +1889,10 @@ void wamp_session::transition_to_closed()
   // callbacks.
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state != eClosed)
-      m_state = eClosed;
-    else
+    if (m_state == eClosed)
       return;
+    else
+      m_state = eClosed;
   }
 
   // The order of invoking the user callback and setting the has-closed promise

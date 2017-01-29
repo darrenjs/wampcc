@@ -281,7 +281,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   if (!mt)
     throw wamp_error(WAMP_ERROR_INVALID_URI);
 
-  LOG_INFO("session " << sptr->unique_id() << " subscribed to '"<< topic << "'");
+  LOG_INFO("session #" << sptr->unique_id() << " subscribed to '"<< topic << "'");
 
   jalson::json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
   sptr->send_msg(msg);

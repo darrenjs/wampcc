@@ -305,7 +305,6 @@ static void process_options(int argc, char** argv)
   }
 
   if (uopts.username.empty()) die("missing username");
-  if (uopts.password.empty()) die("missing password");
   if (uopts.realm.empty())    die("missing realm");
 }
 
