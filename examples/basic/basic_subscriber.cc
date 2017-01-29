@@ -7,8 +7,6 @@
 #include <random>
 #include <iostream>
 
-using namespace XXX;
-
 std::tuple<std::string, int> get_addr_port(int argc, char** argv)
 {
   if (argc != 3)
@@ -22,9 +20,9 @@ int main(int argc, char** argv)
   {
     auto endpoint = get_addr_port(argc, argv);
 
-    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::stdout() ));
+    std::unique_ptr<XXX::kernel> the_kernel( new XXX::kernel({}, XXX::logger::stdout() ));
 
-    std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
+    std::unique_ptr<XXX::tcp_socket> sock (new XXX::tcp_socket(the_kernel.get()));
     auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
@@ -35,7 +33,7 @@ int main(int argc, char** argv)
     std::condition_variable session_closed_convar;
     bool session_has_closed = false;
 
-    std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
+    std::shared_ptr<XXX::wamp_session> session = XXX::wamp_session::create<XXX::rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
       [&](XXX::session_handle, bool is_open){
@@ -49,7 +47,7 @@ int main(int argc, char** argv)
       {});
 
     /* Logon to a WAMP realm, and wait for session to be deemed open. */
-    client_credentials credentials;
+    XXX::client_credentials credentials;
     credentials.realm="default_realm";
     credentials.authid="peter";
     credentials.authmethods = {"wampcra"};
@@ -66,6 +64,8 @@ int main(int argc, char** argv)
       {
         if (successful)
         {
+          have_subscription = true;
+          subscription_id = subid;
           std::cout << "subscription successful for '"<<uri << "', subscription_id " << subid << std::endl;
         }
         else
@@ -76,7 +76,7 @@ int main(int argc, char** argv)
       };
     session->subscribe("coin_toss", {},
                        my_subscribed_cb,
-                       [](wamp_subscription_event ev){
+                       [](XXX::wamp_subscription_event ev){
                          for (auto & x : ev.args.args_list)
                            std::cout << x << " ";
                          std::cout << std::endl;
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
      * only subscribe once. */
     session->subscribe("coin_toss", {},
                        my_subscribed_cb,
-                       [](wamp_subscription_event ev){
+                       [](XXX::wamp_subscription_event ev){
                          for (auto & x : ev.args.args_list)
                            std::cout << x << " ";
                          std::cout << std::endl;
@@ -95,15 +95,26 @@ int main(int argc, char** argv)
     /* stay subscribed for a short interval */
     {
       std::unique_lock<std::mutex> guard(session_closed_mutex);
-      session_closed_convar.wait_for(guard, std::chrono::seconds(5),
+      session_closed_convar.wait_for(guard, std::chrono::seconds(30),
                                      [&](){ return session_has_closed; });
     }
 
-    /* if we still have an open session, then now unsubscribe */
-    if (session->is_open())
+    /* If we still have an open session, then now unsubscribe. This is to
+     * demonstrate use of the unsubscribe interaction. */
+    if (session->is_open() && have_subscription)
     {
-      std::cout << "doing the unsubscribe\n";
-      //session->unsubscribe(subscription_id, subscribed_cb);
+      std::cout << "doing unsubscribe\n";
+      session->unsubscribe(
+        subscription_id,
+        [](XXX::t_request_id,
+           bool success,
+           std::string error)
+        {
+          if (success)
+            std::cout << "unsubscribed ok" << std::endl;
+          else
+            std::cout << "unsubscribed failed, " << error << std::endl;
+        });
     }
 
     /* wait for session to be closed by peer */
