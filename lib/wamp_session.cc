@@ -1096,9 +1096,7 @@ t_request_id wamp_session::unsubscribe(t_subscription_id subscription_id,
 {
   jalson::json_array msg {UNSUBSCRIBE, 0, subscription_id};
 
-  unsubscribe_request req;
-  req.request_cb = std::move(request_cb);
-  req.user_data = user_data;
+  unsubscribe_request req {std::move(request_cb), subscription_id, user_data};
 
   t_request_id request_id;
   {
@@ -1193,14 +1191,14 @@ void wamp_session::process_inbound_unsubscribed(jalson::json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
-  unsubscribe_request temp;
+  unsubscribe_request orig_req;
   {
     std::lock_guard<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_unsubscribe.find(request_id);
 
     if (iter != m_pending_unsubscribe.end())
     {
-      temp = std::move(iter->second);
+      orig_req = std::move(iter->second);
       m_pending_unsubscribe.erase(iter);
     }
     else
@@ -1211,12 +1209,15 @@ void wamp_session::process_inbound_unsubscribed(jalson::json_array & msg)
     }
   }
 
-  LOG_INFO("unsubscribed, request_id " << request_id);
+  m_subscriptions.erase(orig_req.subscription_id);
+
+  LOG_INFO("unsubscribed, subscription_id " << orig_req.subscription_id
+           << ", request_id " << request_id);
 
   // invoke user callback if permitted, and handle exception
-  if (temp.request_cb && user_cb_allowed())
+  if (orig_req.request_cb && user_cb_allowed())
     try {
-      temp.request_cb(request_id, true, {});
+      orig_req.request_cb(request_id, true, {});
     }
     catch(...) {
       log_exception(__logger, "inbound unsubscribed user callback");

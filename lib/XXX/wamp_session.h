@@ -122,8 +122,6 @@ namespace XXX {
     jalson::json_object details;
     void *              user;
 
-    // TODO: maybe have these as private, and provide instead function calls?
-    // That way we can have default paramters.
     std::function<void(jalson::json_array, jalson::json_object)> yield;
     std::function<void(std::string, jalson::json_array, jalson::json_object)> error;
   };
@@ -437,7 +435,8 @@ namespace XXX {
     struct unsubscribe_request
     {
       unsubscribed_cb request_cb;
-      void * user_data;
+      t_subscription_id subscription_id;
+      void * user_datax;
     };
 
     struct subscription
@@ -470,7 +469,7 @@ namespace XXX {
     // unprovide() is added, and if it is implemented synchronously.
     std::map<t_request_id, procedure> m_procedures;
 
-    // TODO: what locking is required for m_subscriptions ?
+    // No locking required, since used only on EV thread
     std::map<t_subscription_id, subscription> m_subscriptions;
 
     std::function<int()> m_hb_func;
