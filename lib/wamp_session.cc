@@ -535,7 +535,7 @@ void wamp_session::process_message(unsigned int message_type,
           return;
 
         case UNSUBSCRIBED :
-          // TODO: process_inbound_unsubscribed(ja);
+          process_inbound_unsubscribed(ja);
           return;
 
         case EVENT :
@@ -1063,11 +1063,7 @@ t_request_id wamp_session::subscribe(std::string uri,
                                      subscription_event_cb event_cb,
                                      void * user)
 {
-  jalson::json_array msg;
-  msg.push_back( SUBSCRIBE );
-  msg.push_back( 0 );
-  msg.push_back( options );
-  msg.push_back( uri );
+  jalson::json_array msg {SUBSCRIBE, 0, options, uri};
 
   subscribe_request sub;
   sub.uri = std::move(uri);
@@ -1094,13 +1090,43 @@ t_request_id wamp_session::subscribe(std::string uri,
 }
 
 
+t_request_id wamp_session::unsubscribe(t_subscription_id subscription_id,
+                                       unsubscribed_cb request_cb,
+                                       void * user_data)
+{
+  jalson::json_array msg {UNSUBSCRIBE, 0, subscription_id};
+
+  unsubscribe_request req;
+  req.request_cb = std::move(request_cb);
+  req.user_data = user_data;
+
+  t_request_id request_id;
+  {
+    std::lock_guard<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    {
+      std::lock_guard<std::mutex> guard(m_pending_lock);
+      m_pending_unsubscribe[request_id] = std::move(req);
+    }
+    send_msg( msg );
+  }
+
+  LOG_INFO("sending unsubscribe for subscription_id " << subscription_id
+           << ", request_id " << request_id);
+  return request_id;
+}
+
+
 void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
 {
   /* EV thread */
 
   check_size_at_least(msg.size(), 3);
 
-  t_request_id request_id  = extract_request_id(msg, 1);
+  t_request_id request_id = extract_request_id(msg, 1);
 
   if (!msg[2].is_uint())
       throw protocol_error("subscription ID must be unsigned int");
@@ -1155,6 +1181,45 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
     }
     catch(...) {
       log_exception(__logger, "inbound subscribed user callback");
+    }
+}
+
+
+void wamp_session::process_inbound_unsubscribed(jalson::json_array & msg)
+{
+  /* EV thread */
+
+  check_size_at_least(msg.size(), 2);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  unsubscribe_request temp;
+  {
+    std::lock_guard<std::mutex> guard(m_pending_lock);
+    auto iter = m_pending_unsubscribe.find(request_id);
+
+    if (iter != m_pending_unsubscribe.end())
+    {
+      temp = std::move(iter->second);
+      m_pending_unsubscribe.erase(iter);
+    }
+    else
+    {
+      LOG_WARN("no pending unsubscribe for unsubscribed response with request_id "
+               << request_id);
+      return;
+    }
+  }
+
+  LOG_INFO("unsubscribed, request_id " << request_id);
+
+  // invoke user callback if permitted, and handle exception
+  if (temp.request_cb && user_cb_allowed())
+    try {
+      temp.request_cb(request_id, true, {});
+    }
+    catch(...) {
+      log_exception(__logger, "inbound unsubscribed user callback");
     }
 }
 
@@ -1409,6 +1474,37 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
           }
           catch(...) {
             log_exception(__logger, "inbound subscribed user callback");
+          }
+
+        break;
+      };
+      case UNSUBSCRIBE :
+      {
+        /* dont hold any locks when calling the user */
+        unsubscribe_request orig_request;
+        {
+          std::lock_guard<std::mutex> guard(m_pending_lock);
+          auto iter = m_pending_unsubscribe.find(request_id);
+          if (iter != m_pending_unsubscribe.end())
+          {
+            orig_request = std::move(iter->second);
+            m_pending_unsubscribe.erase(iter);
+          }
+          else
+          {
+            LOG_WARN("no pending unsubscribe for error response with request_id "
+                     << request_id);
+            break;
+          }
+        }
+
+        // invoke user callback if permitted, and handle exception
+        if (orig_request.request_cb && user_cb_allowed())
+          try {
+            orig_request.request_cb(request_id, false, std::move(error_uri));
+          }
+          catch(...) {
+            log_exception(__logger, "inbound unsubscribed user callback");
           }
 
         break;

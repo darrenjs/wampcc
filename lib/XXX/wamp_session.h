@@ -79,14 +79,21 @@ namespace XXX {
   };
   typedef std::function< void (wamp_subscription_event) > subscription_event_cb;
 
-  /** Callback invoked when a subscription request is successful or fails.
-      Error contains the error code when the subscription is not successful.
+  /** Callback invoked when a subscribe request is successful or fails. Error
+      contains the error code when the subscription is not successful.
   */
   typedef std::function< void (t_request_id,
                                std::string uri,
                                bool success,
                                t_subscription_id,
-                               std::string error ) > subscribed_cb;
+                               std::string error) > subscribed_cb;
+
+  /** Callback invoked when an unsubscription request completes. Error contains
+      the error code when the subscription is not successful.
+  */
+  typedef std::function< void (t_request_id,
+                               bool success,
+                               std::string error) > unsubscribed_cb;
 
   struct wamp_call_result
   {
@@ -246,6 +253,13 @@ namespace XXX {
                            subscription_event_cb cb,
                            void * user = nullptr);
 
+    /** Unsubscribe a subscription. The subscription is identified via its WAMP
+     * subscription ID.  The unsubscribed_cb callback is invoked upon success or
+     * failure of the request. */
+    t_request_id unsubscribe(t_subscription_id,
+                             unsubscribed_cb,
+                             void * user = nullptr);
+
     t_request_id call(std::string uri,
                       const jalson::json_object& options,
                       wamp_args args,
@@ -374,6 +388,7 @@ namespace XXX {
     void process_inbound_registered(jalson::json_array &);
     void process_inbound_invocation(jalson::json_array &);
     void process_inbound_subscribed(jalson::json_array &);
+    void process_inbound_unsubscribed(jalson::json_array &);
     void process_inbound_event(jalson::json_array &);
     void process_inbound_result(jalson::json_array &);
     void process_inbound_error(jalson::json_array &);
@@ -419,6 +434,12 @@ namespace XXX {
       void * user_data;
     };
 
+    struct unsubscribe_request
+    {
+      unsubscribed_cb request_cb;
+      void * user_data;
+    };
+
     struct subscription
     {
       subscription_event_cb event_cb;
@@ -439,10 +460,11 @@ namespace XXX {
     };
 
     mutable std::mutex m_pending_lock;
-    std::map<t_request_id, subscribe_request> m_pending_subscribe;
-    std::map<t_request_id, procedure>         m_pending_register;
-    std::map<t_request_id, wamp_call>         m_pending_call;
-    std::map<t_request_id, wamp_invocation>   m_pending_invocation;
+    std::map<t_request_id, subscribe_request>   m_pending_subscribe;
+    std::map<t_request_id, unsubscribe_request> m_pending_unsubscribe;
+    std::map<t_request_id, procedure>           m_pending_register;
+    std::map<t_request_id, wamp_call>           m_pending_call;
+    std::map<t_request_id, wamp_invocation>     m_pending_invocation;
 
     // TODO: procedures -- not currently locked, however, need to add locking once
     // unprovide() is added, and if it is implemented synchronously.

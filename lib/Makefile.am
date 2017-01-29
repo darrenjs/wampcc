@@ -20,11 +20,10 @@ XXX/rawsocket_protocol.h XXX/websocket_protocol.h								\
 XXX/tcp_socket.h XXX/data_model.h
 
 # List the sources for an individual library
-libXXX_la_SOURCES = tcp_socket.cc dealer_service.cc event_loop.cc			\
- io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc \
-utils.cc wamp_session.cc protocol.cc rawsocket_protocol.cc					\
-websocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc	\
-data_model.cc
+libXXX_la_SOURCES = wamp_session.cc tcp_socket.cc dealer_service.cc		\
+event_loop.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc	\
+protocol.cc rawsocket_protocol.cc websocket_protocol.cc					\
+../external/http_parser/http_parser.c http_parser.cc data_model.cc
 
 
 # Include compile and link flags for an individual library.
