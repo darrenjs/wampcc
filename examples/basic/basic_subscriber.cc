@@ -29,6 +29,8 @@ int main(int argc, char** argv)
     if (status != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
+    fut.get(); // throws if connect failed
+
     std::mutex session_closed_mutex;
     std::condition_variable session_closed_convar;
     bool session_has_closed = false;
@@ -59,8 +61,10 @@ int main(int argc, char** argv)
       throw std::runtime_error("time-out during session logon");
 
     /* Session is now open, subscribe to a topic. */
-    XXX::subscribed_cb my_subscribed_cb = [session](XXX::t_request_id request_id, std::string uri, bool successful,
-                                                    t_subscription_id subid, std::string error)
+    bool have_subscription = false;
+    XXX::t_subscription_id subscription_id = 0;
+    XXX::subscribed_cb my_subscribed_cb = [&](XXX::t_request_id request_id, std::string uri, bool successful,
+                                              XXX::t_subscription_id subid, std::string error)
       {
         if (successful)
         {

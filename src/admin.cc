@@ -366,21 +366,21 @@ int main_impl(int argc, char** argv)
   std::unique_ptr<XXX::tcp_socket> sock( new XXX::tcp_socket(g_kernel.get()) );
 
   std::future_status status;
-  do
-  {
-    /* Make an attempt to connect to the target end point */
-    auto fut = sock->connect(uopts.addr.value(), atoi(uopts.port.value().c_str()));
+
+  /* Make an attempt to connect to the target end point */
+  auto fut = sock->connect(uopts.addr.value(), atoi(uopts.port.value().c_str()));
 
   /* Wait for a connection result */
-    status = fut.wait_for(std::chrono::seconds(3));
+  status = fut.wait_for(std::chrono::seconds(3));
 
-    if (status == std::future_status::timeout)
-      throw std::runtime_error("time-out during connect");
+  if (status == std::future_status::deferred)
+    throw std::runtime_error("unexpected deffered connect");
 
-    if (status == std::future_status::ready)
-      fut.get();
+  if (status == std::future_status::timeout)
+    throw std::runtime_error("time-out during connect");
 
-  } while (status != std::future_status::ready);
+  if (status == std::future_status::ready)
+    fut.get();  // throws if connect failed
 
   /* A result is available; our socket connection could be available. */
 

@@ -9,14 +9,23 @@
 
 using namespace XXX;
 
-int main(int, char**)
+std::tuple<std::string, int> get_addr_port(int argc, char** argv)
+{
+  if (argc != 3)
+    throw std::runtime_error("arguments must be: ADDR PORT");
+  return std::tuple<std::string,int>(argv[1], std::stoi(argv[2]));
+}
+
+int main(int argc, char** argv)
 {
   try
   {
+    auto endpoint = get_addr_port(argc, argv);
+
     std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ));
 
     std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
-    auto fut = sock->connect("127.0.0.1", 55555);
+    auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
     if (status != std::future_status::ready)
@@ -68,4 +77,3 @@ int main(int, char**)
     return 1;
   }
 }
-
