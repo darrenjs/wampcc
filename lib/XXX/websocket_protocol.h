@@ -30,8 +30,7 @@ public:
 
   websocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connection_mode _mode, options);
 
-  int  required_timer_callback_interval_ms() override { return 2000;}
-  void ev_on_timer() override;
+  void on_timer() override;
   void io_on_read(char*, size_t) override;
   void initiate(t_initiate_cb) override;
 

@@ -50,6 +50,9 @@ rawsocket_protocol::rawsocket_protocol(tcp_socket* h,
     m_peer_max_msg_size(0)
 {
   m_buf.update_max_size(m_self_max_msg_size);
+
+  if (__mode == connection_mode::eActive && __options.ping_interval.count() > 0)
+    callbacks.request_timer(__options.ping_interval);
 }
 
 
@@ -57,7 +60,7 @@ void rawsocket_protocol::initiate(t_initiate_cb cb)
 {
   m_initiate_cb = cb;
 
-  char handshake[ HANDSHAKE_SIZE ];
+  char handshake[HANDSHAKE_SIZE];
   format_handshake( handshake, m_options.inbound_max_msg_size, e_JSON);
 
   std::pair<const char*, size_t> buf;
@@ -170,14 +173,18 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
           }
           case MSG_TYPE_PING :
           {
+            // on a ping, construct a pong that returns the payload
             uint32_t out_frame_hdr = msglen | (MSG_TYPE_PONG << FRAME_FIRST_OCTECT_SHIFT);
             out_frame_hdr = htonl(out_frame_hdr);
             std::pair<const char*, size_t> bufs[2];
             bufs[0].first  = (char*)&out_frame_hdr;
             bufs[0].second = FRAME_PREFIX_SIZE;
-            bufs[1].first  = rd.ptr()+FRAME_PREFIX_SIZE;
-            bufs[1].second = msglen;
-            m_socket->write(bufs, 2);
+            if (msglen)
+            {
+              bufs[1].first  = rd.ptr()+FRAME_PREFIX_SIZE;
+              bufs[1].second = msglen;
+            }
+            m_socket->write(bufs, msglen?2:1);
             break;
           }
           case MSG_TYPE_PONG : break;
@@ -245,6 +252,23 @@ void rawsocket_protocol::reply_handshake(int high, int low)
   bufs[0].first  = handshake;
   bufs[0].second = HANDSHAKE_SIZE;
   m_socket->write(bufs, 1);
+}
+
+
+void rawsocket_protocol::on_timer()
+{
+  if (m_state == eOpen)
+  {
+    // Construct a ping message with an empty payload; the only bits set are the
+    // TTT bits in the first octet.
+    uint32_t out_frame_hdr = (MSG_TYPE_PING << FRAME_FIRST_OCTECT_SHIFT);
+    out_frame_hdr = htonl(out_frame_hdr);
+
+    std::pair<const char*, size_t> bufs;
+    bufs.first  = (char*)&out_frame_hdr;
+    bufs.second = FRAME_PREFIX_SIZE;
+    m_socket->write(&bufs, 1);
+  }
 }
 
 }

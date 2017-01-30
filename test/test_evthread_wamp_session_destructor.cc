@@ -38,7 +38,7 @@ void test_WS_destroyed_on_ev_thread(int port)
                                            [session]()
                                            {
                                              cout << "this delayed event should never get called";
-                                             return 0;
+                                             return std::chrono::milliseconds(0);
                                            } );
     session.reset();
     cout << "exiting scope (will trigger kernel, io_loop, ev_loop destruction)...\n";

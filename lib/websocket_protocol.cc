@@ -407,7 +407,7 @@ void websocket_protocol::initiate(t_initiate_cb cb)
 }
 
 
-void websocket_protocol::ev_on_timer()
+void websocket_protocol::on_timer()
 {
   if (m_state == eOpen)
   {
@@ -416,7 +416,5 @@ void websocket_protocol::ev_on_timer()
     m_socket->write(&buf, 1);
   }
 }
-
-
 
 }

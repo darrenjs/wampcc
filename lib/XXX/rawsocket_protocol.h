@@ -61,6 +61,7 @@ public:
 
   rawsocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks callbacks, connection_mode, options);
 
+  void on_timer() override;
   void io_on_read(char*, size_t) override;
   void initiate(t_initiate_cb) override;
   const char* name() const override { return NAME; }

@@ -108,11 +108,13 @@ public:
   {
     std::string connect_host;
     std::string connect_port;
+    std::chrono::milliseconds ping_interval = std::chrono::milliseconds(10000); /* set to 0 for no pings/heartbeats */
   };
 
   struct protocol_callbacks
   {
     std::function<void(std::unique_ptr<protocol>&)> upgrade_protocol;
+    std::function<void(std::chrono::milliseconds)>  request_timer;
   };
 
 
@@ -128,8 +130,7 @@ public:
   protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connection_mode m,
            size_t buf_initial_size=1, size_t buf_max_size=1024);
 
-  virtual int  required_timer_callback_interval_ms() { return 1000;}
-  virtual void ev_on_timer() {}
+  virtual void on_timer() {}
   virtual void io_on_read(char*, size_t) = 0;
   virtual void initiate(t_initiate_cb) = 0;
   virtual const char* name() const = 0;
@@ -151,8 +152,8 @@ private:
   connection_mode m_mode;
 };
 
-  typedef std::function< std::unique_ptr<protocol> (tcp_socket*, protocol::t_msg_cb,
-                                                    protocol::protocol_callbacks) > protocol_builder_fn;
+typedef std::function< std::unique_ptr<protocol> (tcp_socket*, protocol::t_msg_cb,
+                                                  protocol::protocol_callbacks) > protocol_builder_fn;
 
 
 class selector_protocol : public protocol
@@ -178,7 +179,6 @@ public:
 
   static size_t buffer_size_required();
 };
-
 
 }
 

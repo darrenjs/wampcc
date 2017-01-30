@@ -22,13 +22,19 @@ struct event;
 class event_loop
 {
 public:
+
+  /* Signature for timer callbacks that can be registered with the event loop.
+   * The return value indicates the delay to use for subsequent invocation of
+   * the timer function, or 0 if the function should not be invoked again. */
+  typedef std::function<std::chrono::milliseconds()> timer_fn;
+
   event_loop(kernel*);
   ~event_loop();
 
   void stop();
 
   void dispatch(std::function<void()> fn);
-  void dispatch(std::chrono::milliseconds, std::function<int()> fn);
+  void dispatch(std::chrono::milliseconds, timer_fn fn);
 
   /** Test whether the current thread is the EV thread */
   bool this_thread_is_ev() const;
@@ -38,7 +44,6 @@ public:
 private:
   event_loop(const event_loop&); // no copy
   event_loop& operator=(const event_loop&); // no assignment
-
 
   void eventloop();
   void eventmain();

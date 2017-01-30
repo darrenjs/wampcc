@@ -173,7 +173,8 @@ namespace XXX {
                                                 auth_provider);
 
     /** Create a client side session (i.e., the socket was actively connected to
-     * a remote server). */
+     * a remote server) using a protocol class as specified via the template
+     * parameter. */
     template<typename T>
     static std::shared_ptr<wamp_session> create(kernel* k,
                                                 std::unique_ptr<tcp_socket> socket,
@@ -296,7 +297,6 @@ namespace XXX {
                  t_session_mode,
                  std::unique_ptr<tcp_socket>,
                  session_state_fn state_cb,
-                 protocol_builder_fn protocol_builder,
                  server_msg_handler,
                  auth_provider);
 
@@ -472,7 +472,6 @@ namespace XXX {
     // No locking required, since used only on EV thread
     std::map<t_subscription_id, subscription> m_subscriptions;
 
-    std::function<int()> m_hb_func;
     std::unique_ptr<protocol> m_proto;
 
     std::promise< void > m_promise_on_open;

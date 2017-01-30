@@ -281,7 +281,7 @@ static void process_options(int argc, char** argv)
       case '?' : exit(1); // invalid option
       default:
       {
-        std::cout << "getopt_long() returned (dec) " << (unsigned int)(c) << "\n";
+        std::cout << "unknown option: -" << char(c) << "\n";
         exit(1);
       }
     }

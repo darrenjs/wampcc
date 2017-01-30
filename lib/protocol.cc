@@ -148,7 +148,8 @@ void selector_protocol::io_on_read(char* src, size_t len)
       m_callbacks.upgrade_protocol(up);
 
       new_proto_ptr->io_on_read(m_buf.data(), m_buf.data_size());
-      if (len) new_proto_ptr->io_on_read(src, len );
+      if (len)
+        new_proto_ptr->io_on_read(src, len );
       break;
     }
     else if (rd.avail() >= websocket_protocol::HEADER_SIZE &&
@@ -165,7 +166,8 @@ void selector_protocol::io_on_read(char* src, size_t len)
       m_callbacks.upgrade_protocol(up);
 
       new_proto_ptr->io_on_read(m_buf.data(), m_buf.data_size());
-      if (len) new_proto_ptr->io_on_read(src, len );
+      if (len)
+        new_proto_ptr->io_on_read(src, len );
       break;
     }
     else if (rd.avail() >= buffer_size_required())

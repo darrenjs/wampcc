@@ -72,7 +72,6 @@ wamp_session::wamp_session(kernel* __kernel,
                            t_session_mode conn_mode,
                            std::unique_ptr<tcp_socket> h,
                            session_state_fn state_cb,
-                           protocol_builder_fn protocol_builder,
                            server_msg_handler handler,
                            auth_provider auth)
   : m_state( eInit ),
@@ -89,27 +88,7 @@ wamp_session::wamp_session(kernel* __kernel,
     m_auth_proivder(std::move(auth)),
     m_server_requires_auth(true), /* assume server requires auth by default */
     m_notify_state_change_fn(state_cb),
-    m_server_handler(handler),
-    m_proto(
-      protocol_builder(
-        m_socket.get(),
-        [this](jalson::json_array msg, int msg_type)
-        {
-          /* receive inbound wamp messages that have been decoded by the
-           * protocol and queue them for processing on the EV thread */
-          auto sp = shared_from_this();
-          std::function<void()> fn = [sp,msg,msg_type]() mutable
-            {
-              sp->process_message(msg_type, msg);
-            };
-          m_kernel->get_event_loop()->dispatch(std::move(fn));
-        },
-        {
-          [this](std::unique_ptr<protocol>&new_proto){
-            this->upgrade_protocol(new_proto);
-          }
-        }
-        ))
+    m_server_handler(handler)
 {
   static_assert(sizeof(m_state)>1, "m_state not large enough");
 }
@@ -136,15 +115,60 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
                                                         server_msg_handler handler,
                                                         auth_provider auth)
 {
+  /* Create the wamp_session object. During constuction the internal shared
+   * pointer won't be available, which is required by some setup tasks of the
+   * wamp_session.  Those tasks are occur further down, once the internal weak
+   * pointer is setup . */
   std::shared_ptr<wamp_session> sp(
-    new wamp_session(k, conn_mode, std::move(ioh), state_cb, protocol_builder, handler, auth)
+    new wamp_session(k, conn_mode, std::move(ioh), state_cb, handler, auth)
       );
-
   sp->m_self_weak = sp;
 
-  // can't put this initialisation step inside wamp_sesssion constructor,
-  // because the shared pointer wont be created & available inside the
-  // constructor
+  // Create the protocol; this can only take place once the session's weak self
+  // pointer has been set up.
+  sp->m_proto = protocol_builder(
+    sp->m_socket.get(),
+    [sp](jalson::json_array msg, int msg_type)
+    {
+      /* IO thread */
+
+      /* receive inbound wamp messages that have been decoded by the
+       * protocol and queue them for processing on the EV thread */
+      std::function<void()> fn = [sp,msg,msg_type]() mutable
+      {
+        sp->process_message(msg_type, msg);
+      };
+      sp->m_kernel->get_event_loop()->dispatch(std::move(fn));
+    },
+    {
+      [sp](std::unique_ptr<protocol>&new_proto) {
+        sp->upgrade_protocol(new_proto);
+      },
+      [sp](std::chrono::milliseconds interval) {
+        /* If protocol has requested a timer, register a reoccurring event to
+         * make of the protocol's on_timer function. */
+        if (interval.count() > 0)
+        {
+          std::weak_ptr<wamp_session> wp = sp;
+          auto fn = [wp,interval]() {
+            if (auto sp = wp.lock())
+            {
+              if (sp->is_open())
+              {
+                sp->m_proto->on_timer();
+                return interval;
+              }
+            }
+            return std::chrono::milliseconds(); /* cancel timer */
+          };
+          sp->m_kernel->get_event_loop()->dispatch(interval, std::move(fn));
+        }
+      }
+    }
+    );
+
+  // Enable the socket for read events; this can only take place once the
+  // session's weak self pointer has been set up.
   sp->m_socket->start_read( sp.get() );
 
   // set up a timer to expire this session if it has not been successfully
@@ -159,7 +183,7 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
         if (sp->is_pending_open())
           sp->drop_connection("wamp.error.logon_timeout");
       }
-      return 0;
+      return std::chrono::milliseconds(0);
     });
 
   return sp;
@@ -348,7 +372,7 @@ void wamp_session::change_state(unsigned expected, SessionState next)
       if (uses_heartbeats())
       {
         std::weak_ptr<wamp_session> wp = handle();
-        m_hb_func = [wp]()
+        auto hb_fn = [wp]()
           {
             if (auto sp = wp.lock())
             {
@@ -364,13 +388,13 @@ void wamp_session::change_state(unsigned expected, SessionState next)
                   msg.push_back(HEARTBEAT);
                   sp->send_msg(msg);
 
-                  sp->m_kernel->get_event_loop()->dispatch( std::chrono::milliseconds(sp->m_hb_intvl*1000), sp->m_hb_func);
+                  return std::chrono::milliseconds(sp->m_hb_intvl*1000);
                 }
               }
             }
-            return 0;
+            return std::chrono::milliseconds(0);
           };
-        m_kernel->get_event_loop()->dispatch( std::chrono::milliseconds(m_hb_intvl*1000), m_hb_func);
+        m_kernel->get_event_loop()->dispatch( std::chrono::milliseconds(m_hb_intvl*1000), std::move(hb_fn));
       }
     }
 
@@ -1890,7 +1914,7 @@ void wamp_session::drop_connection_impl(std::string reason,
       // the peer within a reasonable time period, we force close the
       // wamp_session
       auto sp = shared_from_this();
-      std::function<int()> fn = [sp]()
+      event_loop::timer_fn fn = [sp]()
       {
         std::lock_guard<std::mutex> guard(sp->m_state_lock);
         if (sp->m_state == e_wait_peer_goodbye)
@@ -1899,7 +1923,7 @@ void wamp_session::drop_connection_impl(std::string reason,
           LOG_WARN("session #" << sp->unique_id() << " timeout waiting for peer GOODBYE");
           sp->initiate_close(guard);
         }
-        return 0;
+        return std::chrono::milliseconds(0);
       };
       m_kernel->get_event_loop()->dispatch(
         std::chrono::milliseconds(250),
@@ -2008,6 +2032,5 @@ void wamp_session::transition_to_closed()
 
   m_has_closed.set_value();
 }
-
 
 } // namespace XXX

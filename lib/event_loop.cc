@@ -39,12 +39,12 @@ struct ev_function_dispatch : event
 
 struct ev_timer_dispatch : event
 {
-  ev_timer_dispatch(std::function<int()> __fn) :
+  ev_timer_dispatch(event_loop::timer_fn __fn) :
     event(event::timer_dispatch),
     fn(__fn)
   {}
 
-  std::function<int ()> fn;
+  event_loop::timer_fn fn;
 };
 
 
@@ -94,7 +94,7 @@ void event_loop::dispatch(std::function<void()> fn)
 }
 
 
-void event_loop::dispatch(std::chrono::milliseconds delay, std::function<int()> fn)
+void event_loop::dispatch(std::chrono::milliseconds delay, timer_fn fn)
 {
   dispatch(delay, std::make_shared<ev_timer_dispatch>(std::move(fn)));
 }
@@ -228,9 +228,11 @@ void event_loop::eventloop()
           }
           case event::timer_dispatch :
           {
+            // TODO: check this is efficient, ie, are we reusing the same EV object?
             ev_timer_dispatch * ev2 = dynamic_cast<ev_timer_dispatch*>(ev.get());
-            int repeat_ms = ev2->fn();
-            if (repeat_ms) dispatch(std::chrono::milliseconds(repeat_ms), ev);
+            auto repeat_ms = ev2->fn();
+            if (repeat_ms.count() > 0)
+              dispatch(repeat_ms, ev);
             break;
           }
 	        default: break;
