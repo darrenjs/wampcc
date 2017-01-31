@@ -106,6 +106,9 @@ private:
   /* maximum messages that this-side and remote-side can accept */
   unsigned int m_self_max_msg_size;
   unsigned int m_peer_max_msg_size;
+
+  /* time when previous pong was sent */
+  std::chrono::system_clock::time_point m_last_pong;
 };
 
 

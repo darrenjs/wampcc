@@ -47,7 +47,8 @@ rawsocket_protocol::rawsocket_protocol(tcp_socket* h,
   : protocol(h, msg_cb, callbacks, __mode),
     m_options(__options),
     m_self_max_msg_size( 1<<(9+m_options.inbound_max_msg_size) ),
-    m_peer_max_msg_size(0)
+    m_peer_max_msg_size(0),
+    m_last_pong(std::chrono::system_clock::now())
 {
   m_buf.update_max_size(m_self_max_msg_size);
 
@@ -173,18 +174,25 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
           }
           case MSG_TYPE_PING :
           {
-            // on a ping, construct a pong that returns the payload
-            uint32_t out_frame_hdr = msglen | (MSG_TYPE_PONG << FRAME_FIRST_OCTECT_SHIFT);
-            out_frame_hdr = htonl(out_frame_hdr);
-            std::pair<const char*, size_t> bufs[2];
-            bufs[0].first  = (char*)&out_frame_hdr;
-            bufs[0].second = FRAME_PREFIX_SIZE;
-            if (msglen)
+            // on a ping, construct a pong that returns the payload, and
+            // throttle the responses so as not to get overwhelmed by a peer
+            auto now = std::chrono::system_clock::now();
+            auto since_last_pong = std::chrono::duration_cast<std::chrono::seconds>(now - m_last_pong);
+            if (since_last_pong > std::chrono::seconds(5))
             {
-              bufs[1].first  = rd.ptr()+FRAME_PREFIX_SIZE;
-              bufs[1].second = msglen;
+              m_last_pong = now;
+              uint32_t out_frame_hdr = msglen | (MSG_TYPE_PONG << FRAME_FIRST_OCTECT_SHIFT);
+              out_frame_hdr = htonl(out_frame_hdr);
+              std::pair<const char*, size_t> bufs[2];
+              bufs[0].first  = (char*)&out_frame_hdr;
+              bufs[0].second = FRAME_PREFIX_SIZE;
+              if (msglen)
+              {
+                bufs[1].first  = rd.ptr()+FRAME_PREFIX_SIZE;
+                bufs[1].second = msglen;
+              }
+              m_socket->write(bufs, msglen?2:1);
             }
-            m_socket->write(bufs, msglen?2:1);
             break;
           }
           case MSG_TYPE_PONG : break;
