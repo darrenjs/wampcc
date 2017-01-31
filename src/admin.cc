@@ -80,8 +80,8 @@ enum AdminEvent
   eClosed
 };
 
-std::mutex              event_queue_mutex;
-std::condition_variable event_queue_condition;
+std::mutex               event_queue_mutex;
+std::condition_variable  event_queue_condition;
 std::queue< AdminEvent > event_queue;
 
 
@@ -146,15 +146,13 @@ void subscribe_cb(XXX::wamp_subscription_event ev)
 
 bool g_handshake_success = false;
 
-void router_connection_cb(int errcode,
-                          bool is_open)
+void session_state_cb(bool is_open)
 {
   std::lock_guard<std::mutex> guard(g_active_session_mutex);
 
   if (!is_open)
   {
-    std::cout << "WAMP session closed, errcode " << errcode << std::endl;
-
+    std::cout << "WAMP session closed" << std::endl;
     std::lock_guard< std::mutex > guard( event_queue_mutex );
     event_queue.push( eClosed );
     event_queue_condition.notify_one();
@@ -394,7 +392,7 @@ int main_impl(int argc, char** argv)
       std::move(sock),
       [](XXX::session_handle wp, bool is_open) {
         if (auto sp = wp.lock())
-          router_connection_cb(0, is_open);
+          session_state_cb(is_open);
       }, proto_opts);
 
   if (!ws)
@@ -493,8 +491,6 @@ int main_impl(int argc, char** argv)
     wait_reply = true;
   }
 
-
-
   while ((long_wait || wait_reply) && ws->is_open())
   {
     std::unique_lock< std::mutex > guard( event_queue_mutex );
@@ -515,27 +511,21 @@ int main_impl(int argc, char** argv)
         case eClosed: break;
       }
     }
-
   }
-
 
   /* Commence orderly shutdown of the wamp_session.  Shutdown is an asychronous
    * operation so we start the request and then wait for the request to
    * complete.  Once complete, we shall not receive anymore events from the
    * wamp_session object (and thus is safe to delete). */
 
-  std::cout << "calling ws->close();" << std::endl;
   auto fut_closed = ws->close();
   fut_closed.wait();
   ws.reset();
 
-
   /* We must be mindful to free the kernel and logger only after all sessions
      are closed (e.g. sessions might attempt logging during their
      destruction) */
-
   g_kernel.reset();
-
 
   return 0;
 }
