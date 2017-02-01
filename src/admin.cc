@@ -1,5 +1,4 @@
 #include "XXX/kernel.h"
-
 #include "XXX/utils.h"
 #include "XXX/data_model.h"
 #include "XXX/wamp_session.h"
@@ -18,12 +17,6 @@
 #include <string.h>
 #include <sys/time.h>
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
-
-
-auto __logger = XXX::logger::stdlog(std::cout,
-                                    XXX::logger::levels_upto(XXX::logger::eInfo), 1);
-
-std::unique_ptr<XXX::kernel> g_kernel;
 
 
 // replace with optional<> if C++17 present
@@ -51,13 +44,11 @@ struct user_options
 
   user_optional<std::string> addr;
   user_optional<std::string> port;
-  std::string cmd;
-  std::list< std::string > cmdargs;
+
   std::list< std::string > subscribe_topics;
 
   std::string publish_topic;
 
-  std::string register_procedure;
   std::string call_procedure;
 
   int verbose = 0;
@@ -85,9 +76,9 @@ std::condition_variable  event_queue_condition;
 std::queue< AdminEvent > event_queue;
 
 
-struct callback_t
+struct t_callback
 {
-  callback_t(XXX::kernel* s, const char* d)
+  t_callback(XXX::kernel* s, const char* d)
     : svc(s),
       request(d)
   {
@@ -97,25 +88,8 @@ struct callback_t
 };
 
 
-void procedure_cb(XXX::wamp_invocation& invocation)
+void rpc_call_cb(XXX::wamp_call_result r)
 {
-  const callback_t* cbdata = (callback_t*) invocation.user;
-
-  /* called when a procedure within a CALLEE is triggered */
-
-  std::cout << "CALLEE has procuedure_cb invoked, args: " << invocation.arg_list
-            << ", user:" << cbdata->request;
-
-  // rconn->publish("call", jalson::json_object(), XXX::wamp_args());
-
-  jalson::json_array args {"hello", "back"};
-
-  invocation.yield(args, {});
-}
-
-void call_cb(XXX::wamp_call_result r)
-{
-
   const char* msg = ( const char* ) r.user;
 
   if (r.was_error)
@@ -167,7 +141,7 @@ void session_state_cb(bool is_open)
 
 static void die(std::string e)
 {
-  std::cout << e  << std::endl;
+  std::cout << e << std::endl;
   exit( 1 );
 }
 
@@ -271,7 +245,6 @@ static void process_options(int argc, char** argv)
       case 'v' : version();
       case 's' : uopts.subscribe_topics.push_back(optarg); break;
       case 'p' : uopts.publish_topic = optarg; break;
-      case 'r' : uopts.register_procedure = optarg; break;
       case 'c' : uopts.call_procedure = optarg; break;
       case 'U' : uopts.username = optarg; break;
       case 'P' : uopts.password = optarg; break;
@@ -287,8 +260,7 @@ static void process_options(int argc, char** argv)
 
   if (optind < argc) uopts.addr = argv[optind++];
   if (optind < argc) uopts.port = argv[optind++];
-  if (optind < argc) uopts.cmd  = argv[optind++];
-  while (optind < argc) uopts.cmdargs.push_back(argv[optind++]);
+
 
   if (!uopts.addr) die("missing address");
   if (!uopts.port) die("missing port");
@@ -359,7 +331,10 @@ int main_impl(int argc, char** argv)
     }
   }
 
-  g_kernel.reset( new XXX::kernel({}, __logger));
+  /* Setup XXX core components */
+  auto __logger = XXX::logger::stdlog(std::cout,
+                                      XXX::logger::levels_upto(XXX::logger::eInfo), 1);
+  std::unique_ptr<XXX::kernel> g_kernel( new XXX::kernel({}, __logger));
 
   std::unique_ptr<XXX::tcp_socket> sock( new XXX::tcp_socket(g_kernel.get()) );
 
@@ -454,16 +429,6 @@ int main_impl(int argc, char** argv)
   for (auto & topic : uopts.subscribe_topics)
     ws->subscribe(topic, sub_options, scb, subscribe_cb, nullptr);
 
-  // register
-  std::unique_ptr<callback_t> cb1( new callback_t(g_kernel.get(),"my_hello") );
-  if (!uopts.register_procedure.empty())
-  {
-    ws->provide(uopts.register_procedure,
-                jalson::json_object(),
-                procedure_cb,
-                (void*) cb1.get());
-    long_wait = true;
-  }
 
   // publish
   if (!uopts.publish_topic.empty())
@@ -479,14 +444,14 @@ int main_impl(int argc, char** argv)
     // tm.set_value("hello world");
   }
 
-  // call
+  // call a remote procedure
   if (!uopts.call_procedure.empty())
   {
     ws->call(uopts.call_procedure,
              jalson::json_object(),
              args,
              [](XXX::wamp_call_result r)
-             { call_cb(r);},
+             { rpc_call_cb(r);},
              (void*)"I_called_the_proc");
     wait_reply = true;
   }
