@@ -138,9 +138,9 @@ int main(int /* argc */, char** /* argv */)
   server_auth.provider_name = [](const std::string){ return "programdb"; };
   server_auth.permit_user_realm = [](const std::string& /*user*/,
                                      const std::string& /*realm*/){
-    return XXX::auth_provider::auth_plan(XXX::auth_provider::e_authenticate, {});
+    return XXX::auth_provider::auth_plan(XXX::auth_provider::e_open, {});
   };
-  server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2";};
+  server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "";};
 
   // start listening for sessions
   int port = 44444;
