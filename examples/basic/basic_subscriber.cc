@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 
     /* stay subscribed for a short interval */
     {
-      std::unique_lock<std::mutex> guard(session_closed_mutex);
+      std::lock_guard<std::mutex> guard(session_closed_mutex);
       session_closed_convar.wait_for(guard, std::chrono::seconds(30),
                                      [&](){ return session_has_closed; });
     }
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
 
     /* wait for session to be closed by peer */
     {
-      std::unique_lock<std::mutex> guard(session_closed_mutex);
+      std::lock_guard<std::mutex> guard(session_closed_mutex);
       session_closed_convar.wait(guard, [&](){ return session_has_closed; });
     }
 

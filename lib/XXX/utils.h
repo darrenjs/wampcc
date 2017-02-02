@@ -214,27 +214,27 @@ public:
 
   void set_value(const T& new_value)
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
     m_value = new_value;
     m_valid = true;
   }
 
   void set_value(T&& new_value)
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
     m_value = std::move(new_value);
     m_valid = true;
   }
 
   void release()
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
     m_valid = false;
   }
 
   bool compare(const T& value) const
   {
-    std::unique_lock<std::mutex> guard(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
     return m_valid && m_value == value;
   }
 

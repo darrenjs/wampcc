@@ -149,7 +149,7 @@ void message_server::rpc_message_set(XXX::wamp_invocation& invocation)
 
 
   {
-    std::unique_lock<std::mutex> guard(m_topics_mutex);
+    std::lock_guard<std::mutex> guard(m_topics_mutex);
     auto iter = m_topics.find(key);
 
     if (iter == m_topics.end())
@@ -170,7 +170,7 @@ void message_server::rpc_message_set(XXX::wamp_invocation& invocation)
 
 void message_server::rpc_message_list(XXX::wamp_invocation& invocation)
 {
-  std::unique_lock<std::mutex> guard(m_topics_mutex);
+  std::lock_guard<std::mutex> guard(m_topics_mutex);
 
   jalson::json_array ja;
   ja.reserve(m_topics.size());
