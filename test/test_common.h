@@ -67,11 +67,11 @@ public:
 
     for (int port = starting_port_number; port < 65535; port++)
     {
-      std::future<int> fut_listen_err = m_dealer->listen(port, server_auth);
+      std::future<uverr> fut_listen_err = m_dealer->listen(port, server_auth);
       std::future_status status = fut_listen_err.wait_for(std::chrono::milliseconds(100));
       if (status == std::future_status::ready)
       {
-        int err = fut_listen_err.get();
+        XXX::uverr err = fut_listen_err.get();
         if (err == 0)
           return port;
 

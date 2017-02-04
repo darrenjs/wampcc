@@ -21,9 +21,9 @@ void test_canonical_listen(int port)
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   unique_ptr<tcp_socket> accepted_socket;
-  auto on_accept = [&accepted_socket](tcp_socket* server,
-                                      unique_ptr<tcp_socket>& client,
-                                      int status)
+  tcp_socket::on_accept_cb on_accept = [&accepted_socket](tcp_socket* server,
+                                                          unique_ptr<tcp_socket>& client,
+                                                          uverr status)
   {
     if (status==0)
     {
@@ -40,7 +40,7 @@ void test_canonical_listen(int port)
   {
     tcp_socket sever_sock( the_kernel.get() );
 
-    std::future<int> fut = sever_sock.listen(port, on_accept);
+    std::future<uverr> fut = sever_sock.listen(port, on_accept);
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
     if (status != std::future_status::ready)
@@ -49,7 +49,7 @@ void test_canonical_listen(int port)
       fut.wait();
     }
 
-    int result = fut.get();
+    uverr result = fut.get();
     if (result == 0)
     {
       assert(sever_sock.is_listening() == true);
@@ -78,7 +78,7 @@ void test_listen_duplicate_port(int port)
 
   auto on_accept = [](tcp_socket* server,
                       unique_ptr<tcp_socket>& client,
-                      int status)
+                      uverr status)
   {
     assert(strlen("on accept should not happen for a failed socket")==0);
   };
@@ -95,7 +95,7 @@ void test_listen_duplicate_port(int port)
 
     tcp_socket sever_sock( the_kernel.get() );
 
-    std::future<int> fut = sever_sock.listen(port, on_accept);
+    std::future<uverr> fut = sever_sock.listen(port, on_accept);
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
     if (status != std::future_status::ready)
@@ -104,7 +104,7 @@ void test_listen_duplicate_port(int port)
       fut.wait();
     }
 
-    int result = fut.get();
+    uverr result = fut.get();
     cout << "listen status: " << result << endl;
     assert(result != 0);
   }
@@ -120,7 +120,7 @@ void test_listen_close(int port)
 
   auto on_accept = [](tcp_socket* server,
                       unique_ptr<tcp_socket>& client,
-                      int status)
+                      uverr status)
   {
     assert(strlen("on accept should not happen for a failed socket")==0);
   };
@@ -153,14 +153,14 @@ void test_unused_client(int port)
 
   auto on_accept = [](tcp_socket*,
                       unique_ptr<tcp_socket>&,
-                      int status)
+                      uverr status)
   {
   };
 
   {
     tcp_socket sever_sock( the_kernel.get() );
 
-    std::future<int> fut = sever_sock.listen(port, on_accept);
+    std::future<uverr> fut = sever_sock.listen(port, on_accept);
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
     if (status != std::future_status::ready)
@@ -169,7 +169,7 @@ void test_unused_client(int port)
       fut.wait();
     }
 
-    int result = fut.get();
+    uverr result = fut.get();
     if (result == 0)
     {
       cout << "client attempting to connect..." << endl;

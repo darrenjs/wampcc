@@ -58,8 +58,8 @@ dealer_service::~dealer_service()
 }
 
 
-std::future<int> dealer_service::listen(int port,
-                                        auth_provider auth)
+std::future<uverr> dealer_service::listen(int port,
+                                          auth_provider auth)
 {
 
   auto on_new_client = [this, auth](int /* port */, std::unique_ptr<tcp_socket> sock)
@@ -136,7 +136,7 @@ std::future<int> dealer_service::listen(int port,
 
   auto fut = ptr->listen(
     port,
-    [on_new_client, port ](tcp_socket*, std::unique_ptr<tcp_socket>& clt, int ec){
+    [on_new_client, port ](tcp_socket*, std::unique_ptr<tcp_socket>& clt, uverr ec){
       /* IO thread */
 
       if (!ec)

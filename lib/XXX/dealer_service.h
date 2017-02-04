@@ -2,6 +2,7 @@
 #define XXX_DEALER_SERVICE_H
 
 #include "XXX/wamp_session.h"
+#include "XXX/error.h"
 
 #include <jalson/jalson.h>
 
@@ -31,8 +32,8 @@ public:
 
   /* Asynchronously begin accepting connections on the given port. If the bind
    * and or listen fails, a non-zero error code is returned in the future. */
-  std::future<int> listen(int port,
-                          auth_provider auth); // TODO: needs interface argument
+  std::future<uverr> listen(int port,
+                            auth_provider auth); // TODO: needs interface argument
 
   /** Publish to an internal topic */
   void publish(const std::string& realm,

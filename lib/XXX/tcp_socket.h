@@ -3,6 +3,7 @@
 
 
 #include <XXX/kernel.h>
+#include <XXX/error.h>
 
 #include <uv.h>
 
@@ -24,11 +25,11 @@ class io_loop;
  */
 class tcp_socket
 {
+public:
+
   typedef std::function<void()> on_close_cb;
   typedef std::function<void(tcp_socket* socket, int status)> on_connect_cb;
-  typedef std::function<void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, int status)> on_accept_cb;
-
-public:
+  typedef std::function<void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, uverr)> on_accept_cb;
 
   tcp_socket(kernel* k);
   tcp_socket(kernel* k, uv_tcp_t*);
@@ -49,7 +50,7 @@ public:
   void reset_listener(io_listener* = nullptr);
 
   /** Request a bind and listen */
-  std::future<int> listen(int port, on_accept_cb);
+  std::future<uverr> listen(int port, on_accept_cb);
 
   /* Request a write */
   void write(std::pair<const char*, size_t> * srcbuf, size_t count);
@@ -97,7 +98,7 @@ private:
   void close_once_on_io();
   void do_write();
   void do_close();
-  void do_listen(int, std::shared_ptr<std::promise<int>>);
+  void do_listen(int, std::shared_ptr<std::promise<uverr>>);
   void on_listen_cb(int);
 
   kernel * m_kernel;

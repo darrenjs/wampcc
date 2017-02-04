@@ -11,7 +11,6 @@ using namespace std;
 
 namespace XXX {
 
-
 struct write_req
 {
   // C style polymorphism. The uv_write_t must be first member.
@@ -503,9 +502,7 @@ void tcp_socket::on_listen_cb(int status)
 {
   /* IO thread */
 
-  if (status < 0)
   {
-    // TODO: convert from UV to system error code
     if (m_user_accept_fn)
     {
       std::unique_ptr<tcp_socket> no_socket;
@@ -517,12 +514,11 @@ void tcp_socket::on_listen_cb(int status)
   uv_tcp_t *client = new uv_tcp_t();
   uv_tcp_init(m_kernel->get_io()->uv_loop(), client);
 
-  int r = uv_accept((uv_stream_t*) m_uv_tcp, (uv_stream_t*) client);
+  uverr r = uv_accept((uv_stream_t*) m_uv_tcp, (uv_stream_t*) client);
   if (r == 0)
   {
     std::unique_ptr<tcp_socket> new_sock (new tcp_socket(m_kernel, client));
 
-    // TODO: convert from UV to system error code
     if (m_user_accept_fn)
       m_user_accept_fn(this, new_sock, r);
 
@@ -543,7 +539,7 @@ void tcp_socket::on_listen_cb(int status)
 }
 
 
-void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<int>> sp_promise)
+void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<uverr>> sp_promise)
 {
   /* IO thread */
 
@@ -551,7 +547,7 @@ void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<int>> sp_promi
   uv_ip4_addr("0.0.0.0", port, &addr);
 
   unsigned flags = 0;
-  int r;
+  uverr r;
 
   r = uv_tcp_bind(m_uv_tcp, (const struct sockaddr*)&addr, flags);
 
@@ -568,16 +564,15 @@ void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<int>> sp_promi
       m_state = e_listening;
   }
 
-  // TODO: covert from UV to system error code
   sp_promise->set_value(r);
 }
 
 
-std::future<int> tcp_socket::listen(int port, on_accept_cb user_fn)
+std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
 {
   m_user_accept_fn = std::move(user_fn);
 
-  auto completion_promise = std::make_shared<std::promise<int>>();
+  auto completion_promise = std::make_shared<std::promise<uverr>>();
 
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
