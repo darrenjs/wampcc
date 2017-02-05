@@ -353,7 +353,11 @@ int main_impl(int argc, char** argv)
     throw std::runtime_error("time-out during connect");
 
   if (status == std::future_status::ready)
-    fut.get();  // throws if connect failed
+  {
+    XXX::uverr ec = fut.get();
+    if (ec)
+      die("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
+  }
 
   /* A result is available; our socket connection could be available. */
 

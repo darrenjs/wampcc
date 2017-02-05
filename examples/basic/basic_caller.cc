@@ -21,6 +21,10 @@ int main(int, char**)
     if (status != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
+    XXX::uverr ec = fut.get();
+    if (ec)
+      throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
+
     std::promise<void> ready_to_exit;
 
     std::shared_ptr<wamp_session> session = wamp_session::create<websocket_protocol>(

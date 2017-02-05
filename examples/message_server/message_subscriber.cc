@@ -35,7 +35,7 @@ void on_string_change(const XXX::string_subscription& sub)
 std::unique_ptr<XXX::tcp_socket> get_tcp_connection(const char* address,
                                                     int port,
                                                     XXX::kernel & the_kernel,
-                                                    std::chrono::milliseconds internal)
+                                                    std::chrono::milliseconds interval)
 {
   const auto connect_timeout = std::chrono::seconds(3);
 
@@ -57,15 +57,19 @@ std::unique_ptr<XXX::tcp_socket> get_tcp_connection(const char* address,
         case std::future_status::deferred :
           throw std::runtime_error("connect not attempted");
         case std::future_status::ready :
-          fut.get(); // evaluate the future to throw any transported exceptions
+
+          XXX::uverr ec = fut.get();
+          if (ec)
+            throw std::runtime_error(std::to_string(ec.os_value()) + ", " + ec.message());
+
           if (sock->is_connected())
             return std::move(sock);
       }
     }
     catch (std::exception& e)
     {
-      std::cout << "connect failed, " << e.what() << std::endl;
-      std::this_thread::sleep_for(internal);
+      std::cout << "connect failed: " << e.what() << std::endl;
+      std::this_thread::sleep_for(interval);
     }
   }
 }

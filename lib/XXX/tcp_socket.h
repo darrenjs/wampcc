@@ -28,7 +28,6 @@ class tcp_socket
 public:
 
   typedef std::function<void()> on_close_cb;
-  typedef std::function<void(tcp_socket* socket, int status)> on_connect_cb;
   typedef std::function<void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, uverr)> on_accept_cb;
 
   tcp_socket(kernel* k);
@@ -39,8 +38,7 @@ public:
   tcp_socket& operator=(const tcp_socket&) = delete;
 
   /** Request TCP connection to a remote end point */
-  std::future<void> connect(std::string addr, int port);
-  void              connect(std::string addr, int port, on_connect_cb);
+  std::future<uverr> connect(std::string addr, int port);
 
   /** Request socket begins reading inbound data */
   std::future<uverr> start_read(io_listener*);

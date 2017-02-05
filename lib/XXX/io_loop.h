@@ -2,6 +2,7 @@
 #define XXX_IOLOOP_H
 
 #include "XXX/utils.h"
+#include "XXX/error.h"
 
 #include <thread>
 #include <vector>
@@ -91,8 +92,7 @@ public:
                std::string addr,
                std::string port,
                bool resolve_hostname,
-               std::function<void()> on_success,
-               std::function<void(std::exception_ptr)> on_failure);
+               std::function<void(uverr)> on_result);
 
   void cancel_connect(uv_tcp_t*);
 

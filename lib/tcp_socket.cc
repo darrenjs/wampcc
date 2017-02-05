@@ -142,64 +142,33 @@ bool tcp_socket::is_closed() const
 }
 
 
-std::future<void> tcp_socket::connect(std::string addr, int port)
+std::future<uverr> tcp_socket::connect(std::string addr, int port)
 {
   bool resolve_hostname = true;
 
-  auto completion_promise = std::make_shared<std::promise<void>>();
+  auto completion_promise = std::make_shared<std::promise<uverr>>();
 
-  auto success_fn = [completion_promise,this]() {
+  auto result_fn = [completion_promise,this](uverr ec)
     {
       /* IO thread */
-      std::lock_guard<std::mutex> guard(m_state_lock);
-      if (m_state == e_init)
-        m_state = e_connected;
-    }
+      if (!ec)
+      {
+        std::lock_guard<std::mutex> guard(m_state_lock);
+        if (m_state == e_init)
+          m_state = e_connected;
+      }
+      completion_promise->set_value(ec);
+    };
 
-    completion_promise->set_value();
-  };
-
-  auto failure_fn = [completion_promise,this](std::exception_ptr e) {
-    /* IO thread */
-    completion_promise->set_exception( e );
-  };
 
   // std::unique_lock<std::mutex> guard(sp->m_mutex);
   m_kernel->get_io()->connect(m_uv_tcp,
                               addr,
                               std::to_string(port),
                               resolve_hostname,
-                              success_fn,
-                              failure_fn);
+                              result_fn);
 
   return completion_promise->get_future();
-}
-
-
-void tcp_socket::connect(std::string addr, int port, on_connect_cb user_cb)
-{
-  bool resolve_hostname = true;
-
-  auto success_fn = [user_cb,this]() {
-    {
-      std::lock_guard<std::mutex> guard(m_state_lock);
-      if (m_state == e_init)
-        m_state = e_connected;
-    }
-    user_cb(this,0);
-  };
-
-  auto failure_fn = [user_cb,this](std::exception_ptr e) {
-    user_cb(this,1);
-  };
-
-  // std::unique_lock<std::mutex> guard(sp->m_mutex);
-  m_kernel->get_io()->connect(m_uv_tcp,
-                              addr,
-                              std::to_string(port),
-                              resolve_hostname,
-                              success_fn,
-                              failure_fn);
 }
 
 

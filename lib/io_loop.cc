@@ -35,21 +35,16 @@ struct io_request
   std::string addr;
   std::string port;
   bool resolve_hostname;
-  std::unique_ptr< std::promise<int> > listener_err;
+
   uv_tcp_t * tcp_handle = nullptr;
-  std::function<void()> on_connect_success;
-  std::function<void(std::exception_ptr)> on_connect_failure;
+  std::function<void(uverr)> on_connect_result;
   std::function<void()> user_fn;
+
   io_request(request_type __type,
              logger & __logger)
     : type(__type),
       logptr(__logger)
   {}
-
-  io_request(request_type __type,
-             logger & __logger,
-             std::string port,
-             std::promise<int> p);
 
 };
 
@@ -65,32 +60,7 @@ void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
   /* IO thread */
 
   std::unique_ptr<io_request> ioreq ((io_request*) connect_req->data );
-
-  uverr ec { status };
-  if (!ec)
-  {
-    std::ostringstream oss;
-    oss << "uv_connect: " << ec;
-    ioreq->on_connect_failure(
-      std::make_exception_ptr( std::runtime_error(oss.str()) )
-      );
-  }
-  else
-  {
-    ioreq->on_connect_success();
-  }
-}
-
-
-io_request::io_request(request_type __type,
-                       logger & lp,
-                       std::string __port,
-                       std::promise<int> listen_err)
-  : type( __type),
-    logptr( lp ),
-    port( __port ),
-    listener_err( new std::promise<int>(std::move(listen_err) ) )
-{
+  ioreq->on_connect_result( uverr(status));
 }
 
 
@@ -191,7 +161,7 @@ void io_loop::on_async()
       struct sockaddr_in inetaddr;
       memset(&inetaddr, 0, sizeof(inetaddr));
 
-      int r = 0;
+      uverr ec;
       uv_getaddrinfo_t resolver;
       memset(&resolver, 0, sizeof(resolver));
 
@@ -204,19 +174,13 @@ void io_loop::on_async()
         hints.ai_protocol = IPPROTO_TCP;
         hints.ai_flags = 0;
 
-        r = uv_getaddrinfo(m_uv_loop, &resolver, nullptr,
+        ec = uv_getaddrinfo(m_uv_loop, &resolver, nullptr,
                             req->addr.c_str(), req->port.c_str(),
                            &hints);
 
-        if (r<0)
+        if (ec) // failed
         {
-          // address resolution failed, to set an error on the promise
-          std::ostringstream oss;
-          oss << "uv_getaddrinfo: " << r << ", " << safe_str(uv_err_name(r))
-              << ", " << safe_str(uv_strerror(r));
-          req->on_connect_failure(
-            std::make_exception_ptr( std::runtime_error(oss.str()) )
-            );
+          req->on_connect_result(ec);
           return;
         }
 
@@ -234,7 +198,7 @@ void io_loop::on_async()
 
       LOG_INFO("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
 
-      r = uv_tcp_connect(
+      ec = uv_tcp_connect(
         connect_req.get(),
         req->tcp_handle,
         addrptr,
@@ -249,20 +213,16 @@ void io_loop::on_async()
           catch (...){}
         });
 
-      if (r == 0)
+      if (!ec)
       {
-        // resource  ownership transfered to UV callback
+        // resource ownership transfered to UV callback, so req and connect_req
+        // managed there
         req.release();
         connect_req.release();
       }
       else
       {
-        std::ostringstream oss;
-        oss << "uv_tcp_connect: " << r << ", " << safe_str(uv_err_name(r))
-            << ", " << safe_str(uv_strerror(r));
-        req->on_connect_failure(
-          std::make_exception_ptr( std::runtime_error(oss.str()) )
-          );
+        req->on_connect_result(ec);
       }
     }
     else if (user_req->type == io_request::eCloseLoop)
@@ -354,8 +314,7 @@ void io_loop::connect(uv_tcp_t * handle,
                       std::string addr,
                       std::string port,
                       bool resolve_hostname,
-                      std::function<void()> on_success,
-                      std::function<void(std::exception_ptr)> on_failure)
+                      std::function<void(uverr)> on_result)
 {
   // create the handle, need it here, so that the caller can later request
   // cancellation
@@ -365,8 +324,7 @@ void io_loop::connect(uv_tcp_t * handle,
   r->addr = addr;
   r->port = port;
   r->resolve_hostname = resolve_hostname;
-  r->on_connect_success = on_success;
-  r->on_connect_failure = on_failure;
+  r->on_connect_result = on_result;
 
   push_request(std::move(r));
 }

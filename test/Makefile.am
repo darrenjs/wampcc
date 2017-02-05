@@ -21,7 +21,7 @@ AM_LDFLAGS=-lpthread -L../lib -lXXX  $(LIBLS)  -L$(jalsonlib) -ljalson -L$(LIBUV
 check_PROGRAMS=test_connect_timeout test_tcp_socket_connect					\
 test_evthread_wamp_session_destructor test_early_wamp_session_destructor	\
 test_late_wamp_session_destructor test_late_dealer_destructor				\
-test_dealer_disconnect_when_has_connections test_tcp_socket_connect_cb		\
+test_dealer_disconnect_when_has_connections 		\
 test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
 test_wamp_session_fast_close
 

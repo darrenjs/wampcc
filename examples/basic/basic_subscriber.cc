@@ -29,7 +29,10 @@ int main(int argc, char** argv)
     if (status != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
-    fut.get(); // throws if connect failed
+    XXX::uverr ec = fut.get();
+    if (ec)
+      throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
+
 
     std::mutex session_closed_mutex;
     std::condition_variable session_closed_convar;
