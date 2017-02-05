@@ -149,7 +149,7 @@ void test_connect_then_io_stop(int port)
     auto fut = sp_1->connect("127.0.0.1", port);
 
     fut.wait();
-    the_kernel->get_io()->stop();
+    the_kernel->get_io()->sync_stop();
 
     // deletion of the socket will proceed fine, because completion of the IO
     // loop implies all sockets have been closed.

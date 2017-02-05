@@ -81,7 +81,9 @@ public:
   io_loop(kernel&, std::function<void()> io_starting_cb = nullptr);
   ~io_loop();
 
-  void stop();
+  /** Perform synchronous stop of the IO loop.  On return, the IO thread will
+   * have been joined. */
+  void sync_stop();
 
   void on_async();
 

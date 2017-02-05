@@ -65,11 +65,11 @@ event_loop::event_loop(kernel* k)
 /* Destructor */
 event_loop::~event_loop()
 {
-  stop();
+  sync_stop();
 }
 
 
-void event_loop::stop()
+void event_loop::sync_stop()
 {
   {
     std::lock_guard<std::mutex> guard(m_mutex);

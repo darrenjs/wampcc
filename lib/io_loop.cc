@@ -135,8 +135,7 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
 }
 
 
-// TODO: perhaps this should not be synchronous? Or rename?
-void io_loop::stop()
+void io_loop::sync_stop()
 {
   std::unique_ptr<io_request> r( new io_request( io_request::eCloseLoop,
                                                  __logger) );

@@ -31,7 +31,9 @@ public:
   event_loop(kernel*);
   ~event_loop();
 
-  void stop();
+  /** Perform synchronous stop of the event loop.  On return, the EV thread will
+   * have been joined. */
+  void sync_stop();
 
   void dispatch(std::function<void()> fn);
   void dispatch(std::chrono::milliseconds, timer_fn fn);
