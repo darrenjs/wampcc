@@ -66,11 +66,11 @@ void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 
   std::unique_ptr<io_request> ioreq ((io_request*) connect_req->data );
 
-  if (status < 0)
+  uverr ec { status };
+  if (!ec)
   {
     std::ostringstream oss;
-    oss << "uv_connect: " << status << ", " << safe_str(uv_err_name(status))
-        << ", " << safe_str(uv_strerror(status));
+    oss << "uv_connect: " << ec;
     ioreq->on_connect_failure(
       std::make_exception_ptr( std::runtime_error(oss.str()) )
       );

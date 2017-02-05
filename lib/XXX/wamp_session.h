@@ -161,6 +161,11 @@ namespace XXX {
   {
   public:
 
+    struct options
+    {
+      std::chrono::milliseconds max_pending_open { 10000 };
+    };
+
     enum class t_session_mode {client, server};
 
     /** Create a server side session (i.e., the socket was accepted from a
@@ -475,6 +480,8 @@ namespace XXX {
     std::unique_ptr<protocol> m_proto;
 
     std::promise< void > m_promise_on_open;
+
+    options m_options;
   };
 
 } // namespace XXX

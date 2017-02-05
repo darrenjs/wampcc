@@ -47,10 +47,23 @@ inline bool operator!=(uverr  __lhs, uverr __rhs) noexcept
 template<typename _CharT, typename _Traits> std::basic_ostream<_CharT, _Traits>&
 operator<<(std::basic_ostream<_CharT, _Traits>& __os, uverr __e)
 {
+#ifdef _WIN32
+  // on windows, indicate libuv error
   if (__e.value() != 0)
     return (__os << "uverr: " << __e.os_value() << ", " << __e.message());
   else
     return (__os << "uverr: 0");
+#else
+  // on linux, display the Unix error codes
+  if (__e.value() != 0)
+    return (__os << __e.os_value() << ", " << __e.message());
+  else
+    return (__os << "0");
+
+#endif
+
+
+
 }
 
 }

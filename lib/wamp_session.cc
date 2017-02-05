@@ -21,9 +21,6 @@
 #include <unistd.h>
 #include <assert.h>
 
-// TODO: make session configurable
-#define MAX_PENDING_OPEN_MS 5000
-
 #define MAX_HEARTBEATS_MISSED 3
 
 namespace XXX {
@@ -175,7 +172,7 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
   // opened within a maximum time duration
   std::weak_ptr<wamp_session> wp = sp;
   k->get_event_loop()->dispatch(
-    std::chrono::milliseconds(MAX_PENDING_OPEN_MS),
+    sp->m_options.max_pending_open,
     [wp]()
     {
       if (auto sp = wp.lock())
