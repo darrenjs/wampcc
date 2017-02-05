@@ -172,7 +172,6 @@ std::future<void> tcp_socket::connect(std::string addr, int port)
                               success_fn,
                               failure_fn);
 
-
   return completion_promise->get_future();
 }
 
@@ -303,25 +302,29 @@ bool tcp_socket::close(on_close_cb user_on_close_fn)
 }
 
 
-void tcp_socket::start_read(io_listener* p)
+std::future<uverr> tcp_socket::start_read(io_listener* p)
 {
-  m_listener = p;
+  auto completion_promise = std::make_shared<std::promise<uverr>>();
 
-  auto fn = [this]() {
-    // TODO: check return result, and return to user
-    uv_read_start((uv_stream_t*)this->m_uv_tcp,
-                  iohandle_alloc_buffer,
-                  [](uv_stream_t* uvh, ssize_t nread, const uv_buf_t* buf) {
-                    uv_handle_data * ptr = (uv_handle_data*) uvh->data;
-                    ptr->tcp_socket_ptr()->on_read_cb(nread, buf);
-                  });
+  auto fn = [this,completion_promise]() {
+    uverr ec = uv_read_start((uv_stream_t*)this->m_uv_tcp,
+                             iohandle_alloc_buffer,
+                             [](uv_stream_t* uvh, ssize_t nread, const uv_buf_t* buf) {
+                               uv_handle_data * ptr = (uv_handle_data*) uvh->data;
+                               ptr->tcp_socket_ptr()->on_read_cb(nread, buf);
+                             });
+    completion_promise->set_value(ec);
   };
 
   std::lock_guard< std::mutex > guard (m_state_lock);
   if (m_state == e_closing || m_state == e_closed)
     throw std::runtime_error("socket closing or closed");
 
+  m_listener = p;
+
   m_kernel->get_io()->push_fn( std::move(fn) );
+
+  return completion_promise->get_future();
 }
 
 
@@ -502,11 +505,14 @@ void tcp_socket::on_listen_cb(int status)
 {
   /* IO thread */
 
+  uverr ec { status };
+
+  if (ec)
   {
     if (m_user_accept_fn)
     {
       std::unique_ptr<tcp_socket> no_socket;
-      m_user_accept_fn(this, no_socket, status);
+      m_user_accept_fn(this, no_socket, ec);
     }
     return;
   }
@@ -514,13 +520,13 @@ void tcp_socket::on_listen_cb(int status)
   uv_tcp_t *client = new uv_tcp_t();
   uv_tcp_init(m_kernel->get_io()->uv_loop(), client);
 
-  uverr r = uv_accept((uv_stream_t*) m_uv_tcp, (uv_stream_t*) client);
-  if (r == 0)
+  ec = uv_accept((uv_stream_t*) m_uv_tcp, (uv_stream_t*) client);
+  if (ec == 0)
   {
     std::unique_ptr<tcp_socket> new_sock (new tcp_socket(m_kernel, client));
 
     if (m_user_accept_fn)
-      m_user_accept_fn(this, new_sock, r);
+      m_user_accept_fn(this, new_sock, ec);
 
     if (new_sock)
     {
@@ -529,7 +535,6 @@ void tcp_socket::on_listen_cb(int status)
           delete ptr;
         });
     }
-
   }
   else
   {
@@ -547,24 +552,23 @@ void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<uverr>> sp_pro
   uv_ip4_addr("0.0.0.0", port, &addr);
 
   unsigned flags = 0;
-  uverr r;
 
-  r = uv_tcp_bind(m_uv_tcp, (const struct sockaddr*)&addr, flags);
+  uverr ec = uv_tcp_bind(m_uv_tcp, (const struct sockaddr*)&addr, flags);
 
-  if (r == 0)
-    r = uv_listen( (uv_stream_t*) m_uv_tcp, 5, [](uv_stream_t* server, int status) {
+  if (ec == 0)
+    ec = uv_listen( (uv_stream_t*) m_uv_tcp, 5, [](uv_stream_t* server, int status) {
         uv_handle_data* uvhd_ptr = (uv_handle_data*) server->data;
         uvhd_ptr->tcp_socket_ptr()->on_listen_cb(status);
       });
 
-  if (r==0)
+  if (ec==0)
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
     if (m_state == e_init)
       m_state = e_listening;
   }
 
-  sp_promise->set_value(r);
+  sp_promise->set_value(ec);
 }
 
 

@@ -43,7 +43,7 @@ public:
   void              connect(std::string addr, int port, on_connect_cb);
 
   /** Request socket begins reading inbound data */
-  void start_read(io_listener*);
+  std::future<uverr> start_read(io_listener*);
 
   /** Reassign the listener object, to that callbacks can be directed to a
    * different object. Should only be called on the IO thread. */

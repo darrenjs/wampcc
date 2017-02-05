@@ -91,11 +91,11 @@ message_server::message_server()
     case std::future_status::deferred :
       throw std::runtime_error("socket listen not attempted");
     case std::future_status::ready :
-      int error = fut.get();
-      if (error != 0)
+      XXX::uverr ec = fut.get();
+      if (ec != 0)
       {
         std::ostringstream os;
-        os << "listen failed on port " << port << ", error " << error;
+        os << "listen failed on port " << port << ", " << ec;
         throw std::runtime_error(os.str());
       }
       else

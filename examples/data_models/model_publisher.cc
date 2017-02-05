@@ -145,16 +145,16 @@ int main(int /* argc */, char** /* argv */)
   // start listening for sessions
   int port = 44444;
   std::cout << "listening on port " << port << std::endl;
-  std::future<int> fut_listen_err = dealer->listen(port, server_auth);
+  std::future<XXX::uverr> fut_listen_err = dealer->listen(port, server_auth);
   std::future_status status = fut_listen_err.wait_for(std::chrono::seconds(2));
 
   if (status == std::future_status::ready)
   {
-    int err = fut_listen_err.get();
+    XXX::uverr err = fut_listen_err.get();
     if (err)
     {
-      std::cout << "listen failed, error " << err << ", " << strerror(err) <<  "\n";
-      return err;
+      std::cout << "listen failed, " << err <<  "\n";
+      return err.os_value();
     }
   }
   else

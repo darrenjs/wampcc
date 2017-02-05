@@ -18,7 +18,7 @@ public:
 
   int value() const noexcept { return m_value; }
 
-  int os_error() const noexcept {
+  int os_value() const noexcept {
 #ifdef _WIN32
     return m_value;
 #else
@@ -46,8 +46,12 @@ inline bool operator!=(uverr  __lhs, uverr __rhs) noexcept
 
 template<typename _CharT, typename _Traits> std::basic_ostream<_CharT, _Traits>&
 operator<<(std::basic_ostream<_CharT, _Traits>& __os, uverr __e)
-{ return (__os << "uverr: " << __e.value() << ", " << __e.message()); }
-
+{
+  if (__e.value() != 0)
+    return (__os << "uverr: " << __e.os_value() << ", " << __e.message());
+  else
+    return (__os << "uverr: 0");
+}
 
 }
 
