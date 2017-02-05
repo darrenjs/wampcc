@@ -33,11 +33,16 @@ dealer_service::~dealer_service()
 
   /* First we shutdown the server sockets, so that we dont have IO callbacks
    * entering into self as the destructor is underway. */
-  for (auto &sock : m_server_sockets)
+  decltype(m_server_sockets) server_socks;
+  {
+    std::lock_guard<std::mutex> guard(m_server_sockets_lock);
+    server_socks.swap(m_server_sockets);
+  }
+  for (auto &sock : server_socks)
     sock->close();
-  for (auto &sock : m_server_sockets)
+  for (auto &sock : server_socks)
     sock->closed_future().wait();
-  m_server_sockets.clear();
+  server_socks.clear();
 
 
   /* Next close our wamp_sessions */
@@ -130,9 +135,13 @@ std::future<uverr> dealer_service::listen(int port,
     };
 
   /* Create the actual IO server socket */
-  std::unique_ptr<tcp_socket> ts (new tcp_socket(m_kernel));
-  tcp_socket * ptr = ts.get();
-  m_server_sockets.push_back( std::move(ts) );
+  std::unique_ptr<tcp_socket> sock (new tcp_socket(m_kernel));
+  tcp_socket * ptr = sock.get();
+
+  {
+    std::lock_guard<std::mutex> guard(m_server_sockets_lock);
+    m_server_sockets.push_back(std::move(sock));
+  }
 
   auto fut = ptr->listen(
     port,

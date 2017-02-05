@@ -78,8 +78,8 @@ private:
 
   dealer_listener* m_listener;
 
-  // TODO: no mutex is protecting this?
-  std::vector< std::unique_ptr<tcp_socket> >    m_server_sockets;
+  std::mutex m_server_sockets_lock;
+  std::vector<std::unique_ptr<tcp_socket>> m_server_sockets;
 };
 
 } // namespace
