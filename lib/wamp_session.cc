@@ -258,7 +258,8 @@ void wamp_session::io_on_read(char* src, ssize_t len)
       catch (io_loop_closed&) {
         assert(false);  /* unexpected, we are on IO thread */
       }
-      drop_connection("peer_eof");
+      std::lock_guard<std::mutex> guard(m_state_lock);
+      drop_connection_impl("peer_eof", guard, t_drop_event::sock_eof);
     }
   }
   catch (...)
@@ -325,7 +326,7 @@ const char* wamp_session::state_to_str(wamp_session::SessionState s)
     case wamp_session::eRecvChallenge : return "eRecvChallenge";
     case wamp_session::eSentAuth : return "eSentAuth";
     case wamp_session::eOpen : return "eOpen";
-    case wamp_session::e_wait_peer_goodbye : return "wait_peer_goodbye";
+    case wamp_session::eClosingWait : return "eClosingWait";
     case wamp_session::eClosing : return "eClosing";
     case wamp_session::eClosed : return "eClosed";
     default: return "unknown_state";
@@ -408,11 +409,9 @@ void wamp_session::process_inbound_abort(jalson::json_array &)
 {
   LOG_WARN("received ABORT from peer, closing session");
 
-  // On peer ABORT, no response from self is required. So we immediatlely
-  // proceed to trigger session shutdown (i.e. we dont need to call
-  // drop_connection).
   std::lock_guard<std::mutex> guard(m_state_lock);
-  initiate_close(guard);
+  drop_connection_impl("received ABORT from peer", guard, 
+                       t_drop_event::recv_abort);
 }
 
 
@@ -420,25 +419,27 @@ void wamp_session::process_inbound_goodbye(jalson::json_array &)
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
 
-  if (m_state == e_wait_peer_goodbye)
-  {
-    // expected to receive this message, so initiaite close of session
-    initiate_close(guard);
-  }
-  else
-  {
-    // TODO: ideally, we want a close-after-send option on the tcp_socket, so
-    // that we can call initiaite_close_impl as soon as we have written the
-    // last message.
+  drop_connection_impl(WAMP_ERROR_GOODBYE_AND_OUT, guard, t_drop_event::recv_goodbye);
 
-    // we are not expecting a GOODBYE from the peer, so send a reply
-    try {
-      m_proto->send_msg(build_goodbye_message(WAMP_ERROR_GOODBYE_AND_OUT));
-    }
-    catch (...) {
-      initiate_close(guard);
-    }
-  }
+  // if (m_state == e_wait_peer_goodbye)
+  // {
+  //   // expected to receive this message, so initiaite close of session
+  //   initiate_close(guard);
+  // }
+  // else
+  // {
+  //   // TODO: ideally, we want a close-after-send option on the tcp_socket, so
+  //   // that we can call initiaite_close_impl as soon as we have written the
+  //   // last message.
+
+  //   // we are not expecting a GOODBYE from the peer, so send a reply
+  //   try {
+  //     m_proto->send_msg(build_goodbye_message(WAMP_ERROR_GOODBYE_AND_OUT));
+  //   }
+  //   catch (...) {
+  //     initiate_close(guard);
+  //   }
+  // }
 }
 
 
@@ -634,7 +635,7 @@ void wamp_session::send_msg(jalson::json_array& jv, bool)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state bitand (eClosing|eClosed|e_wait_peer_goodbye))
+    if (m_state bitand (eClosing|eClosed|eClosingWait))
       return;
   }
 
@@ -1890,60 +1891,60 @@ void wamp_session::drop_connection(std::string reason)
 }
 
 
-void wamp_session::drop_connection_impl(std::string reason,
-                                        std::lock_guard<std::mutex>& guard)
-{
-  /* ANY thread */
+// void wamp_session::drop_connection_impl(std::string reason,
+//                                         std::lock_guard<std::mutex>& guard)
+// {
+//   /* ANY thread */
 
-  if (m_state bitand (eClosing|eClosed|e_wait_peer_goodbye))
-    return;
+//   if (m_state bitand (eClosing|eClosed|e_wait_peer_goodbye))
+//     return;
 
-  LOG_INFO("session #" << unique_id() << " terminating, reason: " << reason);
+//   LOG_INFO("session #" << unique_id() << " terminating, reason: " << reason);
 
-  if (m_state == eOpen)
-  {
-    try
-    {
-      m_state = e_wait_peer_goodbye;
-      m_proto->send_msg(build_goodbye_message(reason));
+//   if (m_state == eOpen)
+//   {
+//     try
+//     {
+//       m_state = e_wait_peer_goodbye;
+//       m_proto->send_msg(build_goodbye_message(reason));
 
-      // schedule a timeout so that if a GOODBYE response is not received from
-      // the peer within a reasonable time period, we force close the
-      // wamp_session
-      auto sp = shared_from_this();
-      event_loop::timer_fn fn = [sp]()
-      {
-        std::lock_guard<std::mutex> guard(sp->m_state_lock);
-        if (sp->m_state == e_wait_peer_goodbye)
-        {
-          logger & __logger = sp->__logger;
-          LOG_WARN("session #" << sp->unique_id() << " timeout waiting for peer GOODBYE");
-          sp->initiate_close(guard);
-        }
-        return std::chrono::milliseconds(0);
-      };
-      m_kernel->get_event_loop()->dispatch(
-        std::chrono::milliseconds(250),
-        std::move(fn));
-    }
-    catch (...)
-    {
-      initiate_close(guard);
-    }
-  }
-  else
-  {
-    try
-    {
-      // TODO: ideally, we want a close-after-send option on the tcp_socket, so
-      // that we can call initiate_close_impl as soon as we have written the
-      // last message.
-      m_proto->send_msg(build_abort_message(reason));
-    }
-    catch (...) { /* ignore */ }
-    initiate_close(guard);
-  }
-}
+//       // schedule a timeout so that if a GOODBYE response is not received from
+//       // the peer within a reasonable time period, we force close the
+//       // wamp_session
+//       auto sp = shared_from_this();
+//       event_loop::timer_fn fn = [sp]()
+//       {
+//         std::lock_guard<std::mutex> guard(sp->m_state_lock);
+//         if (sp->m_state == e_wait_peer_goodbye)
+//         {
+//           logger & __logger = sp->__logger;
+//           LOG_WARN("session #" << sp->unique_id() << " timeout waiting for peer GOODBYE");
+//           sp->initiate_close(guard);
+//         }
+//         return std::chrono::milliseconds(0);
+//       };
+//       m_kernel->get_event_loop()->dispatch(
+//         std::chrono::milliseconds(250),
+//         std::move(fn));
+//     }
+//     catch (...)
+//     {
+//       initiate_close(guard);
+//     }
+//   }
+//   else
+//   {
+//     try
+//     {
+//       // TODO: ideally, we want a close-after-send option on the tcp_socket, so
+//       // that we can call initiate_close_impl as soon as we have written the
+//       // last message.
+//       m_proto->send_msg(build_abort_message(reason));
+//     }
+//     catch (...) { /* ignore */ }
+//     initiate_close(guard);
+//   }
+// }
 
 
 /* Initiate the session close. The state mutex must be provided as an argument.
@@ -2013,6 +2014,8 @@ void wamp_session::transition_to_closed()
       m_state = eClosed;
   }
 
+  try { m_socket->close(); } catch (...){};
+
   // The order of invoking the user callback and setting the has-closed promise
   // is deliberately chosen here.  The promise assignment must be last, so that
   // user can rely on it to indicate when all wamp_session callbacks into user
@@ -2028,6 +2031,75 @@ void wamp_session::transition_to_closed()
   }
 
   m_has_closed.set_value();
+}
+
+
+void wamp_session::drop_connection_impl(std::string reason,
+                                        std::lock_guard<std::mutex>& guard,
+                                        t_drop_event event)
+{
+  /* ANY thread */
+
+  if (m_state bitand (eClosed|eClosing))
+    return;
+
+  if (event==t_drop_event::sock_eof)
+    return initiate_close(guard);
+
+  if (m_session_mode == t_session_mode::server)
+  {
+    if (m_state == eClosingWait)
+      return;
+
+    if (event != t_drop_event::recv_abort)
+      try
+      {
+        if (m_state == eOpen)
+          m_proto->send_msg(build_goodbye_message(reason));
+        else
+          m_proto->send_msg(build_abort_message(reason));
+      }
+      catch (...) {}
+
+    m_state = eClosingWait;
+
+    // schedule a timeout so that if the peer has not closed the connection
+    // within a reasonable time period, we force close it from server side
+    std::weak_ptr<wamp_session> wp = shared_from_this();
+    event_loop::timer_fn fn = [wp]()
+      {
+        if (auto sp = wp.lock())
+        {
+          std::lock_guard<std::mutex> guard(sp->m_state_lock);
+          if (sp->m_state bitand eClosingWait)
+          {
+            logger & __logger = sp->__logger;
+            LOG_WARN("session #" << sp->unique_id() << " timeout waiting for peer");
+            sp->initiate_close(guard);
+          }
+        }
+        return std::chrono::milliseconds(0);
+      };
+    m_kernel->get_event_loop()->dispatch(
+      std::chrono::milliseconds(500),
+      std::move(fn));
+  }
+  else
+  {
+    /* client side - make effort to be first to initiate socket close */
+
+    if (event != t_drop_event::recv_abort)
+      try
+      {
+        if (m_state == eOpen)
+          m_proto->send_msg(build_goodbye_message(reason));
+        else
+          m_proto->send_msg(build_abort_message(reason));
+      }
+      catch (...){}
+
+    initiate_close(guard);
+  }
 }
 
 } // namespace XXX

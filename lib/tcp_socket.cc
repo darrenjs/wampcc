@@ -100,6 +100,7 @@ tcp_socket::~tcp_socket()
     }
   }
 
+  // TODO: this would block, if we are on the IO thread!!!
   if (not is_closed())
     m_io_closed_future.wait();
 
@@ -185,7 +186,7 @@ void tcp_socket::do_close()
 
   uv_close((uv_handle_t*) m_uv_tcp, [](uv_handle_t * h) {
 
-      /* callback invoked upon uv_close completion */
+      /* IO thread, callback invoked upon uv_close completion */
 
       uv_handle_data * ptr = (uv_handle_data*) h->data;
       tcp_socket * sock = ptr->tcp_socket_ptr();
@@ -497,7 +498,7 @@ void tcp_socket::on_listen_cb(int status)
     if (m_user_accept_fn)
       m_user_accept_fn(this, new_sock, ec);
 
-    if (new_sock)
+    if (new_sock) // user callback did not take ownership of socket
     {
       tcp_socket * ptr = new_sock.release();
       ptr->close([ptr]() {

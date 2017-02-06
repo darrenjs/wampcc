@@ -327,15 +327,15 @@ namespace XXX {
       eInit               = (1<<1),
 
       eRecvHello          = (1<<2),  //
-      eSentChallenge      = (1<<3),  //  server only
+      eSentChallenge      = (1<<3),  // server only
       eRecvAuth           = (1<<4),  //
 
       eSentHello          = (1<<5),  //
-      eRecvChallenge      = (1<<6),  //  client only
+      eRecvChallenge      = (1<<6),  // client only
       eSentAuth           = (1<<7),  //
 
       eOpen               = (1<<8),
-      e_wait_peer_goodbye = (1<<9),
+      eClosingWait        = (1<<9),  // server only
       eClosing            = (1<<10),
       eClosed             = (1<<11)
     } m_state;
@@ -416,7 +416,10 @@ namespace XXX {
     jalson::json_array build_abort_message(std::string);
 
     void drop_connection(std::string);
-    void drop_connection_impl(std::string, std::lock_guard<std::mutex>&);
+
+    enum class t_drop_event {request, recv_abort, recv_goodbye, sock_eof};
+
+    void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, t_drop_event reason = t_drop_event::request);
 
     bool user_cb_allowed() const { return m_state != eClosed; }
 
