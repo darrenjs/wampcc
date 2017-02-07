@@ -173,7 +173,7 @@ std::future<uverr> tcp_socket::connect(std::string addr, int port)
 }
 
 
-void tcp_socket::do_close()
+void tcp_socket::do_close(bool no_linger)
 {
   /* IO thread */
 
@@ -182,6 +182,15 @@ void tcp_socket::do_close()
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
     m_state = e_closing;
+  }
+
+  uv_os_fd_t fd;
+  if (no_linger && (uv_fileno((uv_handle_t*)m_uv_tcp, &fd)==0))
+  {
+    struct linger so_linger;
+    so_linger.l_onoff  = 1;
+    so_linger.l_linger = 0;
+    setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
   }
 
   uv_close((uv_handle_t*) m_uv_tcp, [](uv_handle_t * h) {
@@ -239,6 +248,21 @@ std::shared_future<void> tcp_socket::close()
   {
     m_state = e_closing;
     m_kernel->get_io()->push_fn([this]() { this->do_close(); }); // can throw
+  }
+
+  return m_io_closed_future;
+}
+
+
+/** User request to reset & close a socket */
+std::shared_future<void> tcp_socket::reset()
+{
+  std::lock_guard< std::mutex > guard (m_state_lock);
+
+  if (m_state != e_closing && m_state != e_closed)
+  {
+    m_state = e_closing;
+    m_kernel->get_io()->push_fn([this]() { this->do_close(true); }); // can throw
   }
 
   return m_io_closed_future;

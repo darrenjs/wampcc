@@ -58,6 +58,9 @@ public:
    * has already been closed. */
   std::shared_future<void> close();
 
+  /** Request asynchronous socket reset & close.  */
+  std::shared_future<void> reset();
+
   /** Request asynchronous socket close, and recieve notification via the
    * specified callback. If the tcp_socket is not currently closed then the
    * provided callback is invoked at the time of socket closure and true is
@@ -95,7 +98,7 @@ private:
   void on_write_cb(uv_write_t *, int);
   void close_once_on_io();
   void do_write();
-  void do_close();
+  void do_close(bool no_linger = false);
   void do_listen(int, std::shared_ptr<std::promise<uverr>>);
   void on_listen_cb(int);
 

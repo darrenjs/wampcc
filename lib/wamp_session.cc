@@ -410,7 +410,7 @@ void wamp_session::process_inbound_abort(jalson::json_array &)
   LOG_WARN("received ABORT from peer, closing session");
 
   std::lock_guard<std::mutex> guard(m_state_lock);
-  drop_connection_impl("received ABORT from peer", guard, 
+  drop_connection_impl("received ABORT from peer", guard,
                        t_drop_event::recv_abort);
 }
 
@@ -1960,6 +1960,8 @@ void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
   m_state = eClosing;
   LOG_INFO("session #" << unique_id() << " closing");
 
+  try { m_socket->close(); } catch (...){};
+
   // TODO: what if the EV thread is closed?
   std::shared_ptr<wamp_session> sp = shared_from_this();
   m_kernel->get_event_loop()->dispatch([sp](){ sp->transition_to_closed(); });
@@ -2013,8 +2015,6 @@ void wamp_session::transition_to_closed()
     else
       m_state = eClosed;
   }
-
-  try { m_socket->close(); } catch (...){};
 
   // The order of invoking the user callback and setting the has-closed promise
   // is deliberately chosen here.  The promise assignment must be last, so that
