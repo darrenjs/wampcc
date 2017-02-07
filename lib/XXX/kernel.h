@@ -37,9 +37,6 @@ struct logger
 
   /** create a logger that does not log anything */
   static logger nolog();
-
-  /** default logger -- logs everything to stdout */
-  logger();
 };
 
 

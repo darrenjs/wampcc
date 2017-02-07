@@ -175,12 +175,4 @@ logger logger::nolog()
   return my_logger;
 }
 
-
-logger::logger()
-  : wants_level([](Level){ return true; }),
-    write([](logger::Level, const std::string& s, const char*, int){ std::cout << s << std::flush;})
-{
-}
-
-
 } // namespace XXX

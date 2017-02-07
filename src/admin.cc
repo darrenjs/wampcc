@@ -332,8 +332,13 @@ int main_impl(int argc, char** argv)
   }
 
   /* Setup XXX core components */
-  auto __logger = XXX::logger::stdlog(std::cout,
-                                      XXX::logger::levels_upto(XXX::logger::eInfo), 1);
+
+
+  XXX::logger __logger {
+    [](XXX::logger::Level l){ return l <= XXX::logger::eWarn; },
+    [](XXX::logger::Level, const std::string& msg, const char*, int){}
+  };
+
   std::unique_ptr<XXX::kernel> g_kernel( new XXX::kernel({}, __logger));
 
   std::unique_ptr<XXX::tcp_socket> sock( new XXX::tcp_socket(g_kernel.get()) );
@@ -395,11 +400,11 @@ int main_impl(int argc, char** argv)
                                                         [](){ return g_active_session_notifed; });
 
     if (!hasevent)
-      throw std::runtime_error("failed to obtain remote connection");
+      throw std::runtime_error("timeout when establishing wamp session");
   }
 
   if (!g_handshake_success)
-    throw std::runtime_error("Unable to connect");
+    throw std::runtime_error("wamp session could not be established");
 
   /* WAMP session is now open  */
 
