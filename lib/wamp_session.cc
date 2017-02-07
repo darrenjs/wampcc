@@ -609,7 +609,8 @@ void wamp_session::handle_exception()
   catch ( handshake_error& e )
   {
     LOG_WARN("handhake error: " << e.what());
-    this->close();
+    m_socket->reset();
+    drop_connection(e.what());
   }
   catch ( auth_error& e )
   {
