@@ -15,7 +15,7 @@ lib_LTLIBRARIES = libXXX.la
 # The "include_" prefix includes a list of headers to be installed.  The
 # "nobase_" additional prefix means the directory names are copied too.
 nobase_include_HEADERS = XXX/types.h XXX/kernel.h XXX/wamp_session.h			\
-XXX/dealer_service.h XXX/io_listener.h XXX/protocol.h XXX/rawsocket_protocol.h	\
+XXX/dealer_service.h XXX/protocol.h XXX/rawsocket_protocol.h	\
 XXX/websocket_protocol.h XXX/tcp_socket.h XXX/data_model.h XXX/error.h
 
 # List the sources for an individual library

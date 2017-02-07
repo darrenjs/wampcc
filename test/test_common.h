@@ -23,12 +23,34 @@
 namespace XXX {
 
 
-struct socket_listener : public io_listener
+struct socket_listener
 {
-  virtual void io_on_read(char*, ssize_t n)
+  void io_on_read(char*, size_t n)
   {
     std::cout << "socket_listener: io_on_read, n=" << n << std::endl;
   }
+
+  void io_on_error(uverr ec)
+  {
+    std::cout << "socket_listener: io_on_error, err=" << ec << std::endl;
+  }
+
+  void start_listening(std::shared_ptr<tcp_socket> sock)
+  {
+    sock->start_read(
+      [this](char* s, size_t n){ this->io_on_read(s, n); },
+      [this](uverr e){ this->io_on_error(e);}
+      );
+  }
+
+  void start_listening(tcp_socket& sock)
+  {
+    sock.start_read(
+      [this](char* s, size_t n){ this->io_on_read(s, n); },
+      [this](uverr e){ this->io_on_error(e);}
+      );
+  }
+
 };
 
 

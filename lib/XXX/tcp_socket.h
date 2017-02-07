@@ -17,7 +17,6 @@
 
 namespace XXX {
 
-class io_listener;
 class io_loop;
 
 /**
@@ -27,6 +26,8 @@ class tcp_socket
 {
 public:
 
+  typedef std::function<void(char*, size_t)> io_on_read;
+  typedef std::function<void(uverr)>         io_on_error;
   typedef std::function<void()> on_close_cb;
   typedef std::function<void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, uverr)> on_accept_cb;
 
@@ -41,11 +42,10 @@ public:
   std::future<uverr> connect(std::string addr, int port);
 
   /** Request socket begins reading inbound data */
-  std::future<uverr> start_read(io_listener*);
+  std::future<uverr> start_read(io_on_read, io_on_error);
 
-  /** Reassign the listener object, to that callbacks can be directed to a
-   * different object. Should only be called on the IO thread. */
-  void reset_listener(io_listener* = nullptr);
+  /** Reset IO callbacks */
+  void reset_listener();
 
   /** Request a bind and listen */
   std::future<uverr> listen(int port, on_accept_cb);
@@ -117,7 +117,8 @@ private:
   size_t m_bytes_written;
   size_t m_bytes_read;
 
-  io_listener * m_listener ;
+  io_on_read  m_io_on_read;
+  io_on_error m_io_on_error;
 
   std::vector< uv_buf_t > m_pending_write;
   std::mutex              m_pending_write_lock;

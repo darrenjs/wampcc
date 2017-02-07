@@ -1,7 +1,6 @@
 #include <XXX/tcp_socket.h>
 #include <XXX/kernel.h>
 #include <XXX/io_loop.h>
-#include <XXX/io_listener.h>
 #include <XXX/log_macros.h>
 #include <XXX/utils.h>
 
@@ -54,8 +53,7 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
     m_io_closed_future(m_io_closed_promise->get_future()),
     m_bytes_pending_write(0),
     m_bytes_written(0),
-    m_bytes_read(0),
-    m_listener(nullptr)
+    m_bytes_read(0)
 {
   if (ss == e_init)
     uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
@@ -296,7 +294,7 @@ bool tcp_socket::close(on_close_cb user_on_close_fn)
 }
 
 
-std::future<uverr> tcp_socket::start_read(io_listener* p)
+std::future<uverr> tcp_socket::start_read(io_on_read on_read, io_on_error on_error)
 {
   auto completion_promise = std::make_shared<std::promise<uverr>>();
 
@@ -314,7 +312,8 @@ std::future<uverr> tcp_socket::start_read(io_listener* p)
   if (m_state == e_closing || m_state == e_closed)
     throw std::runtime_error("socket closing or closed");
 
-  m_listener = p;
+  m_io_on_read  = std::move(on_read);
+  m_io_on_error = std::move(on_error);
 
   m_kernel->get_io()->push_fn( std::move(fn) );
 
@@ -323,9 +322,10 @@ std::future<uverr> tcp_socket::start_read(io_listener* p)
 
 
 
-void tcp_socket::reset_listener(io_listener* p )
+void tcp_socket::reset_listener()
 {
-  m_listener = p;
+  m_io_on_read  = nullptr;
+  m_io_on_error = nullptr;
 }
 
 
@@ -353,16 +353,10 @@ void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 
   try
   {
-    if ((nread == UV_EOF) || (nread < 0))
-    {
-      if (m_listener)
-        m_listener->io_on_read(nullptr, -1);
-    }
-    else
-    {
-      if (m_listener)
-        m_listener->io_on_read(buf->base, nread);
-    }
+    if (nread >= 0 && m_io_on_read)
+      m_io_on_read(buf->base, nread);
+    else if (nread < 0 && m_io_on_error)
+      m_io_on_error(uverr(nread));
   }
   catch (...)
   {

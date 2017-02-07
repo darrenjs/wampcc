@@ -1,7 +1,6 @@
 #include "test_common.h"
 
 #include <XXX/tcp_socket.h>
-#include <XXX/io_listener.h>
 #include <XXX/io_loop.h>
 
 #include <stdexcept>
@@ -129,7 +128,7 @@ void test_connect_read_close(int port)
     std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
     sp_1->connect("127.0.0.1", port);
 
-    sp_1->start_read(&my_listener);
+    my_listener.start_listening( sp_1 );
     sp_1->close();
   }
 
@@ -147,7 +146,7 @@ void test_connect_then_io_stop(int port)
   {
     std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
     auto fut = sp_1->connect("127.0.0.1", port);
-
+    my_listener.start_listening( sp_1 );
     fut.wait();
     the_kernel->get_io()->sync_stop();
 

@@ -2,8 +2,8 @@
 #define XXX_SESSION_H
 
 #include "XXX/types.h"
-#include "XXX/io_listener.h"
 #include "XXX/protocol.h"
+#include "XXX/error.h"
 
 #include <jalson/jalson.h>
 
@@ -156,8 +156,7 @@ namespace XXX {
 
   // Needs to support needs of service providers (rpc & topics), and service
   // consumers (rpc callers, and subscribers)
-  class wamp_session : public std::enable_shared_from_this<wamp_session>,
-                       public io_listener
+  class wamp_session : public std::enable_shared_from_this<wamp_session>
   {
   public:
 
@@ -308,7 +307,8 @@ namespace XXX {
     wamp_session(const wamp_session&) = delete;
     wamp_session& operator=(const wamp_session&) = delete;
 
-    void io_on_read(char*, ssize_t) override;
+    void io_on_read(char*, size_t);
+    void io_on_error(uverr);
     void decode_and_process(char*, size_t len);
     void process_message(unsigned int, jalson::json_array&);
     void handle_exception();

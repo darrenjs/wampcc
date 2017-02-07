@@ -1,7 +1,6 @@
 #include "test_common.h"
 
 #include <XXX/tcp_socket.h>
-#include <XXX/io_listener.h>
 #include <XXX/io_loop.h>
 
 #include <stdexcept>
@@ -38,7 +37,7 @@ void test_passive_disconnect(int port)
   if (sock.is_connected() == false)
     throw runtime_error("expected to be connected");
 
-  sock.start_read(&the_socket_reader);
+  the_socket_reader.start_listening(sock);
 
   iserver.reset_dealer();
 
@@ -78,7 +77,7 @@ void test_passive_disconnect_then_client_sock_close(int port)
   if (sock.is_connected() == false)
     throw runtime_error("expected to be connected");
 
-  sock.start_read(&the_socket_reader);
+  the_socket_reader.start_listening(sock);
 
 
   iserver.reset_dealer();

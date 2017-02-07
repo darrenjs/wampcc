@@ -166,7 +166,10 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
 
   // Enable the socket for read events; this can only take place once the
   // session's weak self pointer has been set up.
-  sp->m_socket->start_read( sp.get() );
+  sp->m_socket->start_read(
+    [sp](char* s, size_t n){sp->io_on_read(s,n);},
+    [sp](uverr ec){sp->io_on_error(ec);}
+ );
 
   // set up a timer to expire this session if it has not been successfully
   // opened within a maximum time duration
@@ -233,7 +236,7 @@ wamp_session::~wamp_session()
 }
 
 
-void wamp_session::io_on_read(char* src, ssize_t len)
+void wamp_session::io_on_read(char* src, size_t len)
 {
   /* IO thread */
 
@@ -245,19 +248,19 @@ void wamp_session::io_on_read(char* src, ssize_t len)
 
   try
   {
-    if (len >= 0)
+    if (len > 0)
     {
       m_proto->io_on_read(src,len);
     }
     else
     {
-      // request socket close and initiate closure of this session
-      try {
-        m_socket->close();
-      }
-      catch (io_loop_closed&) {
-        assert(false);  /* unexpected, we are on IO thread */
-      }
+      // // request socket close and initiate closure of this session
+      // try {
+      //   m_socket->close();
+      // }
+      // catch (io_loop_closed&) {
+      //   assert(false);  /* unexpected, we are on IO thread */
+      // }
       std::lock_guard<std::mutex> guard(m_state_lock);
       drop_connection_impl("peer_eof", guard, t_drop_event::sock_eof);
     }
@@ -266,6 +269,13 @@ void wamp_session::io_on_read(char* src, ssize_t len)
   {
     handle_exception();
   }
+}
+
+
+void wamp_session::io_on_error(uverr ec)
+{
+  std::lock_guard<std::mutex> guard(m_state_lock);
+  drop_connection_impl("peer_eof", guard, t_drop_event::sock_eof);
 }
 
 
