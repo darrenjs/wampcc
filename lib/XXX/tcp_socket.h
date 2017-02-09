@@ -26,6 +26,14 @@ class tcp_socket
 {
 public:
 
+  /** Type thrown by tcp_socket when actions are attempted when the socket is
+   * not in an appropriate state. */
+  class error : public std::runtime_error
+  {
+  public:
+    error(std::string msg) : std::runtime_error(msg) {}
+  };
+
   typedef std::function<void(char*, size_t)> io_on_read;
   typedef std::function<void(uverr)>         io_on_error;
   typedef std::function<void()> on_close_cb;
@@ -38,7 +46,8 @@ public:
   tcp_socket(const tcp_socket&) = delete;
   tcp_socket& operator=(const tcp_socket&) = delete;
 
-  /** Request TCP connection to a remote end point */
+  /** Request TCP connection to a remote end point.  This should only ever be
+   * called once. */
   std::future<uverr> connect(std::string addr, int port);
 
   /** Request socket begins reading inbound data */
@@ -84,13 +93,14 @@ public:
 
 private:
 
-  enum socket_state
+  enum class socket_state
   {
-    e_init,
-    e_connected,
-    e_listening,
-    e_closing,
-    e_closed,
+    init,
+    connecting,
+    connected,
+    listening,
+    closing,
+    closed
   };
 
   tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);

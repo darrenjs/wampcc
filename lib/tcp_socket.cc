@@ -55,7 +55,7 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
     m_bytes_written(0),
     m_bytes_read(0)
 {
-  if (ss == e_init)
+  if (ss == socket_state::init)
     uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
 
   m_uv_tcp->data = new uv_handle_data(uv_handle_data::e_tcp_socket, this);
@@ -63,13 +63,13 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
 
 
 tcp_socket::tcp_socket(kernel* k)
-  : tcp_socket(k, new uv_tcp_t(), e_init)
+  : tcp_socket(k, new uv_tcp_t(), socket_state::init)
 {
 }
 
 
 tcp_socket::tcp_socket(kernel* k, uv_tcp_t* s)
-  : tcp_socket(k, s, e_connected)
+  : tcp_socket(k, s, socket_state::connected)
 {
 }
 
@@ -78,9 +78,9 @@ tcp_socket::~tcp_socket()
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if ((m_state != e_closing) && (m_state != e_closed))
+    if ((m_state != socket_state::closing) && (m_state != socket_state::closed))
     {
-      m_state = e_closing;
+      m_state = socket_state::closing;
 
       // TODO: what if this throws? At the minimum, we should catch it, which
       // would imply the IO thread is in the process of shutting down.  During
@@ -117,32 +117,40 @@ tcp_socket::~tcp_socket()
 bool tcp_socket::is_listening() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return m_state == e_listening;
+  return m_state == socket_state::listening;
 }
 
 bool tcp_socket::is_connected() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return m_state == e_connected;
+  return m_state == socket_state::connected;
 }
 
 
 bool tcp_socket::is_closing() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return m_state == e_closing;
+  return m_state == socket_state::closing;
 }
 
 
 bool tcp_socket::is_closed() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return m_state == e_closed;
+  return m_state == socket_state::closed;
 }
 
 
 std::future<uverr> tcp_socket::connect(std::string addr, int port)
 {
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    if (m_state == socket_state::init)
+      m_state = socket_state::connecting;
+    else
+      throw tcp_socket::error("tcp_socket: connect() attempted multiple times");
+  }
+
   bool resolve_hostname = true;
 
   auto completion_promise = std::make_shared<std::promise<uverr>>();
@@ -153,8 +161,7 @@ std::future<uverr> tcp_socket::connect(std::string addr, int port)
       if (!ec)
       {
         std::lock_guard<std::mutex> guard(m_state_lock);
-        if (m_state == e_init)
-          m_state = e_connected;
+        m_state = socket_state::connected;
       }
       completion_promise->set_value(ec);
     };
@@ -179,7 +186,7 @@ void tcp_socket::do_close(bool no_linger)
   // triggered by pushing a close request or a call from uv_walk.
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
-    m_state = e_closing;
+    m_state = socket_state::closing;
   }
 
   uv_os_fd_t fd;
@@ -206,7 +213,7 @@ void tcp_socket::do_close(bool no_linger)
        * that makes use of the tcp_socket members. */
       {
         std::lock_guard< std::mutex > guard (sock->m_state_lock);
-        sock->m_state = e_closed;
+        sock->m_state = socket_state::closed;
 
         /* Extract from the tcp_socket the child objects that need to have their
          * lifetime extended beyond that of the parent tcp_socket, so that after
@@ -242,9 +249,9 @@ std::shared_future<void> tcp_socket::close()
 {
   std::lock_guard< std::mutex > guard (m_state_lock);
 
-  if (m_state != e_closing && m_state != e_closed)
+  if (m_state != socket_state::closing && m_state != socket_state::closed)
   {
-    m_state = e_closing;
+    m_state = socket_state::closing;
     m_kernel->get_io()->push_fn([this]() { this->do_close(); }); // can throw
   }
 
@@ -257,9 +264,9 @@ std::shared_future<void> tcp_socket::reset()
 {
   std::lock_guard< std::mutex > guard (m_state_lock);
 
-  if (m_state != e_closing && m_state != e_closed)
+  if (m_state != socket_state::closing && m_state != socket_state::closed)
   {
-    m_state = e_closing;
+    m_state = socket_state::closing;
     m_kernel->get_io()->push_fn([this]() { this->do_close(true); }); // can throw
   }
 
@@ -279,14 +286,14 @@ bool tcp_socket::close(on_close_cb user_on_close_fn)
 
   // if tcp_socket is already closed, it will not be possible to later invoke
   // the user provided on-close callback, so return false
-  if (m_state == e_closed)
+  if (m_state == socket_state::closed)
     return false;
 
   m_user_close_fn = user_on_close_fn;
 
-  if (m_state != e_closing)
+  if (m_state != socket_state::closing)
   {
-    m_state = e_closing;
+    m_state = socket_state::closing;
     m_kernel->get_io()->push_fn( [this]() { this->do_close(); }); // can throw
   }
 
@@ -309,8 +316,8 @@ std::future<uverr> tcp_socket::start_read(io_on_read on_read, io_on_error on_err
   };
 
   std::lock_guard< std::mutex > guard (m_state_lock);
-  if (m_state == e_closing || m_state == e_closed)
-    throw std::runtime_error("socket closing or closed");
+  if (m_state == socket_state::closing || m_state == socket_state::closed)
+    throw tcp_socket::error("tcp_socket: start_read() when closing or closed");
 
   m_io_on_read  = std::move(on_read);
   m_io_on_error = std::move(on_error);
@@ -337,9 +344,9 @@ void tcp_socket::close_once_on_io()
   /* IO thread */
 
   std::lock_guard< std::mutex > guard (m_state_lock);
-  if (m_state != e_closing && m_state != e_closed)
+  if (m_state != socket_state::closing && m_state != socket_state::closed)
   {
-    m_state = e_closing;
+    m_state = socket_state::closing;
     m_kernel->get_io()->push_fn( [this](){ this->do_close(); } );
   }
 }
@@ -388,8 +395,8 @@ void tcp_socket::write(std::pair<const char*, size_t> * srcbuf, size_t count)
   // synchronised section
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
-    if (m_state == e_closing || m_state == e_closed)
-      throw std::runtime_error("socket closing or closed");
+    if (m_state == socket_state::closing || m_state == socket_state::closed)
+      throw tcp_socket::error::runtime_error("tcp_socket: write() when closing or closed");
 
     {
       std::lock_guard<std::mutex> guard(m_pending_write_lock);
@@ -552,8 +559,8 @@ void tcp_socket::do_listen(int port, std::shared_ptr<std::promise<uverr>> sp_pro
   if (ec==0)
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
-    if (m_state == e_init)
-      m_state = e_listening;
+    if (m_state == socket_state::init)
+      m_state = socket_state::listening;
   }
 
   sp_promise->set_value(ec);
@@ -568,8 +575,8 @@ std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
 
   {
     std::lock_guard< std::mutex > guard (m_state_lock);
-    if (m_state == e_closing || m_state == e_closed)
-      throw std::runtime_error("socket closing or closed");
+    if (m_state == socket_state::closing || m_state == socket_state::closed)
+      throw tcp_socket::error("tcp_socket: listen() when closing or closed");
 
     m_kernel->get_io()->push_fn( [this,port,completion_promise](){
         this->do_listen(port, completion_promise);
