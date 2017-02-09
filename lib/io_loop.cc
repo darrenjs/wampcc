@@ -367,7 +367,7 @@ void io_loop::push_fn(std::function<void()> fn)
 
 void version_check_libuv(int compile_major, int compile_minor)
 {
-  // version that our library was built against
+  // version that XXX library was built with
   int library_major = UV_VERSION_MAJOR;
   int library_minor = UV_VERSION_MINOR;
 

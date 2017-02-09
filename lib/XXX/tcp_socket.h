@@ -50,7 +50,8 @@ public:
    * called once. */
   std::future<uverr> connect(std::string addr, int port);
 
-  /** Request socket begins reading inbound data */
+  /** Request socket begins reading inbound data, with callbacks make on the IO
+   * thread. */
   std::future<uverr> start_read(io_on_read, io_on_error);
 
   /** Reset IO callbacks */
@@ -71,11 +72,11 @@ public:
   std::shared_future<void> reset();
 
   /** Request asynchronous socket close, and recieve notification via the
-   * specified callback. If the tcp_socket is not currently closed then the
-   * provided callback is invoked at the time of socket closure and true is
-   * returned.  Otherwise, if the socket is already closed, the callback is
-   * never invoked and false is returned. Throws io_loop_closed if IO loop has
-   * already been closed. */
+   * specified callback on the IO thread. If the tcp_socket is not currently
+   * closed then the provided callback is invoked at the time of socket closure
+   * and true is returned.  Otherwise, if the socket is already closed, the
+   * callback is never invoked and false is returned. Throws io_loop_closed if
+   * IO loop has already been closed. */
   bool close(on_close_cb);
 
   bool is_connected() const;

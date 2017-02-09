@@ -23,10 +23,9 @@ class io_loop;
 struct io_request;
 class tcp_socket;
 
-
-// TODO: comment
+/** Can be called by user to XXX library to check the compile-time version of
+ * libuv is the same as when XXX was compiled. */
 void version_check_libuv(int uv_major, int uv_minor);
-
 
 class uv_handle_data
 {

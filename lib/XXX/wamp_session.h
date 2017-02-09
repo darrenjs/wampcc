@@ -473,11 +473,9 @@ namespace XXX {
     std::map<t_request_id, wamp_call>           m_pending_call;
     std::map<t_request_id, wamp_invocation>     m_pending_invocation;
 
-    // TODO: procedures -- not currently locked, however, need to add locking once
-    // unprovide() is added, and if it is implemented synchronously.
+    // No locking required, since procedure and subscriptions managed only on EV
+    // thread
     std::map<t_request_id, procedure> m_procedures;
-
-    // No locking required, since used only on EV thread
     std::map<t_subscription_id, subscription> m_subscriptions;
 
     std::unique_ptr<protocol> m_proto;
