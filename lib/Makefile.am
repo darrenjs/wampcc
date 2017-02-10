@@ -1,5 +1,4 @@
-AM_CPPFLAGS = -Wall -g3 -ggdb -I$(top_srcdir)/external/http_parser  -I$(jalsoninc)
-AM_CXXFLAGS = -I$(LIBUVHOME)/include -Wall  -std=c++11
+AM_CPPFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)/external/http_parser  -I$(jalsoninc) $(libuvinc)
 
 AM_LDFLAGS=-lpthread
 
@@ -38,7 +37,7 @@ protocol.cc rawsocket_protocol.cc websocket_protocol.cc					\
 #
 #libexio_la_CPPFLAGS =
 #libexio_la_LIBADD  = ../libcpp11/libcpp11.la -lpthread
-libXXX_la_LIBADD  =  -lpthread
+libXXX_la_LIBADD  =  -lpthread $(libuvlib)
 
 # Note: version info for shared libraries is three number system, where the
 # numbers represent: CURRENT : REVISION : AGE
@@ -47,5 +46,4 @@ libXXX_la_LIBADD  =  -lpthread
 # - REVISION: revision of current version. Incr. base on internal changes.
 # - AGE: indicates compatibilty with previous version of the shlib.
 #
-#libexio_la_LDFLAGS =  -version-info 1:7:0 -L$(XLOGHOME)/lib -lxlog
 libXXX_la_LDFLAGS =  -version-info 1:0:0

@@ -40,7 +40,29 @@ m4_ifdef([AX_CXX_COMPILE_STDCXX_11], [
 
 #========== Check for third party libraries ==========
 
-#PKG_CHECK_MODULES([DEPS], [gtkmm-2.4 >= 2.12.2 somethingelse-1.0 >= 1.0.2])
+# libuv is required by the project for network IO. Thus the user must provide
+# the installed location during configuration.
+
+have_libuv=0
+
+AC_ARG_WITH(libuv, [  --with-libuv=PATH specify directory containing installation of libuv])
+
+if test "x$with_libuv" != x; then
+   libuvlib="-L$with_libuv/lib -luv"
+   libuvinc="-I$with_libuv/include"
+   have_libuv=1
+fi
+
+# put the inc and lib into the makefiles
+AC_SUBST(libuvlib)
+AC_SUBST(libuvinc)
+
+# put variable into config.h
+AC_DEFINE_UNQUOTED([HAVE_LIBUV], [$have_libuv], [Define to 1 if libuv library is present])
+
+if test "x$have_libuv" = "x0" ; then
+    AC_MSG_ERROR([You have not configured location of libuv. Try --help.])
+fi
 
 #========== Checks for header files ==========
 
