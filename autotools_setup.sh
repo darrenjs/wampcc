@@ -1,7 +1,5 @@
 #!/bin/sh
 
-cd  `dirname "$0"`/..
-
 echo "===== Autoconf setup script ====="
 
 # check for libtool
