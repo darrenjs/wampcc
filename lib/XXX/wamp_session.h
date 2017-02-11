@@ -23,7 +23,7 @@ namespace XXX {
   struct logger;
 
   typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
-  typedef std::function< void(std::weak_ptr<wamp_session>, bool) > session_state_fn;
+  typedef std::function< void(std::weak_ptr<wamp_session>, bool) > state_fn;
 
   /** Handler interface for server-side authentication.  An instance of
    * auth_provider must be provided to each server-side wamp_session, which
@@ -171,7 +171,7 @@ namespace XXX {
      * remote client). */
     static std::shared_ptr<wamp_session> create(kernel*,
                                                 std::unique_ptr<tcp_socket>,
-                                                session_state_fn,
+                                                state_fn,
                                                 protocol_builder_fn ,
                                                 server_msg_handler,
                                                 auth_provider);
@@ -182,7 +182,7 @@ namespace XXX {
     template<typename T>
     static std::shared_ptr<wamp_session> create(kernel* k,
                                                 std::unique_ptr<tcp_socket> socket,
-                                                session_state_fn state_cb,
+                                                state_fn state_cb,
                                                 typename T::options protocol_options)
     {
       protocol_builder_fn factory_fn;
@@ -292,7 +292,7 @@ namespace XXX {
     static std::shared_ptr<wamp_session> create_impl(kernel*,
                                                      t_session_mode,
                                                      std::unique_ptr<tcp_socket>,
-                                                     session_state_fn,
+                                                     state_fn,
                                                      protocol_builder_fn ,
                                                      server_msg_handler,
                                                      auth_provider);
@@ -300,7 +300,7 @@ namespace XXX {
     wamp_session(kernel*,
                  t_session_mode,
                  std::unique_ptr<tcp_socket>,
-                 session_state_fn state_cb,
+                 state_fn state_cb,
                  server_msg_handler,
                  auth_provider);
 
@@ -322,26 +322,27 @@ namespace XXX {
     friend class tcp_socket;
     friend class pubsub_man;
 
-    enum SessionState
+    enum class state
     {
-      eInit               = (1<<1),
+      init = 1,
 
-      eRecvHello          = (1<<2),  //
-      eSentChallenge      = (1<<3),  // server only
-      eRecvAuth           = (1<<4),  //
+      recv_hello,      //
+      sent_challenge,  // server only
+      recv_auth,       //
 
-      eSentHello          = (1<<5),  //
-      eRecvChallenge      = (1<<6),  // client only
-      eSentAuth           = (1<<7),  //
+      sent_hello,      //
+      recv_challenge,  // client only
+      sent_auth,       //
 
-      eOpen               = (1<<8),
-      eClosingWait        = (1<<9),  // server only
-      eClosing            = (1<<10),
-      eClosed             = (1<<11)
+      open,
+      closing_wait,    // server only
+      closing,
+      closed
     } m_state;
     mutable std::mutex m_state_lock;
 
-    void change_state(unsigned expected, SessionState next);
+    void change_state(state expected, state next);
+    void change_state(state expecte1, state expecte2, state next);
     void initiate_close(std::lock_guard<std::mutex>&);
     void transition_to_closed();
 
@@ -351,7 +352,7 @@ namespace XXX {
     void send_WELCOME();
 
     void notify_session_open();
-    static const char* state_to_str(wamp_session::SessionState);
+    static const char* state_to_str(wamp_session::state);
 
     logger & __logger; /* name chosen for log macros */
     kernel* m_kernel;
@@ -385,7 +386,7 @@ namespace XXX {
     auth_provider m_auth_proivder;
     bool m_server_requires_auth;
 
-    session_state_fn m_notify_state_change_fn;
+    state_fn m_notify_state_change_fn;
     std::weak_ptr<wamp_session> m_self_weak;
 
     void process_inbound_registered(jalson::json_array &);
@@ -421,7 +422,7 @@ namespace XXX {
 
     void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, t_drop_event reason = t_drop_event::request);
 
-    bool user_cb_allowed() const { return m_state != eClosed; }
+    bool user_cb_allowed() const { return m_state != state::closed; }
 
     server_msg_handler m_server_handler;
 

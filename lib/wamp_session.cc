@@ -23,6 +23,23 @@
 
 #define MAX_HEARTBEATS_MISSED 3
 
+template<typename T>
+bool is_in(T t, T v) {
+  return t == v;
+}
+
+template<>
+bool is_in(const char* t, const char* v) {
+  return strcmp(t,v) == 0;
+}
+
+
+template<typename T, typename... Args>
+bool is_in(T t, T v, Args... args) {
+  return  t==v ||  is_in(t,args...);
+}
+
+
 namespace XXX {
 
 /** Exception class used to indicate failure of authentication. */
@@ -68,10 +85,10 @@ static void check_size_at_least(size_t msg_len, size_t s)
 wamp_session::wamp_session(kernel* __kernel,
                            t_session_mode conn_mode,
                            std::unique_ptr<tcp_socket> h,
-                           session_state_fn state_cb,
+                           state_fn state_cb,
                            server_msg_handler handler,
                            auth_provider auth)
-  : m_state( eInit ),
+  : m_state( state::init ),
     __logger(__kernel->get_logger()),
     m_kernel(__kernel),
     m_sid( generate_unique_session_id() ),
@@ -94,7 +111,7 @@ wamp_session::wamp_session(kernel* __kernel,
 
 std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    std::unique_ptr<tcp_socket> sock,
-                                                   session_state_fn state_cb,
+                                                   state_fn state_cb,
                                                    protocol_builder_fn protocol_builder,
                                                    server_msg_handler handler,
                                                    auth_provider auth)
@@ -107,7 +124,7 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
 std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
                                                         t_session_mode conn_mode,
                                                         std::unique_ptr<tcp_socket> ioh,
-                                                        session_state_fn state_cb,
+                                                        state_fn state_cb,
                                                         protocol_builder_fn protocol_builder,
                                                         server_msg_handler handler,
                                                         auth_provider auth)
@@ -287,11 +304,11 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
   {
     if (message_type == CHALLENGE)
     {
-      change_state(eRecvHello, eSentChallenge);
+      change_state(state::recv_hello, state::sent_challenge);
     }
     else if (message_type == WELCOME)
     {
-      change_state(m_server_requires_auth?eRecvAuth:eRecvHello, eOpen);
+      change_state(m_server_requires_auth?state::recv_auth:state::recv_hello, state::open);
     }
     else
     {
@@ -306,11 +323,11 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
   {
     if (message_type == HELLO)
     {
-      change_state(eInit, eSentHello);
+      change_state(state::init, state::sent_hello);
     }
     else if (message_type == AUTHENTICATE)
     {
-      change_state(eRecvChallenge, eSentAuth);
+      change_state(state::recv_challenge, state::sent_auth);
     }
     else
     {
@@ -325,38 +342,44 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
 }
 
 
-const char* wamp_session::state_to_str(wamp_session::SessionState s)
+const char* wamp_session::state_to_str(wamp_session::state s)
 {
   switch (s) {
-    case wamp_session::eInit : return "eInit";
-    case wamp_session::eRecvHello : return "eRecvHello";
-    case wamp_session::eSentChallenge : return "eSentChallenge";
-    case wamp_session::eRecvAuth : return "eRecvAuth";
-    case wamp_session::eSentHello : return "eSentHello";
-    case wamp_session::eRecvChallenge : return "eRecvChallenge";
-    case wamp_session::eSentAuth : return "eSentAuth";
-    case wamp_session::eOpen : return "eOpen";
-    case wamp_session::eClosingWait : return "eClosingWait";
-    case wamp_session::eClosing : return "eClosing";
-    case wamp_session::eClosed : return "eClosed";
-    default: return "unknown_state";
+    case wamp_session::state::init : return "init";
+    case wamp_session::state::recv_hello : return "recv_hello";
+    case wamp_session::state::sent_challenge : return "sent_challenge";
+    case wamp_session::state::recv_auth : return "recv_auth";
+    case wamp_session::state::sent_hello : return "sent_hello";
+    case wamp_session::state::recv_challenge : return "recv_challenge";
+    case wamp_session::state::sent_auth : return "sent_auth";
+    case wamp_session::state::open : return "open";
+    case wamp_session::state::closing_wait : return "closing_wait";
+    case wamp_session::state::closing : return "closing";
+    case wamp_session::state::closed : return "closed";
+    default: return "unknown";
   };
 }
 
 
-void wamp_session::change_state(unsigned expected, SessionState next)
+void wamp_session::change_state(state expected, state next)
+{
+  return change_state(expected, expected, next);
+}
+
+
+void wamp_session::change_state(state expected1, state expected2, state next)
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
 
-  if (m_state == eClosed)
+  if (m_state == state::closed)
     return;
 
-  if (m_state bitand expected)
+  if (is_in(m_state, expected1, expected2))
   {
     LOG_INFO("wamp_session state: from " << state_to_str(m_state) << " to " << state_to_str(next));
     m_state = next;
 
-    if (m_state == eOpen)
+    if (m_state == state::open)
     {
       // // register for housekeeping
       // std::weak_ptr<wamp_session> wp = handle();
@@ -477,13 +500,13 @@ void wamp_session::process_message(unsigned int message_type,
     {
       if (message_type == HELLO)
       {
-        change_state(eInit, eRecvHello);
+        change_state(state::init, state::recv_hello);
         handle_HELLO(ja);
         return;
       }
       else if (message_type == AUTHENTICATE)
       {
-        change_state(eSentChallenge, eRecvAuth);
+        change_state(state::sent_challenge, state::recv_auth);
         handle_AUTHENTICATE(ja);
         return;
       }
@@ -535,13 +558,13 @@ void wamp_session::process_message(unsigned int message_type,
     {
       if (message_type == CHALLENGE)
       {
-        change_state(eSentHello, eRecvChallenge);
+        change_state(state::sent_hello, state::recv_challenge);
         handle_CHALLENGE(ja);
         return;
       }
       else if (message_type == WELCOME)
       {
-        change_state(eSentAuth|eSentHello, eOpen);
+        change_state(state::sent_auth, state::sent_hello, state::open);
         if (is_open())
           notify_session_open();
         return;
@@ -646,7 +669,7 @@ void wamp_session::send_msg(jalson::json_array& jv, bool)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state bitand (eClosing|eClosed|eClosingWait))
+    if (is_in(m_state, state::closing, state::closed, state::closing_wait))
       return;
   }
 
@@ -884,19 +907,19 @@ void wamp_session::notify_session_open()
 bool wamp_session::is_open() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return m_state == eOpen;
+  return m_state == state::open;
 }
 
 bool wamp_session::is_closed() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return m_state == eClosed;
+  return m_state == state::closed;
 }
 
 bool wamp_session::is_pending_open() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return (m_state != eOpen && m_state != eClosed && m_state != eClosing);
+  return (m_state != state::open && m_state != state::closed && m_state != state::closing);
 }
 
 
@@ -1907,12 +1930,12 @@ void wamp_session::drop_connection(std::string reason)
 // {
 //   /* ANY thread */
 
-//   if (m_state bitand (eClosing|eClosed|e_wait_peer_goodbye))
+//   if (m_state bitand (state::closing|state::closed|e_wait_peer_goodbye))
 //     return;
 
 //   LOG_INFO("session #" << unique_id() << " terminating, reason: " << reason);
 
-//   if (m_state == eOpen)
+//   if (m_state == state::open)
 //   {
 //     try
 //     {
@@ -1965,10 +1988,10 @@ void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
 {
   /* ANY thread */
 
-  if (m_state bitand (eClosing|eClosed))
+  if (is_in(m_state, state::closing, state::closed))
     return;
 
-  m_state = eClosing;
+  m_state = state::closing;
   LOG_INFO("session #" << unique_id() << " closing");
 
   try { m_socket->close(); } catch (...){};
@@ -1997,7 +2020,7 @@ void wamp_session::fast_close()
   {
     {
       std::lock_guard<std::mutex> guard(m_state_lock);
-      if (m_state != eClosed)
+      if (m_state != state::closed)
         initiate_close(guard);
       else
         return;
@@ -2021,10 +2044,10 @@ void wamp_session::transition_to_closed()
   // callbacks.
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state == eClosed)
+    if (m_state == state::closed)
       return;
     else
-      m_state = eClosed;
+      m_state = state::closed;
   }
 
   // The order of invoking the user callback and setting the has-closed promise
@@ -2044,14 +2067,13 @@ void wamp_session::transition_to_closed()
   m_has_closed.set_value();
 }
 
-
 void wamp_session::drop_connection_impl(std::string reason,
                                         std::lock_guard<std::mutex>& guard,
                                         t_drop_event event)
 {
   /* ANY thread */
 
-  if (m_state bitand (eClosed|eClosing))
+  if (is_in(m_state, state::closed, state::closing))
     return;
 
   if (event==t_drop_event::sock_eof)
@@ -2059,20 +2081,20 @@ void wamp_session::drop_connection_impl(std::string reason,
 
   if (m_session_mode == t_session_mode::server)
   {
-    if (m_state == eClosingWait)
+    if (m_state == state::closing_wait)
       return;
 
     if (event != t_drop_event::recv_abort)
       try
       {
-        if (m_state == eOpen)
+        if (m_state == state::open)
           m_proto->send_msg(build_goodbye_message(reason));
         else
           m_proto->send_msg(build_abort_message(reason));
       }
       catch (...) {}
 
-    m_state = eClosingWait;
+    m_state = state::closing_wait;
 
     // schedule a timeout so that if the peer has not closed the connection
     // within a reasonable time period, we force close it from server side
@@ -2082,7 +2104,7 @@ void wamp_session::drop_connection_impl(std::string reason,
         if (auto sp = wp.lock())
         {
           std::lock_guard<std::mutex> guard(sp->m_state_lock);
-          if (sp->m_state bitand eClosingWait)
+          if (sp->m_state == state::closing_wait)
           {
             logger & __logger = sp->__logger;
             LOG_WARN("session #" << sp->unique_id() << " timeout waiting for peer");
@@ -2102,7 +2124,7 @@ void wamp_session::drop_connection_impl(std::string reason,
     if (event != t_drop_event::recv_abort)
       try
       {
-        if (m_state == eOpen)
+        if (m_state == state::open)
           m_proto->send_msg(build_goodbye_message(reason));
         else
           m_proto->send_msg(build_abort_message(reason));
