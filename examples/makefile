@@ -1,6 +1,6 @@
 
-ifeq ($(XXX_HOME),)
- $(error XXX_HOME undefined - set XXX_HOME to where XXX was make-installed)
+ifeq ($(WAMPCC_HOME),)
+ $(error WAMPCC_HOME undefined - set WAMPCC_HOME to where wampcc was make-installed)
 endif
 
 ifeq ($(LIBUV_HOME),)
@@ -11,8 +11,8 @@ ifeq ($(JANSSON_HOME),)
  $(error JANSSON_HOME undefined - set JANSSON_HOME to where jansson was make-installed)
 endif
 
-XXX_INC=-I$(XXX_HOME)/include
-XXX_LIBS=-L$(XXX_HOME)/lib -lXXX -ljalson
+WAMPCC_INC=-I$(WAMPCC_HOME)/include
+WAMPCC_LIBS=-L$(WAMPCC_HOME)/lib -lwampcc -ljalson
 
 LIBUV_INC=-I$(LIBUV_HOME)/include
 LIBUV_LIBS=-L$(LIBUV_HOME)/lib -luv
@@ -20,9 +20,9 @@ LIBUV_LIBS=-L$(LIBUV_HOME)/lib -luv
 JANSSON_LIBS=-L$(JANSSON_HOME)/lib -ljansson
 
 CXXFLAGS += -MMD -MP
-CXXFLAGS += -Wall -O0 -g3 -ggdb -std=c++0x -pthread   $(XXX_INC) $(JALSON_INC) $(LIBUV_INC)
+CXXFLAGS += -Wall -O0 -g3 -ggdb -std=c++0x -pthread   $(WAMPCC_INC) $(JALSON_INC) $(LIBUV_INC)
 
-LDLIBS +=$(XXX_LIBS) $(LIBUV_LIBS) $(JALSON_LIBS) $(JANSSON_LIBS) -lcrypto -lpthread
+LDLIBS +=$(WAMPCC_LIBS) $(LIBUV_LIBS) $(JALSON_LIBS) $(JANSSON_LIBS) -lcrypto -lpthread
 
 # default: callee
 

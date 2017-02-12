@@ -1,11 +1,11 @@
 #include "test_common.h"
 
-#include <XXX/tcp_socket.h>
+#include <wampcc/tcp_socket.h>
 
 #include <stdexcept>
 #include <map>
 
-using namespace XXX;
+using namespace wampcc;
 using namespace std;
 
 

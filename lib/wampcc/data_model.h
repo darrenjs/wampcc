@@ -1,8 +1,8 @@
-#ifndef XXX_DATA_MODEL_H
-#define XXX_DATA_MODEL_H
+#ifndef WAMPCC_DATA_MODEL_H
+#define WAMPCC_DATA_MODEL_H
 
-#include "XXX/types.h"
-#include "XXX/wamp_session.h"
+#include "wampcc/types.h"
+#include "wampcc/wamp_session.h"
 
 #include <jalson/jalson.h>
 
@@ -13,7 +13,7 @@
 #define KEY_PATCH    "_p"
 #define KEY_SNAPSHOT "_snap"
 
-namespace XXX {
+namespace wampcc {
 
 class wamp_router;
 class model_topic;
@@ -63,7 +63,7 @@ public:
 private:
   void publish_update(jalson::json_array patch, jalson::json_array event);
   model_topic(std::string, data_model*);
-  XXX::wamp_args prepare_snapshot();
+  wampcc::wamp_args prepare_snapshot();
   data_model * m_data_model;
   std::string m_uri;
   std::vector<std::weak_ptr<wamp_session>> m_sessions;
@@ -75,7 +75,7 @@ private:
 class model_sub_base
 {
 public:
-  model_sub_base(std::shared_ptr<XXX::wamp_session>& ws,
+  model_sub_base(std::shared_ptr<wampcc::wamp_session>& ws,
                  std::string topic_uri);
 
   virtual ~model_sub_base() = 0;
@@ -84,7 +84,7 @@ public:
 
 protected:
   std::string m_uri;
-  std::weak_ptr<XXX::wamp_session> m_session;
+  std::weak_ptr<wampcc::wamp_session> m_session;
 };
 
 
@@ -95,12 +95,12 @@ public:
   typedef V value_type;
   typedef jmodel_common<T,V> base_type;
 
-  jmodel_common(std::shared_ptr<XXX::wamp_session>& ws,
+  jmodel_common(std::shared_ptr<wampcc::wamp_session>& ws,
                 std::string topic_uri)
     : model_sub_base(ws, topic_uri)
   {
     auto this_derived = derived();
-    XXX::subscribed_cb scb;  // TODO
+    wampcc::subscribed_cb scb;  // TODO
 
     auto fn = [this_derived](wamp_subscription_event e)
       {
@@ -138,7 +138,7 @@ public:
     std::function< void(const jmodel_subscription&) > on_change;
   };
 
-  jmodel_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+  jmodel_subscription(std::shared_ptr<wampcc::wamp_session>& ws,
                       std::string topic_uri,
                       observer);
 
@@ -185,7 +185,7 @@ public:
     std::function< void(const string_subscription&) > on_change;
   };
 
-  string_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+  string_subscription(std::shared_ptr<wampcc::wamp_session>& ws,
                       std::string topic_uri, observer);
 
 private:
@@ -251,7 +251,7 @@ public:
     std::function< void(const list_subscription&, size_t pos) > on_replace;
   };
 
-  list_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+  list_subscription(std::shared_ptr<wampcc::wamp_session>& ws,
                     std::string topic_uri,
                     observer ob);
 

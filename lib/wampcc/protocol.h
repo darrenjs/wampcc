@@ -1,13 +1,13 @@
-#ifndef XXX_PROTOCOL_H
-#define XXX_PROTOCOL_H
+#ifndef WAMPCC_PROTOCOL_H
+#define WAMPCC_PROTOCOL_H
 
-#include "XXX/types.h"
+#include "wampcc/types.h"
 
 #include <vector>
 #include <cstddef>
 #include <memory>
 
-namespace XXX {
+namespace wampcc {
 
 class tcp_socket;
 

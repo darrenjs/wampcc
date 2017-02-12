@@ -1,10 +1,10 @@
-#include "XXX/rawsocket_protocol.h"
+#include "wampcc/rawsocket_protocol.h"
 
-#include "XXX/tcp_socket.h"
+#include "wampcc/tcp_socket.h"
 
 #include <sstream>
 
-namespace XXX {
+namespace wampcc {
 
 template<int N>
 static void format_handshake(char (&handshake) [N],

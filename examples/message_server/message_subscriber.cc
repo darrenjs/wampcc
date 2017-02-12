@@ -1,26 +1,26 @@
-#include "XXX/kernel.h"
-#include "XXX/data_model.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/wamp_session.h"
-#include "XXX/rawsocket_protocol.h"
+#include "wampcc/kernel.h"
+#include "wampcc/data_model.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/rawsocket_protocol.h"
 
 #include <memory>
 #include <iostream>
 
 
-void on_string_change(const XXX::string_subscription& sub)
+void on_string_change(const wampcc::string_subscription& sub)
 {
   std::cout << "on_string_change: " << sub.value() << std::endl;
 }
 
 
-// void on_subscription(XXX::wamp_subscription_event subev)
+// void on_subscription(wampcc::wamp_subscription_event subev)
 // {
 //   switch (subev.type)
 //   {
-//     case XXX::wamp_subscription_event::started : std::cout << "subscription started\n"; break;
-//     case XXX::wamp_subscription_event::failed :  std::cout << "subscription failed\n"; break;
-//     case XXX::wamp_subscription_event::update :  std::cout << "subscription update\n"; break;
+//     case wampcc::wamp_subscription_event::started : std::cout << "subscription started\n"; break;
+//     case wampcc::wamp_subscription_event::failed :  std::cout << "subscription failed\n"; break;
+//     case wampcc::wamp_subscription_event::update :  std::cout << "subscription update\n"; break;
 //   };
 
 //   std::cout << "details: " << subev.details << std::endl;
@@ -32,16 +32,16 @@ void on_string_change(const XXX::string_subscription& sub)
 /* Make repeated attempts to connect to the end-point, with each failed attempt
  * separated by a rest interval before the next attempt. When a successful
  * connection is established, the connected socket is returned. */
-std::unique_ptr<XXX::tcp_socket> get_tcp_connection(const char* address,
+std::unique_ptr<wampcc::tcp_socket> get_tcp_connection(const char* address,
                                                     int port,
-                                                    XXX::kernel & the_kernel,
+                                                    wampcc::kernel & the_kernel,
                                                     std::chrono::milliseconds interval)
 {
   const auto connect_timeout = std::chrono::seconds(3);
 
   while (true)
   {
-    std::unique_ptr<XXX::tcp_socket> sock(new XXX::tcp_socket(&the_kernel));
+    std::unique_ptr<wampcc::tcp_socket> sock(new wampcc::tcp_socket(&the_kernel));
 
     try
     {
@@ -58,7 +58,7 @@ std::unique_ptr<XXX::tcp_socket> get_tcp_connection(const char* address,
           throw std::runtime_error("connect not attempted");
         case std::future_status::ready :
 
-          XXX::uverr ec = fut.get();
+          wampcc::uverr ec = fut.get();
           if (ec)
             throw std::runtime_error(std::to_string(ec.os_value()) + ", " + ec.message());
 
@@ -77,27 +77,27 @@ std::unique_ptr<XXX::tcp_socket> get_tcp_connection(const char* address,
 
 int main_impl(int argc, char** argv)
 {
-  auto __logger = XXX::logger::stdlog(std::cout,
-                                      XXX::logger::levels_upto(XXX::logger::eInfo), 1);
-  XXX::kernel the_kernel({}, __logger);
+  auto __logger = wampcc::logger::stdlog(std::cout,
+                                      wampcc::logger::levels_upto(wampcc::logger::eInfo), 1);
+  wampcc::kernel the_kernel({}, __logger);
 
   while (true)
   {
     /* Get a connected socket to the end-point */
-    std::unique_ptr<XXX::tcp_socket> sock = get_tcp_connection("127.0.0.1",
+    std::unique_ptr<wampcc::tcp_socket> sock = get_tcp_connection("127.0.0.1",
                                                                55555,
                                                                the_kernel,
                                                                std::chrono::seconds(1));
 
     std::promise<void> promise_on_close;
-    std::shared_ptr<XXX::wamp_session> session;
+    std::shared_ptr<wampcc::wamp_session> session;
     try
     {
       /* Create a wamp session */
-      session = XXX::wamp_session::create<XXX::rawsocket_protocol>(
+      session = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
         &the_kernel,
         std::move(sock),
-        [&promise_on_close](XXX::session_handle, bool is_open)
+        [&promise_on_close](wampcc::session_handle, bool is_open)
         {
           if (!is_open)
             promise_on_close.set_value();
@@ -105,7 +105,7 @@ int main_impl(int argc, char** argv)
 
       /* Logon to a WAMP realm, which completes asynchronously, so we need wait
        * for session to fully open */
-      XXX::client_credentials credentials;
+      wampcc::client_credentials credentials;
       credentials.realm="default_realm";
       credentials.authid="peter";
       credentials.authmethods = {"wampcra"};
@@ -132,7 +132,7 @@ int main_impl(int argc, char** argv)
       /* Subscribe to a topic */
 
       std::string topic_uri = "xxxx";
-      XXX::string_subscription string_sub(session, topic_uri, {on_string_change});
+      wampcc::string_subscription string_sub(session, topic_uri, {on_string_change});
 
       // Wait until we get disconnected
       promise_on_close.get_future().wait();

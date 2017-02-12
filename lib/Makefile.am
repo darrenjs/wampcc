@@ -9,18 +9,19 @@ AM_LDFLAGS=-lpthread
 # The "lib_" prefix indicates that the named products are to be installed in
 # the $(libdir) directory. If we want to build a library that does not get
 # installed, then we should use the prefix "noinst_".
-lib_LTLIBRARIES = libXXX.la
+lib_LTLIBRARIES = libwampcc.la
 
 # The "include_" prefix includes a list of headers to be installed.  The
 # "nobase_" additional prefix means the directory names are copied too.
-nobase_include_HEADERS = XXX/types.h XXX/kernel.h XXX/wamp_session.h			\
-XXX/wamp_router.h XXX/protocol.h XXX/rawsocket_protocol.h	\
-XXX/websocket_protocol.h XXX/tcp_socket.h XXX/data_model.h XXX/error.h
+nobase_include_HEADERS = wampcc/types.h wampcc/kernel.h wampcc/wamp_session.h	\
+wampcc/wamp_router.h wampcc/protocol.h wampcc/rawsocket_protocol.h				\
+wampcc/websocket_protocol.h wampcc/tcp_socket.h wampcc/data_model.h				\
+wampcc/error.h wampcc/wampcc.h
 
 # List the sources for an individual library
-libXXX_la_SOURCES = wamp_session.cc tcp_socket.cc wamp_router.cc		\
-event_loop.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc	\
-protocol.cc rawsocket_protocol.cc websocket_protocol.cc					\
+libwampcc_la_SOURCES = wamp_session.cc tcp_socket.cc wamp_router.cc			\
+event_loop.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc		\
+protocol.cc rawsocket_protocol.cc websocket_protocol.cc						\
 ../external/http_parser/http_parser.c http_parser.cc data_model.cc error.cc
 
 
@@ -37,7 +38,7 @@ protocol.cc rawsocket_protocol.cc websocket_protocol.cc					\
 #
 #libexio_la_CPPFLAGS =
 #libexio_la_LIBADD  = ../libcpp11/libcpp11.la -lpthread
-libXXX_la_LIBADD  =  -lpthread $(libuvlib)
+libwampcc_la_LIBADD  =  -lpthread $(libuvlib)
 
 # Note: version info for shared libraries is three number system, where the
 # numbers represent: CURRENT : REVISION : AGE
@@ -46,4 +47,4 @@ libXXX_la_LIBADD  =  -lpthread $(libuvlib)
 # - REVISION: revision of current version. Incr. base on internal changes.
 # - AGE: indicates compatibilty with previous version of the shlib.
 #
-libXXX_la_LDFLAGS =  -version-info 1:0:0
+libwampcc_la_LDFLAGS =  -version-info 1:0:0

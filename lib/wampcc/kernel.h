@@ -1,5 +1,5 @@
-#ifndef XXX_KERNEL_H
-#define XXX_KERNEL_H
+#ifndef WAMPCC_KERNEL_H
+#define WAMPCC_KERNEL_H
 
 #include <memory>
 #include <mutex>
@@ -7,15 +7,15 @@
 
 /* Compile-time name & version */
 
-#define XXX_NAME "XXX"
-#define XXX_MAJOR_VERSION 1
-#define XXX_MINOR_VERSION 0
-#define XXX_MICRO_VERSION 0
+#define WAMPCC_NAME "wampcc"
+#define WAMPCC_MAJOR_VERSION 1
+#define WAMPCC_MINOR_VERSION 0
+#define WAMPCC_MICRO_VERSION 0
 
 /* Micro version is omitted if it's 0 */
-#define XXX_NAME_VERSION "XXX 1.0"
+#define WAMPCC_NAME_VERSION "wampcc 1.0"
 
-namespace XXX {
+namespace wampcc {
 
 class io_loop;
 class event_loop;
@@ -106,6 +106,6 @@ private:
 };
 
 
-} // namespace XXX
+} // namespace wampcc
 
 #endif

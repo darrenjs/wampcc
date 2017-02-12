@@ -1,5 +1,5 @@
-#ifndef XXX_HTTP_PARSER_H
-#define XXX_HTTP_PARSER_H
+#ifndef WAMPCC_HTTP_PARSER_H
+#define WAMPCC_HTTP_PARSER_H
 
 #include <map>
 #include <string>
@@ -9,7 +9,7 @@
 struct http_parser;
 struct http_parser_settings;
 
-namespace XXX
+namespace wampcc
 {
 
 class http_parser

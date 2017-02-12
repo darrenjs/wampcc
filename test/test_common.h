@@ -1,13 +1,13 @@
-#ifndef XXX_TEST_COMMON_H
-#define XXX_TEST_COMMON_H
+#ifndef WAMPCC_TEST_COMMON_H
+#define WAMPCC_TEST_COMMON_H
 
-#include "XXX/kernel.h"
-#include "XXX/wamp_session.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/websocket_protocol.h"
-#include "XXX/rawsocket_protocol.h"
-#include "XXX/wamp_router.h"
-#include "XXX/event_loop.h"
+#include "wampcc/kernel.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/websocket_protocol.h"
+#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/wamp_router.h"
+#include "wampcc/event_loop.h"
 
 #include <iostream>
 #include <string.h>
@@ -20,7 +20,7 @@
 
 #define TLOG( X ) std::cout << X << std::endl
 
-namespace XXX {
+namespace wampcc {
 
 
 struct socket_listener
@@ -93,7 +93,7 @@ public:
       std::future_status status = fut_listen_err.wait_for(std::chrono::milliseconds(100));
       if (status == std::future_status::ready)
       {
-        XXX::uverr err = fut_listen_err.get();
+        wampcc::uverr err = fut_listen_err.get();
         if (err == 0)
           return port;
 

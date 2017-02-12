@@ -1,13 +1,13 @@
-#include "XXX/event_loop.h"
+#include "wampcc/event_loop.h"
 
-#include "XXX/rpc_man.h"
-#include "XXX/pubsub_man.h"
-#include "XXX/log_macros.h"
-#include "XXX/utils.h"
+#include "wampcc/rpc_man.h"
+#include "wampcc/pubsub_man.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/utils.h"
 
 #include <iostream>
 
-namespace XXX {
+namespace wampcc {
 
 struct event
 {
@@ -308,4 +308,4 @@ bool event_loop::this_thread_is_ev() const
   return m_ev_thread_id.compare(std::this_thread::get_id());
 }
 
-} // namespace XXX
+} // namespace wampcc

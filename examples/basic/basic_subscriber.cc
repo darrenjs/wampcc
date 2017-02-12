@@ -1,7 +1,7 @@
-#include "XXX/kernel.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/wamp_session.h"
-#include "XXX/rawsocket_protocol.h"
+#include "wampcc/kernel.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/rawsocket_protocol.h"
 
 #include <memory>
 #include <random>
@@ -20,16 +20,16 @@ int main(int argc, char** argv)
   {
     auto endpoint = get_addr_port(argc, argv);
 
-    std::unique_ptr<XXX::kernel> the_kernel( new XXX::kernel({}, XXX::logger::stdout() ));
+    std::unique_ptr<wampcc::kernel> the_kernel( new wampcc::kernel({}, wampcc::logger::stdout() ));
 
-    std::unique_ptr<XXX::tcp_socket> sock (new XXX::tcp_socket(the_kernel.get()));
+    std::unique_ptr<wampcc::tcp_socket> sock (new wampcc::tcp_socket(the_kernel.get()));
     auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
     if (status != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
-    XXX::uverr ec = fut.get();
+    wampcc::uverr ec = fut.get();
     if (ec)
       throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
 
@@ -38,10 +38,10 @@ int main(int argc, char** argv)
     std::condition_variable session_closed_convar;
     bool session_has_closed = false;
 
-    std::shared_ptr<XXX::wamp_session> session = XXX::wamp_session::create<XXX::rawsocket_protocol>(
+    std::shared_ptr<wampcc::wamp_session> session = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
-      [&](XXX::session_handle, bool is_open){
+      [&](wampcc::session_handle, bool is_open){
         if (!is_open)
           try {
             std::lock_guard<std::mutex> guard(session_closed_mutex);
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
       {});
 
     /* Logon to a WAMP realm, and wait for session to be deemed open. */
-    XXX::client_credentials credentials;
+    wampcc::client_credentials credentials;
     credentials.realm="default_realm";
     credentials.authid="peter";
     credentials.authmethods = {"wampcra"};
@@ -65,9 +65,9 @@ int main(int argc, char** argv)
 
     /* Session is now open, subscribe to a topic. */
     bool have_subscription = false;
-    XXX::t_subscription_id subscription_id = 0;
-    XXX::subscribed_cb my_subscribed_cb = [&](XXX::t_request_id request_id, std::string uri, bool successful,
-                                              XXX::t_subscription_id subid, std::string error)
+    wampcc::t_subscription_id subscription_id = 0;
+    wampcc::subscribed_cb my_subscribed_cb = [&](wampcc::t_request_id request_id, std::string uri, bool successful,
+                                              wampcc::t_subscription_id subid, std::string error)
       {
         if (successful)
         {
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
       };
     session->subscribe("coin_toss", {},
                        my_subscribed_cb,
-                       [](XXX::wamp_subscription_event ev){
+                       [](wampcc::wamp_subscription_event ev){
                          for (auto & x : ev.args.args_list)
                            std::cout << x << " ";
                          std::cout << std::endl;
@@ -93,7 +93,7 @@ int main(int argc, char** argv)
      * only subscribe once. */
     session->subscribe("coin_toss", {},
                        my_subscribed_cb,
-                       [](XXX::wamp_subscription_event ev){
+                       [](wampcc::wamp_subscription_event ev){
                          for (auto & x : ev.args.args_list)
                            std::cout << x << " ";
                          std::cout << std::endl;
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
       std::cout << "doing unsubscribe\n";
       session->unsubscribe(
         subscription_id,
-        [](XXX::t_request_id,
+        [](wampcc::t_request_id,
            bool success,
            std::string error)
         {

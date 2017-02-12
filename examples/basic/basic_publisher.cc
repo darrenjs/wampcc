@@ -1,13 +1,13 @@
-#include "XXX/kernel.h"
-#include "XXX/rawsocket_protocol.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/wamp_session.h"
+#include "wampcc/kernel.h"
+#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/wamp_session.h"
 
 #include <memory>
 #include <random>
 #include <iostream>
 
-using namespace XXX;
+using namespace wampcc;
 
 std::tuple<std::string, int> get_addr_port(int argc, char** argv)
 {
@@ -22,7 +22,7 @@ int main(int argc, char** argv)
   {
     auto endpoint = get_addr_port(argc, argv);
 
-    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ));
+    std::unique_ptr<kernel> the_kernel( new wampcc::kernel({}, logger::nolog() ));
 
     std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
     auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     if (status != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
-    XXX::uverr ec = fut.get();
+    wampcc::uverr ec = fut.get();
     if (ec)
       throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
 
@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
-      [&ready_to_exit](XXX::session_handle, bool is_open){
+      [&ready_to_exit](wampcc::session_handle, bool is_open){
         if (!is_open)
           try {
             ready_to_exit.set_value();

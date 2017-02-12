@@ -1,9 +1,9 @@
-#ifndef XXX_SESSION_H
-#define XXX_SESSION_H
+#ifndef WAMPCC_SESSION_H
+#define WAMPCC_SESSION_H
 
-#include "XXX/types.h"
-#include "XXX/protocol.h"
-#include "XXX/error.h"
+#include "wampcc/types.h"
+#include "wampcc/protocol.h"
+#include "wampcc/error.h"
 
 #include <jalson/jalson.h>
 
@@ -13,7 +13,7 @@
 #include <future>
 #include <set>
 
-namespace XXX {
+namespace wampcc {
 
   class protocol;
   class wamp_session;
@@ -487,6 +487,6 @@ namespace XXX {
     options m_options;
   };
 
-} // namespace XXX
+} // namespace wampcc
 
 #endif

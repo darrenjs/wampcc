@@ -1,10 +1,10 @@
-#include "XXX/kernel.h"
-#include "XXX/utils.h"
-#include "XXX/data_model.h"
-#include "XXX/wamp_session.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/websocket_protocol.h"
-#include "XXX/rawsocket_protocol.h"
+#include "wampcc/kernel.h"
+#include "wampcc/utils.h"
+#include "wampcc/data_model.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/websocket_protocol.h"
+#include "wampcc/rawsocket_protocol.h"
 
 #include <sstream>
 #include <condition_variable>
@@ -78,17 +78,17 @@ std::queue< AdminEvent > event_queue;
 
 struct t_callback
 {
-  t_callback(XXX::kernel* s, const char* d)
+  t_callback(wampcc::kernel* s, const char* d)
     : svc(s),
       request(d)
   {
   }
-  XXX::kernel* svc;
+  wampcc::kernel* svc;
   const char* request;
 };
 
 
-void rpc_call_cb(XXX::wamp_call_result r)
+void rpc_call_cb(wampcc::wamp_call_result r)
 {
   const char* msg = ( const char* ) r.user;
 
@@ -112,7 +112,7 @@ void rpc_call_cb(XXX::wamp_call_result r)
 }
 
 /* called upon subscribed and update events */
-void subscribe_cb(XXX::wamp_subscription_event ev)
+void subscribe_cb(wampcc::wamp_subscription_event ev)
 {
   std::cout << "topic update: subscription_id: " << ev.subscription_id << ", args_list: " << ev.args.args_list
             << ", args_dict:" << ev.args.args_dict << "\n";
@@ -268,7 +268,7 @@ static void process_options(int argc, char** argv)
   // check topics
   if (uopts.no_uri_check == false)
   {
-    XXX::uri_regex uri_check;
+    wampcc::uri_regex uri_check;
     for (auto & i : uopts.subscribe_topics)
       if (not uri_check.is_strict_uri(i.c_str()))
         die("not strict uri: " + i);
@@ -301,7 +301,7 @@ int main_impl(int argc, char** argv)
   process_options(argc, argv);
 
   // take CALL parameters from command line
-  XXX::wamp_args args;
+  wampcc::wamp_args args;
   if (!uopts.arg_list.empty())
   {
     try
@@ -331,19 +331,19 @@ int main_impl(int argc, char** argv)
     }
   }
 
-  /* Setup XXX core components */
+  /* Setup wampcc core components */
 
 
-  XXX::logger console_logger {
-    [](XXX::logger::Level l){ return l <= XXX::logger::eWarn;; },
-    [](XXX::logger::Level, const std::string& msg, const char*, int){
+  wampcc::logger console_logger {
+    [](wampcc::logger::Level l){ return l <= wampcc::logger::eWarn;; },
+    [](wampcc::logger::Level, const std::string& msg, const char*, int){
       std::cout << msg << std::endl;
     }
   };
 
-  std::unique_ptr<XXX::kernel> g_kernel( new XXX::kernel({}, console_logger));
+  std::unique_ptr<wampcc::kernel> g_kernel( new wampcc::kernel({}, console_logger));
 
-  std::unique_ptr<XXX::tcp_socket> sock( new XXX::tcp_socket(g_kernel.get()) );
+  std::unique_ptr<wampcc::tcp_socket> sock( new wampcc::tcp_socket(g_kernel.get()) );
 
   std::future_status status;
 
@@ -361,7 +361,7 @@ int main_impl(int argc, char** argv)
 
   if (status == std::future_status::ready)
   {
-    XXX::uverr ec = fut.get();
+    wampcc::uverr ec = fut.get();
     if (ec)
       die("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
   }
@@ -371,12 +371,12 @@ int main_impl(int argc, char** argv)
   if (!sock->is_connected())
     throw std::runtime_error("socket not connected");
 
-  XXX::rawsocket_protocol::options proto_opts;
-  std::shared_ptr<XXX::wamp_session> ws =
-    XXX::wamp_session::create<XXX::rawsocket_protocol>(
+  wampcc::rawsocket_protocol::options proto_opts;
+  std::shared_ptr<wampcc::wamp_session> ws =
+    wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
       g_kernel.get(),
       std::move(sock),
-      [](XXX::session_handle wp, bool is_open) {
+      [](wampcc::session_handle wp, bool is_open) {
         if (auto sp = wp.lock())
           session_state_cb(is_open);
       }, proto_opts);
@@ -384,7 +384,7 @@ int main_impl(int argc, char** argv)
   if (!ws)
     throw std::runtime_error("failed to obtain wamp session");
 
-  XXX::client_credentials credentials;
+  wampcc::client_credentials credentials;
   credentials.realm  = uopts.realm;
   credentials.authid = uopts.username;
   credentials.authmethods = {"wampcra"};
@@ -415,8 +415,8 @@ int main_impl(int argc, char** argv)
   bool long_wait = false;
   bool wait_reply = false;
 
-  // XXX::basic_list my_list;
-  // XXX::basic_list::list_events obs;
+  // wampcc::basic_list my_list;
+  // wampcc::basic_list::list_events obs;
   // auto displayer = [&my_list]()
   //   {
   //     jalson::json_array value = my_list.copy_value();
@@ -428,13 +428,13 @@ int main_impl(int argc, char** argv)
   // obs.on_insert = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
   // obs.on_replace = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
   // obs.on_erase = [&my_list, displayer](size_t) {displayer();};
-  // obs.on_reset = [&my_list, displayer](const XXX::basic_list::internal_impl&) {displayer();};
+  // obs.on_reset = [&my_list, displayer](const wampcc::basic_list::internal_impl&) {displayer();};
   // my_list.add_observer(obs);
 
 
 
   // subscribe to user topics
-  XXX::subscribed_cb scb; // TODO:
+  wampcc::subscribed_cb scb; // TODO:
   jalson::json_object sub_options { {KEY_PATCH, 1} };
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
@@ -448,8 +448,8 @@ int main_impl(int argc, char** argv)
                 jalson::json_object(),
                 args);
 
-    // XXX::basic_text_model tm;
-    // XXX::topic publisher(uopts.publish_topic, &tm);
+    // wampcc::basic_text_model tm;
+    // wampcc::topic publisher(uopts.publish_topic, &tm);
     // publisher.add_wamp_session(ws);
 
     // tm.set_value("hello world");
@@ -461,7 +461,7 @@ int main_impl(int argc, char** argv)
     ws->call(uopts.call_procedure,
              jalson::json_object(),
              args,
-             [](XXX::wamp_call_result r)
+             [](wampcc::wamp_call_result r)
              { rpc_call_cb(r);},
              (void*)"I_called_the_proc");
     wait_reply = true;

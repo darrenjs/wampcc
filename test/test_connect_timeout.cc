@@ -1,12 +1,12 @@
-#include "XXX/kernel.h"
-#include "XXX/wamp_session.h"
-#include "XXX/websocket_protocol.h"
-#include "XXX/rawsocket_protocol.h"
-#include "XXX/tcp_socket.h"
+#include "wampcc/kernel.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/websocket_protocol.h"
+#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/tcp_socket.h"
 
 #include <iostream>
 
-using namespace XXX;
+using namespace wampcc;
 
 enum test_outcome
 {

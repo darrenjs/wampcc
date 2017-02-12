@@ -1,8 +1,8 @@
-#ifndef XXX_IOLOOP_H
-#define XXX_IOLOOP_H
+#ifndef WAMPCC_IOLOOP_H
+#define WAMPCC_IOLOOP_H
 
-#include "XXX/utils.h"
-#include "XXX/error.h"
+#include "wampcc/utils.h"
+#include "wampcc/error.h"
 
 #include <thread>
 #include <vector>
@@ -15,7 +15,7 @@
 
 #include <uv.h>
 
-namespace XXX {
+namespace wampcc {
 
 class kernel;
 struct logger;
@@ -23,8 +23,8 @@ class io_loop;
 struct io_request;
 class tcp_socket;
 
-/** Can be called by user to XXX library to check the compile-time version of
- * libuv is the same as when XXX was compiled. */
+/** Can be called by user to wampcc library to check the compile-time version of
+ * libuv is the same as when wampcc was compiled. */
 void version_check_libuv(int uv_major, int uv_minor);
 
 class uv_handle_data
@@ -131,7 +131,7 @@ private:
   std::thread m_thread; // must be final member to prevent race conditions
 };
 
-} // namespace XXX
+} // namespace wampcc
 
 
 #endif

@@ -1,7 +1,7 @@
-#ifndef XXX_EVENT_LOOP_H
-#define XXX_EVENT_LOOP_H
+#ifndef WAMPCC_EVENT_LOOP_H
+#define WAMPCC_EVENT_LOOP_H
 
-#include "XXX/utils.h"
+#include "wampcc/utils.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -11,7 +11,7 @@
 #include <list>
 #include <map>
 
-namespace XXX {
+namespace wampcc {
 
 struct logger;
 class kernel;
@@ -74,6 +74,6 @@ private:
   std::thread m_thread; // must be final member to prevent race conditions
 };
 
-} // namespace XXX
+} // namespace wampcc
 
 #endif

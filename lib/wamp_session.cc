@@ -1,14 +1,14 @@
-#include "XXX/wamp_session.h"
+#include "wampcc/wamp_session.h"
 
-#include "XXX/tcp_socket.h"
-#include "XXX/protocol.h"
-#include "XXX/rpc_man.h"
-#include "XXX/event_loop.h"
-#include "XXX/log_macros.h"
-#include "XXX/utils.h"
-#include "XXX/kernel.h"
-#include "XXX/rawsocket_protocol.h"
-#include "XXX/io_loop.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/protocol.h"
+#include "wampcc/rpc_man.h"
+#include "wampcc/event_loop.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/utils.h"
+#include "wampcc/kernel.h"
+#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/io_loop.h"
 
 #include <jalson/jalson.h>
 
@@ -40,7 +40,7 @@ bool is_in(T t, T v, Args... args) {
 }
 
 
-namespace XXX {
+namespace wampcc {
 
 /** Exception class used to indicate failure of authentication. */
 class auth_error : public std::runtime_error
@@ -944,7 +944,7 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
       jalson::json_object& opt = jalson::append_object( msg );
 
       opt[ "roles" ] = std::move( roles );
-      opt[ "agent" ] = XXX_NAME_VERSION;
+      opt[ "agent" ] = WAMPCC_NAME_VERSION;
       opt[ "authid"] = std::move(cc.authid);
 
       jalson::json_array& ja = jalson::insert_array(opt, "authmethods");
@@ -1066,7 +1066,7 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
 
     std::string uri = iter->second.uri;
 
-    XXX:: wamp_invocation invoke;
+    wampcc:: wamp_invocation invoke;
     invoke.user = iter->second.user_data;
 
     if ( msg.size() > 4 ) invoke.arg_list = std::move(msg[4].as_array());
@@ -1093,7 +1093,7 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
     }
 
   }
-  catch (XXX::wamp_error& ex)
+  catch (wampcc::wamp_error& ex)
   {
     reply_with_error(INVOCATION, request_id, ex.args(), ex.error_uri());
   }
@@ -2067,4 +2067,4 @@ void wamp_session::drop_connection_impl(std::string reason,
   }
 }
 
-} // namespace XXX
+} // namespace wampcc

@@ -1,15 +1,15 @@
-#ifndef XXX_WAMP_ROUTER_H
-#define XXX_WAMP_ROUTER_H
+#ifndef WAMPCC_WAMP_ROUTER_H
+#define WAMPCC_WAMP_ROUTER_H
 
-#include "XXX/wamp_session.h"
-#include "XXX/error.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/error.h"
 
 #include <jalson/jalson.h>
 
 #include <memory>
 #include <future>
 
-namespace XXX {
+namespace wampcc {
 
   class kernel;
   class pubsub_man;

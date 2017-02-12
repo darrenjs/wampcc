@@ -1,15 +1,15 @@
-#ifndef XXX_PUBSUB_MAN_H
-#define XXX_PUBSUB_MAN_H
+#ifndef WAMPCC_PUBSUB_MAN_H
+#define WAMPCC_PUBSUB_MAN_H
 
-#include "XXX/types.h"
-#include "XXX/utils.h"
+#include "wampcc/types.h"
+#include "wampcc/utils.h"
 
 #include <jalson/jalson.h>
 
 #include <map>
 #include <memory>
 
-namespace XXX {
+namespace wampcc {
 
 struct logger;
 struct managed_topic;
@@ -64,6 +64,6 @@ private:
   uri_regex m_uri_regex;
 };
 
-} // namespace XXX
+} // namespace wampcc
 
 #endif

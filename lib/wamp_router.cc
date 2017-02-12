@@ -1,19 +1,19 @@
-#include "XXX/wamp_router.h"
+#include "wampcc/wamp_router.h"
 
-#include "XXX/kernel.h"
-#include "XXX/rpc_man.h"
-#include "XXX/pubsub_man.h"
-#include "XXX/event_loop.h"
-#include "XXX/io_loop.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/log_macros.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/protocol.h"
+#include "wampcc/kernel.h"
+#include "wampcc/rpc_man.h"
+#include "wampcc/pubsub_man.h"
+#include "wampcc/event_loop.h"
+#include "wampcc/io_loop.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/protocol.h"
 
 #include <unistd.h>
 #include <string.h>
 
-namespace XXX {
+namespace wampcc {
 
 wamp_router::wamp_router(kernel* __svc, dealer_listener* l)
   : m_kernel(__svc),
@@ -269,7 +269,7 @@ void wamp_router::handle_inbound_call(
       throw wamp_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
     }
   }
-  catch (XXX::wamp_error& ex)
+  catch (wampcc::wamp_error& ex)
   {
     if (fn)
       fn(ex.args(), std::unique_ptr<std::string>(new std::string(ex.what())));

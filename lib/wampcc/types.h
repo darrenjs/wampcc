@@ -1,5 +1,5 @@
-#ifndef XXX_WAMPTYPES_H
-#define XXX_WAMPTYPES_H
+#ifndef WAMPCC_WAMPTYPES_H
+#define WAMPCC_WAMPTYPES_H
 
 #include <jalson/jalson.h>
 
@@ -9,7 +9,7 @@
 #include <memory>
 #include <stdint.h>
 
-namespace XXX
+namespace wampcc
 {
 
 // WAMP defined error messages

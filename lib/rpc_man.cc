@@ -1,13 +1,13 @@
-#include "XXX/rpc_man.h"
+#include "wampcc/rpc_man.h"
 
-#include "XXX/event_loop.h"
-#include "XXX/kernel.h"
-#include "XXX/log_macros.h"
-#include "XXX/wamp_session.h"
+#include "wampcc/event_loop.h"
+#include "wampcc/kernel.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/wamp_session.h"
 
 #include <memory>
 
-namespace XXX {
+namespace wampcc {
 
 
 
@@ -133,4 +133,4 @@ void rpc_man::session_closed(std::shared_ptr<wamp_session>& session)
 }
 
 
-} // namespace XXX
+} // namespace wampcc

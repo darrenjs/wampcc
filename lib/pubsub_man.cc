@@ -1,16 +1,16 @@
-#include "XXX/pubsub_man.h"
+#include "wampcc/pubsub_man.h"
 
-#include "XXX/data_model.h"
-#include "XXX/event_loop.h"
-#include "XXX/log_macros.h"
-#include "XXX/wamp_session.h"
-#include "XXX/kernel.h"
+#include "wampcc/data_model.h"
+#include "wampcc/event_loop.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/kernel.h"
 
 #include <list>
 #include <iostream>
 #include <algorithm>
 
-namespace XXX {
+namespace wampcc {
 
 static bool session_equals(const session_handle& p1, const session_handle& p2)
 {
@@ -289,7 +289,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   /* for stateful topic must send initial snapshot (only if an image exists) */
   if (mt->is_valid() && (options.find(KEY_PATCH) != options.end()))
   {
-    XXX::wamp_args pub_args;
+    wampcc::wamp_args pub_args;
     pub_args.args_list = jalson::json_array();
 
     jalson::json_array patch;
@@ -364,4 +364,4 @@ void pubsub_man::session_closed(session_handle /*sh*/)
   //   }
 }
 
-} // namespace XXX
+} // namespace wampcc

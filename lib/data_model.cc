@@ -1,12 +1,12 @@
-#include "XXX/data_model.h"
-#include "XXX/wamp_router.h"
+#include "wampcc/data_model.h"
+#include "wampcc/wamp_router.h"
 
 #include <iostream> // TODO: delete me
 
 #define THROW_FOR_INVALID_FN( X ) \
 if (not m_observer. X) throw std::runtime_error("observer." #X " must be valid");
 
-namespace XXX {
+namespace wampcc {
 
 data_model::data_model()
 {
@@ -67,7 +67,7 @@ model_topic::model_topic(std::string uri, data_model * model)
 {
 }
 
-XXX::wamp_args model_topic::prepare_snapshot()
+wampcc::wamp_args model_topic::prepare_snapshot()
 {
   jalson::json_array patch;
 
@@ -78,7 +78,7 @@ XXX::wamp_args model_topic::prepare_snapshot()
   operation["path"]  = "";  /* replace whole document */
   operation["value"] = std::move(model_snapshot);
 
-  XXX::wamp_args pub_args;
+  wampcc::wamp_args pub_args;
   pub_args.args_list.push_back( std::move(patch) );
 
   return pub_args;
@@ -94,7 +94,7 @@ void model_topic::add_publisher(std::weak_ptr<wamp_session> wp)
    * value mutex is taken (the value mutex is take during the snapshot). */
   std::lock_guard<std::mutex> guard(m_data_model->m_model_topics_mutex);
 
-  XXX::wamp_args pub_args = prepare_snapshot();
+  wampcc::wamp_args pub_args = prepare_snapshot();
 
   if (auto sp = wp.lock())
   {
@@ -112,7 +112,7 @@ void model_topic::add_publisher(std::string realm,
    * value mutex is taken (the value mutex is take during the snapshot). */
   std::lock_guard<std::mutex> guard(m_data_model->m_model_topics_mutex);
 
-  XXX::wamp_args pub_args = prepare_snapshot();
+  wampcc::wamp_args pub_args = prepare_snapshot();
 
   if (auto sp = dealer.lock())
   {
@@ -126,7 +126,7 @@ void model_topic::add_publisher(std::string realm,
 void model_topic::publish_update(jalson::json_array patch,
                                  jalson::json_array event)
 {
-  XXX::wamp_args pub_args;
+  wampcc::wamp_args pub_args;
   pub_args.args_list.push_back( std::move(patch) );
   pub_args.args_list.push_back( std::move(event) );
 
@@ -234,7 +234,7 @@ jalson::json_value string_model::snapshot() const
 
 //======================================================================
 
-model_sub_base::model_sub_base(std::shared_ptr<XXX::wamp_session>& ws,
+model_sub_base::model_sub_base(std::shared_ptr<wampcc::wamp_session>& ws,
                                std::string topic_uri)
   : m_uri(topic_uri),
     m_session(ws)
@@ -248,7 +248,7 @@ model_sub_base::~model_sub_base()
 
 //======================================================================
 
-jmodel_subscription::jmodel_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+jmodel_subscription::jmodel_subscription(std::shared_ptr<wampcc::wamp_session>& ws,
                                          std::string topic_uri,
                                          observer obs)
   : base_type(ws, std::move(topic_uri)),
@@ -279,7 +279,7 @@ void jmodel_subscription::on_update(jalson::json_object options,
 
 //======================================================================
 
-string_subscription::string_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+string_subscription::string_subscription(std::shared_ptr<wampcc::wamp_session>& ws,
                                          std::string topic_uri,
                                          observer ob)
   : base_type(ws, std::move(topic_uri)),
@@ -510,7 +510,7 @@ jalson::json_value list_model::snapshot() const
 
 //======================================================================
 
-list_subscription::list_subscription(std::shared_ptr<XXX::wamp_session>& ws,
+list_subscription::list_subscription(std::shared_ptr<wampcc::wamp_session>& ws,
                                      std::string topic_uri,
                                      observer ob)
   : base_type(ws, std::move(topic_uri)),

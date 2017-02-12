@@ -1,9 +1,9 @@
-#ifndef XXX_TCP_SOCKET_H
-#define XXX_TCP_SOCKET_H
+#ifndef WAMPCC_TCP_SOCKET_H
+#define WAMPCC_TCP_SOCKET_H
 
 
-#include <XXX/kernel.h>
-#include <XXX/error.h>
+#include <wampcc/kernel.h>
+#include <wampcc/error.h>
 
 #include <uv.h>
 
@@ -15,7 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 
-namespace XXX {
+namespace wampcc {
 
 class io_loop;
 
@@ -140,6 +140,6 @@ private:
   friend io_loop;
 };
 
-} // namespace XXX
+} // namespace wampcc
 
 #endif

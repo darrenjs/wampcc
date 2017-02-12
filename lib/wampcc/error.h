@@ -1,9 +1,9 @@
-#ifndef XXX_ERROR_H
-#define XXX_ERROR_H
+#ifndef WAMPCC_ERROR_H
+#define WAMPCC_ERROR_H
 
 #include <system_error>
 
-namespace XXX {
+namespace wampcc {
 
 
 /** */

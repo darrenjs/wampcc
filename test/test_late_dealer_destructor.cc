@@ -2,7 +2,7 @@
 
 
 
-using namespace XXX;
+using namespace wampcc;
 using namespace std;
 
 

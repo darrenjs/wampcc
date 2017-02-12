@@ -1,14 +1,14 @@
-#include <XXX/tcp_socket.h>
-#include <XXX/kernel.h>
-#include <XXX/io_loop.h>
-#include <XXX/log_macros.h>
-#include <XXX/utils.h>
+#include <wampcc/tcp_socket.h>
+#include <wampcc/kernel.h>
+#include <wampcc/io_loop.h>
+#include <wampcc/log_macros.h>
+#include <wampcc/utils.h>
 
 #include <iostream>
 
 using namespace std;
 
-namespace XXX {
+namespace wampcc {
 
 struct write_req
 {
@@ -587,4 +587,4 @@ std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
 }
 
 
-} // namespace XXX
+} // namespace wampcc

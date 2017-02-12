@@ -1,7 +1,7 @@
 #include "test_common.h"
 
 
-using namespace XXX;
+using namespace wampcc;
 using namespace std;
 
 

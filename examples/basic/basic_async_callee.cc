@@ -6,15 +6,15 @@ Commented-out, until tcp_socket supports async callback for on_connect.
  */
 
 
-#include "XXX/kernel.h"
-#include "XXX/rawsocket_protocol.h"
-#include "XXX/wamp_session.h"
-#include "XXX/websocket_protocol.h"
+#include "wampcc/kernel.h"
+#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/websocket_protocol.h"
 
 #include <memory>
 #include <iostream>
 
-using namespace XXX;
+using namespace wampcc;
 
 
 // std::promise<void> g_exit_value;
@@ -27,7 +27,7 @@ using namespace XXX;
 // }
 
 
-// void on_wamp_session_status(XXX::session_handle session, bool is_open)
+// void on_wamp_session_status(wampcc::session_handle session, bool is_open)
 // {
 //   if (is_open)
 //     g_session->provide("greeting", jalson::json_object(), rpc);
@@ -61,7 +61,7 @@ int main(int, char**)
 {
   try {
 
-    // std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ));
+    // std::unique_ptr<kernel> the_kernel( new wampcc::kernel({}, logger::nolog() ));
 
     // wamp_connector::create(the_kernel.get(),
     //                        "127.0.0.1", "55555",

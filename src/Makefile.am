@@ -26,5 +26,5 @@ AM_LDFLAGS=-lpthread
 bin_PROGRAMS = admin
 
 admin_SOURCES=admin.cc
-admin_LDADD=-L../lib -lXXX  $(LIBLS) -L$(jalsonlib) -ljalson  $(libuvlib)  -lcrypto -lpthread
+admin_LDADD=-L../lib -lwampcc  $(LIBLS) -L$(jalsonlib) -ljalson  $(libuvlib)  -lcrypto -lpthread
 admin_LDFLAGS=-L../lib -pthread

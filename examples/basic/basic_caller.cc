@@ -1,18 +1,18 @@
-#include "XXX/kernel.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/wamp_session.h"
-#include "XXX/websocket_protocol.h"
+#include "wampcc/kernel.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/websocket_protocol.h"
 
 #include <memory>
 #include <iostream>
 
-using namespace XXX;
+using namespace wampcc;
 
 int main(int, char**)
 {
   try
   {
-    std::unique_ptr<kernel> the_kernel( new XXX::kernel({}, logger::nolog() ));
+    std::unique_ptr<kernel> the_kernel( new wampcc::kernel({}, logger::nolog() ));
 
     std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
     auto fut = sock->connect("127.0.0.1", 55555);
@@ -21,7 +21,7 @@ int main(int, char**)
     if (status != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
-    XXX::uverr ec = fut.get();
+    wampcc::uverr ec = fut.get();
     if (ec)
       throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
 
@@ -30,7 +30,7 @@ int main(int, char**)
     std::shared_ptr<wamp_session> session = wamp_session::create<websocket_protocol>(
       the_kernel.get(),
       std::move(sock),
-      [&ready_to_exit](XXX::session_handle, bool is_open){
+      [&ready_to_exit](wampcc::session_handle, bool is_open){
         if (!is_open)
           try {
             ready_to_exit.set_value();

@@ -1,7 +1,7 @@
-#ifndef XXX_LOG_MACROS_H
-#define XXX_LOG_MACROS_H
+#ifndef WAMPCC_LOG_MACROS_H
+#define WAMPCC_LOG_MACROS_H
 
-#include "XXX/kernel.h"
+#include "wampcc/kernel.h"
 
 #include <sstream>
 
@@ -18,15 +18,15 @@
   } while (0)
 
 #define LOG_INFO( X )                           \
-  LOGIMPL( X, XXX::logger::eInfo )
+  LOGIMPL( X, wampcc::logger::eInfo )
 
 #define LOG_WARN( X )                           \
-  LOGIMPL( X, XXX::logger::eWarn )
+  LOGIMPL( X, wampcc::logger::eWarn )
 
 #define LOG_ERROR( X )                          \
-  LOGIMPL( X, XXX::logger::eError )
+  LOGIMPL( X, wampcc::logger::eError )
 
 #define LOG_DEBUG( X )                          \
-  LOGIMPL( X, XXX::logger::eDebug )
+  LOGIMPL( X, wampcc::logger::eDebug )
 
 #endif

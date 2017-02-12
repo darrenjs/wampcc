@@ -1,9 +1,9 @@
 
-#include "XXX/websocket_protocol.h"
+#include "wampcc/websocket_protocol.h"
 
-#include "XXX/utils.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/http_parser.h"
+#include "wampcc/utils.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/http_parser.h"
 
 #include <iostream>
 
@@ -13,7 +13,7 @@
 #include <arpa/inet.h>
 
 
-namespace XXX
+namespace wampcc
 {
 
 websocket_protocol::websocket_protocol(tcp_socket* h,

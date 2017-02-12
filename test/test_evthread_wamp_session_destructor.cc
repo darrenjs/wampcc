@@ -1,6 +1,6 @@
 #include "test_common.h"
 
-using namespace XXX;
+using namespace wampcc;
 using namespace std;
 
 
@@ -13,7 +13,7 @@ void test_WS_destroyed_on_ev_thread(int port)
   {
     unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
 
-    std::unique_ptr<XXX::tcp_socket> sock( new tcp_socket(the_kernel.get()) );
+    std::unique_ptr<wampcc::tcp_socket> sock( new tcp_socket(the_kernel.get()) );
 
     cout << "attemping socket connection ...\n";
     auto fut = sock->connect("127.0.0.1", port);

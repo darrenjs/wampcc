@@ -1,7 +1,7 @@
-#include "XXX/kernel.h"
+#include "wampcc/kernel.h"
 
-#include "XXX/io_loop.h"
-#include "XXX/event_loop.h"
+#include "wampcc/io_loop.h"
+#include "wampcc/event_loop.h"
 
 #include <iostream>
 
@@ -11,13 +11,13 @@
 #include <stdio.h>
 
 
-namespace XXX {
+namespace wampcc {
 
-const char* name() { return XXX_NAME; }
-const char* name_version() { return XXX_NAME_VERSION; }
-int major_version() { return XXX_MAJOR_VERSION; }
-int minor_version() { return XXX_MINOR_VERSION; }
-int micro_version() { return XXX_MICRO_VERSION; }
+const char* name() { return WAMPCC_NAME; }
+const char* name_version() { return WAMPCC_NAME_VERSION; }
+int major_version() { return WAMPCC_MAJOR_VERSION; }
+int minor_version() { return WAMPCC_MINOR_VERSION; }
+int micro_version() { return WAMPCC_MICRO_VERSION; }
 
 /* Constructor */
 kernel::kernel(config __conf, logger nlog)
@@ -181,4 +181,4 @@ logger logger::nolog()
   return my_logger;
 }
 
-} // namespace XXX
+} // namespace wampcc

@@ -1,5 +1,5 @@
-#ifndef XXX_UTILS_H
-#define XXX_UTILS_H
+#ifndef WAMPCC_UTILS_H
+#define WAMPCC_UTILS_H
 
 #include <sstream>
 #include <list>
@@ -15,7 +15,7 @@
   } while(false);
 
 
-namespace XXX {
+namespace wampcc {
 
 struct logger;
 
@@ -246,6 +246,6 @@ private:
 
 
 
-} // namespace XXX
+} // namespace wampcc
 
 #endif

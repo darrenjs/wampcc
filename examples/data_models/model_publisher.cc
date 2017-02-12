@@ -1,8 +1,8 @@
 
 
-#include "XXX/wamp_router.h"
-#include "XXX/kernel.h"
-#include "XXX/data_model.h"
+#include "wampcc/wamp_router.h"
+#include "wampcc/kernel.h"
+#include "wampcc/data_model.h"
 
 #include <condition_variable>
 #include <iostream>
@@ -41,7 +41,7 @@ public:
 
   void thread_main();
 
-  XXX::list_model model;
+  wampcc::list_model model;
 
 private:
 
@@ -83,7 +83,7 @@ void planets_list::thread_main()
     std::string newvalue = "0000____" + get_timestamp();
 
 
-    XXX::wamp_args wargs;
+    wampcc::wamp_args wargs;
     wargs.args_list.push_back( newvalue );
 
     // if (g_dealer) g_dealer->publish("USERHB",
@@ -113,44 +113,44 @@ void planets_list::thread_main()
 
 
 planets_list planets;
-XXX::model_topic & topic =  planets.model.get_topic("planets");
+wampcc::model_topic & topic =  planets.model.get_topic("planets");
 
 
 
 
-std::shared_ptr<XXX::wamp_router> g_dealer;
+std::shared_ptr<wampcc::wamp_router> g_dealer;
 
 int main(int /* argc */, char** /* argv */)
 {
-  auto __logger = XXX::logger::stdlog(std::cout,
-                                      XXX::logger::levels_all(),
+  auto __logger = wampcc::logger::stdlog(std::cout,
+                                      wampcc::logger::levels_all(),
                                       true);
 
-  std::unique_ptr<XXX::kernel> the_kernel(new XXX::kernel({},__logger));
+  std::unique_ptr<wampcc::kernel> the_kernel(new wampcc::kernel({},__logger));
 
-  std::shared_ptr<XXX::wamp_router> dealer ( new XXX::wamp_router(the_kernel.get(), nullptr) );
+  std::shared_ptr<wampcc::wamp_router> dealer ( new wampcc::wamp_router(the_kernel.get(), nullptr) );
   g_dealer = dealer;
 
   std::string realm = "default_realm";
   topic.add_publisher(realm, g_dealer);
 
-  XXX::auth_provider server_auth;
+  wampcc::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
   server_auth.permit_user_realm = [](const std::string& /*user*/,
                                      const std::string& /*realm*/){
-    return XXX::auth_provider::auth_plan(XXX::auth_provider::e_open, {});
+    return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_open, {});
   };
   server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "";};
 
   // start listening for sessions
   int port = 44444;
   std::cout << "listening on port " << port << std::endl;
-  std::future<XXX::uverr> fut_listen_err = dealer->listen(port, server_auth);
+  std::future<wampcc::uverr> fut_listen_err = dealer->listen(port, server_auth);
   std::future_status status = fut_listen_err.wait_for(std::chrono::seconds(2));
 
   if (status == std::future_status::ready)
   {
-    XXX::uverr err = fut_listen_err.get();
+    wampcc::uverr err = fut_listen_err.get();
     if (err)
     {
       std::cout << "listen failed, " << err <<  "\n";

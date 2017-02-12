@@ -1,9 +1,9 @@
-#ifndef XXX_WEBSOCKET_PROTOCOL_H
-#define XXX_WEBSOCKET_PROTOCOL_H
+#ifndef WAMPCC_WEBSOCKET_PROTOCOL_H
+#define WAMPCC_WEBSOCKET_PROTOCOL_H
 
-#include "XXX/protocol.h"
+#include "wampcc/protocol.h"
 
-namespace XXX
+namespace wampcc
 {
 
 class http_parser;

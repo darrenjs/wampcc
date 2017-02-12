@@ -1,9 +1,9 @@
-#include "XXX/io_loop.h"
+#include "wampcc/io_loop.h"
 
-#include "XXX/log_macros.h"
-#include "XXX/kernel.h"
-#include "XXX/tcp_socket.h"
-#include "XXX/utils.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/kernel.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/utils.h"
 
 #include <system_error>
 
@@ -18,7 +18,7 @@ static const char* safe_str(const char* s)
   return s? s : "null";
 }
 
-namespace XXX {
+namespace wampcc {
 
 struct io_request
 {
@@ -367,7 +367,7 @@ void io_loop::push_fn(std::function<void()> fn)
 
 void version_check_libuv(int compile_major, int compile_minor)
 {
-  // version that XXX library was built with
+  // version that wampcc library was built with
   int library_major = UV_VERSION_MAJOR;
   int library_minor = UV_VERSION_MINOR;
 
@@ -389,4 +389,4 @@ void version_check_libuv(int compile_major, int compile_minor)
 }
 
 
-} // namespace XXX
+} // namespace wampcc

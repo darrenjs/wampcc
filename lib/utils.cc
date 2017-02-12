@@ -1,5 +1,5 @@
-#include "XXX/utils.h"
-#include "XXX/log_macros.h"
+#include "wampcc/utils.h"
+#include "wampcc/log_macros.h"
 
 #include <openssl/hmac.h> // crypto functions
 #include <sys/time.h>
@@ -7,7 +7,7 @@
 #include <string.h>
 #include <regex.h>
 
-namespace XXX {
+namespace wampcc {
 
 
 /*
@@ -277,4 +277,4 @@ std::string hostname()
   return buffer.nodename;
 }
 
-} // namespace XXX
+} // namespace wampcc

@@ -1,9 +1,9 @@
-#ifndef XXX_RAWSOCKET_PROTOCOL_H
-#define XXX_RAWSOCKET_PROTOCOL_H
+#ifndef WAMPCC_RAWSOCKET_PROTOCOL_H
+#define WAMPCC_RAWSOCKET_PROTOCOL_H
 
-#include "XXX/protocol.h"
+#include "wampcc/protocol.h"
 
-namespace XXX {
+namespace wampcc {
 
 class rawsocket_protocol : public protocol
 {

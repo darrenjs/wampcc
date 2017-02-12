@@ -1,8 +1,8 @@
-#ifndef XXX_RPC_MAN_H
-#define XXX_RPC_MAN_H
+#ifndef WAMPCC_RPC_MAN_H
+#define WAMPCC_RPC_MAN_H
 
-#include "XXX/types.h"
-#include "XXX/wamp_session.h"
+#include "wampcc/types.h"
+#include "wampcc/wamp_session.h"
 
 #include <jalson/jalson.h>
 
@@ -14,7 +14,7 @@
 #include <memory>
 #include <list>
 
-namespace XXX {
+namespace wampcc {
 
 class event_loop;
 struct logger;
@@ -84,6 +84,6 @@ private:
 
 };
 
-} // namespace XXX
+} // namespace wampcc
 
 #endif

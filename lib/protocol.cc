@@ -1,10 +1,10 @@
-#include "XXX/protocol.h"
+#include "wampcc/protocol.h"
 
-#include "XXX/tcp_socket.h"
-#include "XXX/utils.h"
-#include "XXX/rawsocket_protocol.h"
-#include "XXX/websocket_protocol.h"
-#include "XXX/http_parser.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/utils.h"
+#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/websocket_protocol.h"
+#include "wampcc/http_parser.h"
 
 
 #include <iostream>
@@ -14,7 +14,7 @@
 
 
 
-namespace XXX {
+namespace wampcc {
 
 
   buffer::read_pointer::read_pointer(char * p, size_t avail)

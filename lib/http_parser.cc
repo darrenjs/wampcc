@@ -1,7 +1,7 @@
-#include "XXX/http_parser.h"
+#include "wampcc/http_parser.h"
 
-#include "XXX/utils.h"
-#include "XXX/websocket_protocol.h"
+#include "wampcc/utils.h"
+#include "wampcc/websocket_protocol.h"
 
 #include <http_parser.h> /* nodejs http parser */
 
@@ -10,7 +10,7 @@
 
 
 
-namespace XXX
+namespace wampcc
 {
 
 
@@ -49,19 +49,19 @@ http_parser::http_parser(parser_type pt)
   // can be assigned to function pointers.
 
   m_settings->on_headers_complete=[](::http_parser * p) {
-    auto hp =(XXX::http_parser*)p->data; return hp->on_headers_complete(); };
+    auto hp =(wampcc::http_parser*)p->data; return hp->on_headers_complete(); };
 
   m_settings->on_url=[](::http_parser* p, const char *s, size_t n) {
-    auto hp =(XXX::http_parser*)p->data; return hp->on_url(s,n); };
+    auto hp =(wampcc::http_parser*)p->data; return hp->on_url(s,n); };
 
   m_settings->on_header_field=[](::http_parser* p, const char *s, size_t n) {
-    auto hp =(XXX::http_parser*)p->data; return hp->on_header_field(s,n); };
+    auto hp =(wampcc::http_parser*)p->data; return hp->on_header_field(s,n); };
 
   m_settings->on_header_value=[](::http_parser* p, const char *s, size_t n) {
-    auto hp =(XXX::http_parser*)p->data; return hp->on_header_value(s,n); };
+    auto hp =(wampcc::http_parser*)p->data; return hp->on_header_value(s,n); };
 
   m_settings->on_status=[](::http_parser* p, const char *s, size_t n) {
-    auto hp =(XXX::http_parser*)p->data; return hp->on_status(s,n); };
+    auto hp =(wampcc::http_parser*)p->data; return hp->on_status(s,n); };
 
 }
 

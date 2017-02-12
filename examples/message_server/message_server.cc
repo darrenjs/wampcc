@@ -1,7 +1,7 @@
-#include "XXX/kernel.h"
-#include "XXX/data_model.h"
-#include "XXX/wamp_session.h"
-#include "XXX/wamp_router.h"
+#include "wampcc/kernel.h"
+#include "wampcc/data_model.h"
+#include "wampcc/wamp_session.h"
+#include "wampcc/wamp_router.h"
 
 #include <memory>
 #include <iostream>
@@ -20,13 +20,13 @@ public:
 private:
   std::string  m_public_realm;
   std::string  m_private_realm;
-  std::unique_ptr<XXX::kernel>         m_kernel;
-  std::shared_ptr<XXX::wamp_router> m_dealer;
+  std::unique_ptr<wampcc::kernel>         m_kernel;
+  std::shared_ptr<wampcc::wamp_router> m_dealer;
 
   struct message_topic
   {
-    XXX::string_model data;
-    XXX::model_topic & publisher;
+    wampcc::string_model data;
+    wampcc::model_topic & publisher;
 
     message_topic(const std::string& uri)
       : publisher(data.get_topic(uri))
@@ -44,9 +44,9 @@ private:
   std::map<std::string, message_topic> m_topics;
   std::mutex m_topics_mutex;
 
-  void rpc_message_set(XXX::wamp_invocation&);
-  void rpc_message_list(XXX::wamp_invocation&);
-  void rpc_shutdown(XXX::wamp_invocation&);
+  void rpc_message_set(wampcc::wamp_invocation&);
+  void rpc_message_list(wampcc::wamp_invocation&);
+  void rpc_shutdown(wampcc::wamp_invocation&);
 
   std::promise<void> m_shutdown_pomise;
   std::future<void>  m_shutdown_future;
@@ -56,30 +56,30 @@ private:
 message_server::message_server()
   : m_public_realm("default_realm"),
     m_private_realm("private"),
-    m_kernel(new XXX::kernel({}, XXX::logger::stdlog(std::cout,
-                                                     XXX::logger::levels_all(),
+    m_kernel(new wampcc::kernel({}, wampcc::logger::stdlog(std::cout,
+                                                     wampcc::logger::levels_all(),
                                                      true))),
-    m_dealer(new XXX::wamp_router(m_kernel.get(), nullptr)),
+    m_dealer(new wampcc::wamp_router(m_kernel.get(), nullptr)),
     m_shutdown_future(m_shutdown_pomise.get_future())
 
 {
-  XXX::auth_provider server_auth;
+  wampcc::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
   server_auth.permit_user_realm = [&](const std::string& /*user*/,
                                       const std::string& realm){
     if (realm == m_public_realm)
-      return XXX::auth_provider::auth_plan(XXX::auth_provider::e_open, {});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_open, {});
     else if (realm == m_private_realm)
-      return XXX::auth_provider::auth_plan(XXX::auth_provider::e_authenticate, {"wampcra"});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_authenticate, {"wampcra"});
     else
-      return XXX::auth_provider::auth_plan(XXX::auth_provider::e_forbidden, {});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_forbidden, {});
   };
   server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
 
   // TODO: would be preferable to obtain an internal_session object, and use that to register the RPC's etc.
-  m_dealer->provide(m_public_realm,  "message_set",  {}, [this](XXX::wamp_invocation& wi){rpc_message_set(wi); });
-  m_dealer->provide(m_public_realm,  "message_list", {}, [this](XXX::wamp_invocation& wi){rpc_message_list(wi);});
-  m_dealer->provide(m_private_realm, "shutdown",     {}, [this](XXX::wamp_invocation& wi){rpc_shutdown(wi);});
+  m_dealer->provide(m_public_realm,  "message_set",  {}, [this](wampcc::wamp_invocation& wi){rpc_message_set(wi); });
+  m_dealer->provide(m_public_realm,  "message_list", {}, [this](wampcc::wamp_invocation& wi){rpc_message_list(wi);});
+  m_dealer->provide(m_private_realm, "shutdown",     {}, [this](wampcc::wamp_invocation& wi){rpc_shutdown(wi);});
 
   int port = 55555;
   auto fut = m_dealer->listen(port, server_auth);
@@ -91,7 +91,7 @@ message_server::message_server()
     case std::future_status::deferred :
       throw std::runtime_error("socket listen not attempted");
     case std::future_status::ready :
-      XXX::uverr ec = fut.get();
+      wampcc::uverr ec = fut.get();
       if (ec != 0)
       {
         std::ostringstream os;
@@ -118,15 +118,15 @@ message_server::~message_server()
 }
 
 
-void message_server::rpc_shutdown(XXX::wamp_invocation&)
+void message_server::rpc_shutdown(wampcc::wamp_invocation&)
 {
   m_shutdown_pomise.set_value();
 }
 
 
-void message_server::rpc_message_set(XXX::wamp_invocation& invocation)
+void message_server::rpc_message_set(wampcc::wamp_invocation& invocation)
 {
-  /* Invoked on the XXX EV thread */
+  /* Invoked on the wampcc EV thread */
 
   // Perform type checking of the received request
   if (invocation.arg_list.size() < 1)
@@ -168,7 +168,7 @@ void message_server::rpc_message_set(XXX::wamp_invocation& invocation)
 }
 
 
-void message_server::rpc_message_list(XXX::wamp_invocation& invocation)
+void message_server::rpc_message_list(wampcc::wamp_invocation& invocation)
 {
   std::lock_guard<std::mutex> guard(m_topics_mutex);
 

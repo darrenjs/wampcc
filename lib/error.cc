@@ -1,8 +1,8 @@
-#include <XXX/error.h>
+#include <wampcc/error.h>
 
 #include <uv.h>
 
-namespace XXX {
+namespace wampcc {
 
 std::string uverr::message() const
 {
