@@ -1,10 +1,5 @@
-#include "wampcc/kernel.h"
+#include "wampcc/wampcc.h"
 #include "wampcc/utils.h"
-#include "wampcc/data_model.h"
-#include "wampcc/wamp_session.h"
-#include "wampcc/tcp_socket.h"
-#include "wampcc/websocket_protocol.h"
-#include "wampcc/rawsocket_protocol.h"
 
 #include <sstream>
 #include <condition_variable>

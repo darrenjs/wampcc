@@ -1,7 +1,4 @@
-#include "wampcc/kernel.h"
-#include "wampcc/data_model.h"
-#include "wampcc/wamp_session.h"
-#include "wampcc/wamp_router.h"
+#include "wampcc/wampcc.h"
 
 #include <memory>
 #include <iostream>
