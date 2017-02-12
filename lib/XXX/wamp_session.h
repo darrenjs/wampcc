@@ -358,6 +358,7 @@ namespace XXX {
     kernel* m_kernel;
 
     uint64_t m_sid;
+    std::string m_log_prefix;
     std::unique_ptr< tcp_socket> m_socket;
 
     t_session_mode m_session_mode;

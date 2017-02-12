@@ -334,14 +334,14 @@ int main_impl(int argc, char** argv)
   /* Setup XXX core components */
 
 
-  XXX::logger __logger {
-    [](XXX::logger::Level l){ return l <= XXX::logger::eWarn; },
+  XXX::logger console_logger {
+    [](XXX::logger::Level l){ return l <= XXX::logger::eWarn;; },
     [](XXX::logger::Level, const std::string& msg, const char*, int){
       std::cout << msg << std::endl;
     }
   };
 
-  std::unique_ptr<XXX::kernel> g_kernel( new XXX::kernel({}, __logger));
+  std::unique_ptr<XXX::kernel> g_kernel( new XXX::kernel({}, console_logger));
 
   std::unique_ptr<XXX::tcp_socket> sock( new XXX::tcp_socket(g_kernel.get()) );
 

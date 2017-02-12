@@ -67,6 +67,13 @@ static uint64_t generate_unique_session_id()
 }
 
 
+static std::string generate_log_prefix(uint64_t i)
+{
+  char str[100];
+  sprintf(str, "session #%zu ", i);
+  return str;
+}
+
 static t_request_id extract_request_id(jalson::json_array & msg, int index)
 {
   if (!msg[index].is_uint())
@@ -91,7 +98,8 @@ wamp_session::wamp_session(kernel* __kernel,
   : m_state( state::init ),
     __logger(__kernel->get_logger()),
     m_kernel(__kernel),
-    m_sid( generate_unique_session_id() ),
+    m_sid(generate_unique_session_id()),
+    m_log_prefix(generate_log_prefix(m_sid)),
     m_socket(std::move(h)),
     m_session_mode(conn_mode),
     m_shfut_has_closed(m_has_closed.get_future()),
@@ -314,7 +322,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     {
       if (!is_open())
       {
-        LOG_ERROR("unexpected message sent while session not open: " << msg);
+        LOG_ERROR(m_log_prefix << "unexpected message sent while session not open: " << msg);
         this->close();
       }
     }
@@ -333,7 +341,7 @@ void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
     {
       if (!is_open())
       {
-        LOG_ERROR("unexpected message sent while session not open");
+        LOG_ERROR(m_log_prefix << "unexpected message sent while session not open");
         this->close();
       }
     }
@@ -376,7 +384,7 @@ void wamp_session::change_state(state expected1, state expected2, state next)
 
   if (is_in(m_state, expected1, expected2))
   {
-    LOG_INFO("wamp_session state: from " << state_to_str(m_state) << " to " << state_to_str(next));
+    LOG_INFO(m_log_prefix << "state: from " << state_to_str(m_state) << " to " << state_to_str(next));
     m_state = next;
 
     if (m_state == state::open)
@@ -432,7 +440,7 @@ void wamp_session::change_state(state expected1, state expected2, state next)
   }
   else
   {
-    LOG_ERROR("wamp_session state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
+    LOG_ERROR(m_log_prefix << "state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
     drop_connection_impl(WAMP_ERROR_UNEXPECTED_STATE, guard);
   }
 }
@@ -440,7 +448,7 @@ void wamp_session::change_state(state expected1, state expected2, state next)
 
 void wamp_session::process_inbound_abort(jalson::json_array &)
 {
-  LOG_WARN("received ABORT from peer, closing session");
+  LOG_WARN(m_log_prefix << "received ABORT from peer, closing session");
 
   std::lock_guard<std::mutex> guard(m_state_lock);
   drop_connection_impl("received ABORT from peer", guard,
@@ -610,35 +618,35 @@ void wamp_session::handle_exception()
   }
   catch ( handshake_error& e )
   {
-    LOG_WARN("handhake error: " << e.what());
+    LOG_WARN(m_log_prefix << "handhake error: " << e.what());
     m_socket->reset();
     drop_connection(e.what());
   }
   catch ( auth_error& e )
   {
-    LOG_WARN("session #" << unique_id() << " auth error: " << e.what());
+    LOG_WARN(m_log_prefix << "auth error: " << e.what());
     drop_connection(e.error_uri());
   }
   catch ( protocol_error& e )
   {
-    LOG_WARN("protocol error: " << e.what());
+    LOG_WARN(m_log_prefix << "protocol error: " << e.what());
     drop_connection(WAMP_ERROR_BAD_PROTOCOL);
   }
   catch (wamp_error & e)
   {
     // We don't expect a wamp_error here; they are intended to be caught inside
     // the relevant process method.
-    LOG_WARN("unexpected wamp error: " << e.what());
+    LOG_WARN(m_log_prefix << "unexpected wamp error: " << e.what());
     drop_connection(e.error_uri());
   }
   catch (std::exception & e)
   {
-    LOG_WARN("session #" << unique_id() << " exception: " << e.what());
+    LOG_WARN(m_log_prefix << "exception: " << e.what());
     drop_connection(WAMP_RUNTIME_ERROR);
   }
   catch (...)
   {
-    LOG_WARN("unknown exception");
+    LOG_WARN(m_log_prefix << "unknown exception");
     drop_connection(WAMP_RUNTIME_ERROR);
   }
 }
@@ -1004,7 +1012,7 @@ t_request_id wamp_session::provide(std::string uri,
     send_msg( msg );
   }
 
-  LOG_INFO("Sending REGISTER request for proc '" << uri << "', request_id " << request_id);
+  LOG_INFO(m_log_prefix << "sending REGISTER request for proc '" << uri << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1029,7 +1037,7 @@ void wamp_session::process_inbound_registered(jalson::json_array & msg)
     m_procedures[registration_id] = iter->second;
     m_pending_register.erase(iter);
 
-    LOG_INFO("procedure '"<< m_procedures[registration_id].uri <<"' registered"
+    LOG_INFO(m_log_prefix << "procedure '"<< m_procedures[registration_id].uri <<"' registered"
            << " with registration_id " << registration_id);
   }
 
@@ -1120,7 +1128,7 @@ t_request_id wamp_session::subscribe(std::string uri,
     send_msg( msg );
   }
 
-  LOG_INFO("sending subscribe for topic '" << std::move(uri) << "', request_id " << request_id);
+  LOG_INFO(m_log_prefix << "sending subscribe for topic '" << std::move(uri) << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1915,7 +1923,7 @@ void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
     return;
 
   m_state = state::closing;
-  LOG_INFO("session #" << unique_id() << " closing");
+  LOG_INFO(m_log_prefix << "closing");
 
   try { m_socket->close(); } catch (...){};
 
@@ -2031,7 +2039,7 @@ void wamp_session::drop_connection_impl(std::string reason,
           if (sp->m_state == state::closing_wait)
           {
             logger & __logger = sp->__logger;
-            LOG_WARN("session #" << sp->unique_id() << " timeout waiting for peer");
+            LOG_WARN(sp->m_log_prefix << "timeout waiting for peer");
             sp->initiate_close(guard);
           }
         }
