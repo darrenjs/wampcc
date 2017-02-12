@@ -1,5 +1,5 @@
-#ifndef XXX_DEALER_SERVICE_H
-#define XXX_DEALER_SERVICE_H
+#ifndef XXX_WAMP_ROUTER_H
+#define XXX_WAMP_ROUTER_H
 
 #include "XXX/wamp_session.h"
 #include "XXX/error.h"
@@ -21,11 +21,11 @@ struct dealer_listener
   virtual void rpc_registered(std::string uri) = 0;
 };
 
-class dealer_service : public std::enable_shared_from_this<dealer_service>
+class wamp_router : public std::enable_shared_from_this<wamp_router>
 {
 public:
-  dealer_service(kernel *  __svc, dealer_listener*);
-  ~dealer_service();
+  wamp_router(kernel *  __svc, dealer_listener*);
+  ~wamp_router();
 
   /** Request asynchronous close */
 //  std::future<void> close();
@@ -60,8 +60,8 @@ private:
 
   void check_has_closed();
 
-  dealer_service(const dealer_service&) = delete;
-  dealer_service& operator=(const dealer_service&) = delete;
+  wamp_router(const wamp_router&) = delete;
+  wamp_router& operator=(const wamp_router&) = delete;
 
   kernel * m_kernel;
   logger & __logger; /* name chosen for log macros */

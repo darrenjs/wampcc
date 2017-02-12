@@ -1,7 +1,7 @@
 #include "XXX/kernel.h"
 #include "XXX/data_model.h"
 #include "XXX/wamp_session.h"
-#include "XXX/dealer_service.h"
+#include "XXX/wamp_router.h"
 
 #include <memory>
 #include <iostream>
@@ -21,7 +21,7 @@ private:
   std::string  m_public_realm;
   std::string  m_private_realm;
   std::unique_ptr<XXX::kernel>         m_kernel;
-  std::shared_ptr<XXX::dealer_service> m_dealer;
+  std::shared_ptr<XXX::wamp_router> m_dealer;
 
   struct message_topic
   {
@@ -59,7 +59,7 @@ message_server::message_server()
     m_kernel(new XXX::kernel({}, XXX::logger::stdlog(std::cout,
                                                      XXX::logger::levels_all(),
                                                      true))),
-    m_dealer(new XXX::dealer_service(m_kernel.get(), nullptr)),
+    m_dealer(new XXX::wamp_router(m_kernel.get(), nullptr)),
     m_shutdown_future(m_shutdown_pomise.get_future())
 
 {
@@ -106,8 +106,8 @@ message_server::message_server()
 
 message_server::~message_server()
 {
-  /* Coordinate the proper close of the dealer_service and the kernel.  First we
-   * shutdown the dealer_service, and then the kernel. */
+  /* Coordinate the proper close of the wamp_router and the kernel.  First we
+   * shutdown the wamp_router, and then the kernel. */
 
   // TODO: Close the dealer, including any sessions that may currently connected. By
   // immediately performing the wait, this becomes a synchronous operation.

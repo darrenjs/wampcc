@@ -15,7 +15,7 @@
 
 namespace XXX {
 
-class dealer_service;
+class wamp_router;
 class model_topic;
 
 /** Abstract base class for all JSON patch-based data models */
@@ -57,7 +57,7 @@ class model_topic
 {
 public:
   void add_publisher(std::weak_ptr<wamp_session> wp);
-  void add_publisher(std::string realm, std::weak_ptr<dealer_service>);
+  void add_publisher(std::string realm, std::weak_ptr<wamp_router>);
   const std::string& uri() const { return m_uri; }
 
 private:
@@ -67,7 +67,7 @@ private:
   data_model * m_data_model;
   std::string m_uri;
   std::vector<std::weak_ptr<wamp_session>> m_sessions;
-  std::vector<std::pair<std::string /* realm */, std::weak_ptr<dealer_service>>> m_dealers;
+  std::vector<std::pair<std::string /* realm */, std::weak_ptr<wamp_router>>> m_dealers;
   friend data_model;
 };
 

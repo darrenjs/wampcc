@@ -14,11 +14,11 @@ lib_LTLIBRARIES = libXXX.la
 # The "include_" prefix includes a list of headers to be installed.  The
 # "nobase_" additional prefix means the directory names are copied too.
 nobase_include_HEADERS = XXX/types.h XXX/kernel.h XXX/wamp_session.h			\
-XXX/dealer_service.h XXX/protocol.h XXX/rawsocket_protocol.h	\
+XXX/wamp_router.h XXX/protocol.h XXX/rawsocket_protocol.h	\
 XXX/websocket_protocol.h XXX/tcp_socket.h XXX/data_model.h XXX/error.h
 
 # List the sources for an individual library
-libXXX_la_SOURCES = wamp_session.cc tcp_socket.cc dealer_service.cc		\
+libXXX_la_SOURCES = wamp_session.cc tcp_socket.cc wamp_router.cc		\
 event_loop.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc	\
 protocol.cc rawsocket_protocol.cc websocket_protocol.cc					\
 ../external/http_parser/http_parser.c http_parser.cc data_model.cc error.cc

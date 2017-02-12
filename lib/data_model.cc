@@ -1,5 +1,5 @@
 #include "XXX/data_model.h"
-#include "XXX/dealer_service.h"
+#include "XXX/wamp_router.h"
 
 #include <iostream> // TODO: delete me
 
@@ -106,7 +106,7 @@ void model_topic::add_publisher(std::weak_ptr<wamp_session> wp)
 
 
 void model_topic::add_publisher(std::string realm,
-                                std::weak_ptr<dealer_service> dealer)
+                                std::weak_ptr<wamp_router> dealer)
 {
   /* Lock convention: the model_topics_mutex must be taken and held before the
    * value mutex is taken (the value mutex is take during the snapshot). */

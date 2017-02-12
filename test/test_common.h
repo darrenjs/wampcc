@@ -6,7 +6,7 @@
 #include "XXX/tcp_socket.h"
 #include "XXX/websocket_protocol.h"
 #include "XXX/rawsocket_protocol.h"
-#include "XXX/dealer_service.h"
+#include "XXX/wamp_router.h"
 #include "XXX/event_loop.h"
 
 #include <iostream>
@@ -66,13 +66,13 @@ class internal_server
 public:
   internal_server()
     : m_kernel(new kernel({}, logger::nolog())),
-      m_dealer(new dealer_service(m_kernel.get(), nullptr ))
+      m_route(new wamp_router(m_kernel.get(), nullptr ))
   {
   }
 
   ~internal_server()
   {
-    m_dealer.reset();
+    m_route.reset();
     m_kernel.reset();
   }
 
@@ -89,7 +89,7 @@ public:
 
     for (int port = starting_port_number; port < 65535; port++)
     {
-      std::future<uverr> fut_listen_err = m_dealer->listen(port, server_auth);
+      std::future<uverr> fut_listen_err = m_route->listen(port, server_auth);
       std::future_status status = fut_listen_err.wait_for(std::chrono::milliseconds(100));
       if (status == std::future_status::ready)
       {
@@ -111,13 +111,13 @@ public:
 
   void reset_dealer()
   {
-    m_dealer.reset();
+    m_route.reset();
   }
 
   kernel* get_kernel() { return m_kernel.get(); }
 private:
   std::unique_ptr<kernel>         m_kernel;
-  std::shared_ptr<dealer_service> m_dealer;
+  std::shared_ptr<wamp_router> m_route;
 };
 
 

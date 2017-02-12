@@ -52,7 +52,7 @@ void test_all_variants_of_test_late_dealer_destructor_variants()
 {
   auto variants = {1,2,0};
   for (int i : variants)
-    test_late_dealer_destructor_variants(1); // TODO: revert back to i instead of 1 ... value of 2 causes core dump!
+    test_late_dealer_destructor_variants(i);
 }
 
 // void test_late_dealer_destructor()

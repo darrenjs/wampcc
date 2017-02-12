@@ -1,4 +1,4 @@
-#include "XXX/dealer_service.h"
+#include "XXX/wamp_router.h"
 
 #include "XXX/kernel.h"
 #include "XXX/rpc_man.h"
@@ -15,7 +15,7 @@
 
 namespace XXX {
 
-dealer_service::dealer_service(kernel* __svc, dealer_listener* l)
+wamp_router::wamp_router(kernel* __svc, dealer_listener* l)
   : m_kernel(__svc),
     __logger(__svc->get_logger()),
    m_rpcman( new rpc_man(__svc, [this](const rpc_details&r){this->rpc_registered_cb(r); })),
@@ -26,7 +26,7 @@ dealer_service::dealer_service(kernel* __svc, dealer_listener* l)
 };
 
 
-dealer_service::~dealer_service()
+wamp_router::~wamp_router()
 {
   // TODO: need to detect if dealer is going to try to delete the wamp_session
   // on the EV thread -- not able to perform the wait here in such cases.
@@ -63,7 +63,7 @@ dealer_service::~dealer_service()
 }
 
 
-std::future<uverr> dealer_service::listen(int port,
+std::future<uverr> wamp_router::listen(int port,
                                           auth_provider auth)
 {
 
@@ -162,7 +162,7 @@ std::future<uverr> dealer_service::listen(int port,
 }
 
 
-void dealer_service::provide(const std::string& realm,
+void wamp_router::provide(const std::string& realm,
                              const std::string& uri,
                              const jalson::json_object& options,
                              rpc_cb user_cb,
@@ -173,14 +173,14 @@ void dealer_service::provide(const std::string& realm,
 }
 
 
-void dealer_service::publish(const std::string& realm,
+void wamp_router::publish(const std::string& realm,
                              const std::string& topic,
                              const jalson::json_object& options,
                              wamp_args args)
 {
   /* USER thread */
 
-  std::weak_ptr<dealer_service> wp = this->shared_from_this();
+  std::weak_ptr<wamp_router> wp = this->shared_from_this();
 
   // TODO: how to use bind here, to pass options in as a move operation?
   m_kernel->get_event_loop()->dispatch(
@@ -196,14 +196,14 @@ void dealer_service::publish(const std::string& realm,
 }
 
 
-void dealer_service::rpc_registered_cb(const rpc_details& r)
+void wamp_router::rpc_registered_cb(const rpc_details& r)
 {
   std::lock_guard<std::recursive_mutex> guard(m_lock);
   if (m_listener) m_listener->rpc_registered( r.uri );
 }
 
 
-void dealer_service::handle_inbound_call(
+void wamp_router::handle_inbound_call(
   wamp_session* sptr, // TODO: possibly change this to a shared_ptr
   const std::string& uri,
   wamp_args args,
@@ -287,7 +287,7 @@ void dealer_service::handle_inbound_call(
 }
 
 
-void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp, bool is_open)
+void wamp_router::handle_session_state_change(std::weak_ptr<wamp_session> wp, bool is_open)
 {
   /* EV thread */
   if (auto session = wp.lock())
@@ -303,7 +303,7 @@ void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp,
   }
 }
 
-// std::future<void> dealer_service::close()
+// std::future<void> wamp_router::close()
 // {
 //   // ANY thread
 
@@ -311,9 +311,9 @@ void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp,
 //     std::lock_guard<std::mutex> guard(m_sesions_lock);
 //     for (auto & item : m_sessions)
 //     {
-//       std::cout << "dealer_service closing session \n";
+//       std::cout << "wamp_router closing session \n";
 //       item.second->close();
-//       std::cout << "dealer_service closing session ... done \n";
+//       std::cout << "wamp_router closing session ... done \n";
 //     }
 //   }
 
@@ -323,11 +323,11 @@ void dealer_service::handle_session_state_change(std::weak_ptr<wamp_session> wp,
 //   }
 
 //   // TODO: next, need to remove all listen sockets we have
-//   std::cout << "dealer_service returning future\n";
+//   std::cout << "wamp_router returning future\n";
 //   return m_promise_on_close.get_future();
 // }
 
-void dealer_service::check_has_closed()
+void wamp_router::check_has_closed()
 {
   // TODO: perform state check to see if all resources this class is responsible
   // for have closed, in which case we can set the close promise

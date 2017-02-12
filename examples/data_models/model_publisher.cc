@@ -1,6 +1,6 @@
 
 
-#include "XXX/dealer_service.h"
+#include "XXX/wamp_router.h"
 #include "XXX/kernel.h"
 #include "XXX/data_model.h"
 
@@ -118,7 +118,7 @@ XXX::model_topic & topic =  planets.model.get_topic("planets");
 
 
 
-std::shared_ptr<XXX::dealer_service> g_dealer;
+std::shared_ptr<XXX::wamp_router> g_dealer;
 
 int main(int /* argc */, char** /* argv */)
 {
@@ -128,7 +128,7 @@ int main(int /* argc */, char** /* argv */)
 
   std::unique_ptr<XXX::kernel> the_kernel(new XXX::kernel({},__logger));
 
-  std::shared_ptr<XXX::dealer_service> dealer ( new XXX::dealer_service(the_kernel.get(), nullptr) );
+  std::shared_ptr<XXX::wamp_router> dealer ( new XXX::wamp_router(the_kernel.get(), nullptr) );
   g_dealer = dealer;
 
   std::string realm = "default_realm";
