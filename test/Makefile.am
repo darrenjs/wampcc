@@ -49,9 +49,6 @@ test_late_dealer_destructor_LDADD=libgtest.la
 test_tcp_socket_connect_SOURCES=test_tcp_socket_connect.cc
 test_tcp_socket_connect_LDADD=libgtest.la
 
-test_tcp_socket_connect_cb_SOURCES=test_tcp_socket_connect_cb.cc
-test_tcp_socket_connect_cb_LDADD=libgtest.la
-
 test_tcp_socket_listen_SOURCES=test_tcp_socket_listen.cc
 test_tcp_socket_listen_LDADD=libgtest.la
 

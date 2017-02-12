@@ -86,7 +86,8 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
     {
       if (m_state == eHandshaking)
       {
-        if (rd.avail() < HANDSHAKE_SIZE) break;
+        if (rd.avail() < HANDSHAKE_SIZE)
+          break;
 
         if (mode() == connection_mode::ePassive)
         {
@@ -148,7 +149,8 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
       }
       else
       {
-        if (rd.avail() < FRAME_PREFIX_SIZE) break; // header incomplete
+        if (rd.avail() < FRAME_PREFIX_SIZE)
+          break; // header incomplete
 
         uint32_t frame_hdr = ntohl( *((uint32_t*) rd.ptr()) );
 
@@ -157,13 +159,11 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
 
         uint32_t msglen = frame_hdr & FRAME_MSG_LEN_MASK;
 
-        // TODO: test this
         if (msglen > m_self_max_msg_size)
-        {
           throw protocol_error("received message size exceeds limit");
-        }
 
-        if (rd.avail() < (FRAME_PREFIX_SIZE+msglen)) break; // body incomplete
+        if (rd.avail() < (FRAME_PREFIX_SIZE+msglen))
+          break; // body incomplete
 
         switch ((frame_hdr & FRAME_MSG_TYPE_MASK)>>FRAME_FIRST_OCTECT_SHIFT)
         {

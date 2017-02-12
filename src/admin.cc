@@ -126,7 +126,7 @@ void session_state_cb(bool is_open)
 
   if (!is_open)
   {
-    std::cout << "WAMP session closed" << std::endl;
+    std::cout << "wamp session closed" << std::endl;
     std::lock_guard< std::mutex > guard( event_queue_mutex );
     event_queue.push( eClosed );
     event_queue_condition.notify_one();
@@ -336,7 +336,9 @@ int main_impl(int argc, char** argv)
 
   XXX::logger __logger {
     [](XXX::logger::Level l){ return l <= XXX::logger::eWarn; },
-    [](XXX::logger::Level, const std::string& msg, const char*, int){}
+    [](XXX::logger::Level, const std::string& msg, const char*, int){
+      std::cout << msg << std::endl;
+    }
   };
 
   std::unique_ptr<XXX::kernel> g_kernel( new XXX::kernel({}, __logger));
@@ -380,7 +382,7 @@ int main_impl(int argc, char** argv)
       }, proto_opts);
 
   if (!ws)
-    throw std::runtime_error("failed to obtain WAMP session");
+    throw std::runtime_error("failed to obtain wamp session");
 
   XXX::client_credentials credentials;
   credentials.realm  = uopts.realm;
@@ -408,7 +410,7 @@ int main_impl(int argc, char** argv)
 
   /* WAMP session is now open  */
 
-  std::cout << "WAMP session open" << std::endl;
+  std::cout << "wamp session open" << std::endl;
 
   bool long_wait = false;
   bool wait_reply = false;
