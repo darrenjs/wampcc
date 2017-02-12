@@ -47,6 +47,7 @@ private:
   event_loop(const event_loop&); // no copy
   event_loop& operator=(const event_loop&); // no assignment
 
+  void handle_exception(const char* stage);
   void eventloop();
   void eventmain();
 

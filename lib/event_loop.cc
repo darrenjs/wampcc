@@ -202,22 +202,18 @@ void event_loop::eventloop()
 
     }
 
-    if (!m_continue) return; // needed?
-
     for (auto & ev : to_process)
     {
-      if (!m_continue) return; // needed?
       if (ev == m_kill_event)
       {
         m_continue = false;
-        continue;
+        return;
       }
 
       //hb_check(); // check for when there are many items work through
 
       try
       {
-
         switch ( ev->type )
         {
           case event::function_dispatch :
@@ -228,11 +224,10 @@ void event_loop::eventloop()
           }
           case event::timer_dispatch :
           {
-            // TODO: check this is efficient, ie, are we reusing the same EV object?
             ev_timer_dispatch * ev2 = dynamic_cast<ev_timer_dispatch*>(ev.get());
             auto repeat_ms = ev2->fn();
             if (repeat_ms.count() > 0)
-              dispatch(repeat_ms, ev);
+              dispatch(repeat_ms, std::move(ev));
             break;
           }
 	        default: break;
@@ -254,47 +249,56 @@ void event_loop::eventloop()
 }
 
 
+void event_loop::handle_exception(const char* stage)
+{
+  try {
+    throw;
+  }
+  catch (const std::exception& e)
+  {
+    LOG_WARN("ignoring exception in eventmain, " << stage << ": " << e.what());
+  }
+  catch (...)
+  {
+    LOG_WARN("ignoring exception in eventmain. " << stage << ": unknown type");
+  }
+}
+
+
 /* Entry point for the kernel's EV thread */
 void event_loop::eventmain()
 {
-  scope_guard undo_thread_id([this](){ m_ev_thread_id.release(); });
+  scope_guard undo_thread_id([this](){
+      m_ev_thread_id.release();
+    });
+
   m_ev_thread_id.set_value(std::this_thread::get_id());
 
-  // TODO: use handle_exception pattern for exceptions in this function
+
   if (m_kernel->get_config().event_loop_start_fn)
-    try
-    {
+    try {
       m_kernel->get_config().event_loop_start_fn();
     }
-    catch(...)
-    {
-      LOG_WARN("ignoring exception in eventmain");
+    catch(...) {
+      handle_exception("at start");
     }
 
   while (m_continue)
   {
-    try
-    {
+    try {
       eventloop();
     }
-    catch (const std::exception& e)
-    {
-      LOG_WARN("ignoring exception in eventmain: " << e.what());
-    }
-    catch (...)
-    {
-      LOG_WARN("ignoring unknown exception in eventmain");
+    catch(...) {
+      handle_exception("at main");
     }
   }
 
   if (m_kernel->get_config().event_loop_end_fn)
-    try
-    {
+    try {
       m_kernel->get_config().event_loop_end_fn();
     }
-    catch(...)
-    {
-      LOG_WARN("ignoring exception in eventmain");
+    catch(...) {
+      handle_exception("at end");
     }
 }
 
