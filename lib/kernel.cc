@@ -13,6 +13,12 @@
 
 namespace XXX {
 
+const char* name() { return XXX_NAME; }
+const char* name_version() { return XXX_NAME_VERSION; }
+int major_version() { return XXX_MAJOR_VERSION; }
+int minor_version() { return XXX_MINOR_VERSION; }
+int micro_version() { return XXX_MICRO_VERSION; }
+
 /* Constructor */
 kernel::kernel(config __conf, logger nlog)
   : m_config(__conf),

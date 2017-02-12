@@ -5,11 +5,28 @@
 #include <mutex>
 #include <functional>
 
+/* Compile-time name & version */
+
+#define XXX_NAME "XXX"
+#define XXX_MAJOR_VERSION 1
+#define XXX_MINOR_VERSION 0
+#define XXX_MICRO_VERSION 0
+
+/* Micro version is omitted if it's 0 */
+#define XXX_NAME_VERSION "XXX 1.0"
+
 namespace XXX {
 
 class io_loop;
 class event_loop;
 class uri_regex;
+
+/* Run-time name & version */
+const char* name();
+const char* name_version();
+int major_version();
+int minor_version();
+int micro_version();
 
 /* Logging object. Provides two functionals, wants_level and write, which the
  * API uses for its logging requirements.
