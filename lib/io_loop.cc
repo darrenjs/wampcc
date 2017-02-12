@@ -83,9 +83,9 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
     });
   m_async->data = this;
 
-  // TODO: I prefer to not have to do this.  Need to review what is the correct
-  // policy for handling sigpipe using libuv.
-  //  signal(SIGPIPE, SIG_IGN);
+  // prevent SIGPIPE from crashing application when socket writes are
+  // interrupted
+  signal(SIGPIPE, SIG_IGN);
 
   m_thread = std::thread([this, io_started_cb](){
 
