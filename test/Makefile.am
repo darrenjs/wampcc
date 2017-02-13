@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2017 Darren Smith
+#
+# wampcc is free software; you can redistribute it and/or modify
+# it under the terms of the MIT license. See LICENSE for details.
+#
 
 # We are using GoogleTest, so here we define that 'make check' depends on
 # libgtest, and provide the sources and compile & link for it to be built by

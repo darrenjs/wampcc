@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2017 Darren Smith
+ *
+ * wampcc is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
+
 #ifndef WAMPCC_UTILS_H
 #define WAMPCC_UTILS_H
 
@@ -13,7 +20,6 @@
     __os << X ;                                 \
     throw E ( __os.str() );                     \
   } while(false);
-
 
 namespace wampcc {
 

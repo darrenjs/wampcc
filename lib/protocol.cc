@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2017 Darren Smith
+ *
+ * wampcc is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
+
 #include "wampcc/protocol.h"
 
 #include "wampcc/tcp_socket.h"
@@ -6,13 +13,10 @@
 #include "wampcc/websocket_protocol.h"
 #include "wampcc/http_parser.h"
 
-
 #include <iostream>
 #include <stdexcept>
 
 #include <string.h>
-
-
 
 namespace wampcc {
 

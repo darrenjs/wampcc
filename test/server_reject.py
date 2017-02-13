@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 
+#
+# Copyright (c) 2017 Darren Smith
+#
+# wampcc is free software; you can redistribute it and/or modify
+# it under the terms of the MIT license. See LICENSE for details.
+#
+
 ##
 ## Basic wamp server, used for development purpose only. Not production quality.
 ##

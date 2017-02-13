@@ -1,9 +1,14 @@
-#include "test_common.h"
+/*
+ * Copyright (c) 2017 Darren Smith
+ *
+ * wampcc is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
 
+#include "test_common.h"
 
 using namespace wampcc;
 using namespace std;
-
 
 void test_WS_destroyed_before_kernel(int port)
 {

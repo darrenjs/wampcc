@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2017 Darren Smith
+ *
+ * wampcc is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
+
 #ifndef WAMPCC_RPC_MAN_H
 #define WAMPCC_RPC_MAN_H
 
@@ -5,7 +12,6 @@
 #include "wampcc/wamp_session.h"
 
 #include <jalson/jalson.h>
-
 
 #include <functional>
 #include <map>
@@ -19,7 +25,6 @@ namespace wampcc {
 class event_loop;
 struct logger;
 class kernel;
-
 
 struct rpc_details
 {

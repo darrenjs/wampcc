@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2017 Darren Smith
+ *
+ * wampcc is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
+
 #include "wampcc/rpc_man.h"
 
 #include "wampcc/event_loop.h"
@@ -9,8 +16,6 @@
 
 namespace wampcc {
 
-
-
 /* Constructor */
 rpc_man::rpc_man(kernel* k, rpc_added_cb cb)
   : __logger(k->get_logger()),
@@ -18,8 +23,6 @@ rpc_man::rpc_man(kernel* k, rpc_added_cb cb)
     m_next_regid(1)
 {
 }
-
-
 
 
 rpc_details rpc_man::get_rpc_details( const std::string& rpcname,

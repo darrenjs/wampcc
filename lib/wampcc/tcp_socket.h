@@ -1,9 +1,15 @@
+/*
+ * Copyright (c) 2017 Darren Smith
+ *
+ * wampcc is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
+
 #ifndef WAMPCC_TCP_SOCKET_H
 #define WAMPCC_TCP_SOCKET_H
 
-
-#include <wampcc/kernel.h>
-#include <wampcc/error.h>
+#include "wampcc/kernel.h"
+#include "wampcc/error.h"
 
 #include <uv.h>
 

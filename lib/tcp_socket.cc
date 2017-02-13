@@ -1,8 +1,15 @@
-#include <wampcc/tcp_socket.h>
-#include <wampcc/kernel.h>
-#include <wampcc/io_loop.h>
-#include <wampcc/log_macros.h>
-#include <wampcc/utils.h>
+/*
+ * Copyright (c) 2017 Darren Smith
+ *
+ * wampcc is free software; you can redistribute it and/or modify
+ * it under the terms of the MIT license. See LICENSE for details.
+ */
+
+#include "wampcc/tcp_socket.h"
+#include "wampcc/kernel.h"
+#include "wampcc/io_loop.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/utils.h"
 
 #include <iostream>
 
