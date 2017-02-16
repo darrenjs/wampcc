@@ -1,12 +1,9 @@
-
-
-
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CPPFLAGS = -I$(top_srcdir)/libjalson -Wall -pthread -Wall
+AM_CPPFLAGS = -I$(top_srcdir)/src -Wall -pthread -Wall
 
 # NOTE: -lrt added for posix clock support
-AM_LDFLAGS=-L$(top_builddir)/libjalson -ljalson -lrt -pthread
+AM_LDFLAGS=-L$(top_builddir)/src -ljalson -lrt -pthread
 
 noinst_PROGRAMS=hello memtest test_encode_decode
 #noinst_PROGRAMS=server_demo

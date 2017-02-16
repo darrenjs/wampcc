@@ -95,16 +95,8 @@ fi
 
 #========== User options ==========
 
-export DIRS="libjalson  examples/manual_tests tests"
+export DIRS="src examples/manual_tests tests"
 extrabuild=
-dnl QT option
-AC_ARG_ENABLE([gui],
-    AS_HELP_STRING([--enable-gui], [Enable QT gui]))
-
-AS_IF([test "x$enable_gui" = "xyes"], [
-
- DIRS="$DIRS qtgui"
-])
 
 #========== Generation ==========
 
@@ -115,7 +107,7 @@ AC_SUBST(DIRS)
 # automake will generate from the corresponding Makefile.am
 AC_CONFIG_FILES([
 Makefile
-libjalson/Makefile
+src/Makefile
 examples/manual_tests/Makefile
 tests/Makefile
 ])
