@@ -5,7 +5,7 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <limits>
 
@@ -25,7 +25,7 @@ This file contains an implementation of:
 
 #define JPDELIM '/'
 
-namespace jalson {
+namespace wampcc {
 
 namespace opcode
 {

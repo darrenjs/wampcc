@@ -5,8 +5,8 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#ifndef __JALSON_INTERNALS_H__
-#define __JALSON_INTERNALS_H__
+#ifndef __WAMPCC_JALSON_INTERNALS_H__
+#define __WAMPCC_JALSON_INTERNALS_H__
 
 // ======================================================================
 //
@@ -84,8 +84,8 @@ public:
       json_array*         array;
       json_object*        object;
       json_string*        string;
-      jalson::json_uint_t uint;
-      jalson::json_int_t  sint;
+      wampcc::json_uint_t uint;
+      wampcc::json_int_t  sint;
       double              real;
       bool                boolean;
     } data;

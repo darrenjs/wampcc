@@ -5,11 +5,11 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include <json_pointer.cc>
+#include "json_pointer.cc"
 
 #include "testcase.h"
 
-using namespace jalson;
+using namespace wampcc;
 
 //----------------------------------------------------------------------
 

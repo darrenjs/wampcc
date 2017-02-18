@@ -1,4 +1,4 @@
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 #include "json_pointer.h"
 
 #include <iostream>
@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-namespace jalson {
+namespace wampcc {
 
 namespace internals {
 
@@ -42,13 +42,13 @@ const char* type_to_str(JSONType t)
 {
   switch(t)
   {
-    case jalson::eOBJECT  : return "object";
-    case jalson::eARRAY   : return "array";
-    case jalson::eSTRING  : return "string";
-    case jalson::eREAL    : return "real";
-    case jalson::eINTEGER : return "integer";
-    case jalson::eBOOL    : return "bool";
-    case jalson::eNULL    : return "null";
+    case wampcc::eOBJECT  : return "object";
+    case wampcc::eARRAY   : return "array";
+    case wampcc::eSTRING  : return "string";
+    case wampcc::eREAL    : return "real";
+    case wampcc::eINTEGER : return "integer";
+    case wampcc::eBOOL    : return "bool";
+    case wampcc::eNULL    : return "null";
     default            : return "invalid";
   }
 }
@@ -672,7 +672,7 @@ json_value json_get_copy(const json_array& ar, size_t i,
 }
 
 
-} // namespace jalson
+} // namespace wampcc
 
 
 

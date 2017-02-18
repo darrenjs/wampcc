@@ -13,7 +13,7 @@ class MyType
 //----------------------------------------------------------------------
 DEFTEST(  basic_json_object )
 {
-  jalson::json_value temp(1);
+  wampcc::json_value temp(1);
   return 1;
 }
 
@@ -22,17 +22,17 @@ DEFTEST(  basic_json_object )
 DEFTEST( jsonarray_basic_append )
 {
   // test array addition, and functions which append
-  jalson::json_array msg;
+  wampcc::json_array msg;
 
   msg.push_back( 0 );
   msg.push_back( 1 );
   msg.push_back("string");
   msg.push_back( true );
 
-  jalson::json_append<jalson::json_array>(msg).push_back("a");
-  jalson::json_append<jalson::json_object>(msg)["b"] = "c";
+  wampcc::json_append<wampcc::json_array>(msg).push_back("a");
+  wampcc::json_append<wampcc::json_object>(msg)["b"] = "c";
 
-  std::string enc  = jalson::json_encode(msg) ;
+  std::string enc  = wampcc::json_encode(msg) ;
   std::cout << enc << "\n";
   return  ( enc == "[0, 1, \"string\", true, [\"a\"], {\"b\": \"c\"}]");
 }
@@ -40,14 +40,14 @@ DEFTEST( jsonarray_basic_append )
 //----------------------------------------------------------------------
 DEFTEST( convert_type_to_string )
 {
-  jalson::json_value any1("should be string");
-  jalson::json_string str1 = any1.as_string();
-  jalson::json_value any2 = any1;
-  jalson::json_string str2 = any1.as_string();
+  wampcc::json_value any1("should be string");
+  wampcc::json_string str1 = any1.as_string();
+  wampcc::json_value any2 = any1;
+  wampcc::json_string str2 = any1.as_string();
 
-  jalson::json_value any3;
+  wampcc::json_value any3;
   any3.swap(any1);
-  jalson::json_string str3 = any3.as_string();
+  wampcc::json_string str3 = any3.as_string();
 
   return (str1 == str1) and (str1 == str3);
 }
@@ -55,9 +55,9 @@ DEFTEST( convert_type_to_string )
 //----------------------------------------------------------------------
 DEFTEST( size_of )
 {
-  //std::cout << "sizeof(JSONNumber) : " << sizeof(jalson::JSONNumber) << "\n";
-  std::cout << "sizeof(json_array) : " << sizeof(jalson::json_array) << "\n";
-  std::cout << "sizeof(value) : " << sizeof(jalson::internals::valueimpl) << "\n";
+  //std::cout << "sizeof(JSONNumber) : " << sizeof(wampcc::JSONNumber) << "\n";
+  std::cout << "sizeof(json_array) : " << sizeof(wampcc::json_array) << "\n";
+  std::cout << "sizeof(value) : " << sizeof(wampcc::internals::valueimpl) << "\n";
   return 1;
 }
 
@@ -65,19 +65,19 @@ DEFTEST( size_of )
 //----------------------------------------------------------------------
 DEFTEST( misc_operations )
 {
-  jalson::json_array ar1;
+  wampcc::json_array ar1;
 
-  jalson::json_append(ar1, 100);
-  jalson::json_append(ar1, "mystring");
+  wampcc::json_append(ar1, 100);
+  wampcc::json_append(ar1, "mystring");
 
-  jalson::json_value acopy = jalson::json_value( ar1 );
-  jalson::json_array ar2 = acopy.as<jalson::json_array>();
+  wampcc::json_value acopy = wampcc::json_value( ar1 );
+  wampcc::json_array ar2 = acopy.as<wampcc::json_array>();
 
 
   //MyType ar3 = acopy.as< MyType >();
 
-  jalson::json_value i1 = ar2[1];
-  jalson::json_string s1 = i1.as<jalson::json_string>();
+  wampcc::json_value i1 = ar2[1];
+  wampcc::json_string s1 = i1.as<wampcc::json_string>();
 
   return (s1 == "mystring");
 }
@@ -90,25 +90,25 @@ DEFTEST( encoding_call_message )
   const std::string foreign_rpc = "myrpc";
   int reqid = 100;
 
-  jalson::json_array msg;
-  jalson::json_append(msg, "call");
-  jalson::json_append<jalson::json_object>(msg);
-  jalson::json_append(msg, foreign_sid + ":" +foreign_rpc);
-  jalson::json_append(msg, reqid);
-  jalson::json_append<jalson::json_object>(msg);
+  wampcc::json_array msg;
+  wampcc::json_append(msg, "call");
+  wampcc::json_append<wampcc::json_object>(msg);
+  wampcc::json_append(msg, foreign_sid + ":" +foreign_rpc);
+  wampcc::json_append(msg, reqid);
+  wampcc::json_append<wampcc::json_object>(msg);
 
   msg.push_back( 50.25 );
 
-  jalson::json_value any = msg;
-  std::string encoding = jalson::json_encode( any );
+  wampcc::json_value any = msg;
+  std::string encoding = wampcc::json_encode( any );
   //std::cout << "encoding: " << encoding << "\n";
 
   return encoding=="[\"call\", {}, \"a1:myrpc\", 100, {}, 50.25]";
 }
 
-jalson::json_value takecopy(const jalson::json_value& src)
+wampcc::json_value takecopy(const wampcc::json_value& src)
 {
-  jalson::json_value temp(0);
+  wampcc::json_value temp(0);
   temp = src;
   return temp;
 }
@@ -116,7 +116,7 @@ jalson::json_value takecopy(const jalson::json_value& src)
 //----------------------------------------------------------------------
 DEFTEST( support_for_various_int_types )
 {
-  jalson::json_array msg;
+  wampcc::json_array msg;
 
   int   _int = 1;
   short _short = 2;
@@ -139,8 +139,8 @@ DEFTEST( support_for_various_int_types )
   msg.push_back("x");
 
 
-  jalson::json_value any = takecopy(msg); // test a copy too
-  std::string encoding = jalson::json_encode( any );
+  wampcc::json_value any = takecopy(msg); // test a copy too
+  std::string encoding = wampcc::json_encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
   return encoding=="[0, 1, 2, 3, 5, 6, 7, 0, \"x\"]";
@@ -149,7 +149,7 @@ DEFTEST( support_for_various_int_types )
 //----------------------------------------------------------------------
 DEFTEST( test_operator_eq )
 {
-  jalson::json_array msg(10);
+  wampcc::json_array msg(10);
 
   // int   _int            = 1;
   // short _short          = 2;
@@ -178,8 +178,8 @@ DEFTEST( test_operator_eq )
   ASSERT_TRUE( msg[3].is_false() );
   ASSERT_TRUE( msg[4].is_string() );
 
-  jalson::json_value any = msg;
-  std::string encoding = jalson::json_encode( any );
+  wampcc::json_value any = msg;
+  std::string encoding = wampcc::json_encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
 //  check( );
@@ -191,20 +191,20 @@ DEFTEST( test_operator_eq )
 
 DEFTEST( map_examples )
 {
-  jalson::json_value a = jalson::json_value::make_array();
+  wampcc::json_value a = wampcc::json_value::make_array();
 
-  a.as<jalson::json_array>().push_back(jalson::json_value::make_object());
-  jalson::json_append<jalson::json_array>( a.as<jalson::json_array>() );
-  auto & obj = jalson::json_append<jalson::json_object>( a.as<jalson::json_array>() );
+  a.as<wampcc::json_array>().push_back(wampcc::json_value::make_object());
+  wampcc::json_append<wampcc::json_array>( a.as<wampcc::json_array>() );
+  auto & obj = wampcc::json_append<wampcc::json_object>( a.as<wampcc::json_array>() );
 
   obj["a"]=0;
   obj["b"]=1;
   obj["c"]=-1;
   obj["d"]="hello";
-  obj["e"]= jalson::json_value::make_object();
-  jalson::json_object& obj2 = jalson::json_insert<jalson::json_object>(obj, "X");
-  /*jalson::json_array& arr2  =*/ jalson::json_insert<jalson::json_array>(obj2, "X");
-  std::string encoding = jalson::json_encode( a );
+  obj["e"]= wampcc::json_value::make_object();
+  wampcc::json_object& obj2 = wampcc::json_insert<wampcc::json_object>(obj, "X");
+  /*wampcc::json_array& arr2  =*/ wampcc::json_insert<wampcc::json_array>(obj2, "X");
+  std::string encoding = wampcc::json_encode( a );
   std::cout << "encoding: " << encoding << "\n";
 
   return 1;
@@ -213,13 +213,13 @@ DEFTEST( map_examples )
 DEFTEST ( encoding_example_1 )
 {
   const char* src="[\"SUBSCRIBE\", 0, {}, \"T1\"]";
-  jalson::json_value a;
-  jalson::json_decode(a, src);
+  wampcc::json_value a;
+  wampcc::json_decode(a, src);
 
-  jalson::json_array msg=a.as<jalson::json_array>();
-  jalson::json_value        reqid = msg.at(1);
-  jalson::json_object       opt = msg.at(2).as<jalson::json_object>();
-  jalson::json_string topicname = msg.at(3).as<jalson::json_string>();
+  wampcc::json_array msg=a.as<wampcc::json_array>();
+  wampcc::json_value        reqid = msg.at(1);
+  wampcc::json_object       opt = msg.at(2).as<wampcc::json_object>();
+  wampcc::json_string topicname = msg.at(3).as<wampcc::json_string>();
 
   return true;
 }
@@ -228,10 +228,10 @@ DEFTEST ( encoding_example_1 )
 DEFTEST( int_and_uint_and_real )
 {
   const char* src="[0, -1, 1, 1.25, \"x\" ]";
-  jalson::json_value a;
-  jalson::json_decode(a, src);
+  wampcc::json_value a;
+  wampcc::json_decode(a, src);
 
-  jalson::json_array& msg=a.as<jalson::json_array>();
+  wampcc::json_array& msg=a.as<wampcc::json_array>();
 
   ASSERT_TRUE( msg[0].is_uint() );
   ASSERT_TRUE( msg[0].is_int() );
@@ -256,94 +256,94 @@ DEFTEST( compiler_check )
   /* here we are just checking that various expressions involving construction
    * and assignment which use primitive integer types, actually compile */
   {
-    jalson::json_value value;
+    wampcc::json_value value;
     value = 0;
     value = 1;
     value = "0";
-    value = jalson::json_value::make_null();
-    value = jalson::json_string();
-    value = jalson::json_array();
-    value = jalson::json_object();
+    value = wampcc::json_value::make_null();
+    value = wampcc::json_string();
+    value = wampcc::json_array();
+    value = wampcc::json_object();
   }
   {
     char v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     short v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     signed char v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     signed short v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     unsigned char v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     unsigned short v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     int v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     int v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
-    value = jalson::json_value::make_int(v);
+    value = wampcc::json_value::make_int(v);
   }
   {
     long v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     long long v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     bool v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     const char* v = 0;
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   // {
   //   float * v = 0;
-  //   jalson::json_value value( v ); // error!
+  //   wampcc::json_value value( v ); // error!
   //   value = v;
   // }
   // {
   //   double * v = 0;
-  //   jalson::json_value value( v ); // error!
+  //   wampcc::json_value value( v ); // error!
   //   value = v;
   // }
   {
     std::string  v("test");
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
   {
     const char*  v = "test";
-    jalson::json_value value( v );
+    wampcc::json_value value( v );
     value = v;
   }
 
@@ -354,16 +354,16 @@ DEFTEST( compiler_check )
 DEFTEST( copy_memleak )
 {
 
-  jalson::json_value jv;
+  wampcc::json_value jv;
 
-  jalson::json_array ja;
+  wampcc::json_array ja;
   ja.push_back( "hello" );
   ja.push_back( "world" );   //TODO: why do I not see thi value arrise at the other side? Jalson error?
 
   jv = ja ;
-  jalson::json_value jv2 = jv;
+  wampcc::json_value jv2 = jv;
 
-  std::cout << "encoding: " << jalson::json_encode_any( jv2 ) << "\n";
+  std::cout << "encoding: " << wampcc::json_encode_any( jv2 ) << "\n";
 
   return 1;
 }
@@ -371,9 +371,9 @@ DEFTEST( copy_memleak )
 //----------------------------------------------------------------------
 DEFTEST( equality )
 {
-  jalson::json_value j1 = jalson::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
-  jalson::json_value j2 = jalson::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
-  jalson::json_value j3 = jalson::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
+  wampcc::json_value j1 = wampcc::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
+  wampcc::json_value j2 = wampcc::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
+  wampcc::json_value j3 = wampcc::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
 
   ASSERT_TRUE( j1 == j1 );
   ASSERT_TRUE( (j1 != j1) == false );
@@ -383,18 +383,18 @@ DEFTEST( equality )
   ASSERT_TRUE( (j2 != j3) == false );
 
 
-  jalson::json_value j4 = jalson::json_decode( "{ \"foo\": [1.1, 2.2 ], \"a\": true }" );
-  jalson::json_value j5 = jalson::json_decode( "{ \"foo\": [1.2, 2.3 ], \"a\": true }" );
-  jalson::json_value j6 = jalson::json_decode( "{ \"a\":true, \"foo\": [1.1, 2.2 ] }" );
+  wampcc::json_value j4 = wampcc::json_decode( "{ \"foo\": [1.1, 2.2 ], \"a\": true }" );
+  wampcc::json_value j5 = wampcc::json_decode( "{ \"foo\": [1.2, 2.3 ], \"a\": true }" );
+  wampcc::json_value j6 = wampcc::json_decode( "{ \"a\":true, \"foo\": [1.1, 2.2 ] }" );
 
   ASSERT_TRUE( j4 == j4 );
   ASSERT_TRUE( j4 != j5 );
   ASSERT_TRUE( (j4 == j5) == false );
   ASSERT_TRUE( j4 == j6 );
 
-  jalson::json_value j7 = jalson::json_decode( "{ \"foo\": [-50, -20, -30, -40]} " );
-  jalson::json_value j8 = jalson::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
-  jalson::json_value j9 = jalson::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
+  wampcc::json_value j7 = wampcc::json_decode( "{ \"foo\": [-50, -20, -30, -40]} " );
+  wampcc::json_value j8 = wampcc::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
+  wampcc::json_value j9 = wampcc::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
 
   ASSERT_TRUE( j7 == j7 );
   ASSERT_TRUE( (j7 != j7) == false );
@@ -403,9 +403,9 @@ DEFTEST( equality )
   ASSERT_TRUE( j8 == j9 );
   ASSERT_TRUE( (j8 != j9) == false );
 
-  jalson::json_value j10 = jalson::json_decode( "{ \"foo\": [true, false, true, false ]} " );
-  jalson::json_value j11 = jalson::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
-  jalson::json_value j12 = jalson::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
+  wampcc::json_value j10 = wampcc::json_decode( "{ \"foo\": [true, false, true, false ]} " );
+  wampcc::json_value j11 = wampcc::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
+  wampcc::json_value j12 = wampcc::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
 
   ASSERT_TRUE( j10 == j10 );
   ASSERT_TRUE( (j10 != j10) == false );
@@ -421,31 +421,31 @@ DEFTEST( equality )
 //----------------------------------------------------------------------
 DEFTEST( getters_api )
 {
-  const jalson::json_value j1 = jalson::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
+  const wampcc::json_value j1 = wampcc::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
 
-  const jalson::json_object msg;
+  const wampcc::json_object msg;
 
 
-  const jalson::json_value * id  = jalson::json_get_ptr(msg, "id");
+  const wampcc::json_value * id  = wampcc::json_get_ptr(msg, "id");
   ASSERT_TRUE( id == NULL);
-  // const jalson::json_value & id2 = jalson::get_ref(msg, "id");
+  // const wampcc::json_value & id2 = wampcc::get_ref(msg, "id");
 
-  const jalson::json_value & id4 = jalson::json_get_copy(msg, "id", jalson::json_value::make_string("hello"));
-  ASSERT_TRUE( id4 == jalson::json_value::make_string("hello") );
+  const wampcc::json_value & id4 = wampcc::json_get_copy(msg, "id", wampcc::json_value::make_string("hello"));
+  ASSERT_TRUE( id4 == wampcc::json_value::make_string("hello") );
 
   bool id5_exception_thrown=false;
   try
   {
-    jalson::json_get_ref(msg, "id");
+    wampcc::json_get_ref(msg, "id");
   }
-  catch (jalson::field_not_found& e)
+  catch (wampcc::field_not_found& e)
   {
     id5_exception_thrown = true;
   }
   ASSERT_TRUE(id5_exception_thrown);
 
-  const jalson::json_value expected = jalson::json_value::make_string("xyz");
-  std::string challmsg = jalson::json_get_copy(msg, "challenge", "xyz").as_string();
+  const wampcc::json_value expected = wampcc::json_value::make_string("xyz");
+  std::string challmsg = wampcc::json_get_copy(msg, "challenge", "xyz").as_string();
   std::cout << "challmsg: >" << challmsg << "<\n";
   ASSERT_TRUE( challmsg == expected.as_string() );
 
@@ -454,10 +454,10 @@ DEFTEST( getters_api )
 //----------------------------------------------------------------------
 // DEFTEST( demo_test )
 // {
-//   jalson::json_array msg;
+//   wampcc::json_array msg;
 //   msg.append("hello");
-//   jalson::json_value any = msg;
-//   std::string encoding = jalson::encode( any );
+//   wampcc::json_value any = msg;
+//   std::string encoding = wampcc::encode( any );
 //   std::cout << "encoding: " << encoding << "\n";
 
 //   return 1;

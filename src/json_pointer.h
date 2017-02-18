@@ -8,9 +8,9 @@
 #ifndef __JSON_PATCH__
 #define __JSON_PATCH__
 
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
-namespace jalson
+namespace wampcc
 {
 
 void apply_patch(json_value& doc, const json_array& patch);

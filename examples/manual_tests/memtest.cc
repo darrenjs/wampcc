@@ -8,17 +8,19 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-jalson::json_value build_json()
+using namespace wampcc;
+
+json_value build_json()
 {
-  jalson::json_value v = jalson::json_value::make_array();
-  v.as<jalson::json_array>().push_back( 1 );
-  v.as<jalson::json_array>().push_back( 1.1 );
-  v.as<jalson::json_array>().push_back( "this is astring" );
-  v.as<jalson::json_array>().push_back( jalson::json_object() );
-  v.as<jalson::json_array>().push_back( v );
-  v.as<jalson::json_array>().push_back( v );
-  v.as<jalson::json_array>().push_back( v );
-  v.as<jalson::json_array>().push_back( v );
+  json_value v = json_value::make_array();
+  v.as<json_array>().push_back( 1 );
+  v.as<json_array>().push_back( 1.1 );
+  v.as<json_array>().push_back( "this is astring" );
+  v.as<json_array>().push_back( json_object() );
+  v.as<json_array>().push_back( v );
+  v.as<json_array>().push_back( v );
+  v.as<json_array>().push_back( v );
+  v.as<json_array>().push_back( v );
 
   return v;
 }
@@ -27,31 +29,31 @@ jalson::json_value build_json()
 
 int test()
 {
-  jalson::json_value v = build_json();
-  std::string enc = jalson::json_encode(v.as<jalson::json_array>()  );
+  json_value v = build_json();
+  std::string enc = json_encode(v.as<json_array>()  );
 
   int count = 0;
   while (true)
   {
 
     {
-      jalson::json_value v = build_json();
-      jalson::json_encode(v.as<jalson::json_array>()  );
+      json_value v = build_json();
+      json_encode(v.as<json_array>()  );
     }
 
     {
-      jalson::json_value dest;
-      jalson::json_decode(dest, enc.c_str());
+      json_value dest;
+      json_decode(dest, enc.c_str());
     }
     {
 
-      jalson::json_object ob;
-      ob["1"] = jalson::json_value(1);
-      ob["2"] = jalson::json_value(2);
-      ob["3"] = jalson::json_value(3);
-      ob["4"] = jalson::json_value(4);
+      json_object ob;
+      ob["1"] = json_value(1);
+      ob["2"] = json_value(2);
+      ob["3"] = json_value(3);
+      ob["4"] = json_value(4);
       ob["ob"] = ob;
-      jalson::json_array ar;
+      json_array ar;
       ar.push_back( ob );
       ar.push_back( ar );
     }
@@ -104,8 +106,8 @@ void parse_invalid()
 {
   const char* str = " [1,2,,[}]";
 
-  jalson::json_value dest;
-  jalson::json_decode(dest, str);
+  json_value dest;
+  json_decode(dest, str);
 }
 
 int main(int, char**)

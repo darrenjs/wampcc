@@ -5,8 +5,8 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#ifndef __JALSON_H__
-#define __JALSON_H__
+#ifndef __WAMPCC_JALSON_H__
+#define __WAMPCC_JALSON_H__
 
 #include <limits>
 #include <map>
@@ -18,13 +18,11 @@
 #error "C++11 required"
 #endif
 
-#if __cplusplus >=201103L
 #include <type_traits>
-#endif
 
 #include <stdint.h>
 
-namespace jalson
+namespace wampcc
 {
 
 /* Get details about the underlying JSON implementation */
@@ -365,7 +363,7 @@ json_value& json_append(json_array& arr, const T& src)
 template<typename T>
 T& json_append(json_array& c)
 {
-  jalson::json_value new_value(T{});
+  json_value new_value(T{});
   c.push_back(std::move(new_value));
   return c.back().as<T>();
 }
@@ -376,7 +374,7 @@ template<typename T>
 T& json_insert(json_object& c, const std::string& key)
 {
   auto ins = c.insert({key, json_value()});
-  ins.first->second.swap( jalson::json_value(T{}) );
+  ins.first->second.swap( json_value(T{}) );
   return ins.first->second.as<T>();
 }
 

@@ -5,9 +5,9 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include <jansson.h>
+#include "jansson.h"
 
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <string>
 #include <sstream>
@@ -16,14 +16,14 @@
 #include <string.h>
 
 /* outside of jalson namespace, so not to confuse jalson names with JANSSON names */
-static jalson::json_value decode_jansson_ptr3(json_t * j)
+static wampcc::json_value decode_jansson_ptr3(json_t * j)
 {
   switch( json_typeof(j) )
   {
     case JSON_OBJECT :
     {
-      jalson::json_value rv = jalson::json_value::make_object();
-      jalson::json_object& obj = rv.as<jalson::json_object>();
+      wampcc::json_value rv = wampcc::json_value::make_object();
+      wampcc::json_object& obj = rv.as<wampcc::json_object>();
 
       const char *key;
       json_t *value;
@@ -38,8 +38,8 @@ static jalson::json_value decode_jansson_ptr3(json_t * j)
     }
     case JSON_ARRAY :
     {
-      jalson::json_value rv = jalson::json_value::make_array();
-      jalson::json_array& arr = rv.as<jalson::json_array>();
+      wampcc::json_value rv = wampcc::json_value::make_array();
+      wampcc::json_array& arr = rv.as<wampcc::json_array>();
 
       size_t index;
       json_t *value;
@@ -52,38 +52,38 @@ static jalson::json_value decode_jansson_ptr3(json_t * j)
     }
     case JSON_STRING :
     {
-      return jalson::json_value(json_string_value(j), json_string_length(j));
+      return wampcc::json_value(json_string_value(j), json_string_length(j));
     }
     case JSON_INTEGER :
     {
       long long i = json_integer_value(j);
-      return jalson::json_value(i);
+      return wampcc::json_value(i);
     }
     case JSON_REAL :
     {
-      return jalson::json_value( json_real_value(j) );
+      return wampcc::json_value( json_real_value(j) );
     }
-    case JSON_TRUE : return jalson::json_value(true);
-    case JSON_FALSE : return jalson::json_value(false);
-    case JSON_NULL : return jalson::json_value();
-    default : return jalson::json_value();
+    case JSON_TRUE : return wampcc::json_value(true);
+    case JSON_FALSE : return wampcc::json_value(false);
+    case JSON_NULL : return wampcc::json_value();
+    default : return wampcc::json_value();
   }
 
 }
 
 
 
-static json_t * encode_value3(const jalson::json_value& src)
+static json_t * encode_value3(const wampcc::json_value& src)
 {
   switch( src.type() )
   {
-    case jalson::eOBJECT:
+    case wampcc::eOBJECT:
     {
-      const jalson::json_object& obj = src.as_object();
+      const wampcc::json_object& obj = src.as_object();
 
       json_t* jobj = json_object();
 
-      for (jalson::json_object::const_iterator iter = obj.begin();
+      for (wampcc::json_object::const_iterator iter = obj.begin();
            iter != obj.end(); ++iter )
       {
         json_object_set_new(jobj,
@@ -92,12 +92,12 @@ static json_t * encode_value3(const jalson::json_value& src)
       }
       return jobj;
     }
-    case jalson::eARRAY :  {
-      const jalson::json_array& _array = src.as_array();
+    case wampcc::eARRAY :  {
+      const wampcc::json_array& _array = src.as_array();
 
       json_t* jarray = json_array();
 
-      for (jalson::json_array::const_iterator iter = _array.begin();
+      for (wampcc::json_array::const_iterator iter = _array.begin();
            iter != _array.end(); ++iter)
       {
         // TODO: is this the correct function? there is another one, and the
@@ -107,16 +107,16 @@ static json_t * encode_value3(const jalson::json_value& src)
 
       return jarray;
     }
-    case jalson::eSTRING:
+    case wampcc::eSTRING:
     {
-      const jalson::json_string& actual = src.as_string();
+      const wampcc::json_string& actual = src.as_string();
       return json_stringn(actual.c_str(), actual.size());
     }
-    case jalson::eREAL:
+    case wampcc::eREAL:
     {
       return json_real( src.as_real() );
     }
-    case jalson::eINTEGER:
+    case wampcc::eINTEGER:
     {
       if (src.is_int())
       {
@@ -129,22 +129,22 @@ static json_t * encode_value3(const jalson::json_value& src)
         return json_integer( (int64_t)src.as_uint() );
       }
     }
-    case jalson::eBOOL:
+    case wampcc::eBOOL:
     {
       if (src.as_bool())
         return json_true();
       else
         return json_false();
     }
-//    case jalson::eTRUE:   { return json_true();  }
-//    case jalson::eFALSE:  { return json_false(); }
-    case jalson::eNULL:   { return json_null();  }
+//    case wampcc::eTRUE:   { return json_true();  }
+//    case wampcc::eFALSE:  { return json_false(); }
+    case wampcc::eNULL:   { return json_null();  }
     default: return NULL;
   }
 }
 
 
-namespace jalson {
+namespace wampcc {
  const char impl_name[] = "jansson";
 
 void get_vendor_details(vendor_details* p)
@@ -238,7 +238,7 @@ void json_decode(json_value& dest, const char* buffer)
        << "column=" << error.column << " "
        << "position=" << error.position;
 
-    jalson::parse_error perr( os.str() );
+    parse_error perr( os.str() );
     perr.error = error.text;
     perr.source = error.source;
     perr.line = error.line;
@@ -284,7 +284,7 @@ void decode(json_value& dest, const char* buffer, size_t buflen)
        << "column=" << error.column << " "
        << "position=" << error.position;
 
-    jalson::parse_error perr( os.str() );
+    parse_error perr( os.str() );
     perr.error = error.text;
     perr.source = error.source;
     perr.line = error.line;
