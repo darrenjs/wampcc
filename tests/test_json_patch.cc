@@ -159,7 +159,7 @@ bool run_test(json_object& tc, int testid)
 void load_tests(json_array& all, const char* filename)
 {
   std::string tests = slurp( filename );
-  json_value doc = jalson::decode(tests.c_str());
+  json_value doc = jalson::json_decode(tests.c_str());
   json_array& loaded_tests = doc.as_array();
   all.insert(all.end(), loaded_tests.begin(), loaded_tests.end());
 }

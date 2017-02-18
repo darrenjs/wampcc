@@ -1,6 +1,6 @@
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CPPFLAGS = -I$(top_srcdir)/src -Wall -pthread -Wall -DJALSONDIR=\"${top_srcdir}\"
+AM_CPPFLAGS = -I$(top_srcdir)/src -Wall -pthread -Wall -std=c++11 -DJALSONDIR=\"${top_srcdir}\"
 
 # NOTE: -lrt added for posix clock support
 AM_LDFLAGS=-L$(top_builddir)/src -ljalson -lrt -pthread

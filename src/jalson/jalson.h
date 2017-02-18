@@ -14,6 +14,10 @@
 #include <string>
 #include <vector>
 
+#if __cplusplus < 201103L
+#error "C++11 required"
+#endif
+
 #if __cplusplus >=201103L
 #include <type_traits>
 #endif
@@ -298,7 +302,7 @@ public:
   }
 
   void swap(json_value&);
-
+  void swap(json_value&&);
 
   /* Apply a JSON Patch (IETF RFC 6902). Can throw bad_pointer and bad_patch. */
   void patch(const json_array&);
@@ -333,18 +337,19 @@ private:
 
   internals::valueimpl  m_impl;
 
-  friend json_array&  append_array  (jalson::json_array&);
-  friend json_object& append_object (jalson::json_array&);
-  friend json_object& insert_object (jalson::json_object&, const std::string&);
-  friend json_array&  insert_array  (jalson::json_object&, const std::string&);
+  friend json_array&  append_array  (json_array&);
+  friend json_object& append_object (json_array&);
+  friend json_object& insert_object (json_object&, const std::string&);
+  friend json_array&  insert_array  (json_object&, const std::string&);
 };
 
 std::ostream& operator<<(std::ostream&, const json_value&);
 
 
-/** Make a copy of 'src' and add to the aray */
+/** Make a copy of 'src' and add to the array, returning a reference to the
+ * newly created json_value. */
 template <typename T>
-json_value& append(jalson::json_array& arr, const T& src)
+json_value& json_append(json_array& arr, const T& src)
 {
   arr.push_back( json_value() );
 
@@ -355,60 +360,57 @@ json_value& append(jalson::json_array& arr, const T& src)
   return arr.back();
 }
 
-
 /* Append a new object or array to an array, and return the newly created
  * item */
-json_object& append_object (json_array& c);
-json_array&  append_array  (json_array& c);
+template<typename T>
+T& json_append(json_array& c)
+{
+  jalson::json_value new_value(T{});
+  c.push_back(std::move(new_value));
+  return c.back().as<T>();
+}
 
 /* Insert a new object or array to an object, and return the newly created
  * item */
-json_object& insert_object(json_object&, const std::string& key);
-json_array&  insert_array (json_object&, const std::string& key);
+template<typename T>
+T& json_insert(json_object& c, const std::string& key)
+{
+  auto ins = c.insert({key, json_value()});
+  ins.first->second.swap( jalson::json_value(T{}) );
+  return ins.first->second.as<T>();
+}
 
-/** Return pointer to item if exists, else return default */
-const json_value* get_ptr(const json_object&, const std::string& key,
-                          const json_value* default_value_ptr = 0);
+/** Return pointer to item if exists, else nullptr */
+const json_value* json_get_ptr(const json_object&, const std::string& key);
 
-/** Return pointer to item if exists, else return default */
-json_value*       get_ptr(json_object&, const std::string& key,
-                          json_value*default_value_ptr = 0);
+/** Return pointer to item if exists, else nullptr */
+json_value*       json_get_ptr(json_object&, const std::string& key);
 
-/** Return ref to item if exists, else return default. If default is 0, then
- * throw field_not_found exception. */
-const json_value& get_ref(const json_object&, const std::string& key,
-                          const json_value* default_value_ptr = 0); // may throw
+/** Return ref to item if exists, else throw field_not_found exception. */
+const json_value& json_get_ref(const json_object&, const std::string& key);
 
-/** Return ref to item if exists, else return default. If default is 0, then
- * throw field_not_found exception. */
-json_value&       get_ref(json_object&, const std::string& key,
-                          json_value* default_value_ptr = 0); // may throw
+/** Return ref to item if exists, else throw field_not_found exception. */
+json_value&       json_get_ref(json_object&, const std::string& key);
 
 /** Return copy of item if exists, else return copy of default */
-json_value get_copy(const json_object&, const std::string& key,
-                    const json_value& default_value_ref = json_value::make_null());
+json_value json_get_copy(const json_object&, const std::string& key,
+                         const json_value& default_value_ref = json_value::make_null());
 
 /** Return pointer to element if exists, else return default */
-const json_value* get_ptr(const json_array&, size_t i,
-                          const json_value* default_value_ptr = 0);
+const json_value* json_get_ptr(const json_array&, size_t i);
 
 /** Return pointer to element if exists, else return default */
-json_value*       get_ptr(json_array&, size_t i,
-                          json_value*default_value_ptr = 0);
+json_value*       json_get_ptr(json_array&, size_t i);
 
-/** Return ref to element if exists, else return default. If default is 0, then
- * throw field_not_found exception. */
-const json_value& get_ref(const json_array&, size_t i,
-                          const json_value* default_value_ptr = 0); // may throw
+/** Return ref to element if exists, else throw field_not_found exception. */
+const json_value& json_get_ref(const json_array&, size_t i);
 
-/** Return ref to element if exists, else return default. If default is 0, then
- * throw field_not_found exception. */
-json_value&       get_ref(json_array&, size_t i,
-                          json_value* default_value_ptr = 0); // may throw
+/** Return ref to element if exists, else throw field_not_found exception. */
+json_value&       json_get_ref(json_array&, size_t i);
 
 /** Return copy of element if exists, else return copy of default */
-json_value get_copy(const json_array&, size_t i,
-                    const json_value& default_value_ref = json_value::make_null());
+json_value json_get_copy(const json_array&, size_t i,
+                         const json_value& default_value_ref = json_value::make_null());
 
 /* Encode & decode functions */
 
@@ -416,39 +418,39 @@ json_value get_copy(const json_array&, size_t i,
  * value passed into this function should be either an Object or an Array.  This
  * is for conformance to RFC 4627. If you wish to encode other JSON types, then
  * try encode_any. */
-std::string encode(const json_value& src);
-std::string encode_any(const json_value& src);
+std::string json_encode(const json_value& src);
+std::string json_encode_any(const json_value& src);
 
 /* Decode into 'dest' out parameters, which on legacy C++ reduces the amount of
  * memory being copied.
  */
-void decode(json_value& dest, const char*, size_t);
-void decode(json_value& dest, const char*);
+void json_decode(json_value& dest, const char*, size_t);
+void json_decode(json_value& dest, const char*);
 
-json_value decode(const char*, size_t);
-json_value decode(const char*);
+json_value json_decode(const char*, size_t);
+json_value json_decode(const char*);
 
 // implementation of inline methods
 inline json_array  &  json_value::append_array()
 {
-  return jalson::append_array( this->as<json_array>() );
+  return json_append<json_array>( this->as<json_array>() );
 }
 
 inline json_object  &  json_value::append_object()
 {
-  return jalson::append_object( this->as<json_array>() );
+  return json_append<json_object>( this->as<json_array>() );
 }
 
 inline json_object&  json_value::insert_object(const std::string& key)
 {
-  return jalson::insert_object( this->as<json_object>(), key );
+  return json_insert<json_object>( this->as<json_object>(), key );
 }
 
 inline json_array&   json_value::insert_array (const std::string& key)
 {
-  return jalson::insert_array( this->as<json_object>(), key );
+  return json_insert<json_array>( this->as<json_object>(), key );
 }
 
-}
+} // namespace
 
 #endif

@@ -29,10 +29,10 @@ DEFTEST( jsonarray_basic_append )
   msg.push_back("string");
   msg.push_back( true );
 
-  jalson::append_array(msg).push_back("a");
-  jalson::append_object(msg)["b"] = "c";
+  jalson::json_append<jalson::json_array>(msg).push_back("a");
+  jalson::json_append<jalson::json_object>(msg)["b"] = "c";
 
-  std::string enc  = jalson::encode(msg) ;
+  std::string enc  = jalson::json_encode(msg) ;
   std::cout << enc << "\n";
   return  ( enc == "[0, 1, \"string\", true, [\"a\"], {\"b\": \"c\"}]");
 }
@@ -67,8 +67,8 @@ DEFTEST( misc_operations )
 {
   jalson::json_array ar1;
 
-  jalson::append(ar1, 100);
-  jalson::append(ar1, "mystring");
+  jalson::json_append(ar1, 100);
+  jalson::json_append(ar1, "mystring");
 
   jalson::json_value acopy = jalson::json_value( ar1 );
   jalson::json_array ar2 = acopy.as<jalson::json_array>();
@@ -91,20 +91,16 @@ DEFTEST( encoding_call_message )
   int reqid = 100;
 
   jalson::json_array msg;
-  jalson::append(msg, "call");
-  jalson::append_object(msg);
-  jalson::append(msg, foreign_sid + ":" +foreign_rpc);
-  jalson::append(msg, reqid);
-  jalson::append_object(msg);
+  jalson::json_append(msg, "call");
+  jalson::json_append<jalson::json_object>(msg);
+  jalson::json_append(msg, foreign_sid + ":" +foreign_rpc);
+  jalson::json_append(msg, reqid);
+  jalson::json_append<jalson::json_object>(msg);
 
-
-
-
-  //msg.append< MyType >();   // TODO: how can this work?
   msg.push_back( 50.25 );
 
   jalson::json_value any = msg;
-  std::string encoding = jalson::encode( any );
+  std::string encoding = jalson::json_encode( any );
   //std::cout << "encoding: " << encoding << "\n";
 
   return encoding=="[\"call\", {}, \"a1:myrpc\", 100, {}, 50.25]";
@@ -144,7 +140,7 @@ DEFTEST( support_for_various_int_types )
 
 
   jalson::json_value any = takecopy(msg); // test a copy too
-  std::string encoding = jalson::encode( any );
+  std::string encoding = jalson::json_encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
   return encoding=="[0, 1, 2, 3, 5, 6, 7, 0, \"x\"]";
@@ -183,7 +179,7 @@ DEFTEST( test_operator_eq )
   ASSERT_TRUE( msg[4].is_string() );
 
   jalson::json_value any = msg;
-  std::string encoding = jalson::encode( any );
+  std::string encoding = jalson::json_encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
 //  check( );
@@ -198,17 +194,17 @@ DEFTEST( map_examples )
   jalson::json_value a = jalson::json_value::make_array();
 
   a.as<jalson::json_array>().push_back(jalson::json_value::make_object());
-  jalson::append_array( a.as<jalson::json_array>() );
-  jalson::json_object& obj = jalson::append_object( a.as<jalson::json_array>() );
+  jalson::json_append<jalson::json_array>( a.as<jalson::json_array>() );
+  auto & obj = jalson::json_append<jalson::json_object>( a.as<jalson::json_array>() );
 
   obj["a"]=0;
   obj["b"]=1;
   obj["c"]=-1;
   obj["d"]="hello";
   obj["e"]= jalson::json_value::make_object();
-  jalson::json_object& obj2 = jalson::insert_object(obj, "X");
-  /*jalson::json_array& arr2  =*/ jalson::insert_array(obj2, "X");
-  std::string encoding = jalson::encode( a );
+  jalson::json_object& obj2 = jalson::json_insert<jalson::json_object>(obj, "X");
+  /*jalson::json_array& arr2  =*/ jalson::json_insert<jalson::json_array>(obj2, "X");
+  std::string encoding = jalson::json_encode( a );
   std::cout << "encoding: " << encoding << "\n";
 
   return 1;
@@ -218,7 +214,7 @@ DEFTEST ( encoding_example_1 )
 {
   const char* src="[\"SUBSCRIBE\", 0, {}, \"T1\"]";
   jalson::json_value a;
-  jalson::decode(a, src);
+  jalson::json_decode(a, src);
 
   jalson::json_array msg=a.as<jalson::json_array>();
   jalson::json_value        reqid = msg.at(1);
@@ -233,7 +229,7 @@ DEFTEST( int_and_uint_and_real )
 {
   const char* src="[0, -1, 1, 1.25, \"x\" ]";
   jalson::json_value a;
-  jalson::decode(a, src);
+  jalson::json_decode(a, src);
 
   jalson::json_array& msg=a.as<jalson::json_array>();
 
@@ -367,7 +363,7 @@ DEFTEST( copy_memleak )
   jv = ja ;
   jalson::json_value jv2 = jv;
 
-  std::cout << "encoding: " << jalson::encode_any( jv2 ) << "\n";
+  std::cout << "encoding: " << jalson::json_encode_any( jv2 ) << "\n";
 
   return 1;
 }
@@ -375,9 +371,9 @@ DEFTEST( copy_memleak )
 //----------------------------------------------------------------------
 DEFTEST( equality )
 {
-  jalson::json_value j1 = jalson::decode( "{ \"foo\": [50, 20, 30, 40]} " );
-  jalson::json_value j2 = jalson::decode( "{ \"foo\": [10, 20, 30, 40]} " );
-  jalson::json_value j3 = jalson::decode( "{ \"foo\": [10, 20, 30, 40]} " );
+  jalson::json_value j1 = jalson::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
+  jalson::json_value j2 = jalson::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
+  jalson::json_value j3 = jalson::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
 
   ASSERT_TRUE( j1 == j1 );
   ASSERT_TRUE( (j1 != j1) == false );
@@ -387,18 +383,18 @@ DEFTEST( equality )
   ASSERT_TRUE( (j2 != j3) == false );
 
 
-  jalson::json_value j4 = jalson::decode( "{ \"foo\": [1.1, 2.2 ], \"a\": true }" );
-  jalson::json_value j5 = jalson::decode( "{ \"foo\": [1.2, 2.3 ], \"a\": true }" );
-  jalson::json_value j6 = jalson::decode( "{ \"a\":true, \"foo\": [1.1, 2.2 ] }" );
+  jalson::json_value j4 = jalson::json_decode( "{ \"foo\": [1.1, 2.2 ], \"a\": true }" );
+  jalson::json_value j5 = jalson::json_decode( "{ \"foo\": [1.2, 2.3 ], \"a\": true }" );
+  jalson::json_value j6 = jalson::json_decode( "{ \"a\":true, \"foo\": [1.1, 2.2 ] }" );
 
   ASSERT_TRUE( j4 == j4 );
   ASSERT_TRUE( j4 != j5 );
   ASSERT_TRUE( (j4 == j5) == false );
   ASSERT_TRUE( j4 == j6 );
 
-  jalson::json_value j7 = jalson::decode( "{ \"foo\": [-50, -20, -30, -40]} " );
-  jalson::json_value j8 = jalson::decode( "{ \"foo\": [-10, -20, -30, -40]} " );
-  jalson::json_value j9 = jalson::decode( "{ \"foo\": [-10, -20, -30, -40]} " );
+  jalson::json_value j7 = jalson::json_decode( "{ \"foo\": [-50, -20, -30, -40]} " );
+  jalson::json_value j8 = jalson::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
+  jalson::json_value j9 = jalson::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
 
   ASSERT_TRUE( j7 == j7 );
   ASSERT_TRUE( (j7 != j7) == false );
@@ -407,9 +403,9 @@ DEFTEST( equality )
   ASSERT_TRUE( j8 == j9 );
   ASSERT_TRUE( (j8 != j9) == false );
 
-  jalson::json_value j10 = jalson::decode( "{ \"foo\": [true, false, true, false ]} " );
-  jalson::json_value j11 = jalson::decode( "{ \"foo\": [true, false, true, true  ]} " );
-  jalson::json_value j12 = jalson::decode( "{ \"foo\": [true, false, true, true  ]} " );
+  jalson::json_value j10 = jalson::json_decode( "{ \"foo\": [true, false, true, false ]} " );
+  jalson::json_value j11 = jalson::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
+  jalson::json_value j12 = jalson::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
 
   ASSERT_TRUE( j10 == j10 );
   ASSERT_TRUE( (j10 != j10) == false );
@@ -425,33 +421,33 @@ DEFTEST( equality )
 //----------------------------------------------------------------------
 DEFTEST( getters_api )
 {
-  jalson::json_value default_id = jalson::json_value::make_string("hello");
-
-  const jalson::json_value j1 = jalson::decode( "{ \"foo\": [50, 20, 30, 40]} " );
+  const jalson::json_value j1 = jalson::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
 
   const jalson::json_object msg;
 
 
-  const jalson::json_value * id  = jalson::get_ptr(msg, "id");
+  const jalson::json_value * id  = jalson::json_get_ptr(msg, "id");
   ASSERT_TRUE( id == NULL);
   // const jalson::json_value & id2 = jalson::get_ref(msg, "id");
 
-  // const jalson::json_value & id3 = jalson::get_ref(msg, "id", default_id);
-  const jalson::json_value & id4 = jalson::get_copy(msg, "id", jalson::json_value::make_string("hello"));
-  const jalson::json_value & id5 = jalson::get_ref(msg, "id", &default_id);
-  ASSERT_TRUE( id5 ==default_id  );
-  //const jalson::json_value & id6 = jalson::get_ref(msg, "id", &jalson::json_value::make_string("I am temp"));
+  const jalson::json_value & id4 = jalson::json_get_copy(msg, "id", jalson::json_value::make_string("hello"));
+  ASSERT_TRUE( id4 == jalson::json_value::make_string("hello") );
 
-  // std::cout << "for id3 value is >" << id3 << "<\n";
-  std::cout << "for id4 value is >" << id4 << "<\n";
-  std::cout << "for id5 value is >" << id4 << "<\n";
-
+  bool id5_exception_thrown=false;
+  try
+  {
+    jalson::json_get_ref(msg, "id");
+  }
+  catch (jalson::field_not_found& e)
+  {
+    id5_exception_thrown = true;
+  }
+  ASSERT_TRUE(id5_exception_thrown);
 
   const jalson::json_value expected = jalson::json_value::make_string("xyz");
-  std::string challmsg = jalson::get_copy(msg, "challenge", "xyz").as_string();
+  std::string challmsg = jalson::json_get_copy(msg, "challenge", "xyz").as_string();
   std::cout << "challmsg: >" << challmsg << "<\n";
   ASSERT_TRUE( challmsg == expected.as_string() );
-
 
   return 1;
 }

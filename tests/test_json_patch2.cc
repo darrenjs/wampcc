@@ -19,9 +19,9 @@ using namespace jalson;
  */
 static bool patch_test(const char* docstr, const char* patchstr)
 {
-  json_value doc=decode(docstr);
+  json_value doc=json_decode(docstr);
   json_value orig = doc;
-  json_array patch=decode(patchstr).as_array();
+  json_array patch=json_decode(patchstr).as_array();
   bool had_exception = true;
   bool patch_ok;
 

@@ -34,7 +34,7 @@ int strlen_total  = 0;
 jalson::json_value test()
 {
   jalson::json_value v = build_json();
-  std::string enc = jalson::encode(v.as<jalson::json_array>()  );
+  std::string enc = jalson::json_encode(v.as<jalson::json_array>()  );
   std::cout << enc << "\n";
 
   int count = 0;
@@ -44,12 +44,12 @@ jalson::json_value test()
   {
     // encode
     jalson::json_value v = build_json();
-    jalson::encode(v.as<jalson::json_array>()  );
+    jalson::json_encode(v.as<jalson::json_array>()  );
 
     // decode
-    jalson::decode(rv, enc.c_str());
+    jalson::json_decode(rv, enc.c_str());
 
-    std::string s =  jalson::encode( v );
+    std::string s =  jalson::json_encode( v );
     strlen_total += s.size();
 
     std::cout << "loop #" << count++ << "\n";
@@ -62,7 +62,7 @@ jalson::json_value test()
 int main(int, char**)
 {
   jalson::json_value v = test();
-  std::string enc = jalson::encode(v.as<jalson::json_array>());
+  std::string enc = jalson::json_encode(v.as<jalson::json_array>());
   std::cout << enc << "\n";
   std::cout << strlen_total << "\n";
   return 0;

@@ -310,68 +310,6 @@ bool valueimpl::as_bool_unchecked() const
 
 //----------------------------------------------------------------------
 
-
-// poor mans template
-#define ARRAY_APPEND( C, T )                          \
-  T * newitem = new T ();                             \
-  internals::valueimpl temp( newitem );               \
-  C.push_back( json_value() );                        \
-  C.back().m_impl.swap( temp );                       \
-  return *newitem;
-
-json_array  &  append_array(jalson::json_array& c)
-{
-  ARRAY_APPEND(c, json_array);
-}
-
-json_object  &  append_object(jalson::json_array& c)
-{
-  ARRAY_APPEND(c, json_object);
-}
-
-
-json_object& insert_object(jalson::json_object& c, const std::string& key)
-{
-//  c[ key ] = json_value::make_object();
-//  return c[key].as_object();
-
-  json_object * newitem = new json_object();
-  internals::valueimpl temp( newitem );
-
-  std::pair< jalson::json_object::iterator, bool> ins =
-    c.insert(std::make_pair(key, json_value()));
-
-  ins.first->second.m_impl.swap( temp );
-  return *newitem;
-}
-
-
-
-json_array& insert_array(jalson::json_object& c, const std::string& key)
-{
-  json_array * newitem = new json_array();
-  internals::valueimpl temp( newitem );
-
-  std::pair< jalson::json_object::iterator, bool> ins =
-    c.insert(std::make_pair(key, json_value()));
-
-  ins.first->second.m_impl.swap( temp );
-  return *newitem;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-//----------------------------------------------------------------------
-
 json_value::json_value()
   : m_impl()
 {
@@ -449,6 +387,11 @@ json_value::json_value(unsigned long long i)
 }
 
 void json_value::swap(json_value& other)
+{
+  this->m_impl.swap(other.m_impl);
+}
+
+void json_value::swap(json_value&& other)
 {
   this->m_impl.swap(other.m_impl);
 }
@@ -620,11 +563,11 @@ std::ostream& operator<<(std::ostream& os, const json_value& v)
 {
   if (v.is_object() || v.is_array())
   {
-    os << encode(v);
+    os << json_encode(v);
   }
   else
   {
-    os << encode_any(v);
+    os << json_encode_any(v);
   }
 
   return os;
@@ -646,54 +589,46 @@ json_value * json_value::eval(const char* path)
   return eval_json_pointer(*this, path);
 }
 
-const json_value* get_ptr(const json_object& ob, const std::string& key,
-                          const json_value* default_value_ptr)
+const json_value* json_get_ptr(const json_object& ob, const std::string& key)
 {
   json_object::const_iterator it = ob.find( key );
   if (it != ob.end())
     return &it->second;
   else
-    return default_value_ptr;
+    return nullptr;
 }
 
-json_value* get_ptr(json_object& ob, const std::string& key,
-                    json_value* default_value_ptr)
+json_value* json_get_ptr(json_object& ob, const std::string& key)
 {
   json_object::iterator it = ob.find( key );
   if (it != ob.end())
     return &it->second;
   else
-    return default_value_ptr;
+    return nullptr;
 }
 
 
-const json_value& get_ref(const json_object& ob, const std::string& key,
-                          const json_value* defval)
+const json_value& json_get_ref(const json_object& ob, const std::string& key)
 {
   json_object::const_iterator it = ob.find( key );
 
-  if (it != ob.end()) return it->second;
-
-  if (defval)
-    return *defval;
+  if (it != ob.end())
+    return it->second;
   else
     throw field_not_found(key);
 }
 
-json_value& get_ref(json_object& ob, const std::string& key,
-                    json_value* defval)
+json_value& json_get_ref(json_object& ob, const std::string& key)
 {
   json_object::iterator it = ob.find( key );
 
-  if (it != ob.end()) return it->second;
-
-  if (defval)
-    return *defval;
+  if (it != ob.end())
+    return it->second;
   else
     throw field_not_found(key);
 }
 
-json_value get_copy(const json_object& ob, const std::string& key,
+json_value json_get_copy(const json_object& ob, const std::string& key,
                     const json_value& defval)
 {
   json_object::const_iterator it = ob.find( key );
@@ -704,41 +639,33 @@ json_value get_copy(const json_object& ob, const std::string& key,
     return defval;
 }
 
-const json_value* get_ptr(const json_array& ar, size_t i,
-                          const json_value* default_value_ptr )
+const json_value* json_get_ptr(const json_array& ar, size_t i)
 {
-  return (i < ar.size())? &ar[i] : default_value_ptr;
+  return (i < ar.size())? &ar[i] : nullptr;
 }
 
-json_value* get_ptr(json_array& ar, size_t i,
-                    json_value* default_value_ptr)
+json_value* json_get_ptr(json_array& ar, size_t i)
 {
-  return (i < ar.size())? &ar[i] : default_value_ptr;
+  return (i < ar.size())? &ar[i] : nullptr;
 }
 
-const json_value& get_ref(const json_array& ar, size_t i,
-                          const json_value* default_value_ptr)
+const json_value& json_get_ref(const json_array& ar, size_t i)
 {
-  if (i < ar.size()) return ar[i];
-
-  if (default_value_ptr)
-    return *default_value_ptr;
+  if (i < ar.size())
+    return ar[i];
   else
     throw out_of_range(i);
 }
 
-json_value& get_ref(json_array& ar, size_t i,
-                    json_value* default_value_ptr)
+json_value& json_get_ref(json_array& ar, size_t i)
 {
-  if (i < ar.size()) return ar[i];
-
-  if (default_value_ptr)
-    return *default_value_ptr;
+  if (i < ar.size())
+    return ar[i];
   else
     throw out_of_range(i);
 }
 
-json_value get_copy(const json_array& ar, size_t i,
+json_value json_get_copy(const json_array& ar, size_t i,
                     const json_value & default_value_ref)
 {
   return i < ar.size()? ar[i] : default_value_ref;

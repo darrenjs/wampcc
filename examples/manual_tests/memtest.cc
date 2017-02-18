@@ -28,7 +28,7 @@ jalson::json_value build_json()
 int test()
 {
   jalson::json_value v = build_json();
-  std::string enc = jalson::encode(v.as<jalson::json_array>()  );
+  std::string enc = jalson::json_encode(v.as<jalson::json_array>()  );
 
   int count = 0;
   while (true)
@@ -36,12 +36,12 @@ int test()
 
     {
       jalson::json_value v = build_json();
-      jalson::encode(v.as<jalson::json_array>()  );
+      jalson::json_encode(v.as<jalson::json_array>()  );
     }
 
     {
       jalson::json_value dest;
-      jalson::decode(dest, enc.c_str());
+      jalson::json_decode(dest, enc.c_str());
     }
     {
 
@@ -104,11 +104,8 @@ void parse_invalid()
 {
   const char* str = " [1,2,,[}]";
 
-
   jalson::json_value dest;
-  jalson::decode(dest, str);
-
-
+  jalson::json_decode(dest, str);
 }
 
 int main(int, char**)

@@ -97,11 +97,11 @@ DEFTEST( test_example )
       \" \": 7,                                 \
       \"m~n\": 8                                \
    }";
-  json_value doc=decode(jsonstr);
+  json_value doc=json_decode(jsonstr);
 
 
   ASSERT_TRUE( test_pointer_success(doc, "",       doc) ); // full doc match
-  ASSERT_TRUE( test_pointer_success(doc, "/foo",   decode("[\"bar\", \"baz\",[10,20,30]]")));
+  ASSERT_TRUE( test_pointer_success(doc, "/foo",   json_decode("[\"bar\", \"baz\",[10,20,30]]")));
   ASSERT_TRUE( test_pointer_success(doc, "/foo/0", json_value::make_string("bar")));
   ASSERT_TRUE( test_pointer_success(doc, "/",      json_value::make_int(0)));
   ASSERT_TRUE( test_pointer_success(doc, "/a~1b",  json_value::make_int(1)));
@@ -160,10 +160,10 @@ DEFTEST( expand_escaped_chars )
 bool patch_test(const char* docstr, const char* patchstr, const char * expectstr)
 {
   if (expectstr == 0) expectstr=docstr;
-  json_value doc=decode(docstr);
+  json_value doc=json_decode(docstr);
   json_value orig = doc;
-  json_array patch=decode(patchstr).as_array();
-  json_value expect=decode(expectstr);
+  json_array patch=json_decode(patchstr).as_array();
+  json_value expect=json_decode(expectstr);
   bool result = apply_patch(doc, patch);
 
   if (result == false) return false;
@@ -182,9 +182,9 @@ bool patch_test(const char* docstr, const char* patchstr, const char * expectstr
 
 bool patch_test_fail(const char* docstr, const char* patchstr)
 {
-  json_value doc=decode(docstr);
+  json_value doc=json_decode(docstr);
   json_value orig = doc;
-  json_array patch=decode(patchstr).as_array();
+  json_array patch=json_decode(patchstr).as_array();
   bool result = apply_patch(doc, patch);
 
   std::cout << "doc: '" << orig << "'\n"

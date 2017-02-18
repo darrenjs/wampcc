@@ -19,7 +19,7 @@
 #
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CXXFLAGS =  -Wall -g3 -ggdb -O0 $(janssoninc)
+AM_CXXFLAGS =  -std=c++11 -Wall -g3 -ggdb -O0 $(janssoninc)
 
 
 AM_LDFLAGS=-pthread

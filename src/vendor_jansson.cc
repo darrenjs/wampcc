@@ -181,7 +181,7 @@ static void json_free(void * p)
 }
 
 
-std::string encode(const json_value& src)
+std::string json_encode(const json_value& src)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
@@ -201,7 +201,7 @@ std::string encode(const json_value& src)
 }
 
 
-std::string encode_any(const json_value& src)
+std::string json_encode_any(const json_value& src)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
@@ -221,7 +221,7 @@ std::string encode_any(const json_value& src)
 }
 
 // TODO: need to handle the error cases in here
-void decode(json_value& dest, const char* buffer)
+void json_decode(json_value& dest, const char* buffer)
 {
   malloc_guard setflag_at_exit;
   if (!jansson_malloc_set) json_set_alloc_funcs(&json_malloc, &json_free);
@@ -259,10 +259,10 @@ void decode(json_value& dest, const char* buffer)
 
 
 
-json_value decode(const char* buffer)
+json_value json_decode(const char* buffer)
 {
   json_value dest;
-  decode(dest, buffer);
+  json_decode(dest, buffer);
   return dest;
 }
 
@@ -303,7 +303,7 @@ void decode(json_value& dest, const char* buffer, size_t buflen)
   if (root) json_decref( root );
 }
 
-json_value decode(const char* buffer, size_t buflen)
+json_value json_decode(const char* buffer, size_t buflen)
 {
   json_value dest;
   decode(dest, buffer, buflen);
