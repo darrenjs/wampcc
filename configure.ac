@@ -85,8 +85,8 @@ AC_C_INLINE
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="../$srcdir/jalson/libjalson"
-jalsonlib="../jalson/libjalson"
+jalsoninc="../$srcdir/jalson/src"
+jalsonlib="../jalson/src"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
 

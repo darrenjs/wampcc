@@ -10,8 +10,7 @@
 
 #include "wampcc/types.h"
 #include "wampcc/wamp_session.h"
-
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <string>
 #include <mutex>
@@ -44,9 +43,9 @@ public:
 protected:
 
   /** Get the json-model representative of current state */
-  virtual jalson::json_value snapshot() const = 0;
+  virtual json_value snapshot() const = 0;
 
-  void publish(const jalson::json_array&, const jalson::json_array&);
+  void publish(const json_array&, const json_array&);
 
   mutable std::mutex m_model_topics_mutex;
   std::map<std::string, std::unique_ptr<model_topic>> m_model_topic_lookup;
@@ -68,7 +67,7 @@ public:
   const std::string& uri() const { return m_uri; }
 
 private:
-  void publish_update(jalson::json_array patch, jalson::json_array event);
+  void publish_update(json_array patch, json_array event);
   model_topic(std::string, data_model*);
   wampcc::wamp_args prepare_snapshot();
   data_model * m_data_model;
@@ -136,7 +135,7 @@ private:
 };
 
 
-class jmodel_subscription : public jmodel_common<jmodel_subscription, jalson::json_value>
+class jmodel_subscription : public jmodel_common<jmodel_subscription, json_value>
 {
 public:
 
@@ -150,7 +149,7 @@ public:
                       observer);
 
 private:
-  void on_update(jalson::json_object options, wamp_args args);
+  void on_update(json_object options, wamp_args args);
   observer m_observer;
   friend base_type;
 };
@@ -168,7 +167,7 @@ public:
 
   std::string value() const;
 
-  jalson::json_value snapshot() const override;
+  json_value snapshot() const override;
 
   // Rich API for modifying model state
   void assign(std::string);
@@ -196,7 +195,7 @@ public:
                       std::string topic_uri, observer);
 
 private:
-  void on_update(jalson::json_object options, wamp_args args);
+  void on_update(json_object options, wamp_args args);
   observer m_observer;
   friend base_type;
 };
@@ -206,7 +205,7 @@ private:
 class list_model : public data_model
 {
 public:
-  typedef std::vector< jalson::json_value > internal_impl ;
+  typedef std::vector< json_value > internal_impl ;
 
   static const std::string key_reset;
   static const std::string key_insert;
@@ -215,9 +214,9 @@ public:
 
   // modification rich api
   void reset(internal_impl);
-  void insert(size_t, jalson::json_value);
-  void push_back(jalson::json_value);
-  void replace(size_t pos, jalson::json_value);
+  void insert(size_t, json_value);
+  void push_back(json_value);
+  void replace(size_t pos, json_value);
   void erase(size_t pos);
 
   class bad_index : public std::runtime_error
@@ -232,11 +231,11 @@ public:
   /** Get a copy of the internal value */
   internal_impl value() const;
 
-  jalson::json_value snapshot() const override;
+  json_value snapshot() const override;
 
 private:
 
-  void insert_impl(size_t, jalson::json_value);
+  void insert_impl(size_t, json_value);
 
   /* The data model internal representation.  Some kind of representation of
    * current model state is required so that a snapshot can be provided when a
@@ -263,7 +262,7 @@ public:
                     observer ob);
 
 private:
-  void on_update(jalson::json_object options, wamp_args args);
+  void on_update(json_object options, wamp_args args);
   observer m_observer;
   friend base_type;
 };

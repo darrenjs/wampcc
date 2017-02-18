@@ -42,7 +42,7 @@ public:
   void initiate(t_initiate_cb) override;
 
   const char* name() const override { return NAME; }
-  void send_msg(const jalson::json_array& j) override;
+  void send_msg(const json_array& j) override;
 
 private:
 

@@ -20,12 +20,12 @@
 
 namespace wampcc {
 
-
   buffer::read_pointer::read_pointer(char * p, size_t avail)
     : m_ptr(p),
       m_avail(avail)
   {
   }
+
 
   buffer::buffer(size_t initial_size,
                  size_t max_size)
@@ -100,10 +100,9 @@ void protocol::decode_json(const char* ptr, size_t msglen)
   /* IO thread */
   try
   {
-    jalson::json_value jv;
-    jalson::decode(jv, ptr, msglen);
+    json_value jv =  json_decode(ptr, msglen);
 
-    jalson::json_array& msg = jv.as_array();
+    json_array& msg = jv.as_array();
 
     if (msg.size() == 0)
       throw protocol_error("json array empty");
@@ -113,7 +112,7 @@ void protocol::decode_json(const char* ptr, size_t msglen)
 
     m_msg_processor(msg, msg[0].as_uint());
   }
-  catch( const jalson::json_error& e)
+  catch( const json_error& e)
   {
     throw protocol_error(e.what());
   }

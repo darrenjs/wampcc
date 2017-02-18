@@ -125,7 +125,7 @@ public:
   };
 
 
-  typedef std::function<void(jalson::json_array msg, int msgtype)> t_msg_cb;
+  typedef std::function<void(json_array msg, int msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
 
   enum class connection_mode
@@ -142,7 +142,7 @@ public:
   virtual void initiate(t_initiate_cb) = 0;
   virtual const char* name() const = 0;
 
-  virtual void send_msg(const jalson::json_array& j) = 0;
+  virtual void send_msg(const json_array& j) = 0;
 
   connection_mode mode() const { return m_mode; }
 
@@ -179,7 +179,7 @@ public:
 
   const char* name() const override { return NAME; }
 
-  void send_msg(const jalson::json_array& j) override
+  void send_msg(const json_array& j) override
   {
     throw std::runtime_error("selector_protocol cannot send");
   }

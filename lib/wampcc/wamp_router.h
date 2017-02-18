@@ -10,8 +10,7 @@
 
 #include "wampcc/wamp_session.h"
 #include "wampcc/error.h"
-
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <memory>
 #include <future>
@@ -45,13 +44,13 @@ public:
   /** Publish to an internal topic */
   void publish(const std::string& realm,
                const std::string& uri,
-               const jalson::json_object& options,
+               const json_object& options,
                wamp_args args);
 
   /** Provide an internal RPC */
   void provide(const std::string& realm,
                const std::string& uri,
-               const jalson::json_object& options,
+               const json_object& options,
                rpc_cb cb,
                void * data = nullptr);
 

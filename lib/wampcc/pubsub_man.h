@@ -10,8 +10,7 @@
 
 #include "wampcc/types.h"
 #include "wampcc/utils.h"
-
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <map>
 #include <memory>
@@ -31,13 +30,13 @@ public:
 
   void inbound_publish(std::string realm,
                        std::string uri,
-                       jalson::json_object options,
+                       json_object options,
                        wamp_args);
 
   uint64_t subscribe(wamp_session* ptr,
                      t_request_id,
                      std::string uri,
-                     jalson::json_object & options);
+                     json_object & options);
 
   void unsubscribe(wamp_session*,
                    t_request_id,
@@ -56,7 +55,7 @@ private:
 
   void update_topic(const std::string& topic,
                     const std::string& realm,
-                    jalson::json_object options,
+                    json_object options,
                     wamp_args args);
 
   logger & __logger; /* name chosen for log macros */

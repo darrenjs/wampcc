@@ -8,6 +8,10 @@
 #ifndef WAMPCC_H
 #define WAMPCC_H
 
+#if __cplusplus < 201103L
+#error "C++11 required"
+#endif
+
 /* Convenience header to include all public wampcc headers */
 
 #include "wampcc/error.h"

@@ -54,8 +54,8 @@ model_topic& data_model::get_topic(const std::string& uri)
 }
 
 
-void data_model::publish(const jalson::json_array& patch,
-                         const jalson::json_array& rich_event)
+void data_model::publish(const json_array& patch,
+                         const json_array& rich_event)
 {
   /* caller must have locked m_model_topics_mutex */
 
@@ -76,11 +76,11 @@ model_topic::model_topic(std::string uri, data_model * model)
 
 wampcc::wamp_args model_topic::prepare_snapshot()
 {
-  jalson::json_array patch;
+  json_array patch;
 
   auto model_snapshot = m_data_model->snapshot();
 
-  jalson::json_object& operation = jalson::append_object(patch);
+  json_object& operation = json_append<json_object>(patch);
   operation["op"]    = "replace";
   operation["path"]  = "";  /* replace whole document */
   operation["value"] = std::move(model_snapshot);
@@ -130,14 +130,14 @@ void model_topic::add_publisher(std::string realm,
 }
 
 
-void model_topic::publish_update(jalson::json_array patch,
-                                 jalson::json_array event)
+void model_topic::publish_update(json_array patch,
+                                 json_array event)
 {
   wampcc::wamp_args pub_args;
   pub_args.args_list.push_back( std::move(patch) );
   pub_args.args_list.push_back( std::move(event) );
 
-  jalson::json_object options{ {KEY_PATCH,1} };
+  json_object options{ {KEY_PATCH,1} };
 
   for (auto & item : m_dealers)
   {
@@ -207,21 +207,21 @@ void string_model::assign(std::string s)
        (1) the json-model patch
        (2) the rich-model event description.
     */
-    jalson::json_array patch;
-    jalson::json_object& operation = jalson::append_object(patch);
+    json_array patch;
+    json_object& operation = json_append<json_object>(patch);
     operation.insert({"op","replace"});
     operation.insert({"path","/body/value"});
     operation.insert({"value",std::move(tmp)});
 
     // string_model model is so simple that an event description is not needed
-    jalson::json_array rich_event;
+    json_array rich_event;
 
     publish(patch, rich_event);
   }
 }
 
 
-jalson::json_value string_model::snapshot() const
+json_value string_model::snapshot() const
 {
   internal_impl tmp;
   {
@@ -229,9 +229,9 @@ jalson::json_value string_model::snapshot() const
     tmp = m_value;
   }
 
-  jalson::json_value jmodel = jalson::json_value::make_object();
-  jalson::json_object & head = insert_object(jmodel.as_object(), "head");
-  jalson::json_object & body = insert_object(jmodel.as_object(), "body");
+  json_value jmodel = json_value::make_object();
+  json_object & head = json_insert<json_object>(jmodel.as_object(), "head");
+  json_object & body = json_insert<json_object>(jmodel.as_object(), "body");
   head.emplace("type",   "string_model");
   head.emplace("version", 0);
   body.insert({"value",std::move(tmp)});
@@ -264,7 +264,7 @@ jmodel_subscription::jmodel_subscription(std::shared_ptr<wampcc::wamp_session>& 
   THROW_FOR_INVALID_FN( on_change );
 }
 
-void jmodel_subscription::on_update(jalson::json_object options,
+void jmodel_subscription::on_update(json_object options,
                                     wamp_args args)
 {
   std::cout << "got jmodel update, " << args.args_list << std::endl;
@@ -296,14 +296,14 @@ string_subscription::string_subscription(std::shared_ptr<wampcc::wamp_session>& 
 }
 
 
-void string_subscription::on_update(jalson::json_object options,
+void string_subscription::on_update(json_object options,
                                     wamp_args args)
 {
   /* EV thread */
 
   /* Note, the string_model model is so simple that an event description is not
    * needed */
-  const jalson::json_array * patchset = nullptr;
+  const json_array * patchset = nullptr;
   if (args.args_list.size() > 0 && args.args_list[0].is_array())
     patchset = &args.args_list[0].as_array();
 
@@ -315,9 +315,9 @@ void string_subscription::on_update(jalson::json_object options,
     )
   { //   [ patch ]
     const auto & patch       = patchset->operator[](0).as_object();
-    const auto & patch_value = jalson::get_ref(patch, "value").as_object();
-    const auto & body        = jalson::get_ref(patch_value, "body").as_object();
-    const auto & body_value  = jalson::get_ref(body, "value").as_string();
+    const auto & patch_value = json_get_ref(patch, "value").as_object();
+    const auto & body        = json_get_ref(patch_value, "body").as_object();
+    const auto & body_value  = json_get_ref(body, "value").as_string();
 
     {
       std::lock_guard<std::mutex> guard(m_value_mutex);
@@ -328,7 +328,7 @@ void string_subscription::on_update(jalson::json_object options,
   else if (patchset)
   {
     const auto & patch = patchset->operator[](0).as_object();
-    auto value = std::move(jalson::get_ref(patch, "value").as_string());
+    auto value = std::move(json_get_ref(patch, "value").as_string());
 
     {
       std::lock_guard<std::mutex> guard(m_value_mutex);
@@ -371,22 +371,22 @@ void list_model::reset(internal_impl value)
        (2) the rich-model event description.
     */
 
-    jalson::json_array patch;
-    jalson::json_object& operation = jalson::append_object(patch);
+    json_array patch;
+    json_object& operation = json_append<json_object>(patch);
     operation.insert({"op", "replace"});
     operation.insert({"path", "/body/value"});
     operation.insert({"value", std::move(copy)});;
 
     // TODO: replace this with the proper event key
     char c = '?';
-    jalson::json_array rich_event = { c };
+    json_array rich_event = { c };
 
     publish(patch, rich_event);
   }
 }
 
 
-void list_model::insert(size_t pos, jalson::json_value value)
+void list_model::insert(size_t pos, json_value value)
 {
   std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
   std::lock_guard<std::mutex> value_guard(m_value_mutex);
@@ -395,7 +395,7 @@ void list_model::insert(size_t pos, jalson::json_value value)
 }
 
 
-void list_model::push_back(jalson::json_value val)
+void list_model::push_back(json_value val)
 {
   std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
   std::lock_guard<std::mutex> value_guard(m_value_mutex);
@@ -404,7 +404,7 @@ void list_model::push_back(jalson::json_value val)
 }
 
 
-void list_model::insert_impl(size_t pos, jalson::json_value value)
+void list_model::insert_impl(size_t pos, json_value value)
 {
   if (m_value.size() >= pos)
     m_value.insert(m_value.begin() + pos, value);
@@ -417,24 +417,24 @@ void list_model::insert_impl(size_t pos, jalson::json_value value)
        (1) the json-model patch
        (2) the rich-model event description.
     */
-    jalson::json_array patch;
-    jalson::json_object& operation = jalson::append_object(patch);
+    json_array patch;
+    json_object& operation = json_append<json_object>(patch);
     operation["op"]    = "add";
     operation["path"]  = "/body/value/" + std::to_string(pos);
     operation["value"] = value;
 
-    jalson::json_array rich_event = {key_insert, pos};
+    json_array rich_event = {key_insert, pos};
 
     publish(patch, rich_event);
   }
 }
 
 
-void list_model::replace(size_t pos, jalson::json_value new_value)
+void list_model::replace(size_t pos, json_value new_value)
 {
   std::lock_guard<std::mutex> pub_guard(m_model_topics_mutex);
 
-  jalson::json_value copy;
+  json_value copy;
   if (!m_model_topics.empty())
     copy = new_value;
 
@@ -453,13 +453,13 @@ void list_model::replace(size_t pos, jalson::json_value new_value)
        (2) the rich-model event description.
     */
 
-    jalson::json_array patch;
-    jalson::json_object& operation = jalson::append_object(patch);
+    json_array patch;
+    json_object& operation = json_append<json_object>(patch);
     operation["op"]    = "replace";
     operation["path"]  = "/body/value/" + std::to_string(pos);
     operation["value"] = std::move(copy);
 
-    jalson::json_array rich_event = {key_modify, pos};
+    json_array rich_event = {key_modify, pos};
 
     publish(patch, rich_event);
   }
@@ -485,19 +485,19 @@ void list_model::erase(size_t pos)
        (2) the rich-model event description.
     */
 
-    jalson::json_array patch;
-    jalson::json_object& operation = jalson::append_object(patch);
+    json_array patch;
+    json_object& operation = json_append<json_object>(patch);
     operation["op"]   = "remove";
     operation["path"] = "/body/value/" + std::to_string(pos);
 
-    jalson::json_array rich_event = { key_remove, pos };
+    json_array rich_event = { key_remove, pos };
 
     publish(patch, rich_event);
   }
 }
 
 
-jalson::json_value list_model::snapshot() const
+json_value list_model::snapshot() const
 {
   internal_impl tmp;
   {
@@ -505,9 +505,9 @@ jalson::json_value list_model::snapshot() const
     tmp = m_value;
   }
 
-  jalson::json_value jmodel = jalson::json_value::make_object();
-  jalson::json_object & head = insert_object(jmodel.as_object(), "head");
-  jalson::json_object & body = insert_object(jmodel.as_object(), "body");
+  json_value jmodel = json_value::make_object();
+  json_object & head = json_insert<json_object>(jmodel.as_object(), "head");
+  json_object & body = json_insert<json_object>(jmodel.as_object(), "body");
   head.insert({"type",   "list_model"}); // TODO: should be a constant
   head.insert({"version",  0 });
   body.insert({"value",std::move(tmp)});
@@ -530,14 +530,14 @@ list_subscription::list_subscription(std::shared_ptr<wampcc::wamp_session>& ws,
 }
 
 
-void list_subscription::on_update(jalson::json_object details,
+void list_subscription::on_update(json_object details,
                                   wamp_args args)
 {
-  const jalson::json_array& args_list = args.args_list;
-  jalson::json_value jv = args.args_list;
-  //  std::cout << "handler::on_event, " << jv << "\n" << "details:"<< jalson::json_value( details ) << "\n";
-  const jalson::json_array * patch = nullptr;
-  const jalson::json_array * event = nullptr;
+  const json_array& args_list = args.args_list;
+  json_value jv = args.args_list;
+  //  std::cout << "handler::on_event, " << jv << "\n" << "details:"<< json_value( details ) << "\n";
+  const json_array * patch = nullptr;
+  const json_array * event = nullptr;
 
   if (args_list.size() > 0 && args_list[0].is_array())
     patch = &args_list[0].as_array();
@@ -552,10 +552,10 @@ void list_subscription::on_update(jalson::json_object details,
        patch->operator[](0).is_object()
     )
   {
-    const jalson::json_object & patch_replace = patch->operator[](0).as_object();
-    const jalson::json_object & patch_value   = jalson::get_ref(patch_replace, "value").as_object();
-    const jalson::json_object & body   = jalson::get_ref(patch_value, "body").as_object();
-    const jalson::json_array  & body_value = jalson::get_ref(body, "value").as_array();
+    const json_object & patch_replace = patch->operator[](0).as_object();
+    const json_object & patch_value   = json_get_ref(patch_replace, "value").as_object();
+    const json_object & body          = json_get_ref(patch_value, "body").as_object();
+    const json_array  & body_value    = json_get_ref(body, "value").as_array();
     {
       std::lock_guard<std::mutex> guard(m_value_mutex);
       m_value = body_value;

@@ -10,8 +10,7 @@
 
 #include "wampcc/types.h"
 #include "wampcc/wamp_session.h"
-
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <functional>
 #include <map>
@@ -57,7 +56,7 @@ public:
   // Register and RPC that is handled by the internal session
   int register_internal_rpc_2(const std::string& realm,
                               const std::string& uri,
-                              const jalson::json_object& options,
+                              const json_object& options,
                               rpc_cb cb,
                               void * data);
 

@@ -91,11 +91,11 @@ public:
    * the first update arrives from the topic publisher. */
   bool is_valid() const { return m_is_valid;}
 
-  const jalson::json_value& image() const { return m_image; }
+  const json_value& image() const { return m_image; }
 
   /** Accept a json-model update sent by a topic publisher.  This is represented
    * as a json patch, which is applied to the image. */
-  void update_image(const jalson::json_array& patchset)
+  void update_image(const json_array& patchset)
   {
     m_image.patch(patchset);
 
@@ -111,7 +111,7 @@ private:
   std::vector< std::weak_ptr<wamp_session> > m_subscribers;
 
   // current upto date image of the value
-  jalson::json_value m_image;
+  json_value m_image;
 
   global_scope_id_generator m_id_gen;
 
@@ -175,7 +175,7 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 
 void pubsub_man::update_topic(const std::string& topic,
                               const std::string& realm,
-                              jalson::json_object options,
+                              json_object options,
                               wamp_args args)
 {
   /* EVENT thread */
@@ -201,7 +201,7 @@ void pubsub_man::update_topic(const std::string& topic,
 
   // broadcast event to subscribers
 
-  jalson::json_array msg;
+  json_array msg;
   msg.reserve(6);
   msg.push_back( EVENT );
   msg.push_back( mt->subscription_id() );
@@ -244,7 +244,7 @@ void pubsub_man::update_topic(const std::string& topic,
  * to a managed topic. */
 void pubsub_man::inbound_publish(std::string realm,
                                  std::string topic,
-                                 jalson::json_object options,
+                                 json_object options,
                                  wamp_args args)
 {
   /* EV thread */
@@ -272,7 +272,7 @@ void pubsub_man::inbound_publish(std::string realm,
 uint64_t pubsub_man::subscribe(wamp_session* sptr,
                                t_request_id request_id,
                                std::string topic,
-                               jalson::json_object & options)
+                               json_object & options)
 {
   /* EV thread */
 
@@ -290,28 +290,28 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 
   LOG_INFO("session #" << sptr->unique_id() << " subscribed to '"<< topic << "'");
 
-  jalson::json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
+  json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
   sptr->send_msg(msg);
 
   /* for stateful topic must send initial snapshot (only if an image exists) */
   if (mt->is_valid() && (options.find(KEY_PATCH) != options.end()))
   {
     wampcc::wamp_args pub_args;
-    pub_args.args_list = jalson::json_array();
+    pub_args.args_list = json_array();
 
-    jalson::json_array patch;
-    jalson::json_object& operation = jalson::append_object(patch);
+    json_array patch;
+    json_object& operation = json_append<json_object>(patch);
     operation["op"]    = "replace";
     operation["path"]  = "";  /* replace whole document */
     operation["value"] = mt->image();
 
     pub_args.args_list.push_back(std::move(patch));
-    pub_args.args_list.push_back(jalson::json_array()); // empty event
+    pub_args.args_list.push_back(json_array()); // empty event
 
-    jalson::json_object event_options;
+    json_object event_options;
     event_options[KEY_PATCH] = options[KEY_PATCH];
     event_options[KEY_SNAPSHOT] = 1;
-    jalson::json_array snapshot_msg;
+    json_array snapshot_msg;
     snapshot_msg.reserve(5);
     snapshot_msg.push_back( EVENT );
     snapshot_msg.push_back( mt->subscription_id() );
@@ -339,7 +339,7 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
   {
     it->second->remove(sptr->handle());
 
-    jalson::json_array msg({ UNSUBSCRIBED, request_id });
+    json_array msg({ UNSUBSCRIBED, request_id });
     sptr->send_msg(msg);
   }
   else

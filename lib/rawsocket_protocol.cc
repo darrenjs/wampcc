@@ -222,10 +222,9 @@ void rawsocket_protocol::decode(const char* ptr, size_t msglen)
   /* IO thread */
   try
   {
-    jalson::json_value jv;
-    jalson::decode(jv, ptr, msglen);
+    json_value jv = json_decode(ptr, msglen);
 
-    jalson::json_array& msg = jv.as_array();
+    json_array& msg = jv.as_array();
 
     if (msg.size() == 0)
       throw protocol_error("json array empty");
@@ -235,18 +234,18 @@ void rawsocket_protocol::decode(const char* ptr, size_t msglen)
 
     m_msg_processor(msg, msg[0].as_uint());
   }
-  catch( const jalson::json_error& e)
+  catch( const json_error& e)
   {
     throw protocol_error(e.what());
   }
 }
 
 
-void rawsocket_protocol::send_msg(const jalson::json_array& jv)
+void rawsocket_protocol::send_msg(const json_array& jv)
 {
   std::pair<const char*, size_t> bufs[2];
 
-  std::string msg ( jalson::encode( jv ) );
+  std::string msg ( json_encode( jv ) );
 
   uint32_t msglen = htonl(  msg.size() );
   bufs[0].first  = (char*)&msglen;

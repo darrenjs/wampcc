@@ -11,8 +11,7 @@
 #include "wampcc/types.h"
 #include "wampcc/protocol.h"
 #include "wampcc/error.h"
-
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <map>
 #include <mutex>
@@ -62,9 +61,9 @@ namespace wampcc {
   struct server_msg_handler
   {
     std::function<void(wamp_session*, std::string, wamp_args, wamp_invocation_reply_fn)> inbound_call;
-    std::function<void(wamp_session*, std::string uri, jalson::json_object, wamp_args)> handle_inbound_publish;
+    std::function<void(wamp_session*, std::string uri, json_object, wamp_args)> handle_inbound_publish;
     std::function<uint64_t (std::weak_ptr<wamp_session>, std::string realm, std::string uri)> inbound_register;
-    std::function<uint64_t (wamp_session*, t_request_id, std::string uri, jalson::json_object&)> inbound_subscribe;
+    std::function<uint64_t (wamp_session*, t_request_id, std::string uri, json_object&)> inbound_subscribe;
     std::function<void (wamp_session*, t_request_id, t_subscription_id)> inbound_unsubscribe;
   };
 
@@ -80,7 +79,7 @@ namespace wampcc {
   struct wamp_subscription_event
   {
     t_subscription_id subscription_id;
-    jalson::json_object details;
+    json_object details;
     wamp_args args;
     void* user;
   };
@@ -108,7 +107,7 @@ namespace wampcc {
     std::string procedure;
     bool was_error;
     std::string error_uri; // if was_error == true
-    jalson::json_object details;
+    json_object details;
     wamp_args args;
     void * user;
 
@@ -124,13 +123,13 @@ namespace wampcc {
   /** Aggregate passed on RPC invocation. */
   struct wamp_invocation
   {
-    jalson::json_array  arg_list;
-    jalson::json_object arg_dict;
-    jalson::json_object details;
+    json_array  arg_list;
+    json_object arg_dict;
+    json_object details;
     void *              user;
 
-    std::function<void(jalson::json_array, jalson::json_object)> yield;
-    std::function<void(std::string, jalson::json_array, jalson::json_object)> error;
+    std::function<void(json_array, json_object)> yield;
+    std::function<void(std::string, json_array, json_object)> error;
   };
 
   typedef std::function<void(wamp_invocation&) > rpc_cb;
@@ -243,7 +242,7 @@ namespace wampcc {
     int hb_interval_secs() const { return m_hb_intvl; }
 
     t_request_id provide(std::string uri,
-                         const jalson::json_object& options,
+                         const json_object& options,
                          rpc_cb cb,
                          void * data = nullptr);
 
@@ -258,7 +257,7 @@ namespace wampcc {
      * used to deliver topic events.
      */
     t_request_id subscribe(std::string uri,
-                           jalson::json_object options,
+                           json_object options,
                            subscribed_cb,
                            subscription_event_cb cb,
                            void * user = nullptr);
@@ -271,17 +270,17 @@ namespace wampcc {
                              void * user = nullptr);
 
     t_request_id call(std::string uri,
-                      const jalson::json_object& options,
+                      const json_object& options,
                       wamp_args args,
                       wamp_call_result_cb user_cb,
                       void* user_data = nullptr);
 
     t_request_id publish(std::string uri,
-                         const jalson::json_object& options,
+                         const json_object& options,
                          wamp_args args);
 
     t_request_id invocation(uint64_t registration_id,
-                            const jalson::json_object& options,
+                            const json_object& options,
                             wamp_args args,
                             wamp_invocation_reply_fn);
 
@@ -317,12 +316,12 @@ namespace wampcc {
     void io_on_read(char*, size_t);
     void io_on_error(uverr);
     void decode_and_process(char*, size_t len);
-    void process_message(unsigned int, jalson::json_array&);
+    void process_message(unsigned int, json_array&);
     void handle_exception();
 
-    void update_state_for_outbound(const jalson::json_array& msg);
+    void update_state_for_outbound(const json_array& msg);
 
-    void send_msg(jalson::json_array&, bool final=false);
+    void send_msg(json_array&, bool final=false);
 
     void upgrade_protocol(std::unique_ptr<protocol>&);
 
@@ -353,9 +352,9 @@ namespace wampcc {
     void initiate_close(std::lock_guard<std::mutex>&);
     void transition_to_closed();
 
-    void handle_HELLO(jalson::json_array& ja);
-    void handle_CHALLENGE(jalson::json_array& ja);
-    void handle_AUTHENTICATE(jalson::json_array& ja);
+    void handle_HELLO(json_array& ja);
+    void handle_CHALLENGE(json_array& ja);
+    void handle_AUTHENTICATE(json_array& ja);
     void send_WELCOME();
 
     void notify_session_open();
@@ -397,21 +396,21 @@ namespace wampcc {
     state_fn m_notify_state_change_fn;
     std::weak_ptr<wamp_session> m_self_weak;
 
-    void process_inbound_registered(jalson::json_array &);
-    void process_inbound_invocation(jalson::json_array &);
-    void process_inbound_subscribed(jalson::json_array &);
-    void process_inbound_unsubscribed(jalson::json_array &);
-    void process_inbound_event(jalson::json_array &);
-    void process_inbound_result(jalson::json_array &);
-    void process_inbound_error(jalson::json_array &);
-    void process_inbound_call(jalson::json_array &);
-    void process_inbound_yield(jalson::json_array &);
-    void process_inbound_publish(jalson::json_array &);
-    void process_inbound_subscribe(jalson::json_array &);
-    void process_inbound_unsubscribe(jalson::json_array &);
-    void process_inbound_register(jalson::json_array &);
-    void process_inbound_goodbye(jalson::json_array &);
-    void process_inbound_abort(jalson::json_array &);
+    void process_inbound_registered(json_array &);
+    void process_inbound_invocation(json_array &);
+    void process_inbound_subscribed(json_array &);
+    void process_inbound_unsubscribed(json_array &);
+    void process_inbound_event(json_array &);
+    void process_inbound_result(json_array &);
+    void process_inbound_error(json_array &);
+    void process_inbound_call(json_array &);
+    void process_inbound_yield(json_array &);
+    void process_inbound_publish(json_array &);
+    void process_inbound_subscribe(json_array &);
+    void process_inbound_unsubscribe(json_array &);
+    void process_inbound_register(json_array &);
+    void process_inbound_goodbye(json_array &);
+    void process_inbound_abort(json_array &);
 
     void invocation_yield(int request_id,
                           wamp_args args);
@@ -421,8 +420,8 @@ namespace wampcc {
                           wamp_args args,
                           std::string error_uri);
 
-    jalson::json_array build_goodbye_message(std::string);
-    jalson::json_array build_abort_message(std::string);
+    json_array build_goodbye_message(std::string);
+    json_array build_abort_message(std::string);
 
     void drop_connection(std::string);
 

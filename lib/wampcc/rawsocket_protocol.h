@@ -72,7 +72,7 @@ public:
   void io_on_read(char*, size_t) override;
   void initiate(t_initiate_cb) override;
   const char* name() const override { return NAME; }
-  void send_msg(const jalson::json_array& j);
+  void send_msg(const json_array& j);
 
 private:
   static const int FRAME_MSG_LEN_MASK       = 0x00FFFFFF;

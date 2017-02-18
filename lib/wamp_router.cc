@@ -86,13 +86,13 @@ std::future<uverr> wamp_router::listen(int port,
         this->handle_inbound_call(s,u,std::move(args),f);
       };
 
-      handlers.handle_inbound_publish = [this](wamp_session* sptr, std::string uri, jalson::json_object options, wamp_args args)
+      handlers.handle_inbound_publish = [this](wamp_session* sptr, std::string uri, json_object options, wamp_args args)
       {
         // TODO: break this out into a separte method, and handle error
         m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options), std::move(args));
       };
 
-      handlers.inbound_subscribe = [this](wamp_session* p, t_request_id request_id, std::string uri, jalson::json_object& options) {
+      handlers.inbound_subscribe = [this](wamp_session* p, t_request_id request_id, std::string uri, json_object& options) {
         return this->m_pubsub->subscribe(p, request_id, uri, options);
       };
 
@@ -171,7 +171,7 @@ std::future<uverr> wamp_router::listen(int port,
 
 void wamp_router::provide(const std::string& realm,
                              const std::string& uri,
-                             const jalson::json_object& options,
+                             const json_object& options,
                              rpc_cb user_cb,
                              void * user_data)
 {
@@ -182,7 +182,7 @@ void wamp_router::provide(const std::string& realm,
 
 void wamp_router::publish(const std::string& realm,
                              const std::string& topic,
-                             const jalson::json_object& options,
+                             const json_object& options,
                              wamp_args args)
 {
   /* USER thread */
@@ -235,14 +235,14 @@ void wamp_router::handle_inbound_call(
           invoke.arg_list = std::move(args.args_list);
           invoke.arg_dict = std::move(args.args_dict);
 
-          invoke.yield = [fn](jalson::json_array arg_list, jalson::json_object arg_dict)
+          invoke.yield = [fn](json_array arg_list, json_object arg_dict)
             {
               wamp_args args { std::move(arg_list), std::move(arg_dict) };
               if (fn)
                 fn(args, std::unique_ptr<std::string>());
             };
 
-          invoke.error = [fn](std::string error_uri, jalson::json_array arg_list, jalson::json_object arg_dict)
+          invoke.error = [fn](std::string error_uri, json_array arg_list, json_object arg_dict)
             {
               wamp_args args { std::move(arg_list), std::move(arg_dict) };
               if (fn)
@@ -262,7 +262,7 @@ void wamp_router::handle_inbound_call(
         if (auto sp = rpc.session.lock())
         {
           sp->invocation(rpc.registration_id,
-                         jalson::json_object(),
+                         json_object(),
                          args,
                          fn);
         }

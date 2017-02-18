@@ -308,7 +308,7 @@ int main_impl(int argc, char** argv)
   {
     try
     {
-      auto jv = jalson::decode(uopts.arg_list.c_str(), uopts.arg_list.size());
+      wampcc::json_value jv = wampcc::json_decode(uopts.arg_list.c_str(), uopts.arg_list.size());
       if (!jv.is_array())
         throw std::runtime_error("expected JSON array");
       args.args_list = jv.as_array();
@@ -322,7 +322,7 @@ int main_impl(int argc, char** argv)
   {
     try
     {
-      auto jv = jalson::decode(uopts.arg_dict.c_str(), uopts.arg_dict.size());
+      auto jv = wampcc::json_decode(uopts.arg_dict.c_str(), uopts.arg_dict.size());
       if (!jv.is_object())
         throw std::runtime_error("expected JSON object");
       args.args_dict = jv.as_object();
@@ -421,14 +421,14 @@ int main_impl(int argc, char** argv)
   // wampcc::basic_list::list_events obs;
   // auto displayer = [&my_list]()
   //   {
-  //     jalson::json_array value = my_list.copy_value();
+  //     json_array value = my_list.copy_value();
   //     std::cout << "list: ";
   //     for (auto & item : value)
   //       std::cout << item << ",";
   //     std::cout << std::endl;
   //   };
-  // obs.on_insert = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
-  // obs.on_replace = [&my_list, displayer](size_t, const jalson::json_value&) {displayer();};
+  // obs.on_insert = [&my_list, displayer](size_t, const json_value&) {displayer();};
+  // obs.on_replace = [&my_list, displayer](size_t, const json_value&) {displayer();};
   // obs.on_erase = [&my_list, displayer](size_t) {displayer();};
   // obs.on_reset = [&my_list, displayer](const wampcc::basic_list::internal_impl&) {displayer();};
   // my_list.add_observer(obs);
@@ -437,7 +437,7 @@ int main_impl(int argc, char** argv)
 
   // subscribe to user topics
   wampcc::subscribed_cb scb; // TODO:
-  jalson::json_object sub_options { {KEY_PATCH, 1} };
+  wampcc::json_object sub_options { {KEY_PATCH, 1} };
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
     ws->subscribe(topic, sub_options, scb, subscribe_cb, nullptr);
@@ -447,7 +447,7 @@ int main_impl(int argc, char** argv)
   if (!uopts.publish_topic.empty())
   {
     ws->publish(uopts.publish_topic,
-                jalson::json_object(),
+                wampcc::json_object(),
                 args);
 
     // wampcc::basic_text_model tm;
@@ -461,7 +461,7 @@ int main_impl(int argc, char** argv)
   if (!uopts.call_procedure.empty())
   {
     ws->call(uopts.call_procedure,
-             jalson::json_object(),
+             wampcc::json_object(),
              args,
              [](wampcc::wamp_call_result r)
              { rpc_call_cb(r);},

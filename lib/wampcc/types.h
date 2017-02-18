@@ -8,7 +8,7 @@
 #ifndef WAMPCC_WAMPTYPES_H
 #define WAMPCC_WAMPTYPES_H
 
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <functional>
 #include <mutex>
@@ -85,8 +85,8 @@ typedef std::weak_ptr<wamp_session> session_handle;
 
 struct wamp_args
 {
-  jalson::json_array  args_list;
-  jalson::json_object args_dict;
+  json_array  args_list;
+  json_object args_dict;
 };
 
 } // namespace

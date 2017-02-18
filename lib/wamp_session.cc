@@ -17,7 +17,7 @@
 #include "wampcc/rawsocket_protocol.h"
 #include "wampcc/io_loop.h"
 
-#include <jalson/jalson.h>
+#include "jalson/jalson.h"
 
 #include <algorithm>
 #include <memory>
@@ -81,7 +81,7 @@ static std::string generate_log_prefix(uint64_t i)
   return str;
 }
 
-static t_request_id extract_request_id(jalson::json_array & msg, int index)
+static t_request_id extract_request_id(json_array & msg, int index)
 {
   if (!msg[index].is_uint())
     throw protocol_error("request ID must be unsigned int");
@@ -157,7 +157,7 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
   // pointer has been set up.
   sp->m_proto = protocol_builder(
     sp->m_socket.get(),
-    [sp](jalson::json_array msg, int msg_type)
+    [sp](json_array msg, int msg_type)
     {
       /* IO thread */
 
@@ -311,7 +311,7 @@ void wamp_session::io_on_error(uverr ec)
 }
 
 
-void wamp_session::update_state_for_outbound(const jalson::json_array& msg)
+void wamp_session::update_state_for_outbound(const json_array& msg)
 {
   int message_type = msg[0].as_uint();
 
@@ -404,7 +404,7 @@ void wamp_session::change_state(state expected1, state expected2, state next)
       //     {
       //       if (sp->is_open())
       //       {
-      //         jalson::json_array msg;
+      //         json_array msg;
       //         msg.push_back(HEARTBEAT);
       //         sp->send_msg(msg);
       //         return true;
@@ -430,7 +430,7 @@ void wamp_session::change_state(state expected1, state expected2, state next)
                 }
                 else
                 {
-                  jalson::json_array msg;
+                  json_array msg;
                   msg.push_back(HEARTBEAT);
                   sp->send_msg(msg);
 
@@ -453,7 +453,7 @@ void wamp_session::change_state(state expected1, state expected2, state next)
 }
 
 
-void wamp_session::process_inbound_abort(jalson::json_array &)
+void wamp_session::process_inbound_abort(json_array &)
 {
   LOG_WARN(m_log_prefix << "received ABORT from peer, closing session");
 
@@ -463,7 +463,7 @@ void wamp_session::process_inbound_abort(jalson::json_array &)
 }
 
 
-void wamp_session::process_inbound_goodbye(jalson::json_array &)
+void wamp_session::process_inbound_goodbye(json_array &)
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
   drop_connection_impl(WAMP_ERROR_GOODBYE_AND_OUT, guard, t_drop_event::recv_goodbye);
@@ -471,7 +471,7 @@ void wamp_session::process_inbound_goodbye(jalson::json_array &)
 
 
 void wamp_session::process_message(unsigned int message_type,
-                                   jalson::json_array& ja)
+                                   json_array& ja)
 {
   /* EV thread */
 
@@ -659,7 +659,7 @@ void wamp_session::handle_exception()
 }
 
 
-void wamp_session::send_msg(jalson::json_array& jv, bool)
+void wamp_session::send_msg(json_array& jv, bool)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
@@ -673,13 +673,13 @@ void wamp_session::send_msg(jalson::json_array& jv, bool)
 }
 
 
-void wamp_session::handle_HELLO(jalson::json_array& ja)
+void wamp_session::handle_HELLO(json_array& ja)
 {
   /* EV thread */
 
   std::string realm = ja.at(1).as_string();
-  const jalson::json_object & authopts = ja.at(2).as_object();
-  std::string authid = jalson::get_copy(authopts, "authid", "").as_string();
+  const json_object & authopts = ja.at(2).as_object();
+  std::string authid = json_get_copy(authopts, "authid", "").as_string();
 
   if (realm.empty())
     throw auth_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed");
@@ -714,8 +714,8 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   // initial implementation is basic; we just try to find if "wampcra" is
   // supported by both server and client
 
-  jalson::json_array client_methods = jalson::get_copy(authopts, "authmethods",
-                                                       jalson::json_value::make_array()).as_array();
+  auto client_methods = json_get_copy(authopts, "authmethods",
+                                      json_value::make_array()).as_array();
   std::set<std::string> client_unique_methods;
 
   for (auto & item : client_methods)
@@ -741,7 +741,7 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
 
   /* --- Perform wampcra authentication --- */
 
-  jalson::json_object challenge;
+  json_object challenge;
   challenge["nonce"] = random_ascii_string(30);
   challenge["authprovider"] = m_auth_proivder.provider_name(realm);
   challenge["authid"] = authid;
@@ -749,7 +749,7 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
   challenge["authrole"] = "user";
   challenge["authmethod"] = "wampcra";
   challenge["session"] = std::to_string( unique_id() );
-  std::string challengestr = jalson::encode( challenge );
+  std::string challengestr = json_encode( challenge );
 
   {
     std::lock_guard<std::mutex> guard(m_realm_lock);
@@ -760,15 +760,15 @@ void wamp_session::handle_HELLO(jalson::json_array& ja)
                        "challenge already issued");
   }
 
-  jalson::json_array msg({
+  json_array msg({
     CHALLENGE,
     "wampcra",
-    jalson::json_object({{"challenge", std::move(challengestr)}})});
+    json_object({{"challenge", std::move(challengestr)}})});
   send_msg( msg );
 }
 
 
-void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
+void wamp_session::handle_CHALLENGE(json_array& ja)
 {
   /* EV thread */
 
@@ -786,8 +786,8 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
     throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
                      "unknown AuthMethod (only wampcra supported)");
 
-  const jalson::json_object & extra = ja[2].as_object();
-  std::string challmsg = jalson::get_copy(extra, "challenge", "").as_string();
+  const json_object & extra = ja[2].as_object();
+  std::string challmsg = json_get_copy(extra, "challenge", "").as_string();
   if (challmsg == "")
     throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
                      "challenge not found in Extra");
@@ -807,10 +807,10 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 
   if (err == 0)
   {
-    jalson::json_array msg;
+    json_array msg;
     msg.push_back( AUTHENTICATE );
     msg.push_back( digest );
-    msg.push_back( jalson::json_object()  );
+    msg.push_back( json_object()  );
     send_msg( msg );
   }
   else
@@ -822,7 +822,7 @@ void wamp_session::handle_CHALLENGE(jalson::json_array& ja)
 }
 
 
-void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
+void wamp_session::handle_AUTHENTICATE(json_array& ja)
 {
   /* EV thread */
 
@@ -866,12 +866,12 @@ void wamp_session::handle_AUTHENTICATE(jalson::json_array& ja)
 
 void wamp_session::send_WELCOME()
 {
-  jalson::json_object details;
-  details["roles"] = jalson::json_object( {
-      {"broker", jalson::json_value::make_object()},
-      {"dealer", jalson::json_value::make_object()}} );
+  json_object details;
+  details["roles"] = json_object( {
+      {"broker", json_value::make_object()},
+      {"dealer", json_value::make_object()}} );
 
-  jalson::json_array msg {
+  json_array msg {
     WELCOME,
       m_sid,
       std::move( details )
@@ -940,21 +940,21 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
 
   auto initiate_cb = [this, cc]()
     {
-      jalson::json_object roles ({
-          {"publisher",  jalson::json_object()},
-          {"subscriber", jalson::json_object()},
-          {"caller",     jalson::json_object()},
-          {"callee",     jalson::json_object()}
+      json_object roles ({
+          {"publisher",  json_object()},
+          {"subscriber", json_object()},
+          {"caller",     json_object()},
+          {"callee",     json_object()}
         });
 
-      jalson::json_array msg { jalson::json_value(HELLO), jalson::json_value(cc.realm) };
-      jalson::json_object& opt = jalson::append_object( msg );
+      json_array msg { json_value(HELLO), json_value(cc.realm) };
+      json_object& opt = json_append<json_object>( msg );
 
       opt[ "roles" ] = std::move( roles );
       opt[ "agent" ] = WAMPCC_NAME_VERSION;
       opt[ "authid"] = std::move(cc.authid);
 
-      jalson::json_array& ja = jalson::insert_array(opt, "authmethods");
+      json_array& ja = json_insert<json_array>(opt, "authmethods");
       for (auto item : cc.authmethods)
         ja.push_back( std::move(item) );
 
@@ -988,11 +988,11 @@ const std::string& wamp_session::realm() const
 
 
 t_request_id wamp_session::provide(std::string uri,
-                                   const jalson::json_object& options,
+                                   const json_object& options,
                                    rpc_cb cb,
                                    void * data)
 {
-  jalson::json_array msg;
+  json_array msg;
   msg.push_back( REGISTER );
   msg.push_back( 0 );
   msg.push_back( options );
@@ -1024,7 +1024,7 @@ t_request_id wamp_session::provide(std::string uri,
 }
 
 
-void wamp_session::process_inbound_registered(jalson::json_array & msg)
+void wamp_session::process_inbound_registered(json_array & msg)
 {
   /* EV thread */
 
@@ -1051,7 +1051,7 @@ void wamp_session::process_inbound_registered(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_inbound_invocation(jalson::json_array & msg)
+void wamp_session::process_inbound_invocation(json_array & msg)
 {
   /* EV thread */
 
@@ -1080,14 +1080,14 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
     if ( msg.size() > 5 ) invoke.arg_dict = std::move(msg[4].as_object());
 
     session_handle wp = this->handle();
-    invoke.yield = [wp,request_id](jalson::json_array arg_list, jalson::json_object arg_dict)
+    invoke.yield = [wp,request_id](json_array arg_list, json_object arg_dict)
       {
         wamp_args args { arg_list, arg_dict };
         if (auto sp = wp.lock())
           sp->invocation_yield(request_id, std::move(args));
       };
 
-    invoke.error = [wp,request_id](std::string error_uri,jalson::json_array arg_list, jalson::json_object arg_dict)
+    invoke.error = [wp,request_id](std::string error_uri,json_array arg_list, json_object arg_dict)
       {
         wamp_args args { arg_list, arg_dict };
         if (auto sp = wp.lock())
@@ -1108,12 +1108,12 @@ void wamp_session::process_inbound_invocation(jalson::json_array & msg)
 
 
 t_request_id wamp_session::subscribe(std::string uri,
-                                     jalson::json_object options,
+                                     json_object options,
                                      subscribed_cb req_cb,
                                      subscription_event_cb event_cb,
                                      void * user)
 {
-  jalson::json_array msg {SUBSCRIBE, 0, options, uri};
+  json_array msg {SUBSCRIBE, 0, options, uri};
 
   subscribe_request sub;
   sub.uri = std::move(uri);
@@ -1144,7 +1144,7 @@ t_request_id wamp_session::unsubscribe(t_subscription_id subscription_id,
                                        unsubscribed_cb request_cb,
                                        void * user_data)
 {
-  jalson::json_array msg {UNSUBSCRIBE, 0, subscription_id};
+  json_array msg {UNSUBSCRIBE, 0, subscription_id};
 
   unsubscribe_request req {std::move(request_cb), subscription_id, user_data};
 
@@ -1168,7 +1168,7 @@ t_request_id wamp_session::unsubscribe(t_subscription_id subscription_id,
 }
 
 
-void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
+void wamp_session::process_inbound_subscribed(json_array & msg)
 {
   /* EV thread */
 
@@ -1233,7 +1233,7 @@ void wamp_session::process_inbound_subscribed(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_inbound_unsubscribed(jalson::json_array & msg)
+void wamp_session::process_inbound_unsubscribed(json_array & msg)
 {
   /* EV thread */
 
@@ -1275,17 +1275,17 @@ void wamp_session::process_inbound_unsubscribed(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_inbound_event(jalson::json_array & msg)
+void wamp_session::process_inbound_event(json_array & msg)
 {
   /* EV thread */
 
   t_subscription_id subscription_id = msg[1].as_uint();
-  jalson::json_object details = std::move(msg.at(3).as_object());
-  jalson::json_value * ptr_args_list = jalson::get_ptr(msg, 4); // optional
-  jalson::json_value * ptr_args_dict = jalson::get_ptr(msg, 5); // optional
+  json_object details = std::move(msg.at(3).as_object());
+  json_value * ptr_args_list = json_get_ptr(msg, 4); // optional
+  json_value * ptr_args_dict = json_get_ptr(msg, 5); // optional
 
-  const jalson::json_array  & args_list = ptr_args_list? ptr_args_list->as_array()  : jalson::json_array();
-  const jalson::json_object & args_dict = ptr_args_dict? ptr_args_dict->as_object() : jalson::json_object();
+  const json_array  & args_list = ptr_args_list? ptr_args_list->as_array()  : json_array();
+  const json_object & args_dict = ptr_args_dict? ptr_args_dict->as_object() : json_object();
 
   auto iter = m_subscriptions.find(subscription_id);
   if (iter !=m_subscriptions.end())
@@ -1314,14 +1314,14 @@ void wamp_session::process_inbound_event(jalson::json_array & msg)
 
 /* Initiate an outbound call sequence */
 t_request_id wamp_session::call(std::string uri,
-                                const jalson::json_object& options,
+                                const json_object& options,
                                 wamp_args args,
                                 wamp_call_result_cb user_cb,
                                 void* user_data)
 {
   /* USER thread */
 
-  jalson::json_array msg;
+  json_array msg;
   msg.push_back( CALL );
   msg.push_back( 0 );
   msg.push_back( options );
@@ -1354,7 +1354,7 @@ t_request_id wamp_session::call(std::string uri,
 }
 
 
-void wamp_session::process_inbound_result(jalson::json_array & msg)
+void wamp_session::process_inbound_result(json_array & msg)
 {
   /* EV thread */
 
@@ -1364,7 +1364,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
 
   if (!msg[2].is_object())
       throw protocol_error("details must be json object");
-  jalson::json_object & options = msg[2].as_object();
+  json_object & options = msg[2].as_object();
 
   wamp_call orig_call;
 
@@ -1404,7 +1404,7 @@ void wamp_session::process_inbound_result(jalson::json_array & msg)
 
 
 /* Handles errors for both active & passive sessions */
-void wamp_session::process_inbound_error(jalson::json_array & msg)
+void wamp_session::process_inbound_error(json_array & msg)
 {
   /* EV thread */
 
@@ -1412,7 +1412,7 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
 
   int orig_request_type = msg[1].as_int();
   t_request_id request_id = extract_request_id(msg, 2);
-  jalson::json_object & details = msg[3].as_object();
+  json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
   if (session_mode() == t_session_mode::server)
@@ -1569,12 +1569,12 @@ void wamp_session::process_inbound_error(jalson::json_array & msg)
 
 
 t_request_id wamp_session::publish(std::string uri,
-                                   const jalson::json_object& options,
+                                   const json_object& options,
                                    wamp_args args)
 {
   /* USER thread */
 
-  jalson::json_array msg;
+  json_array msg;
   msg.push_back( PUBLISH );
   msg.push_back( 0 );
   msg.push_back( options );
@@ -1600,7 +1600,7 @@ t_request_id wamp_session::publish(std::string uri,
 }
 
 
-void wamp_session::process_inbound_call(jalson::json_array & msg)
+void wamp_session::process_inbound_call(json_array & msg)
 {
   /* EV thread */
 
@@ -1629,10 +1629,10 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
       {
         if (!error_uri)
         {
-          jalson::json_array msg;
+          json_array msg;
           msg.push_back(RESULT);
           msg.push_back(request_id);
-          msg.push_back(jalson::json_object());
+          msg.push_back(json_object());
           if (!args.args_list.empty())
           {
             msg.push_back( args.args_list );
@@ -1642,11 +1642,11 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
         }
         else
         {
-          jalson::json_array msg;
+          json_array msg;
           msg.push_back(ERROR);
           msg.push_back(CALL);
           msg.push_back(request_id);
-          msg.push_back(jalson::json_object());
+          msg.push_back(json_object());
           msg.push_back(*error_uri);
           if (!args.args_list.empty())
           {
@@ -1664,13 +1664,13 @@ void wamp_session::process_inbound_call(jalson::json_array & msg)
 
 /* perform outbound invocation request */
 t_request_id wamp_session::invocation(uint64_t registration_id,
-                                      const jalson::json_object& options,
+                                      const json_object& options,
                                       wamp_args args,
                                       wamp_invocation_reply_fn fn)
 {
   /* EV & USER thread */
 
-  jalson::json_array msg;
+  json_array msg;
   msg.push_back( INVOCATION );
   msg.push_back( 0 );
   msg.push_back( registration_id );
@@ -1704,7 +1704,7 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
 }
 
 
-void wamp_session::process_inbound_yield(jalson::json_array & msg)
+void wamp_session::process_inbound_yield(json_array & msg)
 {
   /* EV thread */
 
@@ -1731,7 +1731,7 @@ void wamp_session::process_inbound_yield(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_inbound_publish(jalson::json_array & msg)
+void wamp_session::process_inbound_publish(json_array & msg)
 {
   /* EV thread */
 
@@ -1753,7 +1753,7 @@ void wamp_session::process_inbound_publish(jalson::json_array & msg)
 }
 
 
-void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
+void wamp_session::process_inbound_subscribe(json_array & msg)
 {
   /* EV thread */
 
@@ -1778,7 +1778,7 @@ void wamp_session::process_inbound_subscribe(jalson::json_array & msg)
 
 
 
-void wamp_session::process_inbound_unsubscribe(jalson::json_array & msg)
+void wamp_session::process_inbound_unsubscribe(json_array & msg)
 {
   /* EV thread */
 
@@ -1801,7 +1801,7 @@ void wamp_session::process_inbound_unsubscribe(jalson::json_array & msg)
 
 
 
-void wamp_session::process_inbound_register(jalson::json_array & msg)
+void wamp_session::process_inbound_register(json_array & msg)
 {
   /* EV thread */
 
@@ -1819,7 +1819,7 @@ void wamp_session::process_inbound_register(jalson::json_array & msg)
                                                                  realm(),
                                                                  std::move(uri));
 
-    jalson::json_array resp;
+    json_array resp;
     resp.push_back(REGISTERED);
     resp.push_back(request_id);
     resp.push_back(registration_id);
@@ -1837,11 +1837,11 @@ void wamp_session::process_inbound_register(jalson::json_array & msg)
 void wamp_session::invocation_yield(int request_id,
                                     wamp_args args)
 {
-  jalson::json_array msg;
+  json_array msg;
 
   msg.push_back(YIELD);
   msg.push_back(request_id);
-  msg.push_back(jalson::json_object());
+  msg.push_back(json_object());
 
   if (!args.args_list.empty())
   {
@@ -1859,12 +1859,12 @@ void wamp_session::reply_with_error(
   wamp_args args,
   std::string error_uri)
 {
-  jalson::json_array msg;
+  json_array msg;
 
   msg.push_back(ERROR);
   msg.push_back(request_type);
   msg.push_back(request_id);
-  msg.push_back(jalson::json_object());
+  msg.push_back(json_object());
   msg.push_back(error_uri);
 
   if (!args.args_list.empty())
@@ -1883,21 +1883,21 @@ bool wamp_session::uses_heartbeats() const
 }
 
 
-jalson::json_array wamp_session::build_goodbye_message(std::string reason)
+json_array wamp_session::build_goodbye_message(std::string reason)
 {
-  jalson::json_array msg;
+  json_array msg;
   msg.push_back(GOODBYE);
-  msg.push_back(jalson::json_object());
+  msg.push_back(json_object());
   msg.push_back(std::move(reason));
   return msg;
 }
 
 
-jalson::json_array wamp_session::build_abort_message(std::string reason)
+json_array wamp_session::build_abort_message(std::string reason)
 {
-  jalson::json_array msg;
+  json_array msg;
   msg.push_back(ABORT);
-  msg.push_back(jalson::json_object());
+  msg.push_back(json_object());
   msg.push_back(std::move(reason));
   return msg;
 }

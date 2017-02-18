@@ -183,9 +183,9 @@ private:
 
 
 
-void websocket_protocol::send_msg(const jalson::json_array& ja)
+void websocket_protocol::send_msg(const json_array& ja)
 {
-  std::string msg ( jalson::encode( ja ) );
+  std::string msg ( json_encode( ja ) );
 
   frame_builder fb(OPCODE_TEXT, true, msg.size());
 
