@@ -72,11 +72,11 @@ message_server::message_server()
   server_auth.permit_user_realm = [&](const std::string& /*user*/,
                                       const std::string& realm){
     if (realm == m_public_realm)
-      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_open, {});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::open, {});
     else if (realm == m_private_realm)
-      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_authenticate, {"wampcra"});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::authenticate, {"wampcra"});
     else
-      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_forbidden, {});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::forbidden, {});
   };
   server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
 
@@ -133,23 +133,23 @@ void message_server::rpc_message_set(wampcc::wamp_invocation& invocation)
   /* Invoked on the wampcc EV thread */
 
   // Perform type checking of the received request
-  if (invocation.arg_list.size() < 1)
+  if (invocation.args.args_list.size() < 1)
     throw std::runtime_error("missing message_key");
 
-  if (invocation.arg_list[0].is_string() == false)
+  if (invocation.args.args_list[0].is_string() == false)
     throw std::runtime_error("message_key must be a string");
 
-  if (invocation.arg_list.size() < 2)
+  if (invocation.args.args_list.size() < 2)
     throw std::runtime_error("missing value");
 
-  if (invocation.arg_list[1].is_string() == false)
+  if (invocation.args.args_list[1].is_string() == false)
     throw std::runtime_error("value must be a string");
 
-  std::string key = invocation.arg_list[0].as_string();
+  std::string key = invocation.args.args_list[0].as_string();
 
-  jalson::json_value topic_value;
-  if (invocation.arg_list.size() > 1)
-    topic_value = invocation.arg_list[1];
+  wampcc::json_value topic_value;
+  if (invocation.args.args_list.size() > 1)
+    topic_value = invocation.args.args_list[1];
 
 
   {
@@ -176,7 +176,7 @@ void message_server::rpc_message_list(wampcc::wamp_invocation& invocation)
 {
   std::lock_guard<std::mutex> guard(m_topics_mutex);
 
-  jalson::json_array ja;
+  wampcc::json_array ja;
   ja.reserve(m_topics.size());
 
   for (auto const & item : m_topics)

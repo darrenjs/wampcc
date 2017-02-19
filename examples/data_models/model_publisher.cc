@@ -143,7 +143,7 @@ int main(int /* argc */, char** /* argv */)
   server_auth.provider_name = [](const std::string){ return "programdb"; };
   server_auth.permit_user_realm = [](const std::string& /*user*/,
                                      const std::string& /*realm*/){
-    return wampcc::auth_provider::auth_plan(wampcc::auth_provider::e_open, {});
+    return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::open, {});
   };
   server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "";};
 

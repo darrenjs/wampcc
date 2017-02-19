@@ -5,84 +5,83 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include "wampcc/kernel.h"
-#include "wampcc/rawsocket_protocol.h"
-#include "wampcc/wamp_session.h"
-#include "wampcc/tcp_socket.h"
-#include "wampcc/websocket_protocol.h"
+#include "wampcc/wampcc.h"
 
 #include <memory>
 #include <iostream>
 
 using namespace wampcc;
 
+/* The end RPC function that gets invoked via a wamp instruction received from a
+ * wamp dealer. */
 void rpc(wamp_invocation& invoke)
 {
-  invoke.yield( jalson::json_array({"hello", "world"}), {} );
+  invoke.yield( json_array({"hello", "world"}), {} );
 }
 
-int __main(int, char**)
+int main(int argc, char** argv)
 {
-  std::unique_ptr<kernel> the_kernel( new wampcc::kernel({}, logger::nolog() ));
+  try
+  {
+    if (argc != 3)
+      throw std::runtime_error("arguments must be: ADDR PORT");
+    const char* host = argv[1];
+    int port = std::stoi(argv[2]);
 
-  std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
-  auto fut = sock->connect("127.0.0.1", 55555);
-  std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
+    /* Create the wampcc kernel, which provides event and IO threads. */
 
-  if (status != std::future_status::ready)
-    throw std::runtime_error("timeout during connect");
+    std::unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
-  wampcc::uverr ec = fut.get();
-  if (ec)
-    throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
+    /* Create the TCP socket and attept to connect. */
 
-  std::promise<void> promise_on_close;
+    std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
+    auto fut = sock->connect(host, port);
 
-  std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
+    if (fut.wait_for(std::chrono::milliseconds(250)) != std::future_status::ready)
+      throw std::runtime_error("timeout during connect");
+
+    if (uverr ec = fut.get())
+      throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
+
+    /* Using the connected socket, now create the wamp session object. */
+
+    std::promise<void> ready_to_exit;
+    std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
-      [&promise_on_close](wampcc::session_handle, bool is_open)
-      {
-        std::cout << std::this_thread::get_id() << " " << "close_cb  (is_open=" << is_open << ") -->" << "\n";
+      [&ready_to_exit](session_handle, bool is_open) {
         if (!is_open)
-          promise_on_close.set_value();
-        std::cout << std::this_thread::get_id() << " " << "close_cb <--" << "\n";
+          try {
+            ready_to_exit.set_value();
+          }
+          catch (...) { /* ignore promise already set error */ }
       }, {});
 
-  // Logon to a WAMP realm, and wait for session to be deemed open
-  client_credentials credentials;
-  credentials.realm="default_realm";
-  credentials.authid="peter";
-  credentials.authmethods = {"wampcra"};
-  credentials.secret_fn = []() -> std::string { return "secret2"; };
+    /* Logon to a WAMP realm, and wait for session to be deemed open. */
 
-  auto session_open_fut = session->initiate_hello(credentials);
+    client_credentials credentials;
+    credentials.realm="default_realm";
+    credentials.authid="peter";
+    credentials.authmethods = {"wampcra"};
+    credentials.secret_fn = []() -> std::string { return "secret2"; };
 
-  if (session_open_fut.wait_for(std::chrono::milliseconds(5000)) == std::future_status::timeout)
-    throw std::runtime_error("time-out during session logon");
+    auto session_fut = session->initiate_hello(credentials);
 
-  std::cout << std::this_thread::get_id() << " " << "throwing exception"  << std::endl; throw std::runtime_error("xxx");
-  // Session is now open, register an RPC
-  session->provide("greeting", jalson::json_object(), rpc);
+    if (session_fut.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
+      throw std::runtime_error("time-out during session logon");
 
-  // Wait until we get disconnected
-  promise_on_close.get_future().wait();
+    /* Session is now open, register an RPC. */
 
-  return 0;
-}
+    session->provide("greeting", json_object(), rpc);
 
+    /* Wait until wamp session is closed. */
 
-int main(int a, char** b)
-{
-  try {
-    __main(a, b);
-
+    ready_to_exit.get_future().wait();
     return 0;
   }
   catch (std::exception& e)
   {
-    std::cout << std::this_thread::get_id() << " " << "caught excpetion"  << "\n";
     std::cout << e.what() << std::endl;
-    return 0;
+    return 1;
   }
 }
