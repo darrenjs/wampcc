@@ -64,7 +64,6 @@ event_loop::event_loop(kernel* k)
     m_continue(true),
     m_kill_event( std::make_shared< event > (event::e_kill) ),
     m_thread(&event_loop::eventmain, this)
-//    m_last_hb( std::chrono::steady_clock::now() )
 {
 }
 
@@ -106,6 +105,7 @@ void event_loop::dispatch(std::chrono::milliseconds delay, timer_fn fn)
   dispatch(delay, std::make_shared<ev_timer_dispatch>(std::move(fn)));
 }
 
+
 void event_loop::dispatch(std::chrono::milliseconds delay, std::shared_ptr<event> sp)
 {
   auto tp_due = std::chrono::steady_clock::now() + delay;
@@ -117,32 +117,6 @@ void event_loop::dispatch(std::chrono::milliseconds delay, std::shared_ptr<event
     m_condvar.notify_one();
   }
 }
-// void event_loop::hb_check()
-// {
-//   auto tnow = std::chrono::steady_clock::now();
-//   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(tnow - m_last_hb);
-
-//   if (elapsed.count() >= SYSTEM_HEARTBEAT_MS)
-//   {
-//     m_last_hb = tnow;
-
-//     std::list< hb_func > hb_tmp;
-//     {
-//       std::lock_guard<std::mutex> guard(m_hb_targets_mutex);
-//       hb_tmp.swap( m_hb_targets );
-//     }
-
-//     for (auto hb_fn : hb_tmp)
-//     {
-//       try
-//       {
-//         bool continue_hb = hb_fn();
-//         if (continue_hb) add_hb_target( std::move(hb_fn) );
-//       }
-//       catch (...)  { log_exception(__logger, "heartbeat callback"); }
-//     }
-//   }
-// }
 
 
 void event_loop::eventloop()
@@ -155,21 +129,6 @@ void event_loop::eventloop()
   while (m_continue)
   {
     to_process.clear();
-
-    // // calculate the sleep interval
-    // auto tnow = std::chrono::steady_clock::now();
-    // int interval_since_hb_ms = std::chrono::duration_cast<std::chrono::milliseconds>(tnow - m_last_hb).count();
-    // if (interval_since_hb_ms < 0) interval_since_hb_ms = SYSTEM_HEARTBEAT_MS;
-
-    // // use max so that if we missed a HB, then we set timeout to 0
-    // std::chrono::milliseconds sleep_interval (
-    //   std::max(0, SYSTEM_HEARTBEAT_MS - interval_since_hb_ms));
-
-    // if (sleep_interval.count() == 0)
-    // {
-    //   sleep_interval = std::chrono::milliseconds(SYSTEM_HEARTBEAT_MS);
-    //   hb_check();
-    // }
 
     {
       std::unique_lock<std::mutex> guard(m_mutex);
@@ -216,8 +175,6 @@ void event_loop::eventloop()
         m_continue = false;
         return;
       }
-
-      //hb_check(); // check for when there are many items work through
 
       try
       {

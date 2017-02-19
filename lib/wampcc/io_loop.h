@@ -135,7 +135,7 @@ private:
 
   synchronized_optional<std::thread::id> m_io_thread_id;
 
-  std::thread m_thread; // must be final member to prevent race conditions
+  std::thread m_thread; // prefer as final member, avoid race condition
 };
 
 } // namespace wampcc
