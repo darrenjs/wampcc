@@ -83,7 +83,7 @@ public:
     server_auth.permit_user_realm = [](const std::string& /*user*/,
                                        const std::string& /*realm*/){
       std::set<std::string> methods {"wampcra"};
-      return std::make_tuple(auth_provider::e_authenticate, std::move(methods));
+      return std::make_tuple(auth_provider::required::authenticate, std::move(methods));
     };
     server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2";};
 

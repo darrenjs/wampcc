@@ -690,19 +690,19 @@ void wamp_session::handle_HELLO(json_array& ja)
     if (m_authid.empty()) m_authid = authid;
   }
 
-  auth_provider::t_auth_required auth_required;
-  std::set<std::string>          server_auth_methods;
+  auth_provider::required auth_required;
+  std::set<std::string>   server_auth_methods;
   std::tie(auth_required,server_auth_methods) = m_auth_proivder.permit_user_realm(authid, realm);
 
-  if (auth_required == auth_provider::e_open)
+  if (auth_required == auth_provider::required::open)
   {
     m_server_requires_auth = false;
     send_WELCOME();
     return;
   }
-  else if (auth_required != auth_provider::e_authenticate)
+  else if (auth_required != auth_provider::required::authenticate)
   {
-    if (auth_required == auth_provider::e_forbidden)
+    if (auth_required == auth_provider::required::forbidden)
       throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
                        "auth_provider rejected user for realm");
   }

@@ -36,15 +36,15 @@ namespace wampcc {
    * allows that session to perform authentication with the peer. */
   struct auth_provider
   {
-    enum t_auth_required
+    enum class required
     {
-      e_forbidden,    /* user not permitted */
-      e_open,         /* user allowed without authentication */
-      e_authenticate  /* user must authenticate */
+      forbidden,    /* user not permitted */
+      open,         /* user allowed without authentication */
+      authenticate  /* user must authenticate */
     };
 
     /* auth_plan combines auth requirement plus list of supported methods */
-    typedef std::tuple<t_auth_required, std::set<std::string>> auth_plan;
+    typedef std::tuple<required, std::set<std::string>> auth_plan;
 
     std::function<std::string(const std::string& realm)> provider_name;
 
