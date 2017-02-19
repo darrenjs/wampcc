@@ -15,6 +15,15 @@ if [ -e jalson/README.md ];
 then
     (cd jalson && ln -snf README.md README)
     (cd jalson && mkdir -p m4)
+else
+   echo "!!!"
+   echo "!!! WARNING: no jalson sub-project detected!!! "
+   echo "!!!          wampcc requires jalson to build successfully; without it configure will fail. "
+   echo "!!!          Try running fetch_prerequisites.sh script to download jalson."
+   echo "!!!"
+   exit
 fi
+
+
 
 autoreconf -fiv
