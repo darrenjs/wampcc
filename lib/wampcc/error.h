@@ -8,23 +8,28 @@
 #ifndef WAMPCC_ERROR_H
 #define WAMPCC_ERROR_H
 
-#include <system_error>
+#include <string>
 
 namespace wampcc {
 
-
-/** */
+/** Stores a libuv system error code, as returned from underlying libuv system
+ * call wrappers. */
 class uverr
 {
 private:
   int m_value;
 
 public:
+  /** Default constructor represents no-error situation. */
   uverr() noexcept : m_value(0) {}
-  uverr(int v) noexcept : m_value(v) {}
 
+  uverr(int libuv_error_code) noexcept : m_value(libuv_error_code) {}
+
+  /** Return libuv error code */
   int value() const noexcept { return m_value; }
 
+  /** Attempt to convert the libuv error value into a OS specific value. Only
+   * suitable for unix platforms. */
   int os_value() const noexcept {
 #ifdef _WIN32
     return m_value;
@@ -44,37 +49,31 @@ public:
 };
 
 
-inline bool operator==(uverr  __lhs, uverr __rhs) noexcept
-{ return __lhs.value() == __rhs.value();}
+inline bool operator==(uverr lhs, uverr rhs) noexcept
+{ return lhs.value() == rhs.value();}
 
-inline bool operator!=(uverr  __lhs, uverr __rhs) noexcept
-{ return __lhs.value() != __rhs.value();}
 
+inline bool operator!=(uverr lhs, uverr rhs) noexcept
+{ return lhs.value() != rhs.value();}
 
 template<typename _CharT, typename _Traits> std::basic_ostream<_CharT, _Traits>&
-operator<<(std::basic_ostream<_CharT, _Traits>& __os, uverr __e)
+operator<<(std::basic_ostream<_CharT, _Traits>& os, uverr ec)
 {
 #ifdef _WIN32
   // on windows, indicate libuv error
-  if (__e.value() != 0)
-    return (__os << "uverr: " << __e.os_value() << ", " << __e.message());
+  if (ec.value() != 0)
+    return (os << "uverr: " << ec.os_value() << ", " << ec.message());
   else
-    return (__os << "uverr: 0");
+    return (os << "uverr: 0");
 #else
   // on linux, display the Unix error codes
-  if (__e.value() != 0)
-    return (__os << __e.os_value() << ", " << __e.message());
+  if (ec.value() != 0)
+    return (os << ec.os_value() << ", " << ec.message());
   else
-    return (__os << "0");
-
+    return (os << "0");
 #endif
-
-
-
 }
 
-}
-
-
+} // namespace
 
 #endif
