@@ -232,8 +232,7 @@ void wamp_router::handle_inbound_call(
         {
           wamp_invocation invoke;
           invoke.user = rpc.user_data;
-          invoke.arg_list = std::move(args.args_list);
-          invoke.arg_dict = std::move(args.args_dict);
+          invoke.args = std::move(args);
 
           invoke.yield = [fn](json_array arg_list, json_object arg_dict)
             {

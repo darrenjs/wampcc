@@ -1022,8 +1022,10 @@ void wamp_session::process_inbound_invocation(json_array & msg)
     wampcc:: wamp_invocation invoke;
     invoke.user = iter->second.user_data;
 
-    if ( msg.size() > 4 ) invoke.arg_list = std::move(msg[4].as_array());
-    if ( msg.size() > 5 ) invoke.arg_dict = std::move(msg[4].as_object());
+    if ( msg.size() > 4 )
+      invoke.args.args_list = std::move(msg[4].as_array());
+    if ( msg.size() > 5 )
+      invoke.args.args_dict = std::move(msg[4].as_object());
 
     session_handle wp = this->handle();
     invoke.yield = [wp,request_id](json_array arg_list, json_object arg_dict)

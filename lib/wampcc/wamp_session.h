@@ -123,13 +123,14 @@ namespace wampcc {
   /** Aggregate passed on RPC invocation. */
   struct wamp_invocation
   {
-    json_array  arg_list;
-    json_object arg_dict;
+    wamp_args   args;
     json_object details;
-    void *      user;
+    void *      user = nullptr;
 
     std::function<void(json_array, json_object)> yield;
     std::function<void(std::string, json_array, json_object)> error;
+
+    wamp_invocation() : user(nullptr) {}
   };
 
   typedef std::function<void(wamp_invocation&) > rpc_cb;
