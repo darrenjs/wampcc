@@ -24,6 +24,7 @@ struct logger;
 class kernel;
 struct event;
 
+/** Event thread */
 class event_loop
 {
 public:
@@ -40,10 +41,13 @@ public:
    * have been joined. */
   void sync_stop();
 
+  /** Post a function object that is later invoked on the event thread. */
   void dispatch(std::function<void()> fn);
+
+  /** Post a timer function which is invoked after the elapsed time. */
   void dispatch(std::chrono::milliseconds, timer_fn fn);
 
-  /** Test whether the current thread is the EV thread */
+  /** Determine whether the callee thread is the EV thread. */
   bool this_thread_is_ev() const;
 
 private:

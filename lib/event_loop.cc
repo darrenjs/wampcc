@@ -18,15 +18,15 @@ namespace wampcc {
 
 struct event
 {
-  enum Type
+  enum event_type
   {
-    e_null = 0,
-    e_kill,
+    null = 0,
+    kill,
     function_dispatch,
     timer_dispatch
   } type;
 
-  event(Type t)
+  event(event_type t)
     : type(t)
   {}
 
@@ -36,9 +36,9 @@ struct event
 
 struct ev_function_dispatch : event
 {
-  ev_function_dispatch(std::function<void()> __fn) :
+  ev_function_dispatch(std::function<void()> fn_) :
     event(event::function_dispatch),
-    fn(__fn)
+    fn(std::move(fn_))
   {}
 
   std::function<void()> fn;
@@ -46,29 +46,25 @@ struct ev_function_dispatch : event
 
 struct ev_timer_dispatch : event
 {
-  ev_timer_dispatch(event_loop::timer_fn __fn) :
+  ev_timer_dispatch(event_loop::timer_fn fn_) :
     event(event::timer_dispatch),
-    fn(__fn)
+    fn(std::move(fn_))
   {}
 
   event_loop::timer_fn fn;
 };
 
 
-// #define SYSTEM_HEARTBEAT_MS 500
-
-/* Constructor */
 event_loop::event_loop(kernel* k)
   : m_kernel(k),
     __logger(k->get_logger()),
     m_continue(true),
-    m_kill_event( std::make_shared< event > (event::e_kill) ),
+    m_kill_event( std::make_shared< event > (event::kill) ),
     m_thread(&event_loop::eventmain, this)
 {
 }
 
 
-/* Destructor */
 event_loop::~event_loop()
 {
   sync_stop();
@@ -194,10 +190,8 @@ void event_loop::eventloop()
               dispatch(repeat_ms, std::move(ev));
             break;
           }
-	        default: break;
+          default: break;
         }
-
-
       }
       catch ( const std::exception& ex)
       {
@@ -207,7 +201,6 @@ void event_loop::eventloop()
       {
         LOG_ERROR( "unknown exception during process_event" );
       }
-
     } // loop end
   }
 }
