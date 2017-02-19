@@ -95,7 +95,7 @@ static void check_size_at_least(size_t msg_len, size_t s)
 
 /* Constructor */
 wamp_session::wamp_session(kernel* __kernel,
-                           t_session_mode conn_mode,
+                           mode conn_mode,
                            std::unique_ptr<tcp_socket> h,
                            state_fn state_cb,
                            server_msg_handler handler,
@@ -129,13 +129,13 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    server_msg_handler handler,
                                                    auth_provider auth)
 {
-  return create_impl(k, t_session_mode::server, std::move(sock),
+  return create_impl(k, mode::server, std::move(sock),
                      state_cb, protocol_builder, handler, auth);
 }
 
 
 std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
-                                                        t_session_mode conn_mode,
+                                                        mode conn_mode,
                                                         std::unique_ptr<tcp_socket> ioh,
                                                         state_fn state_cb,
                                                         protocol_builder_fn protocol_builder,
@@ -313,7 +313,7 @@ void wamp_session::update_state_for_outbound(const json_array& msg)
 {
   int message_type = msg[0].as_uint();
 
-  if (session_mode() == t_session_mode::server)
+  if (session_mode() == mode::server)
   {
     if (message_type == CHALLENGE)
     {
@@ -488,7 +488,7 @@ void wamp_session::process_message(unsigned int message_type,
     if (message_type == GOODBYE)
       return process_inbound_goodbye( ja );
 
-    if (session_mode() == t_session_mode::server)
+    if (session_mode() == mode::server)
     {
       if (message_type == HELLO)
       {
@@ -1413,7 +1413,7 @@ void wamp_session::process_inbound_error(json_array & msg)
   json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
-  if (session_mode() == t_session_mode::server)
+  if (mode() == mode::server)
   {
     switch (orig_request_type)
     {
@@ -2016,7 +2016,7 @@ void wamp_session::drop_connection_impl(std::string reason,
   if (event==t_drop_event::sock_eof)
     return initiate_close(guard);
 
-  if (m_session_mode == t_session_mode::server)
+  if (session_mode() == mode::server)
   {
     if (m_state == state::closing_wait)
       return;

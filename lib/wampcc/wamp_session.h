@@ -126,7 +126,7 @@ namespace wampcc {
     json_array  arg_list;
     json_object arg_dict;
     json_object details;
-    void *              user;
+    void *      user;
 
     std::function<void(json_array, json_object)> yield;
     std::function<void(std::string, json_array, json_object)> error;
@@ -171,7 +171,7 @@ namespace wampcc {
       std::chrono::milliseconds max_pending_open { 10000 };
     };
 
-    enum class t_session_mode {client, server};
+    enum class mode {client, server};
 
     /** Create a server side session (i.e., the socket was accepted from a
      * remote client). */
@@ -203,7 +203,7 @@ namespace wampcc {
           return up;
         };
 
-      return wamp_session::create_impl(k, t_session_mode::client, std::move(socket),
+      return wamp_session::create_impl(k, mode::client, std::move(socket),
                                        state_cb, factory_fn, server_msg_handler(), auth_provider());
     }
 
@@ -235,8 +235,7 @@ namespace wampcc {
     bool uses_heartbeats() const;
 
     /** Return the realm, or empty string if a realm has not yet been provided,
-     * eg, in case of a passive session that receives the realm from remote
-     * peer. */
+     * eg, in case of a server session that receives the realm from the peer. */
     const std::string& realm() const;
 
     int hb_interval_secs() const { return m_hb_intvl; }
@@ -286,7 +285,9 @@ namespace wampcc {
 
     t_sid unique_id() const { return m_sid; }
 
-    t_session_mode session_mode() const { return m_session_mode; }
+    /** Return the session mode, which indicates whether this session was
+     * created and operates as a client or a server. */
+    mode session_mode() const { return m_session_mode; }
 
     const char* protocol_name() const { return m_proto->name(); }
 
@@ -296,7 +297,7 @@ namespace wampcc {
   private:;
 
     static std::shared_ptr<wamp_session> create_impl(kernel*,
-                                                     t_session_mode,
+                                                     mode,
                                                      std::unique_ptr<tcp_socket>,
                                                      state_fn,
                                                      protocol_builder_fn ,
@@ -304,7 +305,7 @@ namespace wampcc {
                                                      auth_provider);
 
     wamp_session(kernel*,
-                 t_session_mode,
+                 mode,
                  std::unique_ptr<tcp_socket>,
                  state_fn state_cb,
                  server_msg_handler,
@@ -367,7 +368,7 @@ namespace wampcc {
     std::string m_log_prefix;
     std::unique_ptr< tcp_socket> m_socket;
 
-    t_session_mode m_session_mode;
+    mode m_session_mode;
 
     std::promise<void> m_has_closed;
     std::shared_future<void> m_shfut_has_closed;
