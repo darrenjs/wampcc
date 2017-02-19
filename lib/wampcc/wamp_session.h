@@ -11,7 +11,7 @@
 #include "wampcc/types.h"
 #include "wampcc/protocol.h"
 #include "wampcc/error.h"
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include <map>
 #include <mutex>

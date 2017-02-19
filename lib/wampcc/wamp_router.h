@@ -10,7 +10,7 @@
 
 #include "wampcc/wamp_session.h"
 #include "wampcc/error.h"
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include <memory>
 #include <future>

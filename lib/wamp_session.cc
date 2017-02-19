@@ -17,8 +17,6 @@
 #include "wampcc/rawsocket_protocol.h"
 #include "wampcc/io_loop.h"
 
-#include "jalson/jalson.h"
-
 #include <algorithm>
 #include <memory>
 #include <iomanip>

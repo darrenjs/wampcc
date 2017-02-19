@@ -21,7 +21,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib  $(libuvinc)						\
 -I$(jalsoninc) -I$(top_srcdir)/external/googletest/googletest/include			\
 -I$(top_srcdir)/external/googletest/googletest -Wall -g3 -ggdb -std=c++0x -O0 -pthread
 
-AM_LDFLAGS=-lpthread -L../lib -lwampcc  $(LIBLS)  -L$(jalsonlib) -ljalson  $(libuvlib) -lcrypto -lpthread
+AM_LDFLAGS=-lpthread -L../lib -lwampcc  $(LIBLS)  -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
 
 check_PROGRAMS=test_connect_timeout test_tcp_socket_connect					\

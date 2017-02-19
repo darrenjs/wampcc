@@ -8,7 +8,7 @@
 #ifndef WAMPCC_WAMPTYPES_H
 #define WAMPCC_WAMPTYPES_H
 
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include <functional>
 #include <mutex>

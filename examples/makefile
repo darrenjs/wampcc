@@ -18,7 +18,7 @@ ifeq ($(JANSSON_HOME),)
 endif
 
 WAMPCC_INC=-I$(WAMPCC_HOME)/include
-WAMPCC_LIBS=-L$(WAMPCC_HOME)/lib -lwampcc -ljalson
+WAMPCC_LIBS=-L$(WAMPCC_HOME)/lib -lwampcc -lwampcc_json
 
 LIBUV_INC=-I$(LIBUV_HOME)/include
 LIBUV_LIBS=-L$(LIBUV_HOME)/lib -luv

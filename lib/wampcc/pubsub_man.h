@@ -10,7 +10,7 @@
 
 #include "wampcc/types.h"
 #include "wampcc/utils.h"
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include <map>
 #include <memory>

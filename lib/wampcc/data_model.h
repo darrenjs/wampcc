@@ -10,7 +10,7 @@
 
 #include "wampcc/types.h"
 #include "wampcc/wamp_session.h"
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include <string>
 #include <mutex>
