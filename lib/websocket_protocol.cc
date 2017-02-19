@@ -301,13 +301,13 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         for (size_t i = 0; i < (mask_bit?payload_len:0); ++i)
           rd[payload_pos+i] ^= rd[mask_pos + (i%4)];
 
-        std::cout << "fin=" << fin_bit << ", opcode=" << opcode << ", "
-                  << "framelen=" << frame_len << ", ";
-        if (mask_bit) std::cout << "mask=" << to_hex(&rd[mask_pos], 4) << ", ";
-        std::cout << "payloadlen=" << payload_len << ", ";
+        //std::cout << "fin=" << fin_bit << ", opcode=" << opcode << ", "
+        //          << "framelen=" << frame_len << ", ";
+        //if (mask_bit) std::cout << "mask=" << to_hex(&rd[mask_pos], 4) << ", ";
+        //std::cout << "payloadlen=" << payload_len << ", ";
 
         std::string payload(&rd[payload_pos], payload_len);
-        std::cout << "payload=" << payload << "\n";
+        //std::cout << "payload=" << payload << "\n";
 
         if (!fin_bit)
           throw protocol_error("websocket continuations not yet supported");
@@ -364,7 +364,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             if (sec_websocket_accept != m_expected_accept_key)
               throw handshake_error("Sec-WebSocket-Accept incorrect");
 
-            std::cout << "*** upgrade ok ***\n";
+            // std::cout << "*** upgrade ok ***\n";
             m_state = eOpen;
             m_initiate_cb();
           }
