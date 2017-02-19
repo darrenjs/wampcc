@@ -5,7 +5,7 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include <limits>
 

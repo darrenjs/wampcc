@@ -3,7 +3,7 @@
 AM_CPPFLAGS = -I$(top_srcdir)/src -Wall -pthread -Wall -std=c++11
 
 # NOTE: -lrt added for posix clock support
-AM_LDFLAGS=-L$(top_builddir)/src -ljalson -lrt -pthread
+AM_LDFLAGS=-L$(top_builddir)/src -lwampcc_json -lrt -pthread
 
 noinst_PROGRAMS=hello memtest test_encode_decode
 #noinst_PROGRAMS=server_demo

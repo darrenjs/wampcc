@@ -8,7 +8,7 @@
 #ifndef __JSON_PATCH__
 #define __JSON_PATCH__
 
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 namespace wampcc
 {

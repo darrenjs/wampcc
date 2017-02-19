@@ -3,7 +3,7 @@ CXX=g++
 # specify installation location of JALSON.  Note we are linked statically here.
 JALSONDIR=/home/darrens/jalson/install
 JALSONINC=-I$(JALSONDIR)/include
-JALSONLIB=$(JALSONDIR)/lib/libjalson.a
+JALSONLIB=$(JALSONDIR)/lib/libwampcc_json.a
 
 # specify installation location on JSON vendor implementation (in this case we
 # are using Jansson), and we will also link statically

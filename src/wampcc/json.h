@@ -160,7 +160,7 @@ typedef unsigned long long json_uint_t;
 //
 // Internal implementation, hidden away for readability of this header.
 //
-#include <jalson/jalson_internals.h>
+#include "wampcc/json_internals.h"
 //
 // ======================================================================
 

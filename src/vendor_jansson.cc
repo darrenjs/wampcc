@@ -7,7 +7,7 @@
 
 #include "jansson.h"
 
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include <string>
 #include <sstream>

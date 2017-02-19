@@ -1,4 +1,4 @@
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 #include "json_pointer.h"
 
 #include <iostream>

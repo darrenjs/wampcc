@@ -31,16 +31,16 @@ AM_LDFLAGS=-pthread
 # The "lib_" prefix indicates that the named products are to be installed in
 # the $(libdir) directory. If we want to build a library that does not get
 # installed, then we should use the prefix "noinst_".
-lib_LTLIBRARIES = libjalson.la
+lib_LTLIBRARIES = libwampcc_json.la
 
 # The "include_" prefix includes a list of headers to be installed.  The
 # "nobase_" additional prefix means the directory names are copied too.
-nobase_include_HEADERS = jalson/jalson.h jalson/jalson_internals.h
+nobase_include_HEADERS = wampcc/json.h wampcc/json_internals.h
 
 
 # List the sources for an individual library
-libjalson_la_SOURCES=json_pointer.cc jalson.cc vendors.cc
-libjalson_la_LIBADD=$(janssonlib)
+libwampcc_json_la_SOURCES=json_pointer.cc jalson.cc vendors.cc
+libwampcc_json_la_LIBADD=$(janssonlib)
 
 # Include compile and link flags for an individual library.
 #
@@ -63,5 +63,5 @@ libjalson_la_LIBADD=$(janssonlib)
 # - REVISION: revision of current version. Incr. base on internal changes.
 # - AGE: indicates compatibilty with previous version of the shlib.
 #
-#libjalson_la_LDFLAGS = -version-info 0:0:0  /home/darrens/opt/jansson-2.7/lib/libjansson.la
-libjalson_la_LDFLAGS = -version-info 0:0:0
+#libwampcc_json_la_LDFLAGS = -version-info 0:0:0  /home/darrens/opt/jansson-2.7/lib/libjansson.la
+libwampcc_json_la_LDFLAGS = -version-info 0:0:0

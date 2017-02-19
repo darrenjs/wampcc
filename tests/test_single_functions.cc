@@ -1,5 +1,5 @@
 
-#include "jalson/jalson.h"
+#include "wampcc/json.h"
 
 #include "testcase.h"
 
