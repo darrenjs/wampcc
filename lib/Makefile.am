@@ -5,7 +5,7 @@
 # it under the terms of the MIT license. See LICENSE for details.
 #
 
-AM_CPPFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)/external/http_parser  -I$(jalsoninc) $(libuvinc)
+AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)/external/http_parser  -I$(jalsoninc) $(libuvinc)
 
 AM_LDFLAGS=-lpthread
 
