@@ -108,7 +108,6 @@ wamp_session::wamp_session(kernel* __kernel,
     m_socket(std::move(h)),
     m_session_mode(conn_mode),
     m_shfut_has_closed(m_has_closed.get_future()),
-    m_hb_intvl(m_kernel->get_config().use_wamp_heartbeats?60:0),
     m_time_create(time(NULL)),
     m_time_last_msg_recv(time(NULL)),
     m_next_request_id(1),
@@ -391,57 +390,6 @@ void wamp_session::change_state(state expected1, state expected2, state next)
   {
     LOG_INFO(m_log_prefix << "state: from " << state_to_str(m_state) << " to " << state_to_str(next));
     m_state = next;
-
-    if (m_state == state::open)
-    {
-      // // register for housekeeping
-      // std::weak_ptr<wamp_session> wp = handle();
-      // hb_func fn = [wp]()
-      //   {
-      //     if (auto sp = wp.lock())
-      //     {
-      //       if (sp->is_open())
-      //       {
-      //         json_array msg;
-      //         msg.push_back(HEARTBEAT);
-      //         sp->send_msg(msg);
-      //         return true;
-      //       }
-      //     }
-      //     return false; /* remove HB timer */
-      //   };
-      // m_kernel.get_event_loop()->add_hb_target(std::move(fn));
-
-
-      if (uses_heartbeats())
-      {
-        std::weak_ptr<wamp_session> wp = handle();
-        auto hb_fn = [wp]()
-          {
-            if (auto sp = wp.lock())
-            {
-              if (sp->is_open())
-              {
-                if (sp->duration_since_last() > sp->hb_interval_secs()*MAX_HEARTBEATS_MISSED)
-                {
-                  sp->drop_connection("wamp.error.session_timeout");
-                }
-                else
-                {
-                  json_array msg;
-                  msg.push_back(HEARTBEAT);
-                  sp->send_msg(msg);
-
-                  return std::chrono::milliseconds(sp->m_hb_intvl*1000);
-                }
-              }
-            }
-            return std::chrono::milliseconds(0);
-          };
-        m_kernel->get_event_loop()->dispatch( std::chrono::milliseconds(m_hb_intvl*1000), std::move(hb_fn));
-      }
-    }
-
   }
   else
   {
@@ -1875,29 +1823,15 @@ void wamp_session::reply_with_error(
 }
 
 
-bool wamp_session::uses_heartbeats() const
-{
-  return m_hb_intvl > 0;
-}
-
-
 json_array wamp_session::build_goodbye_message(std::string reason)
 {
-  json_array msg;
-  msg.push_back(GOODBYE);
-  msg.push_back(json_object());
-  msg.push_back(std::move(reason));
-  return msg;
+  return json_array ( {GOODBYE, json_object(), std::move(reason)} );
 }
 
 
 json_array wamp_session::build_abort_message(std::string reason)
 {
-  json_array msg;
-  msg.push_back(ABORT);
-  msg.push_back(json_object());
-  msg.push_back(std::move(reason));
-  return msg;
+  return json_array( {ABORT, json_object(), std::move(reason)} );
 }
 
 

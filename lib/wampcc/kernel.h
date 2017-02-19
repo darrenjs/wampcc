@@ -69,9 +69,6 @@ struct config
   size_t socket_buffer_max_size_bytes;
   size_t socket_max_pending_write_bytes;
 
-  /** Generate and expect WAMP session heartbeats. */
-  bool   use_wamp_heartbeats = false;
-
   /** User function which gets invoked on the callback thread as soon as it
    * begins. */
   std::function<void()> event_loop_start_fn;

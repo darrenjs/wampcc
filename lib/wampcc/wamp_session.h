@@ -231,14 +231,9 @@ namespace wampcc {
     /** Time since last message */
     int duration_since_last() const;
 
-    /** Does this session use heartbeats? */
-    bool uses_heartbeats() const;
-
     /** Return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a server session that receives the realm from the peer. */
     const std::string& realm() const;
-
-    int hb_interval_secs() const { return m_hb_intvl; }
 
     t_request_id provide(std::string uri,
                          const json_object& options,
@@ -373,12 +368,7 @@ namespace wampcc {
     std::promise<void> m_has_closed;
     std::shared_future<void> m_shfut_has_closed;
 
-    /* Interval, in secs, at which to send heartbeats. Values below 30 seconds
-        might not be too reliable, because the underlying housekeeping timer has
-        around a 20 second precision. */
-    int m_hb_intvl;
     time_t m_time_create;
-
     time_t m_time_last_msg_recv;
 
     mutable std::mutex m_request_lock;
