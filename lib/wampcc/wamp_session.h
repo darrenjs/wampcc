@@ -222,8 +222,17 @@ namespace wampcc {
 
     session_handle handle() { return shared_from_this(); }
 
+    /** Determine if session is presently open. Only if this returns true should
+     * the session be used for wamp tasks, such invoking remote procedures or
+     * publishing to topics. */
     bool is_open() const;
+
+    /** Determine if session is completey closed.  Note that intermediate states
+     * (such as closing, closing_wait etc) will return false.  Only use
+     * is_closed() to determine final session closure.  This function is not
+     * equivalent to is_open() == false. */
     bool is_closed() const;
+
     bool is_pending_open() const;
 
     /** Number of seconds since session constructed  */

@@ -859,7 +859,10 @@ bool wamp_session::is_closed() const
 bool wamp_session::is_pending_open() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return (m_state != state::open && m_state != state::closed && m_state != state::closing);
+  return (m_state != state::open
+          && m_state != state::closed
+          && m_state != state::closing
+          && m_state != state::closing_wait );
 }
 
 
