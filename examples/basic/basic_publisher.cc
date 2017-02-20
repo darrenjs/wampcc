@@ -5,10 +5,7 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include "wampcc/kernel.h"
-#include "wampcc/rawsocket_protocol.h"
-#include "wampcc/tcp_socket.h"
-#include "wampcc/wamp_session.h"
+#include "wampcc/wampcc.h"
 
 #include <memory>
 #include <random>
@@ -29,18 +26,22 @@ int main(int argc, char** argv)
   {
     auto endpoint = get_addr_port(argc, argv);
 
+    /* Create the wampcc kernel, which provides event and IO threads. */
+
     std::unique_ptr<kernel> the_kernel( new wampcc::kernel({}, logger::nolog() ));
 
-    std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
-    auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
-    std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
+    /* Create the TCP socket and attempt to connect. */
 
-    if (status != std::future_status::ready)
+    std::unique_ptr<tcp_socket> sock(new tcp_socket(the_kernel.get()));
+    auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
+
+    if (fut.wait_for(std::chrono::milliseconds(250)) != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
-    wampcc::uverr ec = fut.get();
-    if (ec)
+    if (wampcc::uverr ec = fut.get())
       throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
+
+    /* Using the connected socket, now create the wamp session object. */
 
     std::promise<void> ready_to_exit;
 
@@ -51,23 +52,28 @@ int main(int argc, char** argv)
         if (!is_open)
           try {
             ready_to_exit.set_value();
-          } catch (...) {}
+          } catch (...) {/* ignore promise already set error */}
       },
       {});
 
     /* Logon to a WAMP realm, and wait for session to be deemed open. */
+
     client_credentials credentials;
     credentials.realm="default_realm";
     credentials.authid="peter";
     credentials.authmethods = {"wampcra"};
     credentials.secret_fn = []() -> std::string { return "secret2"; };
 
-    auto session_open_fut = session->initiate_hello(credentials);
+    auto logon_fut = session->initiate_hello(credentials);
 
-    if (session_open_fut.wait_for(std::chrono::milliseconds(5000)) == std::future_status::timeout)
+    if (logon_fut.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
       throw std::runtime_error("time-out during session logon");
 
+    if(!session->is_open())
+      throw std::runtime_error("session logon failed");
+
     /* Session is now open, publish to a topic. */
+
     std::vector<std::string> coin_sides({"heads", "tails"});
     std::random_device rd;
     std::mt19937 engine( rd() );
@@ -77,7 +83,7 @@ int main(int argc, char** argv)
     while ( exit_fut.wait_for(std::chrono::milliseconds(500)) != std::future_status::ready )
     {
       wamp_args args({{coin_sides[distr(engine)]}});
-      session->publish("coin_toss", {}, std::move(args));
+      session->publish("coin_toss", {}, std::move(args)); // publish to topic "coin_toss"
     }
 
     return 0;
