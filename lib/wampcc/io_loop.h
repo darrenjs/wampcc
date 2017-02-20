@@ -24,11 +24,11 @@
 
 namespace wampcc {
 
-class kernel;
-struct logger;
 class io_loop;
-struct io_request;
+class kernel;
 class tcp_socket;
+struct io_request;
+struct logger;
 
 /** Can be called by user to wampcc library to check the compile-time version of
  * libuv is the same as when wampcc was compiled. */
@@ -39,48 +39,28 @@ class uv_handle_data
 public:
   enum { DATA_CHECK = 0x5555555555555555 };
 
-  enum ptr_type {
-    e_tcp_socket
-  };
-
-  uv_handle_data(ptr_type t, void* ptr)
+  uv_handle_data(void* ptr)
     : m_check( DATA_CHECK ),
-      m_type(t)
-  {
-    switch (t)
-    {
-      case e_tcp_socket:
-        m_tcp_socket_ptr = (tcp_socket*) ptr;
-        break;
-    }
-  }
-
-
+      m_tcp_socket_ptr((tcp_socket*)ptr) {}
 
   uint64_t check() const { return m_check; }
-  ptr_type type() const { return m_type; }
-
   tcp_socket* tcp_socket_ptr() { return m_tcp_socket_ptr; }
 
 private:
   uint64_t m_check; /* retain as first member */
-
-  union {
-    tcp_socket    * m_tcp_socket_ptr;
-  };
-
-  ptr_type m_type;
+  tcp_socket    * m_tcp_socket_ptr;
 };
 
 
-class io_loop_closed : public std::runtime_error
+class io_loop_closed : public std::exception
 {
 public:
-  io_loop_closed();
+  const char* what() const noexcept override { return "io_loop closed"; }
 };
 
 
-/* IO Thread */
+/* Encapsulate the IO services.  Currently this provides a single instance of
+ * the libuv even loop and IO thread. */
 class io_loop
 {
 public:
@@ -128,8 +108,7 @@ private:
   uv_loop_t*   m_uv_loop;
   std::unique_ptr<uv_async_t> m_async;
 
-  enum {e_open, e_closing, e_closed}         m_pending_requests_state;
-  bool                                       m_pending_requests_open;
+  enum state {open, closing, closed}         m_pending_requests_state;
   std::vector< std::unique_ptr<io_request> > m_pending_requests;
   std::mutex                                 m_pending_requests_lock;
 

@@ -20,22 +20,16 @@
 #include <iostream>
 
 
-static const char* safe_str(const char* s)
-{
-  return s? s : "null";
-}
-
 namespace wampcc {
 
 struct io_request
 {
-  enum request_type
+  enum class request_type
   {
-    eNone = 0,
-    eCancelHandle, // 1
-    eCloseLoop,    // 2
-    eConnect,      // 3
-    eFunction      // 4
+    cancel_handle,
+    close_loop,
+    connect,
+    function
   } type;
 
   logger & logptr;
@@ -56,12 +50,6 @@ struct io_request
 };
 
 
-io_loop_closed::io_loop_closed()
-  : std::runtime_error("io_loop closed")
-{
-}
-
-
 void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
 {
   /* IO thread */
@@ -76,7 +64,7 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
     __logger( k.get_logger() ),
     m_uv_loop( new uv_loop_t() ),
     m_async( new uv_async_t() ),
-    m_pending_requests_state(e_open)
+    m_pending_requests_state(state::open)
 {
   version_check_libuv(UV_VERSION_MAJOR, UV_VERSION_MINOR);
 
@@ -94,7 +82,7 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
   // interrupted
   signal(SIGPIPE, SIG_IGN);
 
-  m_thread = std::thread([this, io_started_cb](){
+  m_thread = std::thread([this, io_started_cb]() {
 
       scope_guard undo_thread_id([this](){ m_io_thread_id.release(); });
       m_io_thread_id.set_value(std::this_thread::get_id());
@@ -114,14 +102,13 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
 
 void io_loop::sync_stop()
 {
-  std::unique_ptr<io_request> r( new io_request( io_request::eCloseLoop,
+  std::unique_ptr<io_request> r( new io_request( io_request::request_type::close_loop,
                                                  __logger) );
 
   try {
     push_request(std::move(r));
   }
-  catch (io_loop_closed& e)
-  {
+  catch (io_loop_closed& e) {
     /* ignore */
   }
 
@@ -132,7 +119,6 @@ void io_loop::sync_stop()
 
 io_loop::~io_loop()
 {
-  // uv_loop kept as raw pointer, because need to pass to several uv functions
   uv_loop_close(m_uv_loop);
   delete m_uv_loop;
 }
@@ -146,13 +132,13 @@ void io_loop::on_async()
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
     work.swap( m_pending_requests );
-    if (m_pending_requests_state == e_closing)
-      m_pending_requests_state = e_closed;
+    if (m_pending_requests_state == state::closing)
+      m_pending_requests_state = state::closed;
   }
 
   for (auto & user_req : work)
   {
-    if (user_req->type == io_request::eCancelHandle)
+    if (user_req->type == io_request::request_type::cancel_handle)
     {
       auto handle_to_cancel = (uv_handle_t*) user_req->tcp_handle;
       if (!uv_is_closing(handle_to_cancel))
@@ -160,7 +146,7 @@ void io_loop::on_async()
             delete handle;
           });
     }
-    else if (user_req->type == io_request::eConnect)
+    else if (user_req->type == io_request::request_type::connect)
     {
       std::unique_ptr<io_request> req( std::move(user_req) );
 
@@ -232,11 +218,11 @@ void io_loop::on_async()
         req->on_connect_result(ec);
       }
     }
-    else if (user_req->type == io_request::eCloseLoop)
+    else if (user_req->type == io_request::request_type::close_loop)
     {
       /* close event handler run at function exit */
     }
-    else if (user_req->type == io_request::eFunction)
+    else if (user_req->type == io_request::request_type::function)
     {
       user_req->user_fn();
     }
@@ -247,7 +233,7 @@ void io_loop::on_async()
   }
 
 
-  if (m_pending_requests_state == e_closed)
+  if (m_pending_requests_state == state::closed)
   {
     uv_close((uv_handle_t*) m_async.get(), 0);
 
@@ -273,12 +259,7 @@ void io_loop::on_async()
           else
           {
             assert(ptr->check() == uv_handle_data::DATA_CHECK);
-            switch (ptr->type())
-            {
-              case uv_handle_data::e_tcp_socket:
-                ptr->tcp_socket_ptr()->do_close();
-                break;
-            }
+            ptr->tcp_socket_ptr()->do_close();
           }
         }
       }, nullptr);
@@ -296,7 +277,7 @@ bool io_loop::this_thread_is_io() const
 
 void io_loop::run_loop()
 {
-  while ( true )
+  while (true)
   {
     try
     {
@@ -305,13 +286,13 @@ void io_loop::run_loop()
       if (r == 0) /*  no more handles; we are shutting down */
         return;
     }
-    catch(std::exception & e)
+    catch(const std::exception & e)
     {
-      LOG_ERROR("exception in io_loop: " << e.what());
+      LOG_ERROR("io_loop exception: " << e.what());
     }
     catch(...)
     {
-      LOG_ERROR("uknown exception in io_loop");
+      LOG_ERROR("uknown io_loop exception");
     }
   }
 }
@@ -326,7 +307,7 @@ void io_loop::connect(uv_tcp_t * handle,
   // create the handle, need it here, so that the caller can later request
   // cancellation
 
-  std::unique_ptr<io_request> r( new io_request(io_request::eConnect, __logger ) );
+  std::unique_ptr<io_request> r( new io_request(io_request::request_type::connect, __logger ) );
   r->tcp_handle = handle;
   r->addr = addr;
   r->port = port;
@@ -339,7 +320,7 @@ void io_loop::connect(uv_tcp_t * handle,
 
 void io_loop::cancel_connect(uv_tcp_t * handle)
 {
-  std::unique_ptr<io_request> r( new io_request(io_request::eCancelHandle, __logger ) );
+  std::unique_ptr<io_request> r( new io_request(io_request::request_type::cancel_handle, __logger ) );
   r->tcp_handle = handle;
   push_request(std::move(r));
 }
@@ -350,11 +331,11 @@ void io_loop::push_request(std::unique_ptr<io_request> r)
   {
     std::lock_guard< std::mutex > guard (m_pending_requests_lock);
 
-    if (m_pending_requests_state == e_closed)
+    if (m_pending_requests_state == state::closed)
       throw io_loop_closed();
 
-    if (r->type == io_request::eCloseLoop)
-      m_pending_requests_state = e_closing;
+    if (r->type == io_request::request_type::close_loop)
+      m_pending_requests_state = state::closing;
 
     m_pending_requests.push_back( std::move(r) );
   }
@@ -365,7 +346,7 @@ void io_loop::push_request(std::unique_ptr<io_request> r)
 
 void io_loop::push_fn(std::function<void()> fn)
 {
-  std::unique_ptr<io_request> r( new io_request( io_request::eFunction,
+  std::unique_ptr<io_request> r( new io_request( io_request::request_type::function,
                                                  __logger) );
   r->user_fn = std::move(fn);
   push_request(std::move(r));

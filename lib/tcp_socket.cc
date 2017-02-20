@@ -65,7 +65,7 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
   if (ss == socket_state::init)
     uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
 
-  m_uv_tcp->data = new uv_handle_data(uv_handle_data::e_tcp_socket, this);
+  m_uv_tcp->data = new uv_handle_data(this);
 }
 
 
