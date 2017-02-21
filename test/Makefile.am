@@ -19,7 +19,7 @@ libgtest_la_LDFLAGS  = -pthread
 # Define compile & link flags for each target
 AM_CPPFLAGS = -I$(top_srcdir)/lib  $(libuvinc)						\
 -I$(jalsoninc) -I$(top_srcdir)/external/googletest/googletest/include			\
--I$(top_srcdir)/external/googletest/googletest -Wall -g3 -ggdb -std=c++0x -O0 -pthread
+-I$(top_srcdir)/external/googletest/googletest -Wall -g3 -ggdb -std=c++11 -O0 -pthread
 
 AM_LDFLAGS=-lpthread -L../lib -lwampcc  $(LIBLS)  -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 

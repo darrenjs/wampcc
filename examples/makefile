@@ -26,7 +26,7 @@ LIBUV_LIBS=-L$(LIBUV_HOME)/lib -luv
 JANSSON_LIBS=-L$(JANSSON_HOME)/lib -ljansson
 
 CXXFLAGS += -MMD -MP
-CXXFLAGS += -Wall -O0 -g3 -ggdb -std=c++0x -pthread   $(WAMPCC_INC) $(JALSON_INC) $(LIBUV_INC)
+CXXFLAGS += -Wall -O0 -g3 -ggdb -std=c++11 -pthread   $(WAMPCC_INC) $(JALSON_INC) $(LIBUV_INC)
 
 LDLIBS +=$(WAMPCC_LIBS) $(LIBUV_LIBS) $(JALSON_LIBS) $(JANSSON_LIBS) -lcrypto -lpthread
 
