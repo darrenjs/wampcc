@@ -115,6 +115,9 @@ namespace wampcc {
       : reqid(0),
         was_error(false),
         user(0){}
+
+    /** Check if this result indicates a success, i.e. not an error */
+    explicit operator bool() const noexcept { return  was_error == false; }
   };
 
   typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
