@@ -15,10 +15,7 @@
 #include <vector>
 #include <atomic>
 #include <mutex>
-#include <list>
 #include <memory>
-#include <set>
-#include <future>
 
 #include <uv.h>
 
