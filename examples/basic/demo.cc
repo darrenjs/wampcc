@@ -12,34 +12,36 @@
 
 using namespace wampcc;
 
-/* The end RPC function that gets invoked via a wamp instruction received from a
- * wamp dealer. */
-void rpc(wamp_invocation& invoke)
-{
-  invoke.yield( json_array({"hello", "world"}), {} );
-}
-
 int main(int argc, char** argv)
 {
+  try {
+    /* Create the wampcc kernel. */
 
-  /* Create the wampcc kernel */
+    kernel my_kernel({}, logger::stdout());
 
-  kernel my_kernel({}, logger::stdout());
+    /* Create the TCP socket and attempt to connect. */
 
-  /* Create the TCP socket and attempt to connect */
+    std::unique_ptr<tcp_socket> my_socket(new tcp_socket(&my_kernel));
+    my_socket->connect("127.0.0.1", 55555).wait_for(std::chrono::seconds(3));
 
-  std::unique_ptr<tcp_socket> my_socket(new tcp_socket(&my_kernel));
-  my_socket->connect("127.0.0.1", 55555).wait();
+    if (not my_socket->is_connected())
+      throw std::runtime_error("connect failed");
 
-  /* If socket is connected, create a wamp session */
-  if (my_socket->is_connected())
-  {
+    /* With the connected socket, create a wamp session & logon to the realm
+     * called 'default_realm'. */
+
     std::shared_ptr<wamp_session> my_session = wamp_session::create<rawsocket_protocol>(
-        &my_kernel,
-        std::move(my_socket),
-        [](session_handle, bool) { /* handle on-close */ }, {});
+      &my_kernel,
+      std::move(my_socket),
+      [](session_handle, bool) { /* handle on-close */ }, {});
 
-    /* Register a procedure than can sum an array of numbers */
+    my_session->initiate_hello({"default_realm"}).wait_for(std::chrono::seconds(3));
+
+    if (not my_session->is_open())
+      throw std::runtime_error("realm logon failed");
+
+    /* Register a procedure than can sum an array of numbers. */
+
     my_session->provide(
       "math.service.add", {},
       [](wamp_invocation& invoke){
@@ -48,8 +50,9 @@ int main(int argc, char** argv)
           if (item.as_int())
             total += item.as_int();
         invoke.yield({total}, {});
-      }
-      );
+      });
+
+    /* Call a remote procedure. */
 
     my_session->call(
       "math.service.add", {}, {{100,200},{}},
@@ -58,8 +61,10 @@ int main(int argc, char** argv)
           std::cout << "got result: " << result.args.args_list[0] << std::endl;
       });
 
-
+    return 0;
   }
-
-
+  catch (const std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
 }

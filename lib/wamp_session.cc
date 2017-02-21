@@ -740,7 +740,9 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
 
   /* generate the authentication digest */
 
-  std::string key = m_client_secret_fn();
+  std::string key;
+  if (m_client_secret_fn)
+    key = m_client_secret_fn();
 
   char digest[256];
   unsigned int digestlen = sizeof(digest)-1;
@@ -869,9 +871,6 @@ bool wamp_session::is_pending_open() const
 std::future<void> wamp_session::initiate_hello(client_credentials cc)
 {
   /* USER thread */
-
-  if (!cc.secret_fn)
-    throw std::runtime_error("user-secret function cannot be undefined");
 
   {
     std::lock_guard<std::mutex> guard(m_realm_lock);

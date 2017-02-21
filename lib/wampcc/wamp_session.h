@@ -73,6 +73,9 @@ namespace wampcc {
     std::string authid;
     std::vector< std::string > authmethods;
     std::function< std::string() > secret_fn;
+
+    client_credentials() = default;
+    client_credentials(std::string realm_) : realm(std::move(realm_)) {}
   };
 
 
