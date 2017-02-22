@@ -73,21 +73,21 @@ int main(int argc, char** argv)
     /* Session is now open, subscribe to a topic. */
     bool have_subscription = false;
     wampcc::t_subscription_id subscription_id = 0;
-    wampcc::subscribed_cb my_subscribed_cb = [&](wampcc::t_request_id request_id, std::string uri, bool successful,
-                                              wampcc::t_subscription_id subid, std::string error)
+    wampcc::subscribed_cb my_subscribed_cb = [&](wampcc::wamp_subscribed& subscribed) {
+      if (subscribed)
       {
-        if (successful)
-        {
-          have_subscription = true;
-          subscription_id = subid;
-          std::cout << "subscription successful for '"<<uri << "', subscription_id " << subid << std::endl;
-        }
-        else
-        {
-          std::cout << "subscription failed for '"<< uri << "', error: " << error << std::endl;
-          session->close();
-        }
-      };
+        have_subscription = true;
+        subscription_id = subscribed.subscription_id;
+        std::cout << "subscription successful for '"<<subscribed.uri
+                  << "', subscription_id " << subscription_id << std::endl;
+      }
+      else
+      {
+        std::cout << "subscription failed for '"<< subscribed.uri
+                   << "', error: " << subscribed.error_uri << std::endl;
+        session->close();
+      }
+    };
     session->subscribe("coin_toss", {},
                        my_subscribed_cb,
                        [](wampcc::wamp_subscription_event ev){
