@@ -96,7 +96,7 @@ void rpc_man::register_rpc(session_handle session, std::string realm, rpc_detail
   auto result = realm_iter->second.insert(std::make_pair(r.uri,r));
   if (!result.second)
   {
-    LOG_WARN("Ignore duplicate procedure register for " << realm << ":" << r.uri);
+    LOG_WARN("ignoring duplicate procedure registration for " << realm << ":" << r.uri);
     throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
   }
 
