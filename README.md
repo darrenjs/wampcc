@@ -24,13 +24,13 @@
 
 Here is what programming with **wampcc** looks like:
 
-**Establishing a wamp session**
+**Establishing a WAMP session**
 
-Before a wamp session can be established, a `tcp_socket` has to be created and
-connected to a wamp server.
+Before a WAMP session can be established, a `tcp_socket` has to be created and
+connected to a WAMP router / dealer server.
 
 Once the connected socket is available, the `wamp_session` object is constructed
-and an attempt is made to logon to a wamp realm.
+and an attempt is made to logon to a realm.
 
 All **wampcc** objects make use of a shared `kernel` object, which provides the
 internal threads and socket IO.
@@ -64,7 +64,8 @@ if (not session->is_open())
 
 **Calling a remote procedure**
 
-C++ lambdas are used to process the asynchronous result of a wamp call, and this usage pattern is the same for other kinds of wamp request.
+C++ lambdas are used to process the asynchronous result of a call request, and
+this usage pattern is the same for other kinds of request.
 
 ```c++
 session->call(
