@@ -49,7 +49,7 @@ int main(int argc, char** argv)
       },
       [](wamp_subscription_event ev) {
         for (auto & x : ev.args.args_list)
-          std::cout << x << " ";
+          std::cout << "got update: " << x << " ";
         std::cout << std::endl;
       });
 
