@@ -78,7 +78,6 @@ namespace wampcc {
     client_credentials(std::string realm_) : realm(std::move(realm_)) {}
   };
 
-
   struct wamp_subscription_event
   {
     t_subscription_id subscription_id;
@@ -88,14 +87,22 @@ namespace wampcc {
   };
   typedef std::function< void (wamp_subscription_event) > subscription_event_cb;
 
+  struct wamp_subscribed
+  {
+    t_request_id request_id;
+    std::string uri;
+    t_subscription_id subscription_id;
+    bool was_error;
+    std::string error_uri;
+
+    /** Check if this result indicates a success, i.e. not an error */
+    explicit operator bool() const noexcept { return was_error == false; }
+  };
+
   /** Callback invoked when a subscribe request is successful or fails. Error
       contains the error code when the subscription is not successful.
   */
-  typedef std::function< void (t_request_id,
-                               std::string uri,
-                               bool success,
-                               t_subscription_id,
-                               std::string error) > subscribed_cb;
+  typedef std::function<void (wamp_subscribed&) > subscribed_cb;
 
   /** Callback invoked when an unsubscription request completes. Error contains
       the error code when the subscription is not successful.
@@ -294,16 +301,20 @@ namespace wampcc {
                             wamp_args args,
                             wamp_invocation_reply_fn);
 
+    /** Obtain the unique ID for the session. Values begin from 1. */
     t_sid unique_id() const { return m_sid; }
 
     /** Return the session mode, which indicates whether this session was
      * created and operates as a client or a server. */
     mode session_mode() const { return m_session_mode; }
 
+    /** Return the name of the wire protocol used by the session. */
     const char* protocol_name() const { return m_proto->name(); }
 
-    std::shared_future<void>  closed_future() const { return m_shfut_has_closed; }
-    std::shared_future<void>& closed_future()       { return m_shfut_has_closed; }
+    /** Obtain the future which is set upon closure of the session.  Waiting on
+     * this future is one mechanism which allows a thread to detect when the
+     * session has been closed. */
+    std::shared_future<void> closed_future() const { return m_shfut_has_closed; }
 
   private:;
 
@@ -433,6 +444,7 @@ namespace wampcc {
     void drop_connection(std::string);
 
     enum class t_drop_event {request, recv_abort, recv_goodbye, sock_eof};
+    static const char* to_string(t_drop_event v);
 
     void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, t_drop_event reason = t_drop_event::request);
 

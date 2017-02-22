@@ -398,6 +398,18 @@ void wamp_session::change_state(state expected1, state expected2, state next)
   }
 }
 
+const char* wamp_session::to_string(t_drop_event v)
+{
+  switch (v)
+  {
+    case t_drop_event::request      : return "request";
+    case t_drop_event::recv_abort   : return "recv_abort";
+    case t_drop_event::recv_goodbye : return "recv_goodbye";
+    case t_drop_event::sock_eof     : return "sock_eof";
+  };
+
+  return "unknown";
+}
 
 void wamp_session::process_inbound_abort(json_array &)
 {
@@ -453,7 +465,7 @@ void wamp_session::process_message(unsigned int message_type,
       else
       {
         if (!is_open())
-          throw protocol_error("received request before session is open");
+          throw protocol_error("received message while session not open");
       }
 
       switch (message_type)
@@ -512,7 +524,7 @@ void wamp_session::process_message(unsigned int message_type,
       else
       {
         if (not is_open())
-          throw protocol_error("received request before session is open");
+          throw protocol_error("received message while session not open");
       }
 
       switch (message_type)
@@ -967,7 +979,7 @@ t_request_id wamp_session::provide(std::string uri,
     send_msg( msg );
   }
 
-  LOG_INFO(m_log_prefix << "sending REGISTER request for proc '" << uri << "', request_id " << request_id);
+  LOG_INFO(m_log_prefix << "sending register request for '" << uri << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1064,12 +1076,7 @@ t_request_id wamp_session::subscribe(std::string uri,
                                      void * user)
 {
   json_array msg {SUBSCRIBE, 0, options, uri};
-
-  subscribe_request sub;
-  sub.uri = std::move(uri);
-  sub.request_cb = std::move(req_cb);
-  sub.event_cb= std::move(event_cb);
-  sub.user_data = user;
+  subscribe_request sub {uri, std::move(req_cb), std::move(event_cb), user};
 
   t_request_id request_id;
   {
@@ -1085,7 +1092,7 @@ t_request_id wamp_session::subscribe(std::string uri,
     send_msg( msg );
   }
 
-  LOG_INFO(m_log_prefix << "sending subscribe for topic '" << std::move(uri) << "', request_id " << request_id);
+  LOG_INFO(m_log_prefix << "sending subscribe for '" << uri << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1175,7 +1182,8 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
   // invoke user callback if permitted, and handle exception
   if (temp.request_cb && user_cb_allowed())
     try {
-      temp.request_cb(request_id, temp.uri, true, subscription_id, {});
+      wamp_subscribed subscribed {request_id, temp.uri, subscription_id, false, {}};
+      temp.request_cb(subscribed);
     }
     catch(...) {
       log_exception(__logger, "inbound subscribed user callback");
@@ -1299,7 +1307,7 @@ t_request_id wamp_session::call(std::string uri,
     send_msg( msg );
   }
 
-  LOG_INFO("Sending CALL request for  '" << uri << "', request_id " << request_id);
+  LOG_INFO("sending call request for '" << uri << "', request_id " << request_id);
   return request_id;
 }
 
@@ -1471,7 +1479,8 @@ void wamp_session::process_inbound_error(json_array & msg)
         // invoke user callback if permitted, and handle exception
         if (orig_request.request_cb && user_cb_allowed())
           try {
-            orig_request.request_cb(request_id, orig_request.uri, false, 0, std::move(error_uri));
+            wamp_subscribed subscribed {request_id, orig_request.uri, 0, true, std::move(error_uri)};
+            orig_request.request_cb(subscribed);
           }
           catch(...) {
             log_exception(__logger, "inbound subscribed user callback");
@@ -1951,6 +1960,8 @@ void wamp_session::drop_connection_impl(std::string reason,
   if (is_in(m_state, state::closed, state::closing))
     return;
 
+  // std::cout << "reason: " << reason << ", enum: " << to_string(event) << std::endl;
+
   if (event==t_drop_event::sock_eof)
     return initiate_close(guard);
 
@@ -1960,6 +1971,7 @@ void wamp_session::drop_connection_impl(std::string reason,
       return;
 
     if (event != t_drop_event::recv_abort)
+    {
       try
       {
         if (m_state == state::open)
@@ -1968,6 +1980,7 @@ void wamp_session::drop_connection_impl(std::string reason,
           m_proto->send_msg(build_abort_message(reason));
       }
       catch (...) {}
+    }
 
     m_state = state::closing_wait;
 
@@ -1997,6 +2010,7 @@ void wamp_session::drop_connection_impl(std::string reason,
     /* client side - make effort to be first to initiate socket close */
 
     if (event != t_drop_event::recv_abort)
+    {
       try
       {
         if (m_state == state::open)
@@ -2005,6 +2019,7 @@ void wamp_session::drop_connection_impl(std::string reason,
           m_proto->send_msg(build_abort_message(reason));
       }
       catch (...){}
+    }
 
     initiate_close(guard);
   }
