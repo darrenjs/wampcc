@@ -27,27 +27,36 @@ Here is what programming with **wampcc** looks like:
 **Establishing a wamp session**
 
 ```c++
-/* Create the wampcc kernel */
-kernel my_kernel({}, logger::stdout());
+/* Create the wampcc kernel. */
 
-/* Create the TCP socket and attempt to connect */
-std::unique_ptr<tcp_socket> my_socket(new tcp_socket(&my_kernel));
-my_socket->connect("127.0.0.1", 55555).wait();
+kernel the_kernel({}, logger::stdout());
 
-/* If connected, create a wamp session */
-if (my_socket->is_connected())
-{
-  auto my_session = wamp_session::create<rawsocket_protocol>(
-      &my_kernel,
-      std::move(my_socket),
-      [](session_handle, bool) { /* handle on-close */ }, {});
-}
+/* Create the TCP socket and attempt to connect. */
+
+std::unique_ptr<tcp_socket> socket(new tcp_socket(&the_kernel));
+socket->connect("127.0.0.1", 55555).wait_for(std::chrono::seconds(3));
+
+if (not socket->is_connected())
+  throw std::runtime_error("connect failed");
+
+/* With the connected socket, create a wamp session & logon to the realm
+ * called 'default_realm'. */
+
+auto session = wamp_session::create<rawsocket_protocol>(
+  &the_kernel,
+  std::move(socket),
+  [](session_handle, bool) { /* handle on-close */ }, {});
+
+session->initiate_hello({"default_realm"}).wait_for(std::chrono::seconds(3));
+
+if (not session->is_open())
+  throw std::runtime_error("realm logon failed");
 ```
 
 **Calling a remote procedure**
 
 ```c++
-my_session->call(
+session->call(
   "math.service.add", {}, {{100,200},{}},
   [](wamp_call_result result) {
     if (result)
@@ -57,12 +66,41 @@ my_session->call(
 
 **Registering a remote procedure**
 ```c++
-my_session->provide("math.service.add", {},
-  [](wamp_invocation& invoke) {
+session->provide(
+  "math.service.add", {},
+  [](wamp_invocation& invoke){
     int total = 0;
     for (auto & item : invoke.args.args_list)
-      if (item.is_int())
+      if (item.as_int())
         total += item.as_int();
     invoke.yield({total}, {});
   });
+```
+
+**Subscribing to a topic**
+```c++
+session->subscribe(
+  "random_number", {},
+  [](wamp_subscribed& subscribed) {
+    std::cout << "subscribed " << (subscribed?"ok":"failed") << std::endl;
+  },
+  [](wamp_subscription_event ev) {
+    for (auto & x : ev.args.args_list)
+      std::cout << x << " ";
+    std::cout << std::endl;
+  });
+```
+
+**Publising to a topic**
+```c++
+
+std::srand(std::time(0)); //use current time as seed for random generator
+int random_variable = std::rand();
+session->publish("random_number", {}, {{random_variable},{}});
+```
+
+**Terminating a session**
+```c++
+session->closed_future().wait_for(std::chrono::minutes(10));
+session->close().wait();
 ```
