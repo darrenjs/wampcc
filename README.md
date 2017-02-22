@@ -26,6 +26,15 @@ Here is what programming with **wampcc** looks like:
 
 **Establishing a wamp session**
 
+Before a wamp session can be established, a `tcp_socket` has to be created and
+connected to a wamp server.
+
+Once the connected socket is available, the `wamp_session` object is constructed
+and an attempt is made to logon to a wamp realm.
+
+All **wampcc** objects make use of a shared `kernel` object, which provides the
+internal threads and socket IO.
+
 ```c++
 /* Create the wampcc kernel. */
 
@@ -54,6 +63,8 @@ if (not session->is_open())
 ```
 
 **Calling a remote procedure**
+
+C++ lambdas are used to process the asynchronous result of a wamp call, and this usage pattern is the same for other kinds of wamp request.
 
 ```c++
 session->call(
@@ -91,15 +102,17 @@ session->subscribe(
   });
 ```
 
-**Publising to a topic**
+**Publishing to a topic**
 ```c++
-
 std::srand(std::time(0)); //use current time as seed for random generator
 int random_variable = std::rand();
 session->publish("random_number", {}, {{random_variable},{}});
 ```
 
 **Terminating a session**
+
+A thread can wait for a session to be closed by waiting on a `std::future` that is accessible from the `wamp_session`.
+
 ```c++
 session->closed_future().wait_for(std::chrono::minutes(10));
 session->close().wait();
