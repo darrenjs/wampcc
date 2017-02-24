@@ -10,7 +10,8 @@
 
 #include <string>
 
-namespace wampcc {
+namespace wampcc
+{
 
 /** Stores a libuv system error code, as returned from underlying libuv system
  * call wrappers. */
@@ -30,16 +31,21 @@ public:
 
   /** Attempt to convert the libuv error value into a OS specific value. Only
    * suitable for unix platforms. */
-  int os_value() const noexcept {
+  int os_value() const noexcept
+  {
 #ifdef _WIN32
     return m_value;
 #else
-    return - m_value;
+    return -m_value;
 #endif
   }
 
   /** Assign a new error value */
-  uverr& operator=(int v) noexcept { m_value = v; return *this; }
+  uverr& operator=(int v) noexcept
+  {
+    m_value = v;
+    return *this;
+  }
 
   /** Check if error value is non-zero, indicating an error */
   explicit operator bool() const noexcept { return m_value != 0; }
@@ -48,16 +54,19 @@ public:
   std::string message() const;
 };
 
-
 inline bool operator==(uverr lhs, uverr rhs) noexcept
-{ return lhs.value() == rhs.value();}
-
+{
+  return lhs.value() == rhs.value();
+}
 
 inline bool operator!=(uverr lhs, uverr rhs) noexcept
-{ return lhs.value() != rhs.value();}
+{
+  return lhs.value() != rhs.value();
+}
 
-template<typename _CharT, typename _Traits> std::basic_ostream<_CharT, _Traits>&
-operator<<(std::basic_ostream<_CharT, _Traits>& os, uverr ec)
+template <typename _CharT, typename _Traits>
+std::basic_ostream<_CharT, _Traits>& operator<<(
+    std::basic_ostream<_CharT, _Traits>& os, uverr ec)
 {
 #ifdef _WIN32
   // on windows, indicate libuv error
