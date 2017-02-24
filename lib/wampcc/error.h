@@ -51,7 +51,7 @@ public:
   explicit operator bool() const noexcept { return m_value != 0; }
 
   /* Obtain explanatory error message related to error value */
-  std::string message() const;
+  const char* message() const;
 };
 
 inline bool operator==(uverr lhs, uverr rhs) noexcept
