@@ -1,0 +1,82 @@
+---
+Language:        Cpp
+
+# BasedOnStyle:  Mozilla
+AccessModifierOffset: -2
+AlignEscapedNewlinesLeft: false
+AlignTrailingComments: true
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: All
+AlwaysBreakBeforeMultilineStrings: false
+BreakBeforeBinaryOperators: false
+BreakBeforeTernaryOperators: true
+ColumnLimit:     80
+
+IndentCaseLabels: true
+IndentWrappedFunctionNames: false
+IndentFunctionDeclarationAfterType: false
+KeepEmptyLinesAtTheStartOfBlocks: true
+NamespaceIndentation: None
+ObjCSpaceAfterProperty: true
+ObjCSpaceBeforeProtocolList: false
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakString: 1000
+PenaltyBreakFirstLessLess: 120
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 200
+SpacesBeforeTrailingComments: 1
+Standard:        Cpp11
+IndentWidth:     2
+TabWidth:        4
+UseTab:          Never
+SpacesInParentheses: false
+SpacesInAngles:  false
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: true
+SpaceBeforeAssignmentOperators: true
+ContinuationIndentWidth: 4
+CommentPragmas:  '^ IWYU pragma:'
+ForEachMacros:   [ foreach, Q_FOREACH, BOOST_FOREACH ]
+SpaceBeforeParens: ControlStatements
+DisableFormat:   false
+
+
+# Prefer to derive pointer alignment, and in case it cant be,
+# prefer C++ style, with emphasis on the variable type.
+DerivePointerAlignment: true
+PointerAlignment: Left
+
+# C++11 stuff
+Cpp11BracedListStyle: true
+
+# Indents
+
+ConstructorInitializerIndentWidth: 2
+
+# SpaceAfterTemplateKeyword: true
+# SpaceAfterCStyleCast: true
+
+# Allow user to have extra spacing
+MaxEmptyLinesToKeep: 2
+
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+
+# Braces
+
+# line breaking
+AlwaysBreakTemplateDeclarations: false
+BreakConstructorInitializersBeforeComma: false
+
+# Argument packing
+
+BinPackParameters: true
+BreakBeforeBraces: Linux
+ExperimentalAutoDetectBinPacking: false
+
+...
+
