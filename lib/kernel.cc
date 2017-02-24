@@ -111,9 +111,9 @@ static const char* level_str(logger::Level l)
       return " INFO";
     case logger::eDebug:
       return "DEBUG";
-    default:
-      return "?????";
   }
+
+  return "unhandled_switch";
 }
 
 
