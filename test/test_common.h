@@ -10,6 +10,7 @@
 #include "wampcc/event_loop.h"
 
 #include <iostream>
+#include <chrono>
 #include <string.h>
 
 
@@ -18,9 +19,10 @@
 
 #include <assert.h>
 
-#define TLOG( X ) std::cout << X << std::endl
+#define TLOG(X) std::cout << X << std::endl
 
-namespace wampcc {
+namespace wampcc
+{
 
 
 struct socket_listener
@@ -37,36 +39,25 @@ struct socket_listener
 
   void start_listening(std::shared_ptr<tcp_socket> sock)
   {
-    sock->start_read(
-      [this](char* s, size_t n){ this->io_on_read(s, n); },
-      [this](uverr e){ this->io_on_error(e);}
-      );
+    sock->start_read([this](char* s, size_t n) { this->io_on_read(s, n); },
+                     [this](uverr e) { this->io_on_error(e); });
   }
 
   void start_listening(tcp_socket& sock)
   {
-    sock.start_read(
-      [this](char* s, size_t n){ this->io_on_read(s, n); },
-      [this](uverr e){ this->io_on_error(e);}
-      );
+    sock.start_read([this](char* s, size_t n) { this->io_on_read(s, n); },
+                    [this](uverr e) { this->io_on_error(e); });
   }
-
 };
 
-
-
-enum test_outcome
-{
-  e_expected,
-  e_unexpected
-};
+enum test_outcome { e_expected, e_unexpected };
 
 class internal_server
 {
 public:
   internal_server()
     : m_kernel(new kernel({}, logger::nolog())),
-      m_route(new wamp_router(m_kernel.get(), nullptr ))
+      m_route(new wamp_router(m_kernel.get(), nullptr))
   {
   }
 
@@ -79,50 +70,46 @@ public:
   int start(int starting_port_number)
   {
     auth_provider server_auth;
-    server_auth.provider_name = [](const std::string){ return "programdb"; };
-    server_auth.permit_user_realm = [](const std::string& /*user*/,
-                                       const std::string& /*realm*/){
-      std::set<std::string> methods {"wampcra"};
-      return std::make_tuple(auth_provider::required::authenticate, std::move(methods));
+    server_auth.provider_name = [](const std::string) { return "programdb"; };
+    server_auth.permit_user_realm =
+        [](const std::string& /*user*/, const std::string& /*realm*/) {
+      std::set<std::string> methods{"wampcra"};
+      return std::make_tuple(auth_provider::required::authenticate,
+                             std::move(methods));
     };
-    server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2";};
+    server_auth.get_user_secret =
+        [](const std::string& /*user*/,
+           const std::string& /*realm*/) { return "secret2"; };
 
-    for (int port = starting_port_number; port < 65535; port++)
-    {
+    for (int port = starting_port_number; port < 65535; port++) {
       std::future<uverr> fut_listen_err = m_route->listen(port, server_auth);
-      std::future_status status = fut_listen_err.wait_for(std::chrono::milliseconds(100));
-      if (status == std::future_status::ready)
-      {
+      std::future_status status =
+          fut_listen_err.wait_for(std::chrono::milliseconds(100));
+      if (status == std::future_status::ready) {
         wampcc::uverr err = fut_listen_err.get();
         if (err == 0)
           return port;
-
       }
     }
 
-    throw std::runtime_error("failed to find an available port number for listen socket");
+    throw std::runtime_error(
+        "failed to find an available port number for listen socket");
     return 0;
   }
 
-  void reset_kernel()
-  {
-    m_kernel.reset();
-  }
+  void reset_kernel() { m_kernel.reset(); }
 
-  void reset_dealer()
-  {
-    m_route.reset();
-  }
+  void reset_dealer() { m_route.reset(); }
 
   kernel* get_kernel() { return m_kernel.get(); }
+
 private:
-  std::unique_ptr<kernel>         m_kernel;
+  std::unique_ptr<kernel> m_kernel;
   std::shared_ptr<wamp_router> m_route;
 };
 
 
-enum
-{
+enum {
   e_callback_not_invoked,
   e_close_callback_with_sp,
   e_close_callback_without_sp
@@ -131,9 +118,8 @@ enum
 
 void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
 {
-  if (is_open == false)
-  {
-    if (auto sp=wp.lock())
+  if (is_open == false) {
+    if (auto sp = wp.lock())
       callback_status = e_close_callback_with_sp;
     else
       callback_status = e_close_callback_without_sp;
@@ -141,18 +127,38 @@ void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
 }
 
 
-std::shared_ptr<wamp_session> establish_session(std::unique_ptr<kernel> & the_kernel, int port)
+std::unique_ptr<tcp_socket> tcp_connect(kernel& k, int port)
+{
+  std::unique_ptr<tcp_socket> sock{new tcp_socket(&k)};
+
+  auto fut = sock->connect("127.0.0.1", port);
+  auto status = fut.wait_for(std::chrono::milliseconds(100));
+
+  if (status == std::future_status::timeout)
+    throw std::runtime_error("timeout during connect");
+
+  auto err = fut.get();
+  if (err)
+    throw std::runtime_error(err.message());
+
+  if (sock->is_connected() == false)
+    throw std::runtime_error("expected to be connected");
+
+  return sock;
+}
+
+std::shared_ptr<wamp_session> establish_session(
+    std::unique_ptr<kernel>& the_kernel, int port)
 {
   static int count = 0;
   count++;
 
-  std::unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
+  std::unique_ptr<tcp_socket> sock(new tcp_socket(the_kernel.get()));
 
   auto fut = sock->connect("127.0.0.1", port);
 
   auto connect_status = fut.wait_for(std::chrono::milliseconds(100));
-  if (connect_status == std::future_status::timeout)
-  {
+  if (connect_status == std::future_status::timeout) {
     return std::shared_ptr<wamp_session>();
   }
 
@@ -160,18 +166,13 @@ std::shared_ptr<wamp_session> establish_session(std::unique_ptr<kernel> & the_ke
   std::shared_ptr<wamp_session> session;
   if (count % 2)
     session = wamp_session::create<rawsocket_protocol>(
-      the_kernel.get(),
-      std::move(sock),
-      session_cb, {});
+        the_kernel.get(), std::move(sock), session_cb, {});
   else
     session = wamp_session::create<websocket_protocol>(
-      the_kernel.get(),
-      std::move(sock),
-      session_cb, {});
+        the_kernel.get(), std::move(sock), session_cb, {});
 
   return session;
 }
-
 }
 
 #endif
