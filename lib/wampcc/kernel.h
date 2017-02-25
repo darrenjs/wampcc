@@ -22,7 +22,8 @@
 /* Micro version is omitted if it's 0 */
 #define WAMPCC_NAME_VERSION "wampcc 1.0"
 
-namespace wampcc {
+namespace wampcc
+{
 
 class io_loop;
 class event_loop;
@@ -40,18 +41,21 @@ int micro_version();
  */
 struct logger
 {
-  enum Level {eError = 0x02,
-              eWarn  = 0x04,
-              eInfo  = 0x10,
-              eDebug = 0x40};
+  enum Level {
+    eError = 0x02,
+    eWarn = 0x04,
+    eInfo = 0x10,
+    eDebug = 0x40,
+  };
 
   // generate bit masks to represent levels that shall be logged
-  static int levels_all  () { return -1; }
-  static int levels_none () { return 0; }
-  static int levels_upto (Level l);
+  static int levels_all() { return -1; }
+  static int levels_none() { return 0; }
+  static int levels_upto(Level l);
 
   std::function<bool(Level)> wants_level;
-  std::function<void(Level, const std::string&, const char* file, int ln)> write;
+  std::function<void(Level, const std::string&, const char* file, int ln)>
+      write;
 
   /** create a logger for stdout or stderr */
   static logger stdlog(std::ostream&, int level_mask, bool inc_file_line);
@@ -78,8 +82,7 @@ struct config
   std::function<void()> event_loop_end_fn;
 
   config()
-    : socket_buffer_max_size_bytes(65536),
-      socket_max_pending_write_bytes(65536)
+    : socket_buffer_max_size_bytes(65536), socket_max_pending_write_bytes(65536)
   {
   }
 };
@@ -90,15 +93,15 @@ struct config
 class kernel
 {
 public:
-  kernel(config, logger nlog);
+  kernel(config = {}, logger nlog = logger::nolog());
   ~kernel();
 
   kernel(const kernel&) = delete;
   kernel& operator=(const kernel&) = delete;
 
-  logger&      get_logger() { return __logger; }
-  io_loop*     get_io();
-  event_loop*  get_event_loop();
+  logger& get_logger() { return __logger; }
+  io_loop* get_io();
+  event_loop* get_event_loop();
 
   const config& get_config() const { return m_config; }
 
