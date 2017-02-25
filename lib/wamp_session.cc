@@ -176,7 +176,7 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
         if (interval.count() > 0)
         {
           std::weak_ptr<wamp_session> wp = sp;
-          auto fn = [wp,interval]() {
+          auto fn = [wp,interval]() -> std::chrono::milliseconds {
             if (auto sp = wp.lock())
             {
               if (sp->is_open())
