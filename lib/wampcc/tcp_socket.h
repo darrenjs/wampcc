@@ -46,7 +46,6 @@ public:
   typedef std::function<void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, uverr)> on_accept_cb;
 
   tcp_socket(kernel* k);
-  tcp_socket(kernel* k, uv_tcp_t*);
   ~tcp_socket();
 
   tcp_socket(const tcp_socket&) = delete;
@@ -90,8 +89,13 @@ public:
   bool is_closing()   const;
   bool is_closed()    const;
 
-  /** Return underlying file description */
-  int fd() const;
+  /** Return whether this tcp_socket has been initialised, which means it is
+   * associated with an underlying socket file descriptor (until closed). */
+  bool is_initialised() const;
+
+  /** Return the underlying file description, if one is currently associated with
+   * this tcp_socket. */
+  std::pair<bool,int> fd() const;
 
   size_t bytes_read()    const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }
@@ -118,7 +122,7 @@ private:
   void do_close(bool no_linger = false);
   void do_listen(int, std::shared_ptr<std::promise<uverr>>);
   void on_listen_cb(int);
-
+  void close_impl();
   kernel * m_kernel;
   logger & __logger;
 

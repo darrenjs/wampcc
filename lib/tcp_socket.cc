@@ -58,21 +58,12 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
     m_bytes_written(0),
     m_bytes_read(0)
 {
-  if (ss == socket_state::init)
-    uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
-
-  m_uv_tcp->data = new uv_handle_data(this);
+  if (m_uv_tcp)
+    m_uv_tcp->data = new uv_handle_data(this);
 }
 
 
-tcp_socket::tcp_socket(kernel* k)
-  : tcp_socket(k, new uv_tcp_t(), socket_state::init)
-{
-}
-
-
-tcp_socket::tcp_socket(kernel* k, uv_tcp_t* s)
-  : tcp_socket(k, s, socket_state::connected)
+tcp_socket::tcp_socket(kernel* k) : tcp_socket(k, nullptr, socket_state::init)
 {
 }
 
@@ -105,10 +96,11 @@ tcp_socket::~tcp_socket()
   if (not is_closed())
     m_io_closed_future.wait();
 
-  uv_handle_data* ptr = (uv_handle_data*)m_uv_tcp->data;
-  delete ptr;
-
-  delete m_uv_tcp;
+  if (m_uv_tcp) {
+    uv_handle_data* ptr = (uv_handle_data*)m_uv_tcp->data;
+    delete ptr;
+    delete m_uv_tcp;
+  }
 
   {
     std::lock_guard<std::mutex> guard(m_pending_write_lock);
@@ -149,11 +141,16 @@ std::future<uverr> tcp_socket::connect(std::string addr, int port)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state == socket_state::init)
-      m_state = socket_state::connecting;
-    else
-      throw tcp_socket::error("tcp_socket: connect() attempted multiple times");
+
+    if (m_state != socket_state::init)
+      throw tcp_socket::error("connect(): tcp_socket already initialised");
+
+    m_state = socket_state::connecting;
   }
+
+  m_uv_tcp = new uv_tcp_t;
+  uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
+  m_uv_tcp->data = new uv_handle_data(this);
 
   bool resolve_hostname = true;
 
@@ -168,8 +165,6 @@ std::future<uverr> tcp_socket::connect(std::string addr, int port)
     completion_promise->set_value(ec);
   };
 
-
-  // std::unique_lock<std::mutex> guard(sp->m_mutex);
   m_kernel->get_io()->connect(m_uv_tcp, addr, std::to_string(port),
                               resolve_hostname, result_fn);
 
@@ -188,56 +183,69 @@ void tcp_socket::do_close(bool no_linger)
     m_state = socket_state::closing;
   }
 
-  uv_os_fd_t fd;
-  if (no_linger && (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)) {
-    struct linger so_linger;
-    so_linger.l_onoff = 1;
-    so_linger.l_linger = 0;
-    setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
-  }
+  if (m_uv_tcp) {
 
-  uv_close((uv_handle_t*)m_uv_tcp, [](uv_handle_t* h) {
-
-    /* IO thread, callback invoked upon uv_close completion */
-
-    uv_handle_data* ptr = (uv_handle_data*)h->data;
-    tcp_socket* sock = ptr->tcp_socket_ptr();
-
-    decltype(sock->m_user_close_fn) user_close_fn;
-    decltype(sock->m_io_closed_promise) closed_promise;
-
-    /* Once the state is set to e_closed, this tcp_socket object may be
-     * immediately deleted by another thread. So this must be the last action
-     * that makes use of the tcp_socket members. */
-    {
-      std::lock_guard<std::mutex> guard(sock->m_state_lock);
-      sock->m_state = socket_state::closed;
-
-      /* Extract from the tcp_socket the child objects that need to have their
-       * lifetime extended beyond that of the parent tcp_socket, so that after
-       * setting of socket state to e_closed, these objects can still be
-       * used. It is also important that the user-close-fn is copied inside
-       * this critical section, and not before the lock is taken.*/
-      user_close_fn = std::move(sock->m_user_close_fn);
-      closed_promise = std::move(sock->m_io_closed_promise);
+    uv_os_fd_t fd;
+    if (no_linger && (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)) {
+      struct linger so_linger;
+      so_linger.l_onoff = 1;
+      so_linger.l_linger = 0;
+      setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
     }
 
-    /* Run the user callback first, and then set the promise (the promise is
-     * set as the last action, so that an owner of tcp_socket can wait on a
-     * future to know when all callbacks are complete). This user callback
-     * must not perform a wait on the future, because that only gets set after
-     * the callback returns. */
-    if (user_close_fn)
-      try {
-        user_close_fn();
-      } catch (...) {
-      }
-    closed_promise->set_value();
-  });
+    uv_close((uv_handle_t*)m_uv_tcp, [](uv_handle_t* h) {
+      /* IO thread, invoked upon uv_close completion */
+      uv_handle_data* ptr = (uv_handle_data*)h->data;
+      ptr->tcp_socket_ptr()->close_impl();
+    });
+  } else
+    close_impl();
 }
 
 
-int tcp_socket::fd() const { return m_uv_tcp->io_watcher.fd; }
+void tcp_socket::close_impl()
+{
+  decltype(m_user_close_fn) user_close_fn;
+  decltype(m_io_closed_promise) closed_promise;
+
+  /* Once the state is set to closed, this tcp_socket object may be immediately
+   * deleted by another thread. So this must be the last action that makes use
+   * of the tcp_socket members. */
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    m_state = socket_state::closed;
+
+    /* Extract from the tcp_socket the child objects that need to have their
+     * lifetime extended beyond that of the parent tcp_socket, so that after
+     * setting of socket state to e_closed, these objects can still be
+     * used. It is also important that the user-close-fn is copied inside
+     * this critical section, and not before the lock is taken.*/
+    user_close_fn = std::move(m_user_close_fn);
+    closed_promise = std::move(m_io_closed_promise);
+  }
+
+  /* Run the user callback first, and then set the promise (the promise is set
+   * as the last action, so that an owner of tcp_socket can wait on a future to
+   * know when all callbacks are complete). This user callback must not perform
+   * a wait on the future, because that only gets set after the callback
+   * returns. */
+  if (user_close_fn)
+    try {
+      user_close_fn();
+    } catch (...) {
+    }
+  closed_promise->set_value();
+}
+
+
+std::pair<bool,int> tcp_socket::fd() const
+{
+  uv_os_fd_t fd;
+  if (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)
+    return {true, fd};
+  else
+    return {false, -1};
+}
 
 
 /** User request to close socket */
@@ -298,6 +306,12 @@ bool tcp_socket::close(on_close_cb user_on_close_fn)
 std::future<uverr> tcp_socket::start_read(io_on_read on_read,
                                           io_on_error on_error)
 {
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    if (m_state != socket_state::connected)
+      throw tcp_socket::error("tcp_socket: start_read() when not connected");
+  }
+
   auto completion_promise = std::make_shared<std::promise<uverr>>();
 
   auto fn = [this, completion_promise]() {
@@ -309,10 +323,6 @@ std::future<uverr> tcp_socket::start_read(io_on_read on_read,
         });
     completion_promise->set_value(ec);
   };
-
-  std::lock_guard<std::mutex> guard(m_state_lock);
-  if (m_state == socket_state::closing || m_state == socket_state::closed)
-    throw tcp_socket::error("tcp_socket: start_read() when closing or closed");
 
   m_io_on_read = std::move(on_read);
   m_io_on_error = std::move(on_error);
@@ -382,12 +392,10 @@ void tcp_socket::write(std::pair<const char*, size_t>* srcbuf, size_t count)
     bufs.push_back(buf);
   }
 
-  // synchronised section
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
     if (m_state == socket_state::closing || m_state == socket_state::closed)
-      throw tcp_socket::error::runtime_error(
-          "tcp_socket: write() when closing or closed");
+      throw tcp_socket::error("tcp_socket: write() when closing or closed");
 
     {
       std::lock_guard<std::mutex> guard(m_pending_write_lock);
@@ -501,7 +509,8 @@ void tcp_socket::on_listen_cb(int status)
 
   ec = uv_accept((uv_stream_t*)m_uv_tcp, (uv_stream_t*)client);
   if (ec == 0) {
-    std::unique_ptr<tcp_socket> new_sock(new tcp_socket(m_kernel, client));
+    std::unique_ptr<tcp_socket> new_sock(
+        new tcp_socket(m_kernel, client, socket_state::connected));
 
     if (m_user_accept_fn)
       m_user_accept_fn(this, new_sock, ec);
@@ -548,21 +557,32 @@ void tcp_socket::do_listen(int port,
 
 std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
 {
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    if (m_state != socket_state::init)
+      throw tcp_socket::error("listen(): tcp_socket already initialised");
+  }
+
+  m_uv_tcp = new uv_tcp_t;
+  uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
+  m_uv_tcp->data = new uv_handle_data(this);
+
   m_user_accept_fn = std::move(user_fn);
 
   auto completion_promise = std::make_shared<std::promise<uverr>>();
 
-  {
-    std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state == socket_state::closing || m_state == socket_state::closed)
-      throw tcp_socket::error("tcp_socket: listen() when closing or closed");
-
-    m_kernel->get_io()->push_fn([this, port, completion_promise]() {
-      this->do_listen(port, completion_promise);
-    });
-  }
+  m_kernel->get_io()->push_fn([this, port, completion_promise]() {
+    this->do_listen(port, completion_promise);
+  });
 
   return completion_promise->get_future();
+}
+
+
+bool tcp_socket::is_initialised() const
+{
+  std::lock_guard<std::mutex> guard(m_state_lock);
+  return m_state != socket_state::init;
 }
 
 

@@ -106,7 +106,7 @@ std::future<uverr> wamp_router::listen(int port,
         return m_rpcman->handle_inbound_register(std::move(h), std::move(realm), std::move(uri));
       };
 
-      int fd = sock->fd();
+      int fd = sock->fd().second;
 
       protocol_builder_fn builder_fn;
       builder_fn = [](tcp_socket* sock,
