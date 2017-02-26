@@ -22,9 +22,93 @@ void test_unused_socket()
 }
 
 
+void test_address(string node, string port, tcp_socket::addr_family af, bool expected)
+{
+  TSTART();
+
+  kernel the_kernel;
+
+  tcp_socket::on_accept_cb on_accept = [](tcp_socket* server,
+                                          unique_ptr<tcp_socket>& client,
+                                          uverr status) {};
+
+  tcp_socket sever_sock(&the_kernel);
+
+  std::future<uverr> fut = sever_sock.listen(node, port, on_accept, af);
+  fut.wait();
+
+  uverr ec = fut.get();
+
+  if (expected == (ec == 0))
+    return;
+  else
+    throw std::runtime_error("unexpected");
+}
+
+
+void test_address_combinations(int port)
+{
+  string portstr = to_string(port);
+  test_address("0.0.0.0",   portstr, tcp_socket::addr_family::inet4, true);
+  test_address("127.0.0.1", portstr, tcp_socket::addr_family::inet4, true);
+  test_address("127.255.255.254", portstr, tcp_socket::addr_family::inet4, true);
+  test_address("0.0.0.0",   portstr, tcp_socket::addr_family::inet6, false);
+  test_address("127.0.0.1", portstr, tcp_socket::addr_family::inet6, false);
+
+  test_address("::1", portstr, tcp_socket::addr_family::inet6, true);
+  test_address("::1", portstr, tcp_socket::addr_family::inet4, false);
+
+  test_address("", portstr, tcp_socket::addr_family::inet4, true);
+  test_address("", portstr, tcp_socket::addr_family::inet6, true);
+  test_address("", portstr, tcp_socket::addr_family::unspec, true);
+}
+
+
+void test_listen_node_port(string node, int port)
+{
+  TSTART();
+
+  kernel the_kernel;
+
+  tcp_socket::on_accept_cb on_accept = [](tcp_socket* server,
+                                          unique_ptr<tcp_socket>& client,
+                                          uverr status) {};
+
+  {
+    tcp_socket sever_sock(&the_kernel);
+
+    string portstr = std::to_string(port);
+
+    std::future<uverr> fut = sever_sock.listen(node, portstr, on_accept, tcp_socket::addr_family::inet4);
+    std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
+
+    if (status != std::future_status::ready)
+    {
+      cout << "result not ready ... waiting longer\n";
+      fut.wait();
+    }
+
+    uverr result = fut.get();
+    if (result == 0)
+    {
+      assert(sever_sock.is_listening() == true);
+      assert(sever_sock.is_connected() == false);
+     }
+    else
+    {
+      assert(sever_sock.is_listening() == false);
+      assert(sever_sock.is_connected() == false);
+      cout << "socket failed to listen, status: " << result << endl;
+    }
+    sever_sock.close().wait();
+  }
+}
+
+
 void test_canonical_listen(int port)
 {
-  cout << "---------- test_canonical_listen ----------\n";
+  TSTART();
+
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   unique_ptr<tcp_socket> accepted_socket;
@@ -79,7 +163,7 @@ void test_canonical_listen(int port)
 
 void test_listen_duplicate_port(int port)
 {
-  cout << "---------- test_listen_duplicate_port ----------\n";
+  TSTART();
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
@@ -121,7 +205,7 @@ void test_listen_duplicate_port(int port)
 
 void test_listen_close(int port)
 {
-  cout << "---------- " << __FUNCTION__ << " ----------\n";
+  TSTART();
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
@@ -150,11 +234,11 @@ void test_listen_close(int port)
 
 /* Test that a new client can be received on the on_accept callback, but not be
  * used. The socket will thus need to be deleted on the IO thread, which is
- * something that can normally result in immediate deadlock.
+ * something that can result in immediate deadlock.
  */
 void test_unused_client(int port)
 {
-  cout << "---------- " << __FUNCTION__ << " ----------\n";
+  TSTART();
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
@@ -211,7 +295,14 @@ int main(int argc, char** argv)
     test_listen_duplicate_port(port);
     test_listen_close(port);
     test_unused_client(port);
+    test_listen_node_port("",port);
+    test_listen_node_port("127.0.0.1",port);
+    test_listen_node_port("0.0.0.0",port);
   };
+
+
+  port = starting_port_number++;
+  test_address_combinations(port);
 
   {
     port = starting_port_number++;
@@ -227,14 +318,9 @@ int main(int argc, char** argv)
 
   {
     port = starting_port_number++;
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 500; i++)
       test_unused_client(port);
   }
-
-
-
-
-  cout << "tests complete\n";
 
   return 0;
 }

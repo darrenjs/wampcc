@@ -21,6 +21,8 @@
 
 #define TLOG(X) std::cout << X << std::endl
 
+#define TSTART() std::cout << "==== " << __FUNCTION__ << std::endl
+
 namespace wampcc
 {
 

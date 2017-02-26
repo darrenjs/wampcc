@@ -613,17 +613,93 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
 
 void tcp_socket::do_listen(const std::string& node, const std::string& service,
                            addr_family af,
-                           std::shared_ptr<std::promise<uverr>> ec)
+                           std::shared_ptr<std::promise<uverr>> completion)
 {
-  /* IO thread */
+/* IO thread */
 
-  // TODO: make attempts to bind to available port
+#ifndef NDEBUG
+  assert(m_uv_tcp == nullptr);
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    assert(m_state == socket_state::init);
+  }
+#endif
 
-  // m_uv_tcp = new uv_tcp_t;
-  // uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
-  // m_uv_tcp->data = new uv_handle_data(this);
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
 
-  ec->set_value(-1);
+  switch (af) {
+    case addr_family::unspec:
+      hints.ai_family = AF_UNSPEC;
+      break;
+    case addr_family::inet4:
+      hints.ai_family = AF_INET;
+      break;
+    case addr_family::inet6:
+      hints.ai_family = AF_INET6;
+      break;
+  }
+
+  hints.ai_socktype = SOCK_STREAM; /* Connection based socket */
+  hints.ai_flags = AI_PASSIVE;     /* Allow wildcard IP address */
+
+  /* getaddrinfo() returns a list of address structures than can be used in
+   * later calls to bind or connect */
+  uv_getaddrinfo_t req;
+  uverr ec = uv_getaddrinfo(
+      m_kernel->get_io()->uv_loop(), &req, nullptr /* no callback */,
+      node.empty() ? nullptr : node.c_str(),
+      service.empty() ? nullptr : service.c_str(), &hints);
+
+  if (ec) {
+    completion->set_value(ec);
+    return;
+  }
+
+  /* Try each address until we successfullly bind. On any error we close the
+   * socket and try the next address. */
+  uv_tcp_t* h = nullptr;
+  struct addrinfo* ai = nullptr;
+  for (ai = req.addrinfo; ai != nullptr; ai = ai->ai_next) {
+
+    h = new uv_tcp_t;
+    if (uv_tcp_init(m_kernel->get_io()->uv_loop(), h) != 0) {
+      delete h;
+      continue;
+    }
+
+    if (uv_tcp_bind(h, ai->ai_addr, 0 /* flags */) == 0)
+      break; /* success */
+
+    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+  }
+
+  uv_freeaddrinfo(req.addrinfo);
+
+  if (ai == nullptr) {
+    /* no address worked, report an approporiate error code */
+    completion->set_value(UV_EADDRNOTAVAIL);
+    return;
+  }
+
+  m_uv_tcp = h;
+  m_uv_tcp->data = new uv_handle_data(this);
+
+  ec = uv_listen((uv_stream_t*)h, 128, [](uv_stream_t* server, int status) {
+    uv_handle_data* uvhd_ptr = (uv_handle_data*)server->data;
+    uvhd_ptr->tcp_socket_ptr()->on_listen_cb(status);
+  });
+
+  if (ec) {
+    delete (uv_handle_data*)m_uv_tcp->data;
+    m_uv_tcp = nullptr;
+    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+  } else {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    m_state = socket_state::listening;
+  }
+
+  completion->set_value(ec);
 }
 
 
