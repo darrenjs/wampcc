@@ -115,7 +115,7 @@ public:
 
 private:
   enum class socket_state {
-    init,
+    uninitialised,
     connecting,
     connected,
     listening,

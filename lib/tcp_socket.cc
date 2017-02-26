@@ -15,8 +15,6 @@
 
 #include <assert.h>
 
-using namespace std;
-
 namespace wampcc
 {
 
@@ -65,7 +63,8 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
 }
 
 
-tcp_socket::tcp_socket(kernel* k) : tcp_socket(k, nullptr, socket_state::init)
+tcp_socket::tcp_socket(kernel* k)
+  : tcp_socket(k, nullptr, socket_state::uninitialised)
 {
 }
 
@@ -144,7 +143,7 @@ std::future<uverr> tcp_socket::connect(std::string addr, int port)
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
 
-    if (m_state != socket_state::init)
+    if (m_state != socket_state::uninitialised)
       throw tcp_socket::error("connect(): tcp_socket already initialised");
 
     m_state = socket_state::connecting;
@@ -554,8 +553,7 @@ void tcp_socket::do_listen(int port,
 
   if (ec == 0) {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state == socket_state::init)
-      m_state = socket_state::listening;
+    m_state = socket_state::listening;
   }
 
   sp_promise->set_value(ec);
@@ -566,7 +564,7 @@ std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state != socket_state::init)
+    if (m_state != socket_state::uninitialised)
       throw tcp_socket::error("listen(): tcp_socket already initialised");
   }
 
@@ -585,7 +583,7 @@ std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
 bool tcp_socket::is_initialised() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  return m_state != socket_state::init;
+  return m_state != socket_state::uninitialised;
 }
 
 
@@ -595,7 +593,7 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state != socket_state::init)
+    if (m_state != socket_state::uninitialised)
       throw tcp_socket::error("listen(): tcp_socket already initialised");
   }
 
@@ -621,7 +619,7 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   assert(m_uv_tcp == nullptr);
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
-    assert(m_state == socket_state::init);
+    assert(m_state == socket_state::uninitialised);
   }
 #endif
 
