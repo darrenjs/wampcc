@@ -12,6 +12,7 @@ test_late_dealer_destructor                 23700
 test_evthread_wamp_session_destructor       23800
 #test_dealer_disconnect_when_has_connections 23900
 test_wamp_session_fast_close                24000
+test_tcp_socket                             24100
 
 echo Note: test test_dealer_disconnect_when_has_connections has been commented out.
 
