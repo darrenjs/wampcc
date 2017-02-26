@@ -21,7 +21,8 @@
 #include <string.h>
 #include <unistd.h>
 
-namespace wampcc {
+namespace wampcc
+{
 
 class io_loop;
 
@@ -31,6 +32,11 @@ class io_loop;
 class tcp_socket
 {
 public:
+  enum class addr_family {
+    unspec = AF_UNSPEC,
+    inet4 = AF_INET,
+    inet6 = AF_INET6,
+  };
 
   /** Type thrown by tcp_socket when actions are attempted when the socket is
    * not in an appropriate state. */
@@ -41,9 +47,11 @@ public:
   };
 
   typedef std::function<void(char*, size_t)> io_on_read;
-  typedef std::function<void(uverr)>         io_on_error;
+  typedef std::function<void(uverr)> io_on_error;
   typedef std::function<void()> on_close_cb;
-  typedef std::function<void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, uverr)> on_accept_cb;
+  typedef std::function<
+      void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, uverr)>
+      on_accept_cb;
 
   tcp_socket(kernel* k);
   ~tcp_socket();
@@ -62,11 +70,14 @@ public:
   /** Reset IO callbacks */
   void reset_listener();
 
-  /** Request a bind and listen */
+  /** Initialise a tcp_socket by creating a listen socket that is bound to the
+   * specified end point. */
   std::future<uverr> listen(int port, on_accept_cb);
+  std::future<uverr> listen(const std::string& node, const std::string& service,
+                            on_accept_cb, addr_family = addr_family::inet4);
 
   /* Request a write */
-  void write(std::pair<const char*, size_t> * srcbuf, size_t count);
+  void write(std::pair<const char*, size_t>* srcbuf, size_t count);
 
   /** Request asynchronous socket close. To detect when close has occured, the
    * caller can wait upon the returned future.  Throws io_loop_closed if IO loop
@@ -86,26 +97,24 @@ public:
 
   bool is_connected() const;
   bool is_listening() const;
-  bool is_closing()   const;
-  bool is_closed()    const;
+  bool is_closing() const;
+  bool is_closed() const;
 
   /** Return whether this tcp_socket has been initialised, which means it is
    * associated with an underlying socket file descriptor (until closed). */
   bool is_initialised() const;
 
-  /** Return the underlying file description, if one is currently associated with
-   * this tcp_socket. */
-  std::pair<bool,int> fd() const;
+  /** Return the underlying file description, if one is currently associated
+   * with this tcp_socket. */
+  std::pair<bool, int> fd() const;
 
-  size_t bytes_read()    const { return m_bytes_read; }
+  size_t bytes_read() const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }
 
   std::shared_future<void> closed_future() const { return m_io_closed_future; }
 
 private:
-
-  enum class socket_state
-  {
+  enum class socket_state {
     init,
     connecting,
     connected,
@@ -116,36 +125,38 @@ private:
 
   tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
   void on_read_cb(ssize_t, const uv_buf_t*);
-  void on_write_cb(uv_write_t *, int);
+  void on_write_cb(uv_write_t*, int);
   void close_once_on_io();
   void do_write();
   void do_close(bool no_linger = false);
   void do_listen(int, std::shared_ptr<std::promise<uverr>>);
+  void do_listen(const std::string& node, const std::string& service,
+                 addr_family, std::shared_ptr<std::promise<uverr>>);
   void on_listen_cb(int);
   void close_impl();
-  kernel * m_kernel;
-  logger & __logger;
+  kernel* m_kernel;
+  logger& __logger;
 
   uv_tcp_t* m_uv_tcp;
 
-  socket_state       m_state;
+  socket_state m_state;
   mutable std::mutex m_state_lock;
 
-  std::unique_ptr< std::promise<void> > m_io_closed_promise;
+  std::unique_ptr<std::promise<void>> m_io_closed_promise;
   std::shared_future<void> m_io_closed_future;
 
   std::atomic<size_t> m_bytes_pending_write;
   size_t m_bytes_written;
   size_t m_bytes_read;
 
-  io_on_read  m_io_on_read;
+  io_on_read m_io_on_read;
   io_on_error m_io_on_error;
 
-  std::vector< uv_buf_t > m_pending_write;
-  std::mutex              m_pending_write_lock;
+  std::vector<uv_buf_t> m_pending_write;
+  std::mutex m_pending_write_lock;
 
-  on_accept_cb            m_user_accept_fn;
-  on_close_cb             m_user_close_fn;
+  on_accept_cb m_user_accept_fn;
+  on_close_cb m_user_close_fn;
 
   friend io_loop;
 };

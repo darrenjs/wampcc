@@ -13,6 +13,8 @@
 
 #include <iostream>
 
+#include <assert.h>
+
 using namespace std;
 
 namespace wampcc
@@ -148,6 +150,7 @@ std::future<uverr> tcp_socket::connect(std::string addr, int port)
     m_state = socket_state::connecting;
   }
 
+  assert(m_uv_tcp == nullptr);
   m_uv_tcp = new uv_tcp_t;
   uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
   m_uv_tcp->data = new uv_handle_data(this);
@@ -237,8 +240,7 @@ void tcp_socket::close_impl()
   closed_promise->set_value();
 }
 
-
-std::pair<bool,int> tcp_socket::fd() const
+std::pair<bool, int> tcp_socket::fd() const
 {
   uv_os_fd_t fd;
   if (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)
@@ -531,6 +533,11 @@ void tcp_socket::do_listen(int port,
 {
   /* IO thread */
 
+  assert(m_uv_tcp == nullptr);
+  m_uv_tcp = new uv_tcp_t;
+  uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
+  m_uv_tcp->data = new uv_handle_data(this);
+
   struct sockaddr_in addr;
   uv_ip4_addr("0.0.0.0", port, &addr);
 
@@ -563,10 +570,6 @@ std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
       throw tcp_socket::error("listen(): tcp_socket already initialised");
   }
 
-  m_uv_tcp = new uv_tcp_t;
-  uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
-  m_uv_tcp->data = new uv_handle_data(this);
-
   m_user_accept_fn = std::move(user_fn);
 
   auto completion_promise = std::make_shared<std::promise<uverr>>();
@@ -583,6 +586,44 @@ bool tcp_socket::is_initialised() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state != socket_state::init;
+}
+
+
+std::future<uverr> tcp_socket::listen(const std::string& node,
+                                      const std::string& service,
+                                      on_accept_cb accept_fn, addr_family af)
+{
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    if (m_state != socket_state::init)
+      throw tcp_socket::error("listen(): tcp_socket already initialised");
+  }
+
+  m_user_accept_fn = std::move(accept_fn);
+
+  auto completion_promise = std::make_shared<std::promise<uverr>>();
+
+  m_kernel->get_io()->push_fn([this, node, service, af, completion_promise]() {
+    this->do_listen(node, service, af, completion_promise);
+  });
+
+  return completion_promise->get_future();
+}
+
+
+void tcp_socket::do_listen(const std::string& node, const std::string& service,
+                           addr_family af,
+                           std::shared_ptr<std::promise<uverr>> ec)
+{
+  /* IO thread */
+
+  // TODO: make attempts to bind to available port
+
+  // m_uv_tcp = new uv_tcp_t;
+  // uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
+  // m_uv_tcp->data = new uv_handle_data(this);
+
+  ec->set_value(-1);
 }
 
 
