@@ -36,7 +36,6 @@ UseTab:          Never
 SpacesInParentheses: false
 SpacesInAngles:  false
 SpaceInEmptyParentheses: false
-SpacesInCStyleCastParentheses: false
 SpacesInContainerLiterals: true
 SpaceBeforeAssignmentOperators: true
 ContinuationIndentWidth: 4
@@ -46,16 +45,21 @@ SpaceBeforeParens: ControlStatements
 DisableFormat:   false
 
 
+# Dont want spaces inside a cast, eg, ( char* )
+SpacesInCStyleCastParentheses: false
+
+# NEEDDS CLANGFORMAT 3.6 -> SpaceAfterCStyleCast : true
+
+
 # Prefer to derive pointer alignment, and in case it cant be,
 # prefer C++ style, with emphasis on the variable type.
-DerivePointerAlignment: true
+DerivePointerAlignment: false
 PointerAlignment: Left
 
 # C++11 stuff
 Cpp11BracedListStyle: true
 
 # Indents
-
 ConstructorInitializerIndentWidth: 2
 
 # SpaceAfterTemplateKeyword: true
