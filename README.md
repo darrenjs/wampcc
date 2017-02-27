@@ -152,7 +152,7 @@ The latest version of *wampcc* can be downloaded from github using:
 git clone https://github.com/darrenjs/wampcc.git
 ```
 
-The will fetch the source files directly from github and place them in a directory named `wampcc/`.
+This will fetch the source files directly from github and place them in a directory named `wampcc/`.
 
 Additional source files are contained in a separate project **jalson**, which provides the *wampcc* json types.  To obtain these sources run the `fetch_prerequisites.sh` script:
 
@@ -185,4 +185,4 @@ Finally the build and install steps are run:
 make install
 ```
 
-If all goes well, upon completion *wampcc* will be installed into the `prefix` location.
+If all goes well *wampcc* will be installed into the `prefix` location.
