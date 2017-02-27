@@ -70,9 +70,9 @@ public:
   /** Reset IO callbacks */
   void reset_listener();
 
-  /** Initialise a tcp_socket by creating a listen socket that is bound to the
-   * specified end point. */
-  std::future<uverr> listen(int port, on_accept_cb);
+  /** Initialise this tcp_socket by creating a listen socket that is bound to
+   * the specified end point. The user callback is called when an incoming 
+   * connection request is accepted. */
   std::future<uverr> listen(const std::string& node, const std::string& service,
                             on_accept_cb, addr_family = addr_family::inet4);
 

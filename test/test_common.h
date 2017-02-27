@@ -84,7 +84,7 @@ public:
            const std::string& /*realm*/) { return "secret2"; };
 
     for (int port = starting_port_number; port < 65535; port++) {
-      std::future<uverr> fut_listen_err = m_route->listen(port, server_auth);
+      std::future<uverr> fut_listen_err = m_route->listen(std::string("127.0.0.1"), std::to_string(port), server_auth);
       std::future_status status =
           fut_listen_err.wait_for(std::chrono::milliseconds(100));
       if (status == std::future_status::ready) {

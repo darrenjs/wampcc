@@ -527,59 +527,6 @@ void tcp_socket::on_listen_cb(int status)
 }
 
 
-void tcp_socket::do_listen(int port,
-                           std::shared_ptr<std::promise<uverr>> sp_promise)
-{
-  /* IO thread */
-
-  assert(m_uv_tcp == nullptr);
-  m_uv_tcp = new uv_tcp_t;
-  uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
-  m_uv_tcp->data = new uv_handle_data(this);
-
-  struct sockaddr_in addr;
-  uv_ip4_addr("0.0.0.0", port, &addr);
-
-  unsigned flags = 0;
-
-  uverr ec = uv_tcp_bind(m_uv_tcp, (const struct sockaddr*)&addr, flags);
-
-  if (ec == 0)
-    ec = uv_listen((uv_stream_t*)m_uv_tcp, 5,
-                   [](uv_stream_t* server, int status) {
-      uv_handle_data* uvhd_ptr = (uv_handle_data*)server->data;
-      uvhd_ptr->tcp_socket_ptr()->on_listen_cb(status);
-    });
-
-  if (ec == 0) {
-    std::lock_guard<std::mutex> guard(m_state_lock);
-    m_state = socket_state::listening;
-  }
-
-  sp_promise->set_value(ec);
-}
-
-
-std::future<uverr> tcp_socket::listen(int port, on_accept_cb user_fn)
-{
-  {
-    std::lock_guard<std::mutex> guard(m_state_lock);
-    if (m_state != socket_state::uninitialised)
-      throw tcp_socket::error("listen(): tcp_socket already initialised");
-  }
-
-  m_user_accept_fn = std::move(user_fn);
-
-  auto completion_promise = std::make_shared<std::promise<uverr>>();
-
-  m_kernel->get_io()->push_fn([this, port, completion_promise]() {
-    this->do_listen(port, completion_promise);
-  });
-
-  return completion_promise->get_future();
-}
-
-
 bool tcp_socket::is_initialised() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);

@@ -8,9 +8,10 @@
 #ifndef WAMPCC_WAMP_ROUTER_H
 #define WAMPCC_WAMP_ROUTER_H
 
-#include "wampcc/wamp_session.h"
 #include "wampcc/error.h"
 #include "wampcc/json.h"
+#include "wampcc/tcp_socket.h"
+#include "wampcc/wamp_session.h"
 
 #include <memory>
 #include <future>
@@ -40,8 +41,8 @@ public:
   /* Asynchronously begin accepting connections on the given port. If the bind
    * and or listen fails, a non-zero error code is returned in the future. */
   std::future<uverr> listen(
-      int port,
-      auth_provider auth); // TODO: needs interface argument
+      const std::string& node, const std::string& service, auth_provider auth,
+      tcp_socket::addr_family = tcp_socket::addr_family::unspec);
 
   /** Publish to an internal topic */
   void publish(const std::string& realm, const std::string& uri,

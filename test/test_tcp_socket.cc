@@ -67,7 +67,7 @@ void test_close_of_listen_socket(int port)
     auth_provider server_auth;
 
     future<uverr> fut =
-        sock->listen(port, [](tcp_socket*, unique_ptr<tcp_socket>&, uverr) {});
+      sock->listen("", to_string(port), [](tcp_socket*, unique_ptr<tcp_socket>&, uverr) {});
     future_status status = fut.wait_for(chrono::milliseconds(100));
     if (status == future_status::timeout)
       throw runtime_error("timeout during listen");

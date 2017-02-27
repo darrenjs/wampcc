@@ -14,7 +14,6 @@
 #include "wampcc/io_loop.h"
 #include "wampcc/tcp_socket.h"
 #include "wampcc/log_macros.h"
-#include "wampcc/tcp_socket.h"
 #include "wampcc/protocol.h"
 
 #include <unistd.h>
@@ -71,11 +70,12 @@ wamp_router::~wamp_router()
 }
 
 
-std::future<uverr> wamp_router::listen(int port, auth_provider auth)
+std::future<uverr> wamp_router::listen(const std::string& node,
+                                       const std::string& service,
+                                       auth_provider auth,
+                                       tcp_socket::addr_family af)
 {
-
-  auto on_new_client =
-      [this, auth](int /* port */, std::unique_ptr<tcp_socket> sock) {
+  auto on_new_client = [this, auth](std::unique_ptr<tcp_socket> sock) {
     /* IO thread */
 
     /* This lambda is invoked the when a socket has been accepted. */
@@ -153,17 +153,18 @@ std::future<uverr> wamp_router::listen(int port, auth_provider auth)
   }
 
   auto fut = ptr->listen(
-      port, [on_new_client, port](tcp_socket*, std::unique_ptr<tcp_socket>& clt,
-                                  uverr ec) {
+      node, service,
+      [on_new_client](tcp_socket*, std::unique_ptr<tcp_socket>& clt, uverr ec) {
         /* IO thread */
 
         if (!ec) {
-          on_new_client(port, std::move(clt));
+          on_new_client(std::move(clt));
         } else {
           std::cout << "TODO: handle case of failure to accept client, ec "
                     << ec << std::endl;
         }
-      });
+      },
+      af);
 
   return fut;
 }
