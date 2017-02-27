@@ -15,12 +15,13 @@
 #include <memory>
 #include <future>
 
-namespace wampcc {
+namespace wampcc
+{
 
-  class kernel;
-  class pubsub_man;
-  class rpc_man;
-  struct rpc_details;
+class kernel;
+class pubsub_man;
+class rpc_man;
+struct rpc_details;
 
 struct dealer_listener
 {
@@ -30,36 +31,29 @@ struct dealer_listener
 class wamp_router : public std::enable_shared_from_this<wamp_router>
 {
 public:
-  wamp_router(kernel *  __svc, dealer_listener*);
+  wamp_router(kernel* __svc, dealer_listener*);
   ~wamp_router();
 
   /** Request asynchronous close */
-//  std::future<void> close();
+  //  std::future<void> close();
 
   /* Asynchronously begin accepting connections on the given port. If the bind
    * and or listen fails, a non-zero error code is returned in the future. */
-  std::future<uverr> listen(int port,
-                            auth_provider auth); // TODO: needs interface argument
+  std::future<uverr> listen(
+      int port,
+      auth_provider auth); // TODO: needs interface argument
 
   /** Publish to an internal topic */
-  void publish(const std::string& realm,
-               const std::string& uri,
-               const json_object& options,
-               wamp_args args);
+  void publish(const std::string& realm, const std::string& uri,
+               const json_object& options, wamp_args args);
 
   /** Provide an internal RPC */
-  void provide(const std::string& realm,
-               const std::string& uri,
-               const json_object& options,
-               rpc_cb cb,
-               void * data = nullptr);
+  void provide(const std::string& realm, const std::string& uri,
+               const json_object& options, rpc_cb cb, void* data = nullptr);
 
 private:
-
   void rpc_registered_cb(const rpc_details&);
-  void handle_inbound_call(wamp_session*,
-                           const std::string&,
-                           wamp_args args,
+  void handle_inbound_call(wamp_session*, const std::string&, wamp_args args,
                            wamp_invocation_reply_fn);
 
   void handle_session_state_change(std::weak_ptr<wamp_session>, bool);
@@ -69,8 +63,8 @@ private:
   wamp_router(const wamp_router&) = delete;
   wamp_router& operator=(const wamp_router&) = delete;
 
-  kernel * m_kernel;
-  logger & __logger; /* name chosen for log macros */
+  kernel* m_kernel;
+  logger& __logger; /* name chosen for log macros */
 
   std::recursive_mutex m_lock;
 
@@ -78,9 +72,9 @@ private:
   std::unique_ptr<pubsub_man> m_pubsub;
 
   std::mutex m_sesions_lock;
-  std::map<t_sid, std::shared_ptr<wamp_session> > m_sessions;
+  std::map<t_sid, std::shared_ptr<wamp_session>> m_sessions;
 
-  std::promise< void > m_promise_on_close;
+  std::promise<void> m_promise_on_close;
 
   dealer_listener* m_listener;
 
