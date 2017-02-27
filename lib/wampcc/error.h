@@ -68,19 +68,7 @@ template <typename _CharT, typename _Traits>
 std::basic_ostream<_CharT, _Traits>& operator<<(
     std::basic_ostream<_CharT, _Traits>& os, uverr ec)
 {
-#ifdef _WIN32
-  // on windows, indicate libuv error
-  if (ec.value() != 0)
-    return (os << "uverr: " << ec.os_value() << ", " << ec.message());
-  else
-    return (os << "uverr: 0");
-#else
-  // on linux, display the Unix error codes
-  if (ec.value() != 0)
-    return (os << ec.os_value() << ", " << ec.message());
-  else
-    return (os << "0");
-#endif
+  return (os << ec.os_value());
 }
 
 } // namespace
