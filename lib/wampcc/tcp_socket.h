@@ -62,6 +62,10 @@ public:
   /** Request TCP connection to a remote end point.  This should only ever be
    * called once. */
   std::future<uverr> connect(std::string addr, int port);
+  std::future<uverr> connect(const std::string& node,
+                             const std::string& service,
+                             addr_family = addr_family::unspec,
+                             bool resolve_addr = true);
 
   /** Request socket begins reading inbound data, with callbacks make on the IO
    * thread. */
@@ -71,10 +75,10 @@ public:
   void reset_listener();
 
   /** Initialise this tcp_socket by creating a listen socket that is bound to
-   * the specified end point. The user callback is called when an incoming 
+   * the specified end point. The user callback is called when an incoming
    * connection request is accepted. */
   std::future<uverr> listen(const std::string& node, const std::string& service,
-                            on_accept_cb, addr_family = addr_family::inet4);
+                            on_accept_cb, addr_family = addr_family::unspec);
 
   /* Request a write */
   void write(std::pair<const char*, size_t>* srcbuf, size_t count);
@@ -129,9 +133,10 @@ private:
   void close_once_on_io();
   void do_write();
   void do_close(bool no_linger = false);
-  void do_listen(int, std::shared_ptr<std::promise<uverr>>);
-  void do_listen(const std::string& node, const std::string& service,
-                 addr_family, std::shared_ptr<std::promise<uverr>>);
+  void do_listen(const std::string&, const std::string&, addr_family,
+                 std::shared_ptr<std::promise<uverr>>);
+  void do_connect(const std::string&, const std::string&, addr_family, bool,
+                  std::shared_ptr<std::promise<uverr>>);
   void on_listen_cb(int);
   void close_impl();
   kernel* m_kernel;

@@ -648,4 +648,55 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
 }
 
 
+std::future<uverr> tcp_socket::connect(const std::string& node,
+                                       const std::string& service,
+                                       addr_family af, bool resolve_addr)
+{
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+
+    if (m_state != socket_state::uninitialised)
+      throw tcp_socket::error("connect(): tcp_socket already initialised");
+
+    m_state = socket_state::connecting;
+  }
+
+  auto completion_promise = std::make_shared<std::promise<uverr>>();
+
+  m_kernel->get_io()->push_fn(
+      [this, node, service, af, resolve_addr, completion_promise]() {
+        //    this->do_listen(node, service, af, completion_promise);
+      });
+
+  return completion_promise->get_future();
+}
+
+
+void tcp_socket::do_connect(const std::string& node, const std::string& service,
+                            addr_family af, bool resolve_addr,
+                            std::shared_ptr<std::promise<uverr>> completion)
+{
+  /* IO thread */
+
+  assert(m_uv_tcp == nullptr);
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+
+  switch (af) {
+    case addr_family::unspec:
+      hints.ai_family = AF_UNSPEC;
+      break;
+    case addr_family::inet4:
+      hints.ai_family = AF_INET;
+      break;
+    case addr_family::inet6:
+      hints.ai_family = AF_INET6;
+      break;
+  }
+
+  completion->set_value(0);
+}
+
+
 } // namespace wampcc
