@@ -150,7 +150,7 @@ int main(int /* argc */, char** /* argv */)
   // start listening for sessions
   int port = 44444;
   std::cout << "listening on port " << port << std::endl;
-  std::future<wampcc::uverr> fut_listen_err = dealer->listen("127.0.0.1", std::to_string(port),
+  std::future<wampcc::uverr> fut_listen_err = dealer->listen("", std::to_string(port),
                                                              server_auth, wampcc::tcp_socket::addr_family::inet4);
   std::future_status status = fut_listen_err.wait_for(std::chrono::seconds(2));
 

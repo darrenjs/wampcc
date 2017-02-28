@@ -86,7 +86,7 @@ message_server::message_server()
   m_dealer->provide(m_private_realm, "shutdown",     {}, [this](wampcc::wamp_invocation& wi){rpc_shutdown(wi);});
 
   int port = 55555;
-  auto fut = m_dealer->listen("127.0.0.1", std::to_string(port),
+  auto fut = m_dealer->listen("", std::to_string(port),
                               server_auth, wampcc::tcp_socket::addr_family::inet4);
   std::future_status status = fut.wait_for(std::chrono::seconds(1));
   switch(status)
