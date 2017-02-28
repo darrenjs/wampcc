@@ -14,7 +14,11 @@ namespace wampcc
 
 const char* uverr::message() const
 {
-  const char* s = uv_strerror(m_value); /* Can leak memory */
-  return s ? s : "unknown";
+  if (m_value == 0)
+    return "";
+  else {
+    const char* s = uv_strerror(m_value); /* Can leak memory */
+    return s ? s : "unknown";
+  }
 }
 }
