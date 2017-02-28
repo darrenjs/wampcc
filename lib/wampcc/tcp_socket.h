@@ -59,9 +59,12 @@ public:
   tcp_socket(const tcp_socket&) = delete;
   tcp_socket& operator=(const tcp_socket&) = delete;
 
-  /** Request TCP connection to a remote end point.  This should only ever be
-   * called once. */
+  /** Request TCP connection to a remote end point, using IPv4 and allowing DNS
+   * resolution.  This should only be called on an uninitialised socket. */
   std::future<uverr> connect(std::string addr, int port);
+
+  /** Request TCP connection to a remote end point.  This should only be called
+   * on an uninitialised socket. */
   std::future<uverr> connect(const std::string& node,
                              const std::string& service,
                              addr_family = addr_family::unspec,
@@ -76,7 +79,9 @@ public:
 
   /** Initialise this tcp_socket by creating a listen socket that is bound to
    * the specified end point. The user callback is called when an incoming
-   * connection request is accepted. */
+   * connection request is accepted. Node can be the empty string, in which case
+   * the listen socket will accept incoming connections from all interfaces
+   * (i.e. INADDR_ANY). */
   std::future<uverr> listen(const std::string& node, const std::string& service,
                             on_accept_cb, addr_family = addr_family::unspec);
 
@@ -100,6 +105,7 @@ public:
   bool close(on_close_cb);
 
   bool is_connected() const;
+  bool is_connect_failed() const;
   bool is_listening() const;
   bool is_closing() const;
   bool is_closed() const;
@@ -122,6 +128,7 @@ private:
     uninitialised,
     connecting,
     connected,
+    connect_failed,
     listening,
     closing,
     closed
@@ -137,6 +144,8 @@ private:
                  std::shared_ptr<std::promise<uverr>>);
   void do_connect(const std::string&, const std::string&, addr_family, bool,
                   std::shared_ptr<std::promise<uverr>>);
+  void connect_completed(uverr, std::shared_ptr<std::promise<uverr>>,
+                         uv_tcp_t*);
   void on_listen_cb(int);
   void close_impl();
   kernel* m_kernel;

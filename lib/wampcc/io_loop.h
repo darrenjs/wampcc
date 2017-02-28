@@ -71,12 +71,6 @@ public:
 
   void on_async();
 
-  void connect(uv_tcp_t * handle,
-               std::string addr,
-               std::string port,
-               bool resolve_hostname,
-               std::function<void(uverr)> on_result);
-
   void cancel_connect(uv_tcp_t*);
 
   /** Push a function for later invocation on the IO thread.  Throws

@@ -117,10 +117,18 @@ bool tcp_socket::is_listening() const
   return m_state == socket_state::listening;
 }
 
+
 bool tcp_socket::is_connected() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == socket_state::connected;
+}
+
+
+bool tcp_socket::is_connect_failed() const
+{
+  std::lock_guard<std::mutex> guard(m_state_lock);
+  return m_state == socket_state::connect_failed;
 }
 
 
@@ -140,37 +148,7 @@ bool tcp_socket::is_closed() const
 
 std::future<uverr> tcp_socket::connect(std::string addr, int port)
 {
-  {
-    std::lock_guard<std::mutex> guard(m_state_lock);
-
-    if (m_state != socket_state::uninitialised)
-      throw tcp_socket::error("connect(): tcp_socket already initialised");
-
-    m_state = socket_state::connecting;
-  }
-
-  assert(m_uv_tcp == nullptr);
-  m_uv_tcp = new uv_tcp_t;
-  uv_tcp_init(m_kernel->get_io()->uv_loop(), m_uv_tcp);
-  m_uv_tcp->data = new uv_handle_data(this);
-
-  bool resolve_hostname = true;
-
-  auto completion_promise = std::make_shared<std::promise<uverr>>();
-
-  auto result_fn = [completion_promise, this](uverr ec) {
-    /* IO thread */
-    if (!ec) {
-      std::lock_guard<std::mutex> guard(m_state_lock);
-      m_state = socket_state::connected;
-    }
-    completion_promise->set_value(ec);
-  };
-
-  m_kernel->get_io()->connect(m_uv_tcp, addr, std::to_string(port),
-                              resolve_hostname, result_fn);
-
-  return completion_promise->get_future();
+  return connect(addr, std::to_string(port), addr_family::inet4, true);
 }
 
 
@@ -587,6 +565,7 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
 
   hints.ai_socktype = SOCK_STREAM; /* Connection based socket */
   hints.ai_flags = AI_PASSIVE;     /* Allow wildcard IP address */
+  hints.ai_protocol = IPPROTO_TCP;
 
   /* getaddrinfo() returns a list of address structures than can be used in
    * later calls to bind or connect */
@@ -665,11 +644,24 @@ std::future<uverr> tcp_socket::connect(const std::string& node,
 
   m_kernel->get_io()->push_fn(
       [this, node, service, af, resolve_addr, completion_promise]() {
-        //    this->do_listen(node, service, af, completion_promise);
+        this->do_connect(node, service, af, resolve_addr, completion_promise);
       });
 
   return completion_promise->get_future();
 }
+
+
+struct connect_context
+{
+  uv_connect_t request; // must be first, allow for casts
+  tcp_socket* socket;
+  std::shared_ptr<std::promise<uverr>> completion;
+
+  connect_context(tcp_socket* s, std::shared_ptr<std::promise<uverr>> p)
+    : socket(s), completion(p)
+  {
+  }
+};
 
 
 void tcp_socket::do_connect(const std::string& node, const std::string& service,
@@ -695,8 +687,82 @@ void tcp_socket::do_connect(const std::string& node, const std::string& service,
       break;
   }
 
-  completion->set_value(0);
+  hints.ai_socktype = SOCK_STREAM; /* Connection based socket */
+  hints.ai_protocol = IPPROTO_TCP;
+  hints.ai_socktype = resolve_addr ? 0 : (AI_NUMERICHOST | AI_NUMERICSERV);
+
+  /* getaddrinfo() returns a list of address structures than can be used in
+   * later calls to bind or connect */
+  uv_getaddrinfo_t req;
+  uverr ec = uv_getaddrinfo(
+      m_kernel->get_io()->uv_loop(), &req, nullptr /* no callback */,
+      node.empty() ? nullptr : node.c_str(),
+      service.empty() ? nullptr : service.c_str(), &hints);
+
+  if (ec) {
+    completion->set_value(ec);
+    return;
+  }
+
+  /* Try each address until a call to connect is successful. On any error we
+   * close the socket and try the next address. */
+  uv_tcp_t* h = nullptr;
+  struct addrinfo* ai = nullptr;
+  for (ai = req.addrinfo; ai != nullptr; ai = ai->ai_next) {
+
+    h = new uv_tcp_t;
+    if (uv_tcp_init(m_kernel->get_io()->uv_loop(), h) != 0) {
+      delete h;
+      continue;
+    }
+
+    auto* ctx = new connect_context(this, completion);
+
+    ec = uv_tcp_connect((uv_connect_t*)ctx, h, ai->ai_addr,
+                        [](uv_connect_t* req, int status) {
+      std::unique_ptr<connect_context> ctx((connect_context*)req);
+      ctx->socket->connect_completed(status, ctx->completion,
+                                     (uv_tcp_t*)req->handle);
+    });
+
+    if (ec == 0)
+      break; /* success, connect in progress */
+
+    delete ctx;
+    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+  }
+
+  uv_freeaddrinfo(req.addrinfo);
+
+  if (ai == nullptr) {
+    /* no address worked, use the last error code seen if non-zero */
+    completion->set_value(ec ? ec : UV_EADDRNOTAVAIL);
+    return;
+  }
+
+  /* Note: completion is only set during the connect_completed callback */
 }
 
+
+void tcp_socket::connect_completed(
+    uverr ec, std::shared_ptr<std::promise<uverr>> completion, uv_tcp_t* h)
+{
+  /* IO thread */
+  std::lock_guard<std::mutex> guard(m_state_lock);
+
+  assert(m_uv_tcp == nullptr);
+  assert(m_state == socket_state::connecting);
+
+  if (ec == 0) {
+    m_state = socket_state::connected;
+    m_uv_tcp = h;
+    m_uv_tcp->data = new uv_handle_data(this);
+  } else {
+    m_state = socket_state::connect_failed;
+    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+  }
+
+  completion->set_value(ec);
+}
 
 } // namespace wampcc

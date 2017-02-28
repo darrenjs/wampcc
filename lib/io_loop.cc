@@ -28,17 +28,11 @@ struct io_request
   {
     cancel_handle,
     close_loop,
-    connect,
     function
   } type;
 
   logger & logptr;
-  std::string addr;
-  std::string port;
-  bool resolve_hostname;
-
   uv_tcp_t * tcp_handle = nullptr;
-  std::function<void(uverr)> on_connect_result;
   std::function<void()> user_fn;
 
   io_request(request_type __type,
@@ -46,17 +40,7 @@ struct io_request
     : type(__type),
       logptr(__logger)
   {}
-
 };
-
-
-void io_loop::on_tcp_connect_cb(uv_connect_t* connect_req, int status)
-{
-  /* IO thread */
-
-  std::unique_ptr<io_request> ioreq ((io_request*) connect_req->data );
-  ioreq->on_connect_result( uverr(status));
-}
 
 
 io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
@@ -146,78 +130,6 @@ void io_loop::on_async()
             delete handle;
           });
     }
-    else if (user_req->type == io_request::request_type::connect)
-    {
-      std::unique_ptr<io_request> req( std::move(user_req) );
-
-      const struct sockaddr* addrptr;
-      struct sockaddr_in inetaddr;
-      memset(&inetaddr, 0, sizeof(inetaddr));
-
-      uverr ec;
-      uv_getaddrinfo_t resolver;
-      memset(&resolver, 0, sizeof(resolver));
-
-      if (req->resolve_hostname)
-      {
-        struct addrinfo hints;
-        memset(&hints, 0, sizeof(hints));
-        hints.ai_family = PF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
-        hints.ai_flags = 0;
-
-        ec = uv_getaddrinfo(m_uv_loop, &resolver, nullptr,
-                            req->addr.c_str(), req->port.c_str(),
-                           &hints);
-
-        if (ec) // failed
-        {
-          req->on_connect_result(ec);
-          return;
-        }
-
-        addrptr = resolver.addrinfo->ai_addr;
-      }
-      else
-      {
-        // use inet_pton functions
-        uv_ip4_addr(req->addr.c_str(), atoi(req->port.c_str()), &inetaddr);
-        addrptr = (const struct sockaddr*) &inetaddr;
-      }
-
-      std::unique_ptr<uv_connect_t> connect_req ( new uv_connect_t() );
-      connect_req->data = (void*) req.get();
-
-      LOG_INFO("making new tcp connection to " << req->addr.c_str() <<  ":" << req->port);
-
-      ec = uv_tcp_connect(
-        connect_req.get(),
-        req->tcp_handle,
-        addrptr,
-        [](uv_connect_t* __req, int status)
-        {
-          std::unique_ptr<uv_connect_t> connect_req(__req);
-          io_loop * ioloop = static_cast<io_loop* >(__req->handle->loop->data);
-          try
-          {
-            ioloop->on_tcp_connect_cb(__req, status);
-          }
-          catch (...){}
-        });
-
-      if (!ec)
-      {
-        // resource ownership transfered to UV callback, so req and connect_req
-        // managed there
-        req.release();
-        connect_req.release();
-      }
-      else
-      {
-        req->on_connect_result(ec);
-      }
-    }
     else if (user_req->type == io_request::request_type::close_loop)
     {
       /* close event handler run at function exit */
@@ -295,26 +207,6 @@ void io_loop::run_loop()
       LOG_ERROR("uknown io_loop exception");
     }
   }
-}
-
-
-void io_loop::connect(uv_tcp_t * handle,
-                      std::string addr,
-                      std::string port,
-                      bool resolve_hostname,
-                      std::function<void(uverr)> on_result)
-{
-  // create the handle, need it here, so that the caller can later request
-  // cancellation
-
-  std::unique_ptr<io_request> r( new io_request(io_request::request_type::connect, __logger ) );
-  r->tcp_handle = handle;
-  r->addr = addr;
-  r->port = port;
-  r->resolve_hostname = resolve_hostname;
-  r->on_connect_result = on_result;
-
-  push_request(std::move(r));
 }
 
 
