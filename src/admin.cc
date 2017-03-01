@@ -42,7 +42,7 @@ struct user_options
 {
   std::string username;
   std::string password;
-  std::string realm;
+  user_optional<std::string> realm;
 
   user_optional<std::string> addr;
   user_optional<std::string> port;
@@ -275,9 +275,6 @@ static void process_options(int argc, char** argv)
       if (not uri_check.is_strict_uri(i.c_str()))
         die("not strict uri: " + i);
   }
-
-  if (uopts.username.empty()) die("missing username");
-  if (uopts.realm.empty())    die("missing realm");
 }
 
 std::string get_timestamp()
@@ -387,7 +384,7 @@ int main_impl(int argc, char** argv)
     throw std::runtime_error("failed to obtain wamp session");
 
   wampcc::client_credentials credentials;
-  credentials.realm  = uopts.realm;
+  credentials.realm  = uopts.realm? uopts.realm.value() : "default_realm";
   credentials.authid = uopts.username;
   credentials.authmethods = {"wampcra"};
   credentials.secret_fn = [=]() -> std::string { return uopts.password; };
