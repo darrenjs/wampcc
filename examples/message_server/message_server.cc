@@ -100,7 +100,7 @@ message_server::message_server()
       if (ec != 0)
       {
         std::ostringstream os;
-        os << "listen failed on port " << port << ", " << ec;
+        os << "listen failed on port " << port << ", " << ec.message();
         throw std::runtime_error(os.str());
       }
       else
