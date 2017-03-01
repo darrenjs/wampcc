@@ -1042,14 +1042,14 @@ void wamp_session::process_inbound_invocation(json_array & msg)
       invoke.args.args_dict = std::move(msg[4].as_object());
 
     session_handle wp = this->handle();
-    invoke.yield = [wp,request_id](json_array arg_list, json_object arg_dict)
+    invoke.yield_fn = [wp,request_id](json_array arg_list, json_object arg_dict)
       {
         wamp_args args { arg_list, arg_dict };
         if (auto sp = wp.lock())
           sp->invocation_yield(request_id, std::move(args));
       };
 
-    invoke.error = [wp,request_id](std::string error_uri,json_array arg_list, json_object arg_dict)
+    invoke.error_fn = [wp,request_id](std::string error_uri,json_array arg_list, json_object arg_dict)
       {
         wamp_args args { arg_list, arg_dict };
         if (auto sp = wp.lock())

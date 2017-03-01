@@ -83,7 +83,7 @@ session->provide(
     for (auto & item : invoke.args.args_list)
       if (item.as_int())
         total += item.as_int();
-    invoke.yield({total}, {});
+    invoke.yield({total});
   });
 ```
 

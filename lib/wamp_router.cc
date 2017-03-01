@@ -221,14 +221,14 @@ void wamp_router::handle_inbound_call(
           invoke.user = rpc.user_data;
           invoke.args = std::move(args);
 
-          invoke.yield = [fn](json_array arg_list, json_object arg_dict) {
+          invoke.yield_fn = [fn](json_array arg_list, json_object arg_dict) {
             wamp_args args{std::move(arg_list), std::move(arg_dict)};
             if (fn)
               fn(args, std::unique_ptr<std::string>());
           };
 
-          invoke.error = [fn](std::string error_uri, json_array arg_list,
-                              json_object arg_dict) {
+          invoke.error_fn = [fn](std::string error_uri, json_array arg_list,
+                                 json_object arg_dict) {
             wamp_args args{std::move(arg_list), std::move(arg_dict)};
             if (fn)
               fn(args,

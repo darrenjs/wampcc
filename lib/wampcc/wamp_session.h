@@ -139,9 +139,18 @@ namespace wampcc {
     wamp_args   args;
     json_object details;
     void *      user = nullptr;
+    std::function<void(json_array, json_object)> yield_fn;
+    std::function<void(std::string, json_array, json_object)> error_fn;
 
-    std::function<void(json_array, json_object)> yield;
-    std::function<void(std::string, json_array, json_object)> error;
+    /* Wrappers to yield_fn */
+    void yield(json_array arr) { yield_fn(std::move(arr), {}); }
+    void yield(json_object obj) { yield_fn({}, std::move(obj)); }
+    void yield(json_array arr, json_object obj) { yield_fn(std::move(arr), std::move(obj)); }
+
+    /* Wrapper to error_fn */
+    void error(std::string txt, json_array arr) { error_fn(std::move(txt), std::move(arr), {}); }
+    void error(std::string txt, json_object obj) { error_fn(std::move(txt), {}, std::move(obj)); }
+    void error(std::string txt, json_array arr, json_object obj) { error_fn(std::move(txt), std::move(arr), std::move(obj)); }
 
     wamp_invocation() : user(nullptr) {}
   };
