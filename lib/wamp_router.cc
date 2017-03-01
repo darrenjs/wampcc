@@ -22,15 +22,13 @@
 namespace wampcc
 {
 
-wamp_router::wamp_router(kernel* __svc, dealer_listener* l)
+wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb)
   : m_kernel(__svc),
     __logger(__svc->get_logger()),
     m_rpcman(new rpc_man(
         __svc, [this](const rpc_details& r) { this->rpc_registered_cb(r); })),
     m_pubsub(new pubsub_man(__svc)),
-    m_listener(l)
-
-    {};
+    m_on_rpc_registered(cb){};
 
 
 wamp_router::~wamp_router()
@@ -51,7 +49,6 @@ wamp_router::~wamp_router()
     sock->closed_future().wait();
   server_socks.clear();
 
-
   /* Next close our wamp_sessions */
   std::map<t_sid, std::shared_ptr<wamp_session>> sessions;
   {
@@ -64,9 +61,8 @@ wamp_router::~wamp_router()
     item.second->closed_future().wait();
   sessions.clear();
 
-
   std::lock_guard<std::recursive_mutex> guard(m_lock);
-  m_listener = nullptr;
+  m_on_rpc_registered = nullptr;
 }
 
 
@@ -197,8 +193,8 @@ void wamp_router::publish(const std::string& realm, const std::string& topic,
 void wamp_router::rpc_registered_cb(const rpc_details& r)
 {
   std::lock_guard<std::recursive_mutex> guard(m_lock);
-  if (m_listener)
-    m_listener->rpc_registered(r.uri);
+  if (m_on_rpc_registered)
+    m_on_rpc_registered(r.uri);
 }
 
 
@@ -242,9 +238,9 @@ void wamp_router::handle_inbound_call(
 
       } else {
         /* CALL request is for an external RPC */
-        if (auto sp = rpc.session.lock()) {
+        if (auto sp = rpc.session.lock())
           sp->invocation(rpc.registration_id, json_object(), args, fn);
-        } else
+        else
           throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
       }
     } else {

@@ -24,15 +24,14 @@ class pubsub_man;
 class rpc_man;
 struct rpc_details;
 
-struct dealer_listener
-{
-  virtual void rpc_registered(std::string uri) = 0;
-};
+
+/* Callback type invoked when a wamp_router has been provided with a new RPC. */
+typedef std::function<void(std::string)> on_rpc_registered;
 
 class wamp_router : public std::enable_shared_from_this<wamp_router>
 {
 public:
-  wamp_router(kernel* __svc, dealer_listener*);
+  wamp_router(kernel* __svc, on_rpc_registered = nullptr);
   ~wamp_router();
 
   /** Request asynchronous close */
@@ -77,7 +76,7 @@ private:
 
   std::promise<void> m_promise_on_close;
 
-  dealer_listener* m_listener;
+  on_rpc_registered m_on_rpc_registered;
 
   std::mutex m_server_sockets_lock;
   std::vector<std::unique_ptr<tcp_socket>> m_server_sockets;
