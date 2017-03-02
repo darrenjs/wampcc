@@ -24,20 +24,19 @@ int main(int argc, char** argv)
 
     wamp_router router(&the_kernel, nullptr);
 
-    /* Listen for clients on IPv4 port, no authentication. */
+    /* Accept clients on IPv4 port, without authentication. */
 
     auto fut = router.listen(auth_provider::no_auth_required(), 55555);
 
     if (auto ec = fut.get())
       throw runtime_error(ec.message());
 
-    /* Provide an RPC */
+    /* Provide an RPC. */
 
-    router.provide(
-        "default_realm", "greeting", {},
-        [](wamp_invocation& invocation) {
-          invocation.yield({"hello"});
-        });
+    router.provide("default_realm", "greeting", {},
+                   [](wamp_invocation& invocation) {
+                     invocation.yield({"hello"});
+                   });
 
     /* Suspend main thread */
 
