@@ -14,13 +14,6 @@
 #include <memory>
 #include <mutex>
 
-#define THROW(E, X )  do                        \
-  {                                             \
-    std::ostringstream __os;                    \
-    __os << X ;                                 \
-    throw E ( __os.str() );                     \
-  } while(false);
-
 namespace wampcc {
 
 struct logger;
