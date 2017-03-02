@@ -37,11 +37,14 @@ public:
   /** Request asynchronous close */
   //  std::future<void> close();
 
-  /* Asynchronously begin accepting connections on the given port. If the bind
-   * and or listen fails, a non-zero error code is returned in the future. */
+  /** Asynchronously begin accepting connections on given port. If the bind
+   * or listen fails, a non-zero error code is returned in the future. */
   std::future<uverr> listen(
       const std::string& node, const std::string& service, auth_provider auth,
       tcp_socket::addr_family = tcp_socket::addr_family::unspec);
+
+  /** Asynchronously accept, on given port, using IPv4 */
+  std::future<uverr> listen(auth_provider auth, int port);
 
   /** Publish to an internal topic */
   void publish(const std::string& realm, const std::string& uri,

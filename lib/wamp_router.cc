@@ -166,6 +166,10 @@ std::future<uverr> wamp_router::listen(const std::string& node,
 }
 
 
+std::future<uverr> wamp_router::listen(auth_provider aut, int p) {
+  return listen("", std::to_string(p), aut, tcp_socket::addr_family::inet4);
+}
+
 void wamp_router::provide(const std::string& realm, const std::string& uri,
                           const json_object& options, rpc_cb user_cb,
                           void* user_data)
