@@ -39,9 +39,7 @@ int main(int argc, char** argv)
 
     /* Suspend main thread */
 
-    promise<void> unset;
-    unset.get_future().wait();
-    return 0;
+    return pause();
   }
   catch (const exception& e) {
     cout << e.what() << endl;
