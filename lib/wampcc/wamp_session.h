@@ -33,10 +33,10 @@ namespace wampcc {
 
   /** Handler interface for server-side authentication.  An instance of
    * auth_provider must be provided to each server-side wamp_session, which
-   * allows that session to perform authentication with the peer. */
+   * allows that session to authenticate its peer. */
   struct auth_provider
   {
-    enum class required
+    enum class mode
     {
       forbidden,    /* user not permitted */
       open,         /* user allowed without authentication */
@@ -44,18 +44,41 @@ namespace wampcc {
     };
 
     /* auth_plan combines auth requirement plus list of supported methods */
-    typedef std::tuple<required, std::set<std::string>> auth_plan;
+    typedef std::tuple<mode, std::set<std::string>> auth_plan;
 
+    /* Return the name of this authenticate provider, eg 'userdb' */
     std::function<std::string(const std::string& realm)> provider_name;
 
-    /* Deal with request for user access to realm. Must return the
-     * authentication requirement and a set of supported authentication
-     * methods. */
+    /* Handle request for user access to realm. Must return the authentication
+     * mode and a set of supported authentication methods (which are then
+     * applicable if mode==authenticate). */
     std::function<
       auth_plan
-      (const std::string& user, const std::string& realm) > permit_user_realm;
+      (const std::string& user, const std::string& realm) > policy;
 
-    std::function<std::string(const std::string& user, const std::string& realm)> get_user_secret;
+    /* Optionally handle the wamp CRA check. This function must fetch the secret
+     * associated with the user & realm, apply it to the challenge, and
+     * determine if the challenge matches the response. If this is not
+     * implemented then the wamp session will request the user secret and
+     * perform the check itself. */
+    std::function<bool(const std::string& user, const std::string& realm,
+                       const std::string& challenge,
+                       const std::string& response)> check_cra;
+
+    /* Obtain the secret for given user and realm. Required if check_cra is not
+     * provided. */
+    std::function<std::string(const std::string& user,
+                              const std::string& realm)> user_secret;
+
+    /* Create an auth_provider object which implements a
+     * no-authentication-required policy. */
+    static auth_provider no_auth_required() {
+      return auth_provider {
+        [](const std::string&){ return "no_auth_required"; },
+        [](const std::string&, const std::string&) {
+          return auth_plan{mode::open,{}}; },
+          nullptr, nullptr };
+    }
   };
 
   struct server_msg_handler
@@ -353,7 +376,7 @@ namespace wampcc {
 
     void update_state_for_outbound(const json_array& msg);
 
-    void send_msg(json_array&, bool final=false);
+    void send_msg(json_array&);
 
     void upgrade_protocol(std::unique_ptr<protocol>&);
 

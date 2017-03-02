@@ -73,13 +73,13 @@ public:
   {
     auth_provider server_auth;
     server_auth.provider_name = [](const std::string) { return "programdb"; };
-    server_auth.permit_user_realm =
+    server_auth.policy =
         [](const std::string& /*user*/, const std::string& /*realm*/) {
       std::set<std::string> methods{"wampcra"};
-      return std::make_tuple(auth_provider::required::authenticate,
+      return std::make_tuple(auth_provider::mode::authenticate,
                              std::move(methods));
     };
-    server_auth.get_user_secret =
+    server_auth.user_secret =
         [](const std::string& /*user*/,
            const std::string& /*realm*/) { return "secret2"; };
 
