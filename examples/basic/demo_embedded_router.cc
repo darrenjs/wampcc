@@ -7,7 +7,6 @@
 
 #include "wampcc/wampcc.h"
 
-#include <memory>
 #include <iostream>
 
 using namespace wampcc;
