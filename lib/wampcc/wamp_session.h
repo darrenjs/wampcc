@@ -234,8 +234,8 @@ namespace wampcc {
     template<typename T>
     static std::shared_ptr<wamp_session> create(kernel* k,
                                                 std::unique_ptr<tcp_socket> socket,
-                                                state_fn state_cb,
-                                                typename T::options protocol_options)
+                                                state_fn state_cb = nullptr,
+                                                typename T::options protocol_options = {})
     {
       protocol_builder_fn factory_fn;
       factory_fn = [protocol_options](tcp_socket* socket,
