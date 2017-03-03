@@ -31,34 +31,32 @@ Here is what programming with *wampcc* looks like.
 
 Before a WAMP session can be established, a `tcp_socket` has to be created and connected to a WAMP router / dealer server.
 
-After the socket is successfully connected it is used to construct a `wamp_session`. Next the login sequence is initiated to establish he logical WAMP session.
+After the socket is successfully connected it is used to construct a `wamp_session`. Next the login sequence is initiated to establish the logical WAMP session.
 
 All *wampcc* objects make use of a shared `kernel` object, which provides threads for event handling and socket IO.
 
 ```c++
 /* Create the wampcc kernel. */
 
-kernel the_kernel({}, logger::stdout());
+kernel the_kernel;
 
 /* Create the TCP socket and attempt to connect. */
 
 std::unique_ptr<tcp_socket> socket(new tcp_socket(&the_kernel));
 socket->connect("127.0.0.1", 55555).wait_for(std::chrono::seconds(3));
 
-if (not socket->is_connected())
+if (!socket->is_connected())
   throw std::runtime_error("connect failed");
 
 /* With the connected socket, create a wamp session & logon to the realm
  * called 'default_realm'. */
 
 auto session = wamp_session::create<rawsocket_protocol>(
-  &the_kernel,
-  std::move(socket),
-  [](session_handle, bool) { /* handle on-close */ }, {});
+  &the_kernel, std::move(socket));
 
 session->initiate_hello({"default_realm"}).wait_for(std::chrono::seconds(3));
 
-if (not session->is_open())
+if (!session->is_open())
   throw std::runtime_error("realm logon failed");
 ```
 

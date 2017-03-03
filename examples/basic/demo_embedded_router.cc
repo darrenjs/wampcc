@@ -21,7 +21,7 @@ int main(int, char**)
 
     /* Create the embedded wamp router. */
 
-    wamp_router router(&the_kernel, nullptr);
+    wamp_router router(&the_kernel);
 
     /* Accept clients on IPv4 port, without authentication. */
 
@@ -30,18 +30,16 @@ int main(int, char**)
     if (auto ec = fut.get())
       throw runtime_error(ec.message());
 
-    /* Provide an RPC. */
+    /* Provide an RPC named 'greeting' on realm 'default_realm'. */
 
-    router.provide("default_realm", "greeting", {},
-                   [](wamp_invocation& invocation) {
-                     invocation.yield({"hello"});
-                   });
+    router.provide(
+        "default_realm", "greeting", {},
+        [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
 
     /* Suspend main thread */
 
-    return pause();
-  }
-  catch (const exception& e) {
+    pause();
+  } catch (const exception& e) {
     cout << e.what() << endl;
     return 1;
   }
