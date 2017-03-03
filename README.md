@@ -118,6 +118,37 @@ session->closed_future().wait_for(std::chrono::minutes(10));
 session->close().wait();
 ```
 
+**Embedding a wamp router**
+
+An embedded wamp router is provided by creating a `wamp_router` object. 
+
+```c++
+/* Create an embedded wamp router. */
+
+wamp_router router(&the_kernel);
+```
+
+It is instructed to begin listening on a particular port for new clients,  and the policy to use for WAMP session authentication.
+
+```c++
+/* Accept clients on IPv4 port, without authentication. */
+
+auto fut = router.listen(auth_provider::no_auth_required(), 55555);
+
+if (auto ec = fut.get())
+  throw runtime_error(ec.message());
+```
+
+An RPC is provided by defining its realm & name through which a WAMP session can invoke it, together with the lambda function which does the actual work of yielding the response.
+
+```c++
+    /* Provide an RPC named 'greeting' on realm 'default_realm'. */
+
+    router.provide(
+        "default_realm", "greeting", {},
+        [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
+```
+
 
 ## Building wampcc
 

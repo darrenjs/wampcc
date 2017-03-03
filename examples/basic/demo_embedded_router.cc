@@ -19,7 +19,7 @@ int main(int, char**)
 
     kernel the_kernel;
 
-    /* Create the embedded wamp router. */
+    /* Create an embedded wamp router. */
 
     wamp_router router(&the_kernel);
 
