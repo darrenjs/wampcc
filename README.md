@@ -149,6 +149,14 @@ An RPC is provided by defining its realm & name through which a WAMP session can
         [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
 ```
 
+The complete listing for these examples can be found at:
+
+ - [demo_embedded_router.cc](https://github.com/darrenjs/wampcc/blob/master/examples/basic/demo_embedded_router.cc)
+ - [demo_client.cc](https://github.com/darrenjs/wampcc/blob/master/examples/basic/demo_client.cc)
+
+
+
+
 
 ## Building wampcc
 
