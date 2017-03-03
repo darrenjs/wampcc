@@ -104,6 +104,10 @@ public:
    * IO loop has already been closed. */
   bool close(on_close_cb);
 
+  /** Obtain future that is set only when this tcp_socket is closed for future
+   * callback events.*/
+  std::shared_future<void> closed_future() const { return m_io_closed_future; }
+
   bool is_connected() const;
   bool is_connect_failed() const;
   bool is_listening() const;
@@ -115,13 +119,12 @@ public:
   bool is_initialised() const;
 
   /** Return the underlying file description, if one is currently associated
-   * with this tcp_socket. */
+   * with this tcp_socket. The first member of the pair indicates if the fd is
+   * available. */
   std::pair<bool, int> fd() const;
 
   size_t bytes_read() const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }
-
-  std::shared_future<void> closed_future() const { return m_io_closed_future; }
 
 private:
   enum class socket_state {
