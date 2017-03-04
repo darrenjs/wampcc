@@ -1,4 +1,4 @@
-/* Base64 encoder/decoder. Originally Apache file ap_base64.c. Modified to
+/* Base64 encoder/decoder. Originally Apache file ap_base64.h. Modified to
  * remove references to EBDIC.
  */
 

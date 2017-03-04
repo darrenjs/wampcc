@@ -141,11 +141,11 @@ int main(int /* argc */, char** /* argv */)
 
   wampcc::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
-  server_auth.permit_user_realm = [](const std::string& /*user*/,
-                                     const std::string& /*realm*/){
-    return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::open, {});
+  server_auth.policy = [](const std::string& /*user*/,
+                          const std::string& /*realm*/){
+    return wampcc::auth_provider::auth_plan(wampcc::auth_provider::mode::open, {});
   };
-  server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "";};
+  server_auth.user_secret = [](const std::string& /*user*/, const std::string& /*realm*/){ return "";};
 
   // start listening for sessions
   int port = 44444;

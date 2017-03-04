@@ -69,16 +69,16 @@ message_server::message_server()
 {
   wampcc::auth_provider server_auth;
   server_auth.provider_name = [](const std::string){ return "programdb"; };
-  server_auth.permit_user_realm = [&](const std::string& /*user*/,
-                                      const std::string& realm){
+  server_auth.policy = [&](const std::string& /*user*/,
+                           const std::string& realm){
     if (realm == m_public_realm)
-      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::open, {});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::mode::open, {});
     else if (realm == m_private_realm)
-      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::authenticate, {"wampcra"});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::mode::authenticate, {"wampcra"});
     else
-      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::required::forbidden, {});
+      return wampcc::auth_provider::auth_plan(wampcc::auth_provider::mode::forbidden, {});
   };
-  server_auth.get_user_secret   = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
+  server_auth.user_secret = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
 
   // TODO: would be preferable to obtain an internal_session object, and use that to register the RPC's etc.
   m_dealer->provide(m_public_realm,  "message_set",  {}, [this](wampcc::wamp_invocation& wi){rpc_message_set(wi); });
