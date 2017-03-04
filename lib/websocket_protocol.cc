@@ -10,10 +10,12 @@
 #include "wampcc/utils.h"
 #include "wampcc/tcp_socket.h"
 #include "wampcc/http_parser.h"
+#include "external/apache/base64.h"
 
 #include <iostream>
 
 #include <string.h>
+#include <assert.h>
 
 #include <openssl/sha.h>
 #include <arpa/inet.h>
@@ -35,25 +37,6 @@ websocket_protocol::websocket_protocol(tcp_socket* h,
 {
 }
 
-const char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-std::string base64Encode(const void* dataVoid, size_t length) {
-    std::string output;
-    auto data = reinterpret_cast<const uint8_t*>(dataVoid);
-    for (auto i = 0u; i < length; i += 3) {
-        auto bytesLeft = length - i;
-        auto b0 = data[i];
-        auto b1 = bytesLeft > 1 ? data[i + 1] : 0;
-        auto b2 = bytesLeft > 2 ? data[i + 2] : 0;
-        output.push_back(cb64[b0 >> 2]);
-        output.push_back(cb64[((b0 & 0x03) << 4) | ((b1 & 0xf0) >> 4)]);
-        output.push_back((bytesLeft > 1 ? cb64[((b1 & 0x0f) << 2) | ((b2 & 0xc0) >> 6)] : '='));
-        output.push_back((bytesLeft > 2 ? cb64[b2 & 0x3f] : '='));
-    }
-    return output;
-}
-
-
 
 inline std::string make_accept_key(const std::string& challenge)
 {
@@ -62,15 +45,13 @@ inline std::string make_accept_key(const std::string& challenge)
 
   SHA1((const unsigned char*)full_key.c_str(), full_key.size(), obuf);
 
+  char tmp[50] = {0};
+  assert(ap_base64encode_len(sizeof(obuf)) < (int)sizeof(tmp));
+  assert(tmp[sizeof(tmp)-1] == 0);
 
-  // SHA1 hasher;
-  // hasher.Input(fullString.c_str(), fullString.size());
-  // unsigned hash[5];
-  // hasher.Result(hash);
-  // for (int i = 0; i < 5; ++i) {
-  //   hash[i] = htonl(hash[i]);
-  // }
-  return base64Encode(obuf, 20);
+  ap_base64encode(tmp, (char*)obuf, sizeof(obuf));
+
+  return tmp;
 }
 
 
@@ -387,8 +368,14 @@ void websocket_protocol::initiate(t_initiate_cb cb)
   std::random_device rd;
   std::mt19937 engine( rd() );
   std::uniform_int_distribution<> distr(0x00, 0xFF);
-  for (auto & x : nonce) x = distr(engine);
-  auto sec_websocket_key = base64Encode(nonce, sizeof(nonce));
+  for (auto & x : nonce)
+    x = distr(engine);
+
+  char sec_websocket_key[30] = { 0 };
+  assert(sec_websocket_key[sizeof(sec_websocket_key)-1] == 0);
+  assert(ap_base64encode_len(sizeof(nonce)) < (int)sizeof(sec_websocket_key));
+
+  ap_base64encode(sec_websocket_key, nonce, sizeof(nonce));
 
   std::ostringstream oss;
   oss << "GET / HTTP/1.1\r\n"

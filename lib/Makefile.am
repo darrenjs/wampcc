@@ -5,7 +5,7 @@
 # it under the terms of the MIT license. See LICENSE for details.
 #
 
-AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)/external/http_parser  -I$(jalsoninc) $(libuvinc)
+AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)  -I$(jalsoninc) $(libuvinc)
 
 AM_LDFLAGS=-lpthread
 
@@ -29,7 +29,8 @@ wampcc/error.h wampcc/wampcc.h
 libwampcc_la_SOURCES = wamp_session.cc tcp_socket.cc wamp_router.cc			\
 event_loop.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc		\
 protocol.cc rawsocket_protocol.cc websocket_protocol.cc						\
-../external/http_parser/http_parser.c http_parser.cc data_model.cc error.cc
+../external/http_parser/http_parser.c http_parser.cc data_model.cc error.cc	\
+../external/apache/base64.c
 
 
 # Include compile and link flags for an individual library.
