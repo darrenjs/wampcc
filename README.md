@@ -123,12 +123,10 @@ session->close().wait();
 An embedded wamp router is provided by creating a `wamp_router` object. 
 
 ```c++
-/* Create an embedded wamp router. */
-
 wamp_router router(&the_kernel);
 ```
 
-It is instructed to begin listening on a particular port for new clients,  and the policy to use for WAMP session authentication.
+It is instructed to begin listening on a particular port for new clients, together with the policy to use for authentication.
 
 ```c++
 /* Accept clients on IPv4 port, without authentication. */
@@ -139,23 +137,18 @@ if (auto ec = fut.get())
   throw runtime_error(ec.message());
 ```
 
-An RPC is provided by defining its realm & name through which a WAMP session can invoke it, together with the lambda function which does the actual work of yielding the response.
+An individual RPC is provided by defining the realm & name through which it can be called by a WAMP session, together with the lambda function which does the actual work of yielding a response.
 
 ```c++
-    /* Provide an RPC named 'greeting' on realm 'default_realm'. */
-
-    router.provide(
-        "default_realm", "greeting", {},
-        [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
+router.provide(
+    "default_realm", "greeting", {},
+    [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
 ```
 
 The complete listing for these examples can be found at:
 
  - [demo_embedded_router.cc](https://github.com/darrenjs/wampcc/blob/master/examples/basic/demo_embedded_router.cc)
  - [demo_client.cc](https://github.com/darrenjs/wampcc/blob/master/examples/basic/demo_client.cc)
-
-
-
 
 
 ## Building wampcc
@@ -194,7 +187,7 @@ git clone https://github.com/darrenjs/wampcc.git
 
 This will fetch the source files directly from github and place them in a directory named `wampcc/`.
 
-Additional source files are contained in a separate project **jalson**, which provides the *wampcc* json types.  To obtain these sources run the `fetch_prerequisites.sh` script:
+Additional source files are contained in a separate project named **jalson**, which provides the *wampcc* json types.  To obtain these sources run the `fetch_prerequisites.sh` script:
 
 ```bash
 cd wampcc/
