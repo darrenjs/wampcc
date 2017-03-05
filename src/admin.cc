@@ -99,14 +99,14 @@ void rpc_call_cb(wampcc::wamp_call_result r)
     std::cout << "received error, " << r.error_uri << ", args="
               << r.args.args_list << ", cb_user_data: " << msg
               << ", reqid: " << r.reqid
-              << ", proc:" << r.procedure ;
+              << ", proc:" << r.procedure << std::endl;
   }
   else
   {
     std::cout << "received result, args="
               << r.args.args_list << ", cb_user_data: " << msg
               << ", reqid: " << r.reqid
-              << ", proc:" << r.procedure;
+              << ", proc:" << r.procedure << std::endl;
   }
   std::lock_guard< std::mutex > guard( event_queue_mutex );
   event_queue.push( eReplyReceived );
@@ -128,7 +128,6 @@ void session_state_cb(bool is_open)
 
   if (!is_open)
   {
-    std::cout << "wamp session closed" << std::endl;
     std::lock_guard< std::mutex > guard( event_queue_mutex );
     event_queue.push( eClosed );
     event_queue_condition.notify_one();
@@ -408,8 +407,6 @@ int main_impl(int argc, char** argv)
     throw std::runtime_error("wamp session could not be established");
 
   /* WAMP session is now open  */
-
-  std::cout << "wamp session open" << std::endl;
 
   bool long_wait = false;
   bool wait_reply = false;
