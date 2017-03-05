@@ -18,6 +18,21 @@
 namespace wampcc
 {
 
+const char * tcp_socket::to_string(socket_state s)
+ {
+   switch (s)
+   {
+     case socket_state::uninitialised : return "uninitialised";
+     case socket_state::connecting : return "connecting";
+     case socket_state::connected: return "connected";
+     case socket_state::connect_failed: return "connect_failed";
+     case socket_state::listening: return "listening";
+     case socket_state::closing: return "closing";
+     case socket_state::closed: return "closed";
+   }
+   return "unknown";
+ }
+
 struct write_req
 {
   // C style polymorphism. The uv_write_t must be first member.

@@ -136,6 +136,7 @@ private:
     closing,
     closed
   };
+  static const char * to_string(tcp_socket::socket_state);
 
   tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
   void on_read_cb(ssize_t, const uv_buf_t*);
