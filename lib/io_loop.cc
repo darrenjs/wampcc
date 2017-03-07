@@ -22,6 +22,15 @@
 
 namespace wampcc {
 
+void free_socket(uv_handle_t* h)
+{
+  std::cout << "free_socket "<<h<<std::endl;
+  if (h) {
+    delete (handle_data*) h->data;
+    delete h;
+  }
+}
+
 struct io_request
 {
   enum class request_type
@@ -156,7 +165,7 @@ void io_loop::on_async()
 
         if (!uv_is_closing(handle))
         {
-          uv_handle_data * ptr = (uv_handle_data*) handle->data;
+          handle_data * ptr = (handle_data*) handle->data;
 
           if (ptr == 0)
           {
@@ -170,8 +179,18 @@ void io_loop::on_async()
           }
           else
           {
-            assert(ptr->check() == uv_handle_data::DATA_CHECK);
-            ptr->tcp_socket_ptr()->do_close();
+            assert(ptr->check() == handle_data::DATA_CHECK);
+
+            if (ptr->type() == handle_data::handle_type::tcp_socket)
+              ptr->tcp_socket_ptr()->begin_close();
+            else if (ptr->type() == handle_data::handle_type::tcp_connect)
+              uv_close(handle, free_socket);
+            else
+            {
+              /* unknown handle, so just close it */
+              assert(0);
+              uv_close(handle, [](uv_handle_t* h){ delete h; });
+            }
           }
         }
       }, nullptr);

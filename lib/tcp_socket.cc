@@ -71,10 +71,11 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
     m_io_closed_future(m_io_closed_promise->get_future()),
     m_bytes_pending_write(0),
     m_bytes_written(0),
-    m_bytes_read(0)
+    m_bytes_read(0),
+    m_self (this, [](tcp_socket*){/* null deleter */})
 {
   if (m_uv_tcp)
-    m_uv_tcp->data = new uv_handle_data(this);
+    m_uv_tcp->data = new handle_data(this);
 }
 
 
@@ -87,9 +88,11 @@ tcp_socket::tcp_socket(kernel* k)
 tcp_socket::~tcp_socket()
 {
   {
+    /* Optionally initiate close */
     std::lock_guard<std::mutex> guard(m_state_lock);
     if ((m_state != socket_state::closing) &&
         (m_state != socket_state::closed)) {
+
       m_state = socket_state::closing;
 
       // TODO: what if this throws? At the minimum, we should catch it, which
@@ -100,7 +103,7 @@ tcp_socket::~tcp_socket()
       // need to consider what thread we might be on; add a test case for being
       // on the IO thread.
       try {
-        m_kernel->get_io()->push_fn([this]() { this->do_close(); });
+        m_kernel->get_io()->push_fn([this]() { this->begin_close(); });
       } catch (io_loop_closed& e) {
         LOG_WARN("cannot push tcp_socket close request; has kernel already "
                  "stopped?");
@@ -113,7 +116,7 @@ tcp_socket::~tcp_socket()
     m_io_closed_future.wait();
 
   if (m_uv_tcp) {
-    uv_handle_data* ptr = (uv_handle_data*)m_uv_tcp->data;
+    handle_data* ptr = (handle_data*)m_uv_tcp->data;
     delete ptr;
     delete m_uv_tcp;
   }
@@ -167,7 +170,7 @@ std::future<uverr> tcp_socket::connect(std::string addr, int port)
 }
 
 
-void tcp_socket::do_close(bool no_linger)
+void tcp_socket::begin_close(bool no_linger)
 {
   /* IO thread */
 
@@ -188,9 +191,10 @@ void tcp_socket::do_close(bool no_linger)
       setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
     }
 
+
     uv_close((uv_handle_t*)m_uv_tcp, [](uv_handle_t* h) {
       /* IO thread, invoked upon uv_close completion */
-      uv_handle_data* ptr = (uv_handle_data*)h->data;
+      handle_data* ptr = (handle_data*)h->data;
       ptr->tcp_socket_ptr()->close_impl();
     });
   } else
@@ -232,6 +236,7 @@ void tcp_socket::close_impl()
   closed_promise->set_value();
 }
 
+
 std::pair<bool, int> tcp_socket::fd() const
 {
   uv_os_fd_t fd;
@@ -249,7 +254,7 @@ std::shared_future<void> tcp_socket::close()
 
   if (m_state != socket_state::closing && m_state != socket_state::closed) {
     m_state = socket_state::closing;
-    m_kernel->get_io()->push_fn([this]() { this->do_close(); }); // can throw
+    m_kernel->get_io()->push_fn([this]() { this->begin_close(); }); // can throw
   }
 
   return m_io_closed_future;
@@ -264,7 +269,7 @@ std::shared_future<void> tcp_socket::reset()
   if (m_state != socket_state::closing && m_state != socket_state::closed) {
     m_state = socket_state::closing;
     m_kernel->get_io()->push_fn(
-        [this]() { this->do_close(true); }); // can throw
+        [this]() { this->begin_close(true); }); // can throw
   }
 
   return m_io_closed_future;
@@ -290,7 +295,7 @@ bool tcp_socket::close(on_close_cb user_on_close_fn)
 
   if (m_state != socket_state::closing) {
     m_state = socket_state::closing;
-    m_kernel->get_io()->push_fn([this]() { this->do_close(); }); // can throw
+    m_kernel->get_io()->push_fn([this]() { this->begin_close(); }); // can throw
   }
 
   return true;
@@ -312,7 +317,7 @@ std::future<uverr> tcp_socket::start_read(io_on_read on_read,
     uverr ec =
         uv_read_start((uv_stream_t*)this->m_uv_tcp, iohandle_alloc_buffer,
                       [](uv_stream_t* uvh, ssize_t nread, const uv_buf_t* buf) {
-          uv_handle_data* ptr = (uv_handle_data*)uvh->data;
+          handle_data* ptr = (handle_data*)uvh->data;
           ptr->tcp_socket_ptr()->on_read_cb(nread, buf);
         });
     completion_promise->set_value(ec);
@@ -344,7 +349,7 @@ void tcp_socket::close_once_on_io()
   std::lock_guard<std::mutex> guard(m_state_lock);
   if (m_state != socket_state::closing && m_state != socket_state::closed) {
     m_state = socket_state::closing;
-    m_kernel->get_io()->push_fn([this]() { this->do_close(); });
+    m_kernel->get_io()->push_fn([this]() { this->begin_close(); });
   }
 }
 
@@ -515,7 +520,7 @@ void tcp_socket::on_listen_cb(int status)
       ptr->close([ptr]() { delete ptr; });
     }
   } else {
-    uv_close((uv_handle_t*)client, [](uv_handle_t* h) { delete h; });
+    uv_close((uv_handle_t*)client, free_socket);
   }
 }
 
@@ -582,7 +587,7 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   hints.ai_flags = AI_PASSIVE;     /* Allow wildcard IP address */
   hints.ai_protocol = IPPROTO_TCP;
 
-  /* getaddrinfo() returns a list of address structures than can be used in
+  /* getaddrinfo() returns a list of address structures that can be used in
    * later calls to bind or connect */
   uv_getaddrinfo_t req;
   uverr ec = uv_getaddrinfo(
@@ -610,7 +615,7 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
     if (uv_tcp_bind(h, ai->ai_addr, 0 /* flags */) == 0)
       break; /* success */
 
-    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+    uv_close((uv_handle_t*)h, free_socket);
   }
 
   uv_freeaddrinfo(req.addrinfo);
@@ -622,17 +627,17 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   }
 
   m_uv_tcp = h;
-  m_uv_tcp->data = new uv_handle_data(this);
+  m_uv_tcp->data = new handle_data(this);
 
   ec = uv_listen((uv_stream_t*)h, 128, [](uv_stream_t* server, int status) {
-    uv_handle_data* uvhd_ptr = (uv_handle_data*)server->data;
+    handle_data* uvhd_ptr = (handle_data*)server->data;
     uvhd_ptr->tcp_socket_ptr()->on_listen_cb(status);
   });
 
   if (ec) {
-    delete (uv_handle_data*)m_uv_tcp->data;
+    delete (handle_data*)m_uv_tcp->data;
     m_uv_tcp = nullptr;
-    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+    uv_close((uv_handle_t*)h, free_socket);
   } else {
     std::lock_guard<std::mutex> guard(m_state_lock);
     m_state = socket_state::listening;
@@ -669,13 +674,13 @@ std::future<uverr> tcp_socket::connect(const std::string& node,
 struct connect_context
 {
   uv_connect_t request; // must be first, allow for casts
-  tcp_socket* socket;
   std::shared_ptr<std::promise<uverr>> completion;
+  std::weak_ptr<tcp_socket> wp;
 
-  connect_context(tcp_socket* s, std::shared_ptr<std::promise<uverr>> p)
-    : socket(s), completion(p)
-  {
-  }
+  connect_context(std::shared_ptr<std::promise<uverr>> p,
+                  std::weak_ptr<tcp_socket> sock)
+    : completion(p), wp(std::move(sock)) { }
+
 };
 
 
@@ -706,7 +711,7 @@ void tcp_socket::do_connect(const std::string& node, const std::string& service,
   hints.ai_protocol = IPPROTO_TCP;
   hints.ai_socktype = resolve_addr ? 0 : (AI_NUMERICHOST | AI_NUMERICSERV);
 
-  /* getaddrinfo() returns a list of address structures than can be used in
+  /* getaddrinfo() returns a list of address structures that can be used in
    * later calls to bind or connect */
   uv_getaddrinfo_t req;
   uverr ec = uv_getaddrinfo(
@@ -730,21 +735,43 @@ void tcp_socket::do_connect(const std::string& node, const std::string& service,
       delete h;
       continue;
     }
+    h->data = new handle_data(handle_data::handle_type::tcp_connect);
+    auto ptr = (handle_data*) h->data;
+    assert(ptr->check() == handle_data::DATA_CHECK);
 
-    auto* ctx = new connect_context(this, completion);
+    auto* ctx = new connect_context(completion, m_self);
 
     ec = uv_tcp_connect((uv_connect_t*)ctx, h, ai->ai_addr,
                         [](uv_connect_t* req, int status) {
       std::unique_ptr<connect_context> ctx((connect_context*)req);
-      ctx->socket->connect_completed(status, ctx->completion,
-                                     (uv_tcp_t*)req->handle);
+      uv_tcp_t* h =  (uv_tcp_t*)req->handle;
+      auto ptr = (handle_data*) h->data;
+    assert(ptr->check() == handle_data::DATA_CHECK);
+
+      if (auto sp = ctx->wp.lock())
+      {
+        sp->connect_completed(status, ctx->completion,
+                              (uv_tcp_t*)req->handle);
+      }
+      else
+      {
+        /* We no longer have a reference to the original tcp_socket.  This
+         * happens when the tcp_socket object has been deleted before the
+         * uv_connect callback was called.  We have no use for the current
+         * uv_tcp_t handle, so just delete.  We also check that the handle is
+         * not already closing, which may be the case if the IO loop has been
+         * shutdown.
+         */
+        if (!uv_is_closing((uv_handle_t*) req->handle))
+          uv_close((uv_handle_t*) req->handle, free_socket);
+      }
     });
 
     if (ec == 0)
       break; /* success, connect in progress */
 
     delete ctx;
-    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+    uv_close((uv_handle_t*)h, free_socket);
   }
 
   uv_freeaddrinfo(req.addrinfo);
@@ -765,16 +792,29 @@ void tcp_socket::connect_completed(
   /* IO thread */
   std::lock_guard<std::mutex> guard(m_state_lock);
 
+  /* State might be closed/closing, which can happen if a tcp_socket is deleted
+   * before the a previous connect attempt has completed. */
   assert(m_uv_tcp == nullptr);
-  assert(m_state == socket_state::connecting);
+  assert(m_state == socket_state::connecting
+         || m_state == socket_state::closed
+         || m_state == socket_state::closing );
 
   if (ec == 0) {
     m_state = socket_state::connected;
     m_uv_tcp = h;
-    m_uv_tcp->data = new uv_handle_data(this);
+    auto ptr = (handle_data*) m_uv_tcp->data;
+    assert(ptr->check() == handle_data::DATA_CHECK);
+
+    ptr->m_tcp_socket_ptr = this;
+    assert(ptr->check() == handle_data::DATA_CHECK);
+    ptr->m_type = handle_data::handle_type::tcp_socket;
+    assert(ptr->check() == handle_data::DATA_CHECK);
+//    std::cout << "assign to m_uv_tcp "<< h << std::endl;
+    assert(ptr->check() == handle_data::DATA_CHECK);
+
   } else {
     m_state = socket_state::connect_failed;
-    uv_close((uv_handle_t*)h, [](uv_handle_t* h) { delete h; });
+    uv_close((uv_handle_t*)h, free_socket);
   }
 
   completion->set_value(ec);

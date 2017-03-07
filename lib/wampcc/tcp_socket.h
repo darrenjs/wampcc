@@ -143,7 +143,7 @@ private:
   void on_write_cb(uv_write_t*, int);
   void close_once_on_io();
   void do_write();
-  void do_close(bool no_linger = false);
+  void begin_close(bool no_linger = false);
   void do_listen(const std::string&, const std::string&, addr_family,
                  std::shared_ptr<std::promise<uverr>>);
   void do_connect(const std::string&, const std::string&, addr_family, bool,
@@ -175,6 +175,8 @@ private:
 
   on_accept_cb m_user_accept_fn;
   on_close_cb m_user_close_fn;
+
+  std::shared_ptr<tcp_socket> m_self;
 
   friend io_loop;
 };

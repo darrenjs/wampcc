@@ -31,23 +31,34 @@ struct logger;
  * libuv is the same as when wampcc was compiled. */
 void version_check_libuv(int uv_major, int uv_minor);
 
-class uv_handle_data
+class handle_data
 {
 public:
   enum { DATA_CHECK = 0x5555555555555555 };
 
-  uv_handle_data(void* ptr)
+  enum class handle_type {unknown = 0, tcp_socket, tcp_connect};
+
+  handle_data(tcp_socket* ptr)
     : m_check( DATA_CHECK ),
-      m_tcp_socket_ptr((tcp_socket*)ptr) {}
+      m_type(handle_type::tcp_socket),
+      m_tcp_socket_ptr(ptr) {}
+
+  handle_data(handle_type ht)
+    : m_check( DATA_CHECK ),
+      m_type(ht),
+      m_tcp_socket_ptr(nullptr) {}
 
   uint64_t check() const { return m_check; }
   tcp_socket* tcp_socket_ptr() { return m_tcp_socket_ptr; }
+  handle_type type()  const noexcept { return m_type; }
 
-private:
+public:
   uint64_t m_check; /* retain as first member */
+  handle_type m_type;
   tcp_socket    * m_tcp_socket_ptr;
 };
 
+void free_socket(uv_handle_t* h);
 
 class io_loop_closed : public std::exception
 {
