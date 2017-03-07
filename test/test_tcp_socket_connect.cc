@@ -133,8 +133,7 @@ void test_connect_read_close(int port)
 
   {
     std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
-    sp_1->connect("127.0.0.1", port);
-
+    sp_1->connect("127.0.0.1", port).wait();
     my_listener.start_listening( sp_1 );
     sp_1->close();
   }
@@ -153,8 +152,8 @@ void test_connect_then_io_stop(int port)
   {
     std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
     auto fut = sp_1->connect("127.0.0.1", port);
-    my_listener.start_listening( sp_1 );
     fut.wait();
+    my_listener.start_listening( sp_1 );
     the_kernel->get_io()->sync_stop();
 
     // deletion of the socket will proceed fine, because completion of the IO
