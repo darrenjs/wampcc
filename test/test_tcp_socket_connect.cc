@@ -40,7 +40,6 @@ void test_canonical_connect(int port)
       fut.wait();
     }
 
-    cout << "got connect result\n";
     fut.get();
 
     if (sock.is_connected() == false)

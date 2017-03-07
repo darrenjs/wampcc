@@ -52,7 +52,7 @@ public:
   tcp_socket* tcp_socket_ptr() { return m_tcp_socket_ptr; }
   handle_type type()  const noexcept { return m_type; }
 
-public:
+private:
   uint64_t m_check; /* retain as first member */
   handle_type m_type;
   tcp_socket    * m_tcp_socket_ptr;

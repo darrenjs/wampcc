@@ -24,7 +24,6 @@ namespace wampcc {
 
 void free_socket(uv_handle_t* h)
 {
-  std::cout << "free_socket "<<h<<std::endl;
   if (h) {
     delete (handle_data*) h->data;
     delete h;

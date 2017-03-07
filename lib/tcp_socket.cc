@@ -74,8 +74,10 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
     m_bytes_read(0),
     m_self (this, [](tcp_socket*){/* null deleter */})
 {
-  if (m_uv_tcp)
+  if (m_uv_tcp) {
+    assert(m_uv_tcp->data == nullptr);
     m_uv_tcp->data = new handle_data(this);
+  }
 }
 
 
@@ -87,6 +89,8 @@ tcp_socket::tcp_socket(kernel* k)
 
 tcp_socket::~tcp_socket()
 {
+  bool io_loop_ended = false;
+
   {
     /* Optionally initiate close */
     std::lock_guard<std::mutex> guard(m_state_lock);
@@ -95,29 +99,32 @@ tcp_socket::~tcp_socket()
 
       m_state = socket_state::closing;
 
-      // TODO: what if this throws? At the minimum, we should catch it, which
-      // would imply the IO thread is in the process of shutting down.  During
-      // its shutdown, it should eventually delete the socket, so we should
-      // continue to wait.  Note, there is a later wait, but that should only be
-      // called if the push suceeded (ie, did not throw an exception).  Also,
-      // need to consider what thread we might be on; add a test case for being
-      // on the IO thread.
       try {
         m_kernel->get_io()->push_fn([this]() { this->begin_close(); });
       } catch (io_loop_closed& e) {
-        LOG_WARN("cannot push tcp_socket close request; has kernel already "
-                 "stopped?");
+        io_loop_ended = true;
       }
     }
   }
 
-  // TODO: this would block, if we are on the IO thread!!!
-  if (not is_closed())
-    m_io_closed_future.wait();
+  if (!is_closed())
+  {
+    /* detect & caution undefined behaviour */
+    if (io_loop_ended) {
+      LOG_ERROR("undefined behaviour calling ~tcp_socket when IO loop closed");
+    }
+    else if (m_kernel->get_io() == nullptr) {
+      LOG_ERROR("undefined behaviour calling ~tcp_socket when IO loop deleted");
+    }
+    else if (m_kernel->get_io()->this_thread_is_io()) {
+      LOG_ERROR("undefined behaviour calling ~tcp_socket on IO thread");
+    }
+    else
+      m_io_closed_future.wait();
+  }
 
   if (m_uv_tcp) {
-    handle_data* ptr = (handle_data*)m_uv_tcp->data;
-    delete ptr;
+    delete (handle_data*)m_uv_tcp->data;;
     delete m_uv_tcp;
   }
 
@@ -180,6 +187,9 @@ void tcp_socket::begin_close(bool no_linger)
     std::lock_guard<std::mutex> guard(m_state_lock);
     m_state = socket_state::closing;
   }
+
+  // decouple from IO request that might still be pending on the IO thread
+  m_self.reset();
 
   if (m_uv_tcp) {
 
@@ -504,6 +514,7 @@ void tcp_socket::on_listen_cb(int status)
   }
 
   uv_tcp_t* client = new uv_tcp_t();
+  assert(client->data == 0);
   uv_tcp_init(m_kernel->get_io()->uv_loop(), client);
 
   ec = uv_accept((uv_stream_t*)m_uv_tcp, (uv_stream_t*)client);
@@ -606,7 +617,8 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   struct addrinfo* ai = nullptr;
   for (ai = req.addrinfo; ai != nullptr; ai = ai->ai_next) {
 
-    h = new uv_tcp_t;
+    h = new uv_tcp_t();
+    assert(h->data == 0);
     if (uv_tcp_init(m_kernel->get_io()->uv_loop(), h) != 0) {
       delete h;
       continue;
@@ -635,7 +647,6 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   });
 
   if (ec) {
-    delete (handle_data*)m_uv_tcp->data;
     m_uv_tcp = nullptr;
     uv_close((uv_handle_t*)h, free_socket);
   } else {
@@ -730,23 +741,19 @@ void tcp_socket::do_connect(const std::string& node, const std::string& service,
   struct addrinfo* ai = nullptr;
   for (ai = req.addrinfo; ai != nullptr; ai = ai->ai_next) {
 
-    h = new uv_tcp_t;
+    h = new uv_tcp_t();
+    assert(h->data == 0);
     if (uv_tcp_init(m_kernel->get_io()->uv_loop(), h) != 0) {
       delete h;
       continue;
     }
     h->data = new handle_data(handle_data::handle_type::tcp_connect);
-    auto ptr = (handle_data*) h->data;
-    assert(ptr->check() == handle_data::DATA_CHECK);
 
     auto* ctx = new connect_context(completion, m_self);
 
     ec = uv_tcp_connect((uv_connect_t*)ctx, h, ai->ai_addr,
                         [](uv_connect_t* req, int status) {
       std::unique_ptr<connect_context> ctx((connect_context*)req);
-      uv_tcp_t* h =  (uv_tcp_t*)req->handle;
-      auto ptr = (handle_data*) h->data;
-    assert(ptr->check() == handle_data::DATA_CHECK);
 
       if (auto sp = ctx->wp.lock())
       {
@@ -796,22 +803,13 @@ void tcp_socket::connect_completed(
    * before the a previous connect attempt has completed. */
   assert(m_uv_tcp == nullptr);
   assert(m_state == socket_state::connecting
-         || m_state == socket_state::closed
          || m_state == socket_state::closing );
 
   if (ec == 0) {
     m_state = socket_state::connected;
     m_uv_tcp = h;
     auto ptr = (handle_data*) m_uv_tcp->data;
-    assert(ptr->check() == handle_data::DATA_CHECK);
-
-    ptr->m_tcp_socket_ptr = this;
-    assert(ptr->check() == handle_data::DATA_CHECK);
-    ptr->m_type = handle_data::handle_type::tcp_socket;
-    assert(ptr->check() == handle_data::DATA_CHECK);
-//    std::cout << "assign to m_uv_tcp "<< h << std::endl;
-    assert(ptr->check() == handle_data::DATA_CHECK);
-
+    *ptr = handle_data(this);
   } else {
     m_state = socket_state::connect_failed;
     uv_close((uv_handle_t*)h, free_socket);
