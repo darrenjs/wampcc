@@ -166,11 +166,13 @@ namespace wampcc {
     std::function<void(std::string, json_array, json_object)> error_fn;
 
     /* Wrappers to yield_fn */
+    void yield() { yield_fn({}, {}); }
     void yield(json_array arr) { yield_fn(std::move(arr), {}); }
     void yield(json_object obj) { yield_fn({}, std::move(obj)); }
     void yield(json_array arr, json_object obj) { yield_fn(std::move(arr), std::move(obj)); }
 
     /* Wrapper to error_fn */
+    void error(std::string txt) { error_fn(std::move(txt), {}, {}); }
     void error(std::string txt, json_array arr) { error_fn(std::move(txt), std::move(arr), {}); }
     void error(std::string txt, json_object obj) { error_fn(std::move(txt), {}, std::move(obj)); }
     void error(std::string txt, json_array arr, json_object obj) { error_fn(std::move(txt), std::move(arr), std::move(obj)); }
