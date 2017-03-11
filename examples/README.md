@@ -1,23 +1,24 @@
 # Examples
 
+After wampcc has been successfully compiled and installed (using `make install`) these example programs can be built and run to demonstrate basic WAMP functionality.
+
 ## Building
 
-To build all of the programs that live under the examples/ directory you will need to first define some environment variables which describe where wampcc and its dependent libraries have been installed, and then issue the `make` command.
+To build the examples you must first define a few environment variables which point to where wampcc and its dependent libraries have been installed, and then run the `make` command.
 
-If you try to compile before setting these variables you'll get an error like :
+If you try to compile before setting these variables you'll see an error like:
 
 ```console
 makefile:9: *** WAMPCC_HOME undefined - set WAMPCC_HOME to where wampcc was make-installed. Stop.
 ```
 
-The following is the list of environment variables which must be defined:
+These are the environment variables which must be defined:
 
 - `WAMPCC_HOME` - location of wampcc installation
 - `LIBUV_HOME`  - location of libuv installation
 - `JANSSON_HOME` - location of jansson installation
 
-For example, if each library has been built and installed under `/opt` then
-appropriate values and Linux commands (for a _bash_ shell) would be:
+For example, if each library has been built and installed under `/opt` then the appropriate Linux commands (for a _bash_ shell) might be:
 
 ```console
 export WAMPCC_HOME=/opt/wampcc-1.0
@@ -25,12 +26,16 @@ export LIBUV_HOME=/opt/libuv-1.10.2
 export JANSSON_HOME=/opt/jansson-2.7
 ```
 
-You should now be able to compile all examples under each sub-directory by running `make`.
+You should now be able to compile all examples by running `make`.
+
+```console
+$ cd examples
+$ make
+```
 
 ## Running
 
-Running the examples requires that your shell has `LD_LIBRARY_PATH` set appropriately, so that it can locate the shared libraries that wampcc links to. It is also useful to update your `PATH` to include the `admin` binary that is included with wampcc:
-
+Running the example programs requires that your shell has `LD_LIBRARY_PATH` set appropriately, so that the shared libraries linked-to by wampcc can be located. It is also useful to update your `PATH` to include the `admin` binary that is included with wampcc:
 
 ```console
 for path in  "$WAMPCC_HOME"  "$LIBUV_HOME"  "$JANSSON_HOME" ; do
@@ -39,5 +44,35 @@ done
 
 export PATH="$WAMPCC_HOME"/bin:"$PATH"
 ```
+
+## Embedded router and RPC invocation
+
+After the examples are built we can run the `basic_embedded_router` program together with the `admin` utility to demonstrate basic WAMP RPC functionality.
+
+Start the embedded router example by providing a port number on which it will listen for new connections:
+
+```console
+$ basic/basic_embedded_router 55555
+```
+
+If it's able to bind to the port then the following output will appear:
+
+```console
+20170311-18:48:24.306394 20045  INFO listening on 55555
+20170311-18:48:24.306807 20045  INFO procedure added, 1, default_realm::greeting
+20170311-18:48:24.306899 20045  INFO procedure added, 2, default_realm::pid
+20170311-18:48:24.306940 20045  INFO procedure added, 3, default_realm::random_string
+20170311-18:48:24.306978 20045  INFO procedure added, 4, default_realm::kill
+```
+This shows the names of the RPCs that the program has registered.
+
+An RPC can be called using wampcc's `admin` program:
+
+```console
+$ admin 127.0.0.1 55555 -c greeting
+result: list:["hello"], dict:{}
+```
+
+Here the `-c` option means call the RPC named `greeting`, and the second line is the output of the RPC.
 
 

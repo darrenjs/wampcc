@@ -92,21 +92,18 @@ struct t_callback
 
 void rpc_call_cb(wampcc::wamp_call_result r)
 {
-  const char* msg = ( const char* ) r.user;
-
   if (r.was_error)
   {
-    std::cout << "received error, " << r.error_uri << ", args="
-              << r.args.args_list << ", cb_user_data: " << msg
-              << ", reqid: " << r.reqid
-              << ", proc:" << r.procedure << std::endl;
+    std::cout << "error: " << r.error_uri << ", list:"
+              << r.args.args_list << ", dict:" << r.args.args_dict
+              << std::endl;
   }
   else
   {
-    std::cout << "received result, args="
-              << r.args.args_list << ", cb_user_data: " << msg
-              << ", reqid: " << r.reqid
-              << ", proc:" << r.procedure << std::endl;
+
+    std::cout << "result: list:"
+              << r.args.args_list << ", dict:" << r.args.args_dict
+              << std::endl;
   }
   std::lock_guard< std::mutex > guard( event_queue_mutex );
   event_queue.push( eReplyReceived );
@@ -458,8 +455,7 @@ int main_impl(int argc, char** argv)
              wampcc::json_object(),
              args,
              [](wampcc::wamp_call_result r)
-             { rpc_call_cb(r);},
-             (void*)"I_called_the_proc");
+             { rpc_call_cb(r);});
     wait_reply = true;
   }
 
