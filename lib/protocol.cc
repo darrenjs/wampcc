@@ -83,7 +83,7 @@ namespace wampcc {
   protocol::protocol(tcp_socket* h,
                      t_msg_cb cb,
                      protocol_callbacks callbacks,
-                     connection_mode _mode,
+                     connect_mode _mode,
                      size_t buf_initial_size,
                      size_t buf_max_size)
   : m_socket(h),
@@ -121,7 +121,7 @@ void protocol::decode_json(const char* ptr, size_t msglen)
 selector_protocol::selector_protocol(tcp_socket* sock,
                                        t_msg_cb msg_cb,
                                        protocol::protocol_callbacks callbacks)
-  : protocol(sock, msg_cb, callbacks, connection_mode::ePassive,
+  : protocol(sock, msg_cb, callbacks, connect_mode::passive,
              1, buffer_size_required())
 {
 }
@@ -145,7 +145,7 @@ void selector_protocol::io_on_read(char* src, size_t len)
         new rawsocket_protocol(m_socket,
                                m_msg_processor,
                                m_callbacks,
-                               protocol::connection_mode::ePassive,
+                               connect_mode::passive,
                                default_opts) );
       protocol * new_proto_ptr = up.get();
       m_callbacks.upgrade_protocol(up);
@@ -163,7 +163,7 @@ void selector_protocol::io_on_read(char* src, size_t len)
         new websocket_protocol(m_socket,
                                m_msg_processor,
                                m_callbacks,
-                               protocol::connection_mode::ePassive,
+                               connect_mode::passive,
                                default_opts));
       protocol * new_proto_ptr = up.get();
       m_callbacks.upgrade_protocol(up);

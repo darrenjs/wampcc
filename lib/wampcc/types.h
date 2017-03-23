@@ -89,6 +89,13 @@ struct wamp_args
   json_object args_dict;
 };
 
+/* Represent the mode of a socket or wamp connection */
+enum class connect_mode
+{
+  active,
+  passive
+};
+
 } // namespace
 
 #endif

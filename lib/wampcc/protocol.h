@@ -128,13 +128,7 @@ public:
   typedef std::function<void(json_array msg, int msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
 
-  enum class connection_mode
-  {
-      eActive,
-      ePassive
-  };
-
-  protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connection_mode m,
+  protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,
            size_t buf_initial_size=1, size_t buf_max_size=1024);
 
   virtual void on_timer() {}
@@ -144,7 +138,7 @@ public:
 
   virtual void send_msg(const json_array& j) = 0;
 
-  connection_mode mode() const { return m_mode; }
+  connect_mode mode() const { return m_mode; }
 
 protected:
 
@@ -156,7 +150,7 @@ protected:
   buffer m_buf;
 
 private:
-  connection_mode m_mode;
+  connect_mode m_mode;
 };
 
 typedef std::function< std::unique_ptr<protocol> (tcp_socket*, protocol::t_msg_cb,

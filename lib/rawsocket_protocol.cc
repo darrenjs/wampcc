@@ -49,7 +49,7 @@ const char* rawsocket_protocol::handshake_error_code_to_sting(handshake_error_co
 rawsocket_protocol::rawsocket_protocol(tcp_socket* h,
                                        t_msg_cb msg_cb,
                                        protocol::protocol_callbacks callbacks,
-                                       connection_mode __mode,
+                                       connect_mode __mode,
                                        options __options)
   : protocol(h, msg_cb, callbacks, __mode),
     m_options(__options),
@@ -59,7 +59,7 @@ rawsocket_protocol::rawsocket_protocol(tcp_socket* h,
 {
   m_buf.update_max_size(m_self_max_msg_size);
 
-  if (__mode == connection_mode::eActive && __options.ping_interval.count() > 0)
+  if (__mode == connect_mode::active && __options.ping_interval.count() > 0)
     callbacks.request_timer(__options.ping_interval);
 }
 
@@ -96,7 +96,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
         if (rd.avail() < HANDSHAKE_SIZE)
           break;
 
-        if (mode() == connection_mode::ePassive)
+        if (mode() == connect_mode::passive)
         {
           if (rd[0] != MAGIC)
             throw handshake_error("client handshake must begin with magic octet");

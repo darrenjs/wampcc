@@ -246,7 +246,7 @@ namespace wampcc {
         {
           std::unique_ptr<protocol> up (
             new T(socket, _msg_cb, callbacks,
-                  protocol::connection_mode::eActive, protocol_options)
+                  connect_mode::active, protocol_options)
             );
           return up;
         };

@@ -27,11 +27,11 @@ namespace wampcc
 websocket_protocol::websocket_protocol(tcp_socket* h,
                                        t_msg_cb msg_cb,
                                        protocol::protocol_callbacks callbacks,
-                                       connection_mode _mode,
+                                       connect_mode _mode,
                                        options opts)
   : protocol(h, msg_cb, callbacks, _mode),
-    m_state(_mode==protocol::connection_mode::ePassive? eHandlingHttpRequest : eHandlingHttpResponse),
-    m_http_parser(new http_parser(_mode==protocol::connection_mode::ePassive?
+    m_state(_mode==connect_mode::passive? eHandlingHttpRequest : eHandlingHttpResponse),
+    m_http_parser(new http_parser(_mode==connect_mode::passive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
     m_options(std::move(opts))
 {

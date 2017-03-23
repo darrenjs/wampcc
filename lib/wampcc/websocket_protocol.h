@@ -35,7 +35,7 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
-  websocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connection_mode _mode, options);
+  websocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connect_mode _mode, options);
 
   void on_timer() override;
   void io_on_read(char*, size_t) override;
