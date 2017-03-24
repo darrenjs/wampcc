@@ -72,7 +72,7 @@ public:
 
   /** Request socket begins reading inbound data, with callbacks make on the IO
    * thread. */
-  std::future<uverr> start_read(io_on_read, io_on_error);
+  virtual std::future<uverr> start_read(io_on_read, io_on_error);
 
   /** Reset IO callbacks */
   void reset_listener();
@@ -126,7 +126,7 @@ public:
   size_t bytes_read() const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }
 
-private:
+public:
   enum class socket_state {
     uninitialised,
     connecting,
@@ -136,9 +136,14 @@ private:
     closing,
     closed
   };
-  static const char * to_string(tcp_socket::socket_state);
 
   tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
+
+  void close_impl();
+
+public:
+  static const char * to_string(tcp_socket::socket_state);
+
   void on_read_cb(ssize_t, const uv_buf_t*);
   void on_write_cb(uv_write_t*, int);
   void close_once_on_io();
@@ -151,7 +156,6 @@ private:
   void connect_completed(uverr, std::shared_ptr<std::promise<uverr>>,
                          uv_tcp_t*);
   void on_listen_cb(int);
-  void close_impl();
   kernel* m_kernel;
   logger& __logger;
 

@@ -9,6 +9,7 @@
 
 #include "wampcc/io_loop.h"
 #include "wampcc/event_loop.h"
+#include "wampcc/ssl.h"
 
 #include <iostream>
 
@@ -27,13 +28,28 @@ int major_version() { return WAMPCC_MAJOR_VERSION; }
 int minor_version() { return WAMPCC_MINOR_VERSION; }
 int micro_version() { return WAMPCC_MICRO_VERSION; }
 
-/* Constructor */
-kernel::kernel(config __conf, logger nlog)
-  : m_config(__conf),
-    __logger(nlog),
-    m_io_loop(new io_loop(*this)),
-    m_evl(new event_loop(this))
+
+config::config()
+  : socket_buffer_max_size_bytes(65536), socket_max_pending_write_bytes(65536),
+    ssl(false)
 {
+
+}
+
+
+
+/* Constructor */
+kernel::kernel(config conf, logger nlog)
+  : m_config(conf),
+    __logger(nlog)
+{
+  // SSL initialisation can fail, so we start the loops only after it has been
+  // set up
+  if (conf.ssl.enable)
+    m_ssl.reset(new ssl_context(conf.ssl));
+
+  m_io_loop.reset(new io_loop(*this));
+  m_evl.reset(new event_loop(this));
 }
 
 /* Destructor */
@@ -49,6 +65,8 @@ kernel::~kernel()
 io_loop* kernel::get_io() { return m_io_loop.get(); }
 
 event_loop* kernel::get_event_loop() { return m_evl.get(); }
+
+ssl_context* kernel::get_ssl() { return m_ssl.get(); }
 
 int logger::levels_upto(Level l)
 {

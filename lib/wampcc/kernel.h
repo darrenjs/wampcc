@@ -28,6 +28,7 @@ namespace wampcc
 class io_loop;
 class event_loop;
 class uri_regex;
+class ssl_context;
 
 /* Run-time name & version */
 const char* name();
@@ -68,6 +69,20 @@ struct logger
 };
 
 
+struct ssl_config
+{
+  /* Must be set to true to indicate SSL should be set up. */
+  bool enable;
+
+  /* For SSL in server mode, both certificate and private key files must be
+   * provided. */
+  std::string certificate_file;
+  std::string private_key_file;
+
+  ssl_config(bool use_ssl_) : enable(use_ssl_) {}
+};
+
+
 struct config
 {
   size_t socket_buffer_max_size_bytes;
@@ -81,10 +96,9 @@ struct config
    * thread completes. */
   std::function<void()> event_loop_end_fn;
 
-  config()
-    : socket_buffer_max_size_bytes(65536), socket_max_pending_write_bytes(65536)
-  {
-  }
+  ssl_config ssl;
+
+  config();
 };
 
 /* Core runtime.  Provides the IO layer, event thread, logging and some
@@ -102,6 +116,7 @@ public:
   logger& get_logger() { return __logger; }
   io_loop* get_io();
   event_loop* get_event_loop();
+  ssl_context* get_ssl();
 
   const config& get_config() const { return m_config; }
 
@@ -110,6 +125,7 @@ private:
   logger __logger; /* name chosen for log macros */
   std::unique_ptr<io_loop> m_io_loop;
   std::unique_ptr<event_loop> m_evl;
+  std::unique_ptr<ssl_context> m_ssl;
 };
 
 
