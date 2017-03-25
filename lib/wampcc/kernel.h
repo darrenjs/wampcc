@@ -116,6 +116,9 @@ public:
   logger& get_logger() { return __logger; }
   io_loop* get_io();
   event_loop* get_event_loop();
+
+  /* SSL context associated with the kernel. Will only be present if ssl config
+   * was provided during kernel creation. */
   ssl_context* get_ssl();
 
   const config& get_config() const { return m_config; }
