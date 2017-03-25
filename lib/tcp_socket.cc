@@ -496,6 +496,11 @@ void tcp_socket::on_write_cb(uv_write_t* req, int status)
 }
 
 
+std::unique_ptr<tcp_socket> tcp_socket::create(uv_tcp_t* h, socket_state ss)
+{
+  return std::unique_ptr<tcp_socket>(new tcp_socket(m_kernel, h, ss));
+}
+
 /**
  * Called on the IO thread when a new socket is available to be accepted.
  */
@@ -519,8 +524,7 @@ void tcp_socket::on_listen_cb(int status)
 
   ec = uv_accept((uv_stream_t*)m_uv_tcp, (uv_stream_t*)client);
   if (ec == 0) {
-    std::unique_ptr<tcp_socket> new_sock(
-        new tcp_socket(m_kernel, client, socket_state::connected));
+    auto new_sock = create(client, socket_state::connected);
 
     if (m_user_accept_fn)
       m_user_accept_fn(this, new_sock, ec);
