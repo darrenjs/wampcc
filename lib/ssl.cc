@@ -10,6 +10,23 @@
 namespace wampcc
 {
 
+
+enum sslstatus get_sslstatus(SSL* ssl, int n)
+{
+  switch (SSL_get_error(ssl, n))
+  {
+    case SSL_ERROR_NONE:
+      return SSLSTATUS_OK;
+    case SSL_ERROR_WANT_WRITE:
+    case SSL_ERROR_WANT_READ:
+      return SSLSTATUS_WANT_IO;
+    case SSL_ERROR_ZERO_RETURN:
+    case SSL_ERROR_SYSCALL:
+    default:
+      return SSLSTATUS_FAIL;
+  }
+}
+
 ssl_context::ssl_context(const ssl_config& conf) : m_ctx(nullptr), m_config(conf)
 {
   /* SSL library initialisation */
@@ -19,7 +36,7 @@ ssl_context::ssl_context(const ssl_config& conf) : m_ctx(nullptr), m_config(conf
   ERR_load_BIO_strings();
   ERR_load_crypto_strings();
 
-  m_ctx = SSL_CTX_new(SSLv23_server_method());
+  m_ctx = SSL_CTX_new(SSLv23_method());
   if (!m_ctx)
     throw_ssl_error("SSL_CTX_new failed");
 
@@ -63,10 +80,6 @@ void ssl_context::log_ssl_error_queue()
 
 
 ssl_session::ssl_session(ssl_context* ctx, connect_mode cm)
-  : write_buf(nullptr),
-    write_len(0),
-    encrypt_buf(0),
-    encrypt_len(0)
 {
   rbio = BIO_new(BIO_s_mem());
   wbio = BIO_new(BIO_s_mem());

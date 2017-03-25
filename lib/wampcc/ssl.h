@@ -65,19 +65,14 @@ public:
   BIO *rbio; /* SSL reads from, we write to. */
   BIO *wbio; /* SSL writes to, we read from. */
 
-  /* Bytes waiting to be written to socket. This is data that has been generated
-   * by the SSL object, either due to encryption of user input, or, writes
-   * requires due to peer-requested SSL renegotiation. */
-  char* write_buf;
-  size_t write_len;
-
-  /* Bytes waiting to be fed into the SSL object for encryption. */
-  char* encrypt_buf;
-  size_t encrypt_len;
-
   ssl_session(ssl_context* ctx, wampcc::connect_mode);
 };
 
+/* Obtain the return value of an SSL operation and convert into a simplified
+ * error code, which is easier to examine for failure. */
+enum sslstatus { SSLSTATUS_OK, SSLSTATUS_WANT_IO, SSLSTATUS_FAIL };
+
+enum sslstatus get_sslstatus(SSL* ssl, int n);
 
 }
 
