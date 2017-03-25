@@ -54,7 +54,7 @@ public:
       on_accept_cb;
 
   tcp_socket(kernel* k);
-  ~tcp_socket();
+  virtual ~tcp_socket();
 
   tcp_socket(const tcp_socket&) = delete;
   tcp_socket& operator=(const tcp_socket&) = delete;
