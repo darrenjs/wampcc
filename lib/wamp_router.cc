@@ -235,6 +235,8 @@ void wamp_router::check_has_closed()
 std::future<uverr> wamp_router::listen(auth_provider auth,
                                        const listen_options& options)
 {
+  if (options.use_ssl && m_kernel->get_ssl() == nullptr)
+    throw std::runtime_error("wampcc kernel SSL context is null; can't use SSL");
 
   auto on_new_client = [this, auth](std::unique_ptr<tcp_socket> sock) {
     /* IO thread */
@@ -304,6 +306,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
   };
 
   /* Create the actual IO server socket */
+
   std::unique_ptr<tcp_socket> sock(options.use_ssl ? new ssl_socket(m_kernel)
                                                    : new tcp_socket(m_kernel));
 
