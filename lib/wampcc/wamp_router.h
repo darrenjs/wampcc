@@ -31,6 +31,23 @@ typedef std::function<void(std::string)> on_rpc_registered;
 class wamp_router : public std::enable_shared_from_this<wamp_router>
 {
 public:
+
+  struct listen_options
+  {
+    enum protocol  { rawsocket = 0x01, websocket = 0x02 };
+    enum serialise { json = 0x01, msgpack = 0x02 };
+
+    // protocol options
+    bool use_ssl;
+    unsigned char allow_protocols;
+    unsigned char allow_serialisers;
+
+    // socket options
+    std::string node;     // interface addr, or leave blank
+    std::string service;  // service or port number
+    tcp_socket::addr_family af;
+  };
+
   wamp_router(kernel* __svc, on_rpc_registered = nullptr);
   ~wamp_router();
 
@@ -45,6 +62,10 @@ public:
 
   /** Asynchronously accept, on given port, using IPv4 */
   std::future<uverr> listen(auth_provider auth, int port);
+
+  /** Generic listen method. Use this option to enable use of SSL, and to have
+   * finer control over which WAMP protocols will be permitted.  */
+  std::future<uverr> listen(auth_provider auth, const listen_options&);
 
   /** Publish to an internal topic */
   void publish(const std::string& realm, const std::string& uri,

@@ -12,6 +12,7 @@
 #include "wampcc/pubsub_man.h"
 #include "wampcc/event_loop.h"
 #include "wampcc/io_loop.h"
+#include "wampcc/ssl_socket.h"
 #include "wampcc/tcp_socket.h"
 #include "wampcc/log_macros.h"
 #include "wampcc/protocol.h"
@@ -71,104 +72,16 @@ std::future<uverr> wamp_router::listen(const std::string& node,
                                        auth_provider auth,
                                        tcp_socket::addr_family af)
 {
-  auto on_new_client = [this, auth](std::unique_ptr<tcp_socket> sock) {
-    /* IO thread */
-
-    /* This lambda is invoked the when a socket has been accepted. */
-
-    server_msg_handler handlers;
-
-    handlers.inbound_call = [this](wamp_session* s, std::string u,
-                                   wamp_args args, wamp_invocation_reply_fn f) {
-      this->handle_inbound_call(s, u, std::move(args), f);
-    };
-
-    handlers.handle_inbound_publish =
-        [this](wamp_session* sptr, std::string uri, json_object options,
-               wamp_args args) {
-      // TODO: break this out into a separte method, and handle error
-      m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options),
-                                std::move(args));
-    };
-
-    handlers.inbound_subscribe =
-        [this](wamp_session* p, t_request_id request_id, std::string uri,
-               json_object& options) {
-      return this->m_pubsub->subscribe(p, request_id, uri, options);
-    };
-
-    handlers.inbound_unsubscribe = [this](
-        wamp_session* p, t_request_id request_id, t_subscription_id sub_id) {
-      this->m_pubsub->unsubscribe(p, request_id, sub_id);
-    };
-
-    handlers.inbound_register = [this](std::weak_ptr<wamp_session> h,
-                                       std::string realm, std::string uri) {
-      return m_rpcman->handle_inbound_register(std::move(h), std::move(realm),
-                                               std::move(uri));
-    };
-
-    int fd = sock->fd().second;
-
-    protocol_builder_fn builder_fn;
-    builder_fn = [](tcp_socket* sock, protocol::t_msg_cb _msg_cb,
-                    protocol::protocol_callbacks callbacks) {
-      std::unique_ptr<protocol> up(
-          new selector_protocol(sock, _msg_cb, callbacks));
-
-      return up;
-    };
-
-    std::shared_ptr<wamp_session> sp =
-        wamp_session::create(m_kernel, std::move(sock),
-                             [this](std::weak_ptr<wamp_session> s, bool b) {
-                               this->handle_session_state_change(s, b);
-                             },
-                             builder_fn, handlers, auth);
-    {
-      std::lock_guard<std::mutex> guard(m_sesions_lock);
-      m_sessions[sp->unique_id()] = sp;
-
-      // DJS -- test code to drop a connection
-      // m_kernel->get_event_loop()->dispatch(std::chrono::milliseconds(5000),
-      //                                      [sp](){ sp->close(); return 0; }
-      //                                      );
-    }
-
-    LOG_INFO("session #" << sp->unique_id() << " created, protocol: "
-                         << sp->protocol_name() << ", fd: " << fd);
-  };
-
-  /* Create the actual IO server socket */
-  std::unique_ptr<tcp_socket> sock(new tcp_socket(m_kernel));
-  tcp_socket* ptr = sock.get();
-
-  {
-    std::lock_guard<std::mutex> guard(m_server_sockets_lock);
-    m_server_sockets.push_back(std::move(sock));
-  }
-
-  auto fut = ptr->listen(
-      node, service,
-      [on_new_client](tcp_socket*, std::unique_ptr<tcp_socket>& clt, uverr ec) {
-        /* IO thread */
-
-        if (!ec) {
-          on_new_client(std::move(clt));
-        } else {
-          std::cout << "TODO: handle case of failure to accept client, ec "
-                    << ec << std::endl;
-        }
-      },
-      af);
-
-  return fut;
+  return listen(std::move(auth), {false, 0xFF, 0xFF, node, service, af});
 }
 
 
-std::future<uverr> wamp_router::listen(auth_provider aut, int p) {
-  return listen("", std::to_string(p), aut, tcp_socket::addr_family::inet4);
+std::future<uverr> wamp_router::listen(auth_provider auth, int p)
+{
+  return listen(std::move(auth), {false, 0xFF, 0xFF, "", std::to_string(p),
+                                  tcp_socket::addr_family::inet4});
 }
+
 
 void wamp_router::provide(const std::string& realm, const std::string& uri,
                           const json_object& options, rpc_cb user_cb,
@@ -318,5 +231,104 @@ void wamp_router::check_has_closed()
   if (num_sessions == 0)
     m_promise_on_close.set_value();
 }
+
+std::future<uverr> wamp_router::listen(auth_provider auth,
+                                       const listen_options& options)
+{
+
+  auto on_new_client = [this, auth](std::unique_ptr<tcp_socket> sock) {
+    /* IO thread */
+
+    /* This lambda is invoked the when a socket has been accepted. */
+
+    server_msg_handler handlers;
+
+    handlers.inbound_call = [this](wamp_session* s, std::string u,
+                                   wamp_args args, wamp_invocation_reply_fn f) {
+      this->handle_inbound_call(s, u, std::move(args), f);
+    };
+
+    handlers.handle_inbound_publish =
+        [this](wamp_session* sptr, std::string uri, json_object options,
+               wamp_args args) {
+      // TODO: break this out into a separte method, and handle error
+      m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options),
+                                std::move(args));
+    };
+
+    handlers.inbound_subscribe =
+        [this](wamp_session* p, t_request_id request_id, std::string uri,
+               json_object& options) {
+      return this->m_pubsub->subscribe(p, request_id, uri, options);
+    };
+
+    handlers.inbound_unsubscribe = [this](
+        wamp_session* p, t_request_id request_id, t_subscription_id sub_id) {
+      this->m_pubsub->unsubscribe(p, request_id, sub_id);
+    };
+
+    handlers.inbound_register = [this](std::weak_ptr<wamp_session> h,
+                                       std::string realm, std::string uri) {
+      return m_rpcman->handle_inbound_register(std::move(h), std::move(realm),
+                                               std::move(uri));
+    };
+
+    int fd = sock->fd().second;
+
+    protocol_builder_fn builder_fn;
+    builder_fn = [](tcp_socket* sock, protocol::t_msg_cb _msg_cb,
+                    protocol::protocol_callbacks callbacks) {
+      std::unique_ptr<protocol> up(
+          new selector_protocol(sock, _msg_cb, callbacks));
+      return up;
+    };
+
+    std::shared_ptr<wamp_session> sp =
+        wamp_session::create(m_kernel, std::move(sock),
+                             [this](std::weak_ptr<wamp_session> s, bool b) {
+                               this->handle_session_state_change(s, b);
+                             },
+                             builder_fn, handlers, auth);
+    {
+      std::lock_guard<std::mutex> guard(m_sesions_lock);
+      m_sessions[sp->unique_id()] = sp;
+
+      // DJS -- test code to drop a connection
+      // m_kernel->get_event_loop()->dispatch(std::chrono::milliseconds(5000),
+      //                                      [sp](){ sp->close(); return 0; }
+      //                                      );
+    }
+
+    LOG_INFO("session #" << sp->unique_id() << " created, protocol: "
+                         << sp->protocol_name() << ", fd: " << fd);
+  };
+
+  /* Create the actual IO server socket */
+  std::unique_ptr<tcp_socket> sock(options.use_ssl ? new ssl_socket(m_kernel)
+                                                   : new tcp_socket(m_kernel));
+
+  tcp_socket* ptr = sock.get();
+
+  {
+    std::lock_guard<std::mutex> guard(m_server_sockets_lock);
+    m_server_sockets.push_back(std::move(sock));
+  }
+
+  auto fut = ptr->listen(
+      options.node, options.service,
+      [on_new_client](tcp_socket*, std::unique_ptr<tcp_socket>& clt, uverr ec) {
+        /* IO thread */
+        if (!ec) {
+          on_new_client(std::move(clt));
+        } else {
+          std::cout << "TODO: handle case of failure to accept client, ec "
+                    << ec << std::endl;
+        }
+      },
+      options.af);
+
+  return fut;
+}
+
 
 } // namespace
