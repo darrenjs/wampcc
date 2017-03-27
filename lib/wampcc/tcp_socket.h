@@ -49,9 +49,7 @@ public:
   typedef std::function<void(char*, size_t)> io_on_read;
   typedef std::function<void(uverr)> io_on_error;
   typedef std::function<void()> on_close_cb;
-  typedef std::function<
-      void(tcp_socket* server, std::unique_ptr<tcp_socket>& client, uverr)>
-      on_accept_cb;
+  typedef std::function<void(std::unique_ptr<tcp_socket>&,uverr)> on_accept_cb;
 
   tcp_socket(kernel* k);
   virtual ~tcp_socket();
@@ -140,8 +138,10 @@ protected:
 
   tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
 
-  virtual std::unique_ptr<tcp_socket> create(uv_tcp_t*, socket_state);
   virtual void on_read_cb(ssize_t, const uv_buf_t*);
+  virtual std::unique_ptr<tcp_socket> invoke_user_accept(uverr, uv_tcp_t*);
+
+  std::future<uverr> listen_impl(const std::string&,const std::string&,addr_family);
 
   kernel* m_kernel;
   logger& __logger;

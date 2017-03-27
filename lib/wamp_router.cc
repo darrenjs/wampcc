@@ -319,7 +319,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
   auto fut = ptr->listen(
       options.node, options.service,
-      [on_new_client](tcp_socket*, std::unique_ptr<tcp_socket>& clt, uverr ec) {
+      [on_new_client](std::unique_ptr<tcp_socket>& clt, uverr ec) {
         /* IO thread */
         if (!ec) {
           on_new_client(std::move(clt));

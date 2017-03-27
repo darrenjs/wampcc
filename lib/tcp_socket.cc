@@ -496,9 +496,20 @@ void tcp_socket::on_write_cb(uv_write_t* req, int status)
 }
 
 
-std::unique_ptr<tcp_socket> tcp_socket::create(uv_tcp_t* h, socket_state ss)
+std::unique_ptr<tcp_socket> tcp_socket::invoke_user_accept(uverr ec,
+                                                           uv_tcp_t* h)
 {
-  return std::unique_ptr<tcp_socket>(new tcp_socket(m_kernel, h, ss));
+  if (!m_user_accept_fn)
+    return {};
+
+  std::unique_ptr<tcp_socket> up;
+
+  if (ec != 0)
+    up.reset(new tcp_socket(m_kernel, h, socket_state::connected));
+
+  m_user_accept_fn(up, ec);
+
+  return up;
 }
 
 /**
@@ -511,10 +522,7 @@ void tcp_socket::on_listen_cb(int status)
   uverr ec{status};
 
   if (ec) {
-    if (m_user_accept_fn) {
-      std::unique_ptr<tcp_socket> no_socket;
-      m_user_accept_fn(this, no_socket, ec);
-    }
+    invoke_user_accept(ec, nullptr);
     return;
   }
 
@@ -524,10 +532,7 @@ void tcp_socket::on_listen_cb(int status)
 
   ec = uv_accept((uv_stream_t*)m_uv_tcp, (uv_stream_t*)client);
   if (ec == 0) {
-    auto new_sock = create(client, socket_state::connected);
-
-    if (m_user_accept_fn)
-      m_user_accept_fn(this, new_sock, ec);
+    auto new_sock = invoke_user_accept(0, client);
 
     if (new_sock) // user callback did not take ownership of socket
     {
@@ -547,6 +552,19 @@ bool tcp_socket::is_initialised() const
 }
 
 
+std::future<uverr> tcp_socket::listen_impl(const std::string& node,
+                                           const std::string& service,
+                                           addr_family af)
+{
+  auto completion_promise = std::make_shared<std::promise<uverr>>();
+
+  m_kernel->get_io()->push_fn([this, node, service, af, completion_promise]() {
+    this->do_listen(node, service, af, completion_promise);
+  });
+
+  return completion_promise->get_future();
+}
+
 std::future<uverr> tcp_socket::listen(const std::string& node,
                                       const std::string& service,
                                       on_accept_cb accept_fn, addr_family af)
@@ -559,13 +577,7 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
 
   m_user_accept_fn = std::move(accept_fn);
 
-  auto completion_promise = std::make_shared<std::promise<uverr>>();
-
-  m_kernel->get_io()->push_fn([this, node, service, af, completion_promise]() {
-    this->do_listen(node, service, af, completion_promise);
-  });
-
-  return completion_promise->get_future();
+  return listen_impl(node, service, af);
 }
 
 
@@ -573,7 +585,7 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
                            addr_family af,
                            std::shared_ptr<std::promise<uverr>> completion)
 {
-/* IO thread */
+  /* IO thread */
 
 #ifndef NDEBUG
   assert(m_uv_tcp == nullptr);

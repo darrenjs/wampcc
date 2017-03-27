@@ -21,6 +21,7 @@
 #include "wampcc/protocol.h"
 #include "wampcc/rawsocket_protocol.h"
 #include "wampcc/tcp_socket.h"
+#include "wampcc/ssl_socket.h"
 #include "wampcc/types.h"
 #include "wampcc/wamp_router.h"
 #include "wampcc/wamp_session.h"

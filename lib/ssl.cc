@@ -81,6 +81,9 @@ void ssl_context::log_ssl_error_queue()
 
 ssl_session::ssl_session(ssl_context* ctx, connect_mode cm)
 {
+  if (ctx == nullptr)
+    throw std::runtime_error("wampcc kernel SSL context is null");
+
   rbio = BIO_new(BIO_s_mem());
   wbio = BIO_new(BIO_s_mem());
   ssl = SSL_new(ctx->context());

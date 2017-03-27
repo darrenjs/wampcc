@@ -30,14 +30,8 @@ ssl_socket::ssl_socket(kernel* k)
 {
 }
 
-ssl_socket::~ssl_socket()
-{
-}
+ssl_socket::~ssl_socket() {}
 
-std::unique_ptr<tcp_socket> ssl_socket::create(uv_tcp_t* h, socket_state ss)
-{
-  return std::unique_ptr<tcp_socket>(new ssl_socket(m_kernel, h, ss));
-}
 
 void ssl_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 {
@@ -45,6 +39,37 @@ void ssl_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 
   // TODO: place socket bytes into SSL layer
   tcp_socket::on_read_cb(nread, buf);
+}
+
+
+std::future<uverr> ssl_socket::listen(const std::string& node,
+                                      const std::string& service,
+                                      ssl_on_accept_cb accept_fn,
+                                      addr_family af)
+{
+  if (is_initialised())
+    throw tcp_socket::error("listen(): ssl_socket already initialised");
+
+  m_ssl_on_accept_cb = std::move(accept_fn);
+
+  return listen_impl(node, service, af);
+}
+
+
+std::unique_ptr<tcp_socket> ssl_socket::invoke_user_accept(uverr ec,
+                                                           uv_tcp_t* h)
+{
+  if (!m_ssl_on_accept_cb)
+    return {};
+
+  std::unique_ptr<ssl_socket> up;
+
+  if (ec != 0)
+    up.reset(new ssl_socket(m_kernel, h, socket_state::connected));
+
+  m_ssl_on_accept_cb(up, ec);
+
+  return std::unique_ptr<tcp_socket>(std::move(up));
 }
 
 }

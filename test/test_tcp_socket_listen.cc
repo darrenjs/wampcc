@@ -28,8 +28,7 @@ void test_address(string node, string port, tcp_socket::addr_family af, bool exp
 
   kernel the_kernel;
 
-  tcp_socket::on_accept_cb on_accept = [](tcp_socket* server,
-                                          unique_ptr<tcp_socket>& client,
+  tcp_socket::on_accept_cb on_accept = [](unique_ptr<tcp_socket>& client,
                                           uverr status) {};
 
   tcp_socket sever_sock(&the_kernel);
@@ -70,8 +69,7 @@ void test_listen_node_port(string node, int port)
 
   kernel the_kernel;
 
-  tcp_socket::on_accept_cb on_accept = [](tcp_socket* server,
-                                          unique_ptr<tcp_socket>& client,
+  tcp_socket::on_accept_cb on_accept = [](unique_ptr<tcp_socket>& client,
                                           uverr status) {};
 
   {
@@ -112,8 +110,7 @@ void test_canonical_listen(int port)
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   unique_ptr<tcp_socket> accepted_socket;
-  tcp_socket::on_accept_cb on_accept = [&accepted_socket](tcp_socket* server,
-                                                          unique_ptr<tcp_socket>& client,
+  tcp_socket::on_accept_cb on_accept = [&accepted_socket](unique_ptr<tcp_socket>& client,
                                                           uverr status)
   {
     if (status==0)
@@ -167,8 +164,7 @@ void test_listen_duplicate_port(int port)
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
-  auto on_accept = [](tcp_socket* server,
-                      unique_ptr<tcp_socket>& client,
+  auto on_accept = [](unique_ptr<tcp_socket>& client,
                       uverr status)
   {
     assert(strlen("on accept should not happen for a failed socket")==0);
@@ -209,8 +205,7 @@ void test_listen_close(int port)
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
-  auto on_accept = [](tcp_socket* server,
-                      unique_ptr<tcp_socket>& client,
+  auto on_accept = [](unique_ptr<tcp_socket>& client,
                       uverr status)
   {
     assert(strlen("on accept should not happen for a failed socket")==0);
@@ -242,8 +237,7 @@ void test_unused_client(int port)
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
-  auto on_accept = [](tcp_socket*,
-                      unique_ptr<tcp_socket>&,
+  auto on_accept = [](unique_ptr<tcp_socket>&,
                       uverr status)
   {
   };
