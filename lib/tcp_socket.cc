@@ -504,7 +504,7 @@ std::unique_ptr<tcp_socket> tcp_socket::invoke_user_accept(uverr ec,
 
   std::unique_ptr<tcp_socket> up;
 
-  if (ec != 0)
+  if (ec == 0)
     up.reset(new tcp_socket(m_kernel, h, socket_state::connected));
 
   m_user_accept_fn(up, ec);
@@ -533,7 +533,6 @@ void tcp_socket::on_listen_cb(int status)
   ec = uv_accept((uv_stream_t*)m_uv_tcp, (uv_stream_t*)client);
   if (ec == 0) {
     auto new_sock = invoke_user_accept(0, client);
-
     if (new_sock) // user callback did not take ownership of socket
     {
       tcp_socket* ptr = new_sock.release();

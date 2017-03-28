@@ -64,7 +64,7 @@ std::unique_ptr<tcp_socket> ssl_socket::invoke_user_accept(uverr ec,
 
   std::unique_ptr<ssl_socket> up;
 
-  if (ec != 0)
+  if (ec == 0)
     up.reset(new ssl_socket(m_kernel, h, socket_state::connected));
 
   m_ssl_on_accept_cb(up, ec);
