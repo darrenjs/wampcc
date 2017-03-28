@@ -85,6 +85,7 @@ public:
 
   /* Request a write */
   void write(std::pair<const char*, size_t>* srcbuf, size_t count);
+  void write(const char*, size_t);
 
   /** Request asynchronous socket close. To detect when close has occured, the
    * caller can wait upon the returned future.  Throws io_loop_closed if IO loop

@@ -383,6 +383,33 @@ void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 }
 
 
+void tcp_socket::write(const char* src, size_t len)
+{
+  uv_buf_t buf;
+
+  scope_guard buf_guard([buf]() {
+      delete[] buf.base;
+    });
+
+  buf = uv_buf_init(new char[len], len);
+  memcpy(buf.base, src, len);
+
+  {
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    if (m_state == socket_state::closing || m_state == socket_state::closed)
+      throw tcp_socket::error("tcp_socket: write() when closing or closed");
+
+    {
+      std::lock_guard<std::mutex> guard(m_pending_write_lock);
+      m_pending_write.push_back(buf);
+      buf_guard.dismiss();
+    }
+
+    m_kernel->get_io()->push_fn([this]() { this->do_write(); });
+  }
+}
+
+
 void tcp_socket::write(std::pair<const char*, size_t>* srcbuf, size_t count)
 {
   // improve memory usage here

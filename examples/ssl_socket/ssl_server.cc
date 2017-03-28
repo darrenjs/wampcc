@@ -23,10 +23,9 @@ void on_ssl_accept(std::unique_ptr<ssl_socket>& client, uverr ec)
   {
     ssl_socket* sk = client.get();
     client->start_read(
-      [sk](char* src, size_t n){
+      [sk](char* src, size_t n) {
         std::reverse(src, src+n);
-        std::pair<const char*, size_t> buf(src, n);
-        sk->write(&buf, 1);
+        sk->write(src, n);
       },
       [sk](uverr){ sk->close(); });
     connections.push_back(std::move(client));
