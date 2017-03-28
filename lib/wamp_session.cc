@@ -1282,13 +1282,7 @@ t_request_id wamp_session::call(std::string uri,
 {
   /* USER thread */
 
-  json_array msg;
-  msg.push_back( CALL );
-  msg.push_back( 0 );
-  msg.push_back( options );
-  msg.push_back( uri );
-  msg.push_back( args.args_list );
-  msg.push_back( args.args_dict );
+  json_array msg {CALL, 0, options, uri, args.args_list, args.args_dict};
 
   wamp_call mycall;
   mycall.user_cb = user_cb;
@@ -1536,16 +1530,7 @@ t_request_id wamp_session::publish(std::string uri,
 {
   /* USER thread */
 
-  json_array msg;
-  msg.push_back( PUBLISH );
-  msg.push_back( 0 );
-  msg.push_back( options );
-  msg.push_back( uri );
-  if (!args.args_list.empty())
-  {
-    msg.push_back( args.args_list );
-    if (!args.args_dict.empty()) msg.push_back( args.args_dict );
-  }
+  json_array msg {PUBLISH, 0, options, uri, args.args_list, args.args_dict};
 
   t_request_id request_id;
 
@@ -1577,7 +1562,6 @@ void wamp_session::process_inbound_call(json_array & msg)
   if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4].as_array();
   if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5].as_object();
 
-
   session_handle wp = this->handle();
   auto reply_fn = [wp, request_id](wamp_args args,
                                    std::unique_ptr<std::string> error_uri)
@@ -1591,36 +1575,20 @@ void wamp_session::process_inbound_call(json_array & msg)
       {
         if (!error_uri)
         {
-          json_array msg;
-          msg.push_back(RESULT);
-          msg.push_back(request_id);
-          msg.push_back(json_object());
-          if (!args.args_list.empty())
-          {
-            msg.push_back( args.args_list );
-            if (!args.args_dict.empty()) msg.push_back( args.args_dict );
-          }
-          sp->send_msg( msg );
+          json_array msg {RESULT,request_id, {}, args.args_list, args.args_dict};
+          sp->send_msg(msg);
         }
         else
         {
-          json_array msg;
-          msg.push_back(ERROR);
-          msg.push_back(CALL);
-          msg.push_back(request_id);
-          msg.push_back(json_object());
-          msg.push_back(*error_uri);
-          if (!args.args_list.empty())
-          {
-            msg.push_back( args.args_list );
-            if (!args.args_dict.empty()) msg.push_back( args.args_dict );
-          }
-          sp->send_msg( msg );
+          json_array msg {ERROR, CALL, request_id, {}, *error_uri,
+                          args.args_list, args.args_dict};
+          sp->send_msg(msg);
         }
       }
     };
 
-  m_server_handler.inbound_call(this, procedure_uri, std::move(my_wamp_args), std::move(reply_fn));
+  m_server_handler.inbound_call(this, procedure_uri,
+                                std::move(my_wamp_args), std::move(reply_fn));
 }
 
 
@@ -1632,17 +1600,8 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
 {
   /* EV & USER thread */
 
-  json_array msg;
-  msg.push_back( INVOCATION );
-  msg.push_back( 0 );
-  msg.push_back( registration_id );
-  msg.push_back( options );
-
-  if (!args.args_list.empty())
-  {
-    msg.push_back( args.args_list );
-    if (!args.args_dict.empty()) msg.push_back( args.args_dict );
-  }
+  json_array msg {INVOCATION, 0, registration_id, options,
+      args.args_list, args.args_dict};
 
   t_request_id request_id;
   wamp_invocation my_invocation;
@@ -1799,18 +1758,7 @@ void wamp_session::process_inbound_register(json_array & msg)
 void wamp_session::invocation_yield(int request_id,
                                     wamp_args args)
 {
-  json_array msg;
-
-  msg.push_back(YIELD);
-  msg.push_back(request_id);
-  msg.push_back(json_object());
-
-  if (!args.args_list.empty())
-  {
-    msg.push_back(args.args_list);
-    if (!args.args_dict.empty()) msg.push_back(args.args_dict);
-  }
-
+  json_array msg {YIELD, request_id, {}, args.args_list, args.args_dict};
   send_msg(msg);
 }
 
@@ -1821,20 +1769,8 @@ void wamp_session::reply_with_error(
   wamp_args args,
   std::string error_uri)
 {
-  json_array msg;
-
-  msg.push_back(ERROR);
-  msg.push_back(request_type);
-  msg.push_back(request_id);
-  msg.push_back(json_object());
-  msg.push_back(error_uri);
-
-  if (!args.args_list.empty())
-  {
-    msg.push_back(args.args_list);
-    if (!args.args_dict.empty()) msg.push_back(args.args_dict);
-  }
-
+  json_array msg {ERROR, request_type, request_id, {},
+      error_uri, args.args_list, args.args_dict};
   send_msg(msg);
 }
 
