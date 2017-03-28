@@ -7,16 +7,30 @@
 
 #include "wampcc/wampcc.h"
 
+#include <algorithm>
+
 using namespace wampcc;
-using namespace std;
+
+/* Store of client connections.  For this simple demo we dont have any code
+ * which deletes the sockets once they have closed. */
+std::vector<std::unique_ptr<ssl_socket>> connections;
 
 /* Called on the kernel's IO thread when the server socket has accepted a new
  * client socket. */
 void on_ssl_accept(std::unique_ptr<ssl_socket>& client, uverr ec)
 {
-  // TODO: take ownership of socket
-
-  // TODO: start read
+  if (client)
+  {
+    ssl_socket* sk = client.get();
+    client->start_read(
+      [sk](char* src, size_t n){
+        std::reverse(src, src+n);
+        std::pair<const char*, size_t> buf(src, n);
+        sk->write(&buf, 1);
+      },
+      [sk](uverr){ sk->close(); });
+    connections.push_back(std::move(client));
+  }
 }
 
 
@@ -42,8 +56,8 @@ int main(int, char**)
     /* Suspend main thread */
 
     pause();
-  } catch (const exception& e) {
-    cout << e.what() << endl;
+  } catch (const std::exception& e) {
+    std::cout << e.what() << std::endl;
     return 1;
   }
 }
