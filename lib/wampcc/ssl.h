@@ -71,7 +71,6 @@ public:
 /* Obtain the return value of an SSL operation and convert into a simplified
  * error code, which is easier to examine for failure. */
 enum class sslstatus { ok, want_io, fail };
-
 sslstatus get_sslstatus(SSL* ssl, int n);
 std::string to_string(sslstatus);
 

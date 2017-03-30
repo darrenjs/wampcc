@@ -57,8 +57,6 @@ ssl_context::ssl_context(const ssl_config& conf) : m_ctx(nullptr), m_config(conf
     /* Make sure the key and certificate file match */
     if (SSL_CTX_check_private_key(m_ctx) != 1)
       throw_ssl_error("SSL_CTX_check_private_key");
-
-    std::cout << "SSL initialised\n"; // TODO: delete me
   }
 
   /* Recommended to avoid SSLv2 & SSLv3 */
@@ -94,7 +92,6 @@ ssl_session::ssl_session(ssl_context* ctx, connect_mode cm)
   if (cm == connect_mode::passive)
     SSL_set_accept_state(ssl);
 }
-
 
 
 std::string to_string(sslstatus s)
