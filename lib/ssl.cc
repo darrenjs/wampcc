@@ -11,19 +11,19 @@ namespace wampcc
 {
 
 
-enum sslstatus get_sslstatus(SSL* ssl, int n)
+sslstatus get_sslstatus(SSL* ssl, int n)
 {
   switch (SSL_get_error(ssl, n))
   {
     case SSL_ERROR_NONE:
-      return SSLSTATUS_OK;
+      return sslstatus::ok;
     case SSL_ERROR_WANT_WRITE:
     case SSL_ERROR_WANT_READ:
-      return SSLSTATUS_WANT_IO;
+      return sslstatus::want_io;
     case SSL_ERROR_ZERO_RETURN:
     case SSL_ERROR_SYSCALL:
     default:
-      return SSLSTATUS_FAIL;
+      return sslstatus::fail;
   }
 }
 
@@ -87,13 +87,28 @@ ssl_session::ssl_session(ssl_context* ctx, connect_mode cm)
   rbio = BIO_new(BIO_s_mem());
   wbio = BIO_new(BIO_s_mem());
   ssl = SSL_new(ctx->context());
+  SSL_set_bio(ssl, rbio, wbio);
 
   if (cm == connect_mode::active)
     SSL_set_connect_state(ssl);
   if (cm == connect_mode::passive)
     SSL_set_accept_state(ssl);
-  SSL_set_bio(ssl, rbio, wbio);
 }
+
+
+
+std::string to_string(sslstatus s)
+{
+  switch (s)
+  {
+    case sslstatus::ok : return "ok";
+    case sslstatus::want_io : return "want_io";
+    case sslstatus::fail : return "fail";
+  }
+
+  return "unknown_enum";
+}
+
 
 } // namespace
 
