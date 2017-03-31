@@ -363,6 +363,13 @@ void tcp_socket::close_once_on_io()
   }
 }
 
+void tcp_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
+{
+  if (nread >= 0 && m_io_on_read)
+    m_io_on_read(buf->base, nread);
+  else if (nread < 0 && m_io_on_error)
+    m_io_on_error(uverr(nread));
+}
 
 void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
 {
@@ -371,11 +378,9 @@ void tcp_socket::on_read_cb(ssize_t nread, const uv_buf_t* buf)
     m_bytes_read += nread;
 
   try {
-    if (nread >= 0 && m_io_on_read)
-      m_io_on_read(buf->base, nread);
-    else if (nread < 0 && m_io_on_error)
-      m_io_on_error(uverr(nread));
-  } catch (...) {
+    handle_read_bytes(nread, buf);
+  }
+  catch (...) {
     log_exception(__logger, "IO thread in on_read_cb");
   }
 
@@ -387,7 +392,7 @@ void tcp_socket::write(const char* src, size_t len)
 {
   uv_buf_t buf;
 
-  scope_guard buf_guard([buf]() {
+  scope_guard buf_guard([&buf]() {
       delete[] buf.base;
     });
 
@@ -405,7 +410,7 @@ void tcp_socket::write(const char* src, size_t len)
       buf_guard.dismiss();
     }
 
-    m_kernel->get_io()->push_fn([this]() { this->do_write(); });
+    m_kernel->get_io()->push_fn([this]() { service_pending_write(); });
   }
 }
 
@@ -440,14 +445,59 @@ void tcp_socket::write(std::pair<const char*, size_t>* srcbuf, size_t count)
       buf_guard.dismiss();
     }
 
-    m_kernel->get_io()->push_fn([this]() { this->do_write(); });
+    m_kernel->get_io()->push_fn([this]() {service_pending_write();});
   }
 }
 
 
+void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
+{
+  /* IO thread */
+  assert(m_kernel->get_io()->this_thread_is_io() == true);
+
+
+  size_t bytes_to_send = 0;
+  for (size_t i = 0; i < bufs.size(); i++)
+    bytes_to_send += bufs[i].len;
+
+  const size_t pend_max = m_kernel->get_config().socket_max_pending_write_bytes;
+
+  if (is_connected() && !bufs.empty()) {
+    if (bytes_to_send > (pend_max - m_bytes_pending_write)) {
+      LOG_WARN("pending bytes limit reached; closing connection");
+      close_once_on_io();
+      return;
+    }
+
+    // build the request
+    write_req* wr = new write_req(bufs.size());
+    wr->req.data = this;
+    for (size_t i = 0; i < bufs.size(); i++)
+      wr->bufs[i] = bufs[i];
+
+    m_bytes_pending_write += bytes_to_send;
+
+    int r = uv_write((uv_write_t*)wr, (uv_stream_t*)m_uv_tcp, wr->bufs,
+                     wr->nbufs, [](uv_write_t* req, int status) {
+      tcp_socket* the_tcp_socket = (tcp_socket*)req->data;
+      the_tcp_socket->on_write_cb(req, status);
+    });
+
+    if (r) {
+      LOG_WARN("uv_write failed, errno " << std::abs(r) << " ("
+                                         << uv_strerror(r)
+                                         << "); closing connection");
+      delete wr;
+      close_once_on_io();
+      return;
+    };
+  }
+}
+
 void tcp_socket::do_write()
 {
   /* IO thread */
+  assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   std::vector<uv_buf_t> copy;
   {
@@ -526,15 +576,12 @@ void tcp_socket::on_write_cb(uv_write_t* req, int status)
 std::unique_ptr<tcp_socket> tcp_socket::invoke_user_accept(uverr ec,
                                                            uv_tcp_t* h)
 {
-  if (!m_user_accept_fn)
-    return {};
+  /* IO thread */
+  std::unique_ptr<tcp_socket> up(
+    h? new tcp_socket(m_kernel, h, socket_state::connected):0);
 
-  std::unique_ptr<tcp_socket> up;
-
-  if (ec == 0)
-    up.reset(new tcp_socket(m_kernel, h, socket_state::connected));
-
-  m_user_accept_fn(up, ec);
+  if (m_user_accept_fn)
+    m_user_accept_fn(up, ec);
 
   return up;
 }
@@ -545,7 +592,6 @@ std::unique_ptr<tcp_socket> tcp_socket::invoke_user_accept(uverr ec,
 void tcp_socket::on_listen_cb(int status)
 {
   /* IO thread */
-
   uverr ec{status};
 
   if (ec) {
@@ -858,6 +904,11 @@ void tcp_socket::connect_completed(
   }
 
   completion->set_value(ec);
+}
+
+void tcp_socket::service_pending_write()
+{
+  do_write();
 }
 
 } // namespace wampcc

@@ -139,19 +139,31 @@ protected:
 
   tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
 
-  virtual void on_read_cb(ssize_t, const uv_buf_t*);
+  virtual void handle_read_bytes(ssize_t, const uv_buf_t*);
   virtual std::unique_ptr<tcp_socket> invoke_user_accept(uverr, uv_tcp_t*);
+  virtual void service_pending_write();
 
+  void do_write(std::vector<uv_buf_t>&);
   std::future<uverr> listen_impl(const std::string&,const std::string&,addr_family);
 
   kernel* m_kernel;
   logger& __logger;
+
+  /* Store of user requests to write bytes. These are queued until serviced by
+   * the IO thread, via service_pending_write(). */
+  std::vector<uv_buf_t> m_pending_write;
+  std::mutex            m_pending_write_lock;
+
+  /* User callbacks. */
+  io_on_read m_io_on_read;
+  io_on_error m_io_on_error;
 
 private:
   void close_impl();
 
   static const char * to_string(tcp_socket::socket_state);
 
+  void on_read_cb(ssize_t, const uv_buf_t*);
   void on_write_cb(uv_write_t*, int);
   void close_once_on_io();
   void do_write();
@@ -175,12 +187,6 @@ private:
   std::atomic<size_t> m_bytes_pending_write;
   size_t m_bytes_written;
   size_t m_bytes_read;
-
-  io_on_read m_io_on_read;
-  io_on_error m_io_on_error;
-
-  std::vector<uv_buf_t> m_pending_write;
-  std::mutex m_pending_write_lock;
 
   on_accept_cb m_user_accept_fn;
   on_close_cb m_user_close_fn;
