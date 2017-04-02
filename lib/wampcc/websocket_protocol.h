@@ -46,6 +46,8 @@ public:
 
 private:
 
+  const char* protocol_reply_header();
+
   enum
   {
     eInvalid,

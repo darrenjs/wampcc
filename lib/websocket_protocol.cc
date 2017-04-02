@@ -223,6 +223,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               os << "Upgrade: websocket" << "\r\n";
               os << "Connection: Upgrade" << "\r\n";
               os << "Sec-WebSocket-Accept: " << make_accept_key(m_http_parser->get("Sec-WebSocket-Key")) << "\r\n";
+              os << "Sec-WebSocket-Protocol: " << protocol_reply_header() << "\r\n";
               os << "\r\n";
 
               std::string msg = os.str();
@@ -408,6 +409,12 @@ void websocket_protocol::on_timer()
     auto buf = fb.buf();
     m_socket->write(&buf, 1);
   }
+}
+
+const char* websocket_protocol::protocol_reply_header()
+{
+  // TODO: needs to be smarter, when wampcc has support for msgpack
+  return "wamp.2.json";
 }
 
 }
