@@ -158,6 +158,9 @@ protected:
   io_on_read m_io_on_read;
   io_on_error m_io_on_error;
 
+  socket_state m_state;
+  mutable std::mutex m_state_lock;
+
 private:
   void close_impl();
 
@@ -177,9 +180,6 @@ private:
   void on_listen_cb(int);
 
   uv_tcp_t* m_uv_tcp;
-
-  socket_state m_state;
-  mutable std::mutex m_state_lock;
 
   std::unique_ptr<std::promise<void>> m_io_closed_promise;
   std::shared_future<void> m_io_closed_future;

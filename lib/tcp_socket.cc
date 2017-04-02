@@ -65,8 +65,8 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
   : m_kernel(k),
     __logger(k->get_logger()),
-    m_uv_tcp(h),
     m_state(ss),
+    m_uv_tcp(h),
     m_io_closed_promise(new std::promise<void>),
     m_io_closed_future(m_io_closed_promise->get_future()),
     m_bytes_pending_write(0),
@@ -454,7 +454,6 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
 {
   /* IO thread */
   assert(m_kernel->get_io()->this_thread_is_io() == true);
-
 
   size_t bytes_to_send = 0;
   for (size_t i = 0; i < bufs.size(); i++)
