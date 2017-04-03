@@ -149,24 +149,22 @@ static void die(std::string e)
 #define HELPLN( X,S,T) std::cout << "  " << X << S << T << std::endl
 static void usage()
 {
+  const char *sp2="\t\t";
   const char *sp3="\t\t\t";
   const char *sp4="\t\t\t\t";
   std::cout << "usage: admin [OPTIONS] ADDRESS PORT" << std::endl;
   std::cout << "Options:" << std::endl;
-  std::cout << "  -U, --username=ARG"   << "\t\t" << "specify a session username" << std::endl;
-  std::cout << "  -P, --password=ARG"   << "\t\t" << "specify a session password" << std::endl;
-  std::cout << "  -R, --realm=ARG"      << "\t\t" << "specify a session realm" << std::endl;
-  std::cout << "  -s, --subscribe=URI"  << "\t\t" << "subscribe to topic" << std::endl;
-  std::cout << "  -p, --publish=URI"    << "\t\t" << "publish to topic" << std::endl;
-  //std::cout << "  -r, -register=URI"   << "\t\t" << "register procedure" << std::endl;
-  std::cout << "  -c, --call=URI"       << "\t\t" << "call procedure" << std::endl;
-  std::cout << "  --arglist=ARG"        << "\t\t\t" << "wamp argument list, ARG is a JSON array" << std::endl;
-  std::cout << "  --argdict=ARG"        << "\t\t\t" << "wamp argument dictionary, ARG is a JSON object" << std::endl;
-
-  HELPLN("--ssl", sp4, "use SSL");
+  HELPLN("-U, --username=ARG",sp2,"specify a session username");
+  HELPLN("-P, --password=ARG",sp2,"specify a session password");
+  HELPLN("-R, --realm=ARG",sp2,"specify a session realm");
+  HELPLN("-s, --subscribe=URI",sp2,"subscribe to topic");
+  HELPLN("-p, --publish=URI",sp2,"publish to topic");
+  HELPLN("-c, --call=URI",sp2,"call procedure");
+  HELPLN("--arglist=ARG",sp3,"wamp argument list, ARG is a JSON arra");
+  HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
+  HELPLN("--ssl", sp4, "connect using SSL/TLS socket");
   HELPLN("-h", sp4, "display this help");
   HELPLN("-v, --version", sp3, "print program version");
-
   std::cout << std::endl << "Examples:" <<std::endl;
   std::cout << std::endl << "Call a procedure with JSON argument as array and object" << std::endl;
   std::cout << "  admin -U peter -P secret2 -R public -c set_color --arglist '[\"green\", \"light\"]'"   << std::endl;
