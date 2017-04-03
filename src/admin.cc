@@ -58,6 +58,8 @@ struct user_options
 
   std::string arg_list;
   std::string arg_dict;
+
+  bool use_ssl = false;
 } uopts;
 
 
@@ -144,22 +146,26 @@ static void die(std::string e)
 }
 
 
+#define HELPLN( X,S,T) std::cout << "  " << X << S << T << std::endl
 static void usage()
 {
+  const char *sp3="\t\t\t";
+  const char *sp4="\t\t\t\t";
   std::cout << "usage: admin [OPTIONS] ADDRESS PORT" << std::endl;
   std::cout << "Options:" << std::endl;
-  std::cout << "  -U, --username=ARG"     << "\t\t" << "specify a session username" << std::endl;
-  std::cout << "  -P, --password=ARG"     << "\t\t" << "specify a session password" << std::endl;
-  std::cout << "  -R, --realm=ARG"        << "\t\t" << "specify a session realm" << std::endl;
-  std::cout << "  -s, --subscribe=URI"    << "\t\t" << "subscribe to topic" << std::endl;
-  std::cout << "  -p, --publish=URI"      << "\t\t" << "publish to topic" << std::endl;
-  //std::cout << "  -r, -register=URI"     << "\t\t" << "register procedure" << std::endl;
-  std::cout << "  -c, --call=URI"         << "\t\t" << "call procedure" << std::endl;
-  std::cout << "  --arglist=ARG"          << "\t\t\t" << "wamp argument list, ARG is a JSON array" << std::endl;
-  std::cout << "  --argdict=ARG"          << "\t\t\t" << "wamp argument dictionary, ARG is a JSON object" << std::endl;
+  std::cout << "  -U, --username=ARG"   << "\t\t" << "specify a session username" << std::endl;
+  std::cout << "  -P, --password=ARG"   << "\t\t" << "specify a session password" << std::endl;
+  std::cout << "  -R, --realm=ARG"      << "\t\t" << "specify a session realm" << std::endl;
+  std::cout << "  -s, --subscribe=URI"  << "\t\t" << "subscribe to topic" << std::endl;
+  std::cout << "  -p, --publish=URI"    << "\t\t" << "publish to topic" << std::endl;
+  //std::cout << "  -r, -register=URI"   << "\t\t" << "register procedure" << std::endl;
+  std::cout << "  -c, --call=URI"       << "\t\t" << "call procedure" << std::endl;
+  std::cout << "  --arglist=ARG"        << "\t\t\t" << "wamp argument list, ARG is a JSON array" << std::endl;
+  std::cout << "  --argdict=ARG"        << "\t\t\t" << "wamp argument dictionary, ARG is a JSON object" << std::endl;
 
-  std::cout << "  -h, -help"              << "\t\t\t" << "display this help" << std::endl;
-  std::cout << "  -v, --version"          << "\t\t\t" << "print program version" << std::endl;
+  HELPLN("--ssl", sp4, "use SSL");
+  HELPLN("-h", sp4, "display this help");
+  HELPLN("-v, --version", sp3, "print program version");
 
   std::cout << std::endl << "Examples:" <<std::endl;
   std::cout << std::endl << "Call a procedure with JSON argument as array and object" << std::endl;
@@ -192,7 +198,8 @@ static void process_options(int argc, char** argv)
   {
     NO_URI_CHECK = 1,
     ARGLIST,
-    ARGDICT
+    ARGDICT,
+    OPT_SSL,
   };
 
 //  int digit_optind = 0;
@@ -209,7 +216,8 @@ static void process_options(int argc, char** argv)
     {"realm",     required_argument, 0, 'R'},
     {"arglist",   required_argument, 0, ARGLIST},
     {"argdict",   required_argument, 0, ARGDICT},
-    {"no-uri-check", no_argument ,   0, NO_URI_CHECK},
+    {"no-uri-check", no_argument,    0, NO_URI_CHECK},
+    {"ssl",       no_argument,       0, OPT_SSL},
     {NULL, 0, NULL, 0}
   };
   const char* optstr="hvds:p:m:r:c:U:P:R:";
@@ -238,6 +246,7 @@ static void process_options(int argc, char** argv)
       case NO_URI_CHECK : uopts.no_uri_check = true; break;
       case ARGLIST : uopts.arg_list = optarg; break;
       case ARGDICT : uopts.arg_dict = optarg; break;
+      case OPT_SSL : uopts.use_ssl = true; break;
       case 'd' : uopts.verbose++; break;
       case 'h' : usage();
       case 'v' : version();
@@ -338,7 +347,11 @@ int main_impl(int argc, char** argv)
 
   std::unique_ptr<wampcc::kernel> g_kernel( new wampcc::kernel({}, console_logger));
 
-  std::unique_ptr<wampcc::tcp_socket> sock( new wampcc::tcp_socket(g_kernel.get()) );
+  std::unique_ptr<wampcc::tcp_socket> sock;
+  if(uopts.use_ssl)
+    sock.reset(new wampcc::ssl_socket(g_kernel.get()));
+  else
+    sock.reset(new wampcc::tcp_socket(g_kernel.get()));
 
   std::future_status status;
 
