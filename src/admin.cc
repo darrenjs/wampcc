@@ -175,7 +175,7 @@ static void usage()
 
 static void version()
 {
-//  std::cout << PACKAGE_VERSION << std::endl;  exit(0)l
+  std::cout << wampcc::name_version()  << std::endl;
   exit(0);
 }
 
