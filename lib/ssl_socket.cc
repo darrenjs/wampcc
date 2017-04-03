@@ -23,15 +23,28 @@
 namespace wampcc
 {
 
+/* Return a new uv_buf_t containg a copy of a sub-region of the source,
+   starting at offset 'pos' */
+static uv_buf_t sub_buf(uv_buf_t& src, size_t pos)
+{
+  uv_buf_t buf = uv_buf_init((char*)new char[src.len - pos], src.len - pos);
+  memcpy(buf.base, src.base + pos, buf.len);
+  return buf;
+}
+
+
 ssl_socket::ssl_socket(kernel* k, uv_tcp_t* h, socket_state ss)
   : tcp_socket(k, h, ss),
-    m_ssl(new ssl_session(k->get_ssl(), connect_mode::passive))
+    m_ssl(new ssl_session(k->get_ssl(), connect_mode::passive)),
+    m_handshake_state(t_handshake_state::pending)
 {
 }
 
 
 ssl_socket::ssl_socket(kernel* k)
-  : tcp_socket(k), m_ssl(new ssl_session(k->get_ssl(), connect_mode::active))
+  : tcp_socket(k),
+    m_ssl(new ssl_session(k->get_ssl(), connect_mode::active)),
+    m_handshake_state(t_handshake_state::pending)
 {
 }
 
@@ -56,7 +69,6 @@ std::future<uverr> ssl_socket::listen(const std::string& node,
 std::unique_ptr<tcp_socket> ssl_socket::invoke_user_accept(uverr ec,
                                                            uv_tcp_t* h)
 {
-  /* IO thread */
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   std::unique_ptr<ssl_socket> up(
@@ -69,83 +81,136 @@ std::unique_ptr<tcp_socket> ssl_socket::invoke_user_accept(uverr ec,
 }
 
 
-void ssl_socket::service_pending_write()
-{
-  /* IO thread */
-  assert(m_kernel->get_io()->this_thread_is_io() == true);
-
-  /* To service the pending write bytes, we cannot immediately write them to the
-   * socket as tcp_socket does.  Instead we must pass them through the SSL
-   * object for encryption, and then write them. */
-  if (do_encrypt_and_write() == -1)
-    m_io_on_error(uverr(SSL_UV_FAIL));
-}
-
-
 /* Service bytes waiting on the m_pending_write queue, which are due to be
  * written out of the SSL socket. These bytes must first be encrypted, and then
  * written to the underlying socket. */
-int ssl_socket::do_encrypt_and_write()
+void ssl_socket::service_pending_write()
 {
-  /* IO thread */
+  assert(m_kernel->get_io()->this_thread_is_io() == true);
+
+  // accept all unencrypted bytes that are waiting to be written
+  std::vector<uv_buf_t> bufs;
+  {
+    std::lock_guard<std::mutex> guard(m_pending_write_lock);
+    if (m_pending_write.empty())
+      return;
+    m_pending_write.swap(bufs);
+  }
+
+  scope_guard buf_guard([&bufs]() {
+    for (auto& i : bufs)
+      delete[] i.base;
+  });
+
+  for (auto it = bufs.begin(); it != bufs.end(); ++it) {
+    size_t consumed = 0;
+    while (consumed < it->len) {
+      auto r = do_encrypt_and_write(it->base + consumed, it->len - consumed);
+
+      if (r.first == -1) {
+        m_io_on_error(uverr(SSL_UV_FAIL));
+        return; /* SSL failed, so okay to discard all objects in 'bufs' */
+      }
+
+      if (r.second == 0)
+        break; /* SSL_write couldn't accept data */
+
+      consumed += r.second;
+    }
+
+    if (consumed < it->len) {
+      /* SSL_write failed to fully write a buffer, but also, SSL did not report
+       * an error.  Seems like some kind of flow control.  We'll keep the
+       * unconsumed data, plus other pending buffers, for a later attempt. */
+      std::vector<uv_buf_t> tmp{sub_buf(*it, consumed)};
+      for (++it; it != bufs.end(); ++it) {
+        tmp.push_back(*it);
+        it->base = nullptr; /* prevent scope guard freeing the unused bytes */
+      }
+
+      std::lock_guard<std::mutex> guard(m_pending_write_lock);
+      tmp.insert(tmp.end(), m_pending_write.begin(), m_pending_write.end());
+      m_pending_write.swap(tmp);
+    }
+  }
+}
+
+
+/* Attempt to encrypt a single block of data, by putting it through the SSL
+ * object, and then take the output (representing the encrypted data) and queue
+ * for socket write. Returns first==-1 on failure. */
+std::pair<int, size_t> ssl_socket::do_encrypt_and_write(char* src, size_t len)
+{
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   char buf[DEFAULT_BUF_SIZE];
 
   if (!SSL_is_init_finished(m_ssl->ssl)) {
     if (do_handshake() == sslstatus::fail)
-      return -1;
+      return {-1, 0};
     if (!SSL_is_init_finished(m_ssl->ssl))
-      return 0;
+      return {0, 0};
   }
 
-  // accept all unencrypted bytes that are waiting to be written
-  std::vector<uv_buf_t> copy;
-  {
-    std::lock_guard<std::mutex> guard(m_pending_write_lock);
-    m_pending_write.swap(copy);
-  }
+  int w = SSL_write(m_ssl->ssl, src, len);
+  if (get_sslstatus(m_ssl->ssl, w) == sslstatus::fail)
+    return {-1, 0};
 
-  /* TODO: need better byte handling here, e.g, maybe not all the bytes could be
-   * written into the bio? */
-  for (auto& src : copy) {
-    int n = SSL_write(m_ssl->ssl, src.base, src.len);
-    sslstatus status = get_sslstatus(m_ssl->ssl, n);
+  /* take the output of the SSL object and queue it for socket write */
+  int n;
+  do {
+    /* If BIO_read successfully obtained data, then n > 0.  A return value
+     * of 0 or -1 does not necessarily indicate an error, in particular,
+     * when used with our non-blocking memory bio. To check for an error, we
+     * must use BIO_should_retry.*/
 
-    if (n > 0) {
-      /* consume the waiting bytes that have been used by SSL */
+    n = BIO_read(m_ssl->wbio, buf, sizeof(buf));
+    if (n > 0)
+      write_encrypted_bytes(buf, n);
+    else if (!BIO_should_retry(m_ssl->wbio))
+      return {-1, 0};
+  } while (n > 0);
 
-      // TODO: DJS!!! this needs to be adapted for the buffers I am using
+  return {0, w};
+}
 
-      /* take the output of the SSL object and queue it for socket write */
-      do {
-        /* If BIO_read successfully obtained data, then n > 0.  A return value
-         * of 0 or -1 does not necessarily indicate an error, in particular,
-         * when used with our non-blocking memory bio. To check for an error, we
-         * must use BIO_should_retry.*/
 
-        n = BIO_read(m_ssl->wbio, buf, sizeof(buf));
-        if (n > 0)
-          write_encrypted_bytes(buf, n);
-        else if (!BIO_should_retry(m_ssl->wbio))
-          return -1;
-      } while (n > 0);
-    }
-  }
+ssl_socket::t_handshake_state ssl_socket::handshake_state()
+{
+  return m_handshake_state;
+}
 
-  return 0;
+
+std::future<ssl_socket::t_handshake_state> ssl_socket::handshake()
+{
+  std::lock_guard<std::mutex> guard(m_state_lock);
+  if (m_state == socket_state::closing || m_state == socket_state::closed)
+    throw tcp_socket::error("ssl_socket: handshake() when closing or closed");
+
+  auto fut = m_prom_handshake.get_future();
+
+  m_kernel->get_io()->push_fn([this]() { this->do_handshake(); });
+
+  return fut;
 }
 
 
 sslstatus ssl_socket::do_handshake()
 {
-  /* IO thread */
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   char buf[DEFAULT_BUF_SIZE];
 
   int n = SSL_do_handshake(m_ssl->ssl);
   sslstatus status = get_sslstatus(m_ssl->ssl, n);
+
+  if (status == sslstatus::fail) {
+    if (m_handshake_state == t_handshake_state::pending) {
+      m_handshake_state = t_handshake_state::failed;
+      m_prom_handshake.set_value(m_handshake_state);
+    }
+    return status;
+  }
 
   /* Did SSL request to write bytes? */
   if (status == sslstatus::want_io)
@@ -157,8 +222,10 @@ sslstatus ssl_socket::do_handshake()
         return sslstatus::fail;
     } while (n > 0);
 
-  if (SSL_is_init_finished(m_ssl->ssl)) {
-    // TODO: notify condition variable, for first handshake
+  if (SSL_is_init_finished(m_ssl->ssl) &&
+      m_handshake_state == t_handshake_state::pending) {
+    m_handshake_state = t_handshake_state::success;
+    m_prom_handshake.set_value(m_handshake_state);
   }
 
   return status;
@@ -167,7 +234,6 @@ sslstatus ssl_socket::do_handshake()
 
 void ssl_socket::write_encrypted_bytes(const char* src, size_t len)
 {
-  /* IO thread */
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   uv_buf_t buf = uv_buf_init(new char[len], len);
@@ -180,7 +246,6 @@ void ssl_socket::write_encrypted_bytes(const char* src, size_t len)
 
 void ssl_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
 {
-  /* IO thread */
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   if (nread > 0 && ssl_do_read(buf->base, size_t(nread)) == -1)
@@ -192,7 +257,6 @@ void ssl_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
 
 int ssl_socket::ssl_do_read(char* src, size_t len)
 {
-  /* IO thread */
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   char buf[DEFAULT_BUF_SIZE];
@@ -239,6 +303,12 @@ int ssl_socket::ssl_do_read(char* src, size_t len)
       return -1;
   }
 
+  /* In the unlikely event that there are left-over bytes from an incomplete
+   * SSL_write that are waitng a retry, make attempt to serivce them. */
+  service_pending_write();
+
   return 0;
 }
+
+// namespace wampcc
 }

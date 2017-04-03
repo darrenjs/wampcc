@@ -23,6 +23,8 @@ enum class sslstatus;
 class ssl_socket : public tcp_socket
 {
 public:
+  enum class t_handshake_state { pending, success, failed };
+
   typedef std::function<void(std::unique_ptr<ssl_socket>&, uverr)>
       ssl_on_accept_cb;
 
@@ -31,15 +33,15 @@ public:
   ssl_socket(const ssl_socket&) = delete;
   ssl_socket& operator=(const ssl_socket&) = delete;
 
-  /* Initialise the client handshake.  This can be called after connect() has
-   * successfully completed. It will begin the SSL handshake.  Note that this
-   * does not have to be called. Any attempt to write data to a SSL connection
-   * which has not completed the handshake will cause a handshake attempt to be
-   * automatically made. */
-  void handshake() {} // TODO
+  /* Request the asynchronous send of the SSL client handshake.  This can be
+   * called after connect() has successfully completed.  Note that this does not
+   * have to be called. Any attempt to write data to a SSL connection which has
+   * not completed the handshake will cause a handshake attempt to be
+   * automatically made. Should not be called more than once. */
+  std::future<t_handshake_state> handshake();
 
   /* Has the initial SSL handshake been completed? */
-  bool handshake_complete(); // TODO:
+  t_handshake_state handshake_state();
 
   /** Initialise this ssl_socket by creating a listen socket that is bound to
    * the specified end point. The user callback is called when an incoming
@@ -57,13 +59,16 @@ private:
   std::unique_ptr<tcp_socket> invoke_user_accept(uverr, uv_tcp_t*) override;
   void service_pending_write() override;
 
-  int do_encrypt_and_write();
+  std::pair<int, size_t> do_encrypt_and_write(char*, size_t);
   sslstatus do_handshake();
   void write_encrypted_bytes(const char* src, size_t len);
   int ssl_do_read(char* src, size_t len);
 
   std::unique_ptr<ssl_session> m_ssl;
   ssl_on_accept_cb m_ssl_on_accept_cb;
+
+  t_handshake_state m_handshake_state;
+  std::promise<t_handshake_state> m_prom_handshake;
 };
 }
 

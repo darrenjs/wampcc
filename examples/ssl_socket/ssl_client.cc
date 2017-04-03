@@ -8,21 +8,47 @@
 #include "wampcc/wampcc.h"
 
 using namespace wampcc;
-using namespace std;
 
 int main(int, char**)
 {
   try {
+    /* Create the wampcc kernel, configured to support SSL. */
+    config conf;
+    conf.ssl.enable = true;
+    kernel the_kernel(conf, logger::stdout());
 
-    /* Create the wampcc kernel. */
-    kernel the_kernel;
+    /* Create the SSL socket, in connector mode. */
+    ssl_socket sock(&the_kernel);
 
-    ssl_socket server_socket(&the_kernel);
+    /* Attempt to connect to peer, and wait for success/failure. */
+    if (auto err = sock.connect("127.0.0.1", 55555).get())
+      throw std::runtime_error(err.message());
 
-    /* Suspend main thread */
-    pause();
-  } catch (const exception& e) {
-    cout << e.what() << endl;
+    /* Important! Before doing anything with the SSL socket, we must enable it
+     * for read operations, otherwise it will be unable to complete the SSL
+     * handshake. */
+    sock.start_read([](char* src, size_t n) {
+                      std::cout << "on_read: [" << std::string(src, n) << "]"
+                                << std::endl;
+                    },
+                    [&](uverr e) {
+                      std::cout << "on_error: " << e << std::endl;
+                      sock.close();
+                    });
+
+    /* Optionally initiate SSL handshake. If not done explicity, it is
+     * automatically called when data is first written. */
+    if (sock.handshake().get() != ssl_socket::t_handshake_state::success)
+      throw std::runtime_error("SSL handshake failed");
+
+    /* Echo stdin to the SSL socket, except 'X' which breaks loop. */
+    for (std::string line; std::getline(std::cin, line) && line != "X";)
+      sock.write(line.c_str(), line.size());
+
+    /* Close the socket object and wait until complete. */
+    sock.close().wait();
+  } catch (const std::exception& e) {
+    std::cout << e.what() << std::endl;
     return 1;
   }
 }
