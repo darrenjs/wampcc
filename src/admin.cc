@@ -298,6 +298,16 @@ std::string get_timestamp()
 }
 
 
+wampcc::config make_config()
+{
+  wampcc::config cfg;
+
+  if (uopts.use_ssl)
+    cfg.ssl.enable = true;
+
+  return cfg;
+}
+
 int main_impl(int argc, char** argv)
 {
   process_options(argc, argv);
@@ -343,7 +353,8 @@ int main_impl(int argc, char** argv)
     }
   };
 
-  std::unique_ptr<wampcc::kernel> g_kernel( new wampcc::kernel({}, console_logger));
+  std::unique_ptr<wampcc::kernel> g_kernel(
+    new wampcc::kernel(make_config(), console_logger));
 
   std::unique_ptr<wampcc::tcp_socket> sock;
   if(uopts.use_ssl)
