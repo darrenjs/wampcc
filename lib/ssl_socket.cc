@@ -244,17 +244,25 @@ void ssl_socket::write_encrypted_bytes(const char* src, size_t len)
 }
 
 
+/* Arrival of bytes from the socket (nread>0) must be passed to SSL for
+ * unencryption.  If SSL fails, or there is socket error, call the user error
+ * callback.  For EOF (nread==0), invoke standard user callback.
+ */
 void ssl_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
 {
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
   if (nread > 0 && ssl_do_read(buf->base, size_t(nread)) == -1)
     m_io_on_error(uverr(SSL_UV_FAIL));
+  else if (nread == 0)
+    m_io_on_read(nullptr, 0);
   else if (nread < 0 && m_io_on_error)
     m_io_on_error(uverr(nread));
 }
 
-
+/* Handle arrival of raw bytes from the underlying socket.  These need to be
+ * first unencrypted by the SSL object, and the obtained unencrypted data passed
+ * back to the user. */
 int ssl_socket::ssl_do_read(char* src, size_t len)
 {
   assert(m_kernel->get_io()->this_thread_is_io() == true);
@@ -265,7 +273,7 @@ int ssl_socket::ssl_do_read(char* src, size_t len)
     int n = BIO_write(m_ssl->rbio, src, len);
 
     if (n <= 0)
-      return -1;
+      return -1; /* assume mem bio write error is unrecoverable */
 
     src += n;
     len -= n;
@@ -274,8 +282,11 @@ int ssl_socket::ssl_do_read(char* src, size_t len)
     if (!SSL_is_init_finished(m_ssl->ssl)) {
       if (do_handshake() == sslstatus::fail)
         return -1;
+
+      /* If we are still not initialised, then perhaps there is more data to
+       * write into the read-bio? Check by continue-ing the loop. */
       if (!SSL_is_init_finished(m_ssl->ssl))
-        return 0;
+        continue;
     }
 
     /* The encrypted data is now in the input bio so now we can perform actual
