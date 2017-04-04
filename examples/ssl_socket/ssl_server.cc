@@ -15,6 +15,8 @@ using namespace wampcc;
  * which deletes the sockets once they have closed. */
 std::vector<std::unique_ptr<ssl_socket>> connections;
 
+std::promise<void> exit_command_received;
+
 /* Called on the kernel's IO thread when the server socket has accepted a new
  * client socket. */
 void on_ssl_accept(std::unique_ptr<ssl_socket>& client, uverr ec)
@@ -24,6 +26,8 @@ void on_ssl_accept(std::unique_ptr<ssl_socket>& client, uverr ec)
     ssl_socket* sk = client.get();
     client->start_read(
       [sk](char* src, size_t n) {
+        if (strncmp(src, "EXIT", 4)==0)
+          return exit_command_received.set_value();
         std::reverse(src, src+n);
         sk->write(src, n);
       },
@@ -33,9 +37,12 @@ void on_ssl_accept(std::unique_ptr<ssl_socket>& client, uverr ec)
 }
 
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
   try {
+    if (argc < 2)
+      throw std::runtime_error("arguments must be: PORT");
+
     /* Create the wampcc kernel, configured to support SSL. */
 
     config conf;
@@ -49,13 +56,16 @@ int main(int, char**)
 
     ssl_socket ssl_server(&the_kernel);
 
-    auto err = ssl_server.listen("", "55555", on_ssl_accept,
+    auto fut = ssl_server.listen("", argv[1], on_ssl_accept,
                                  tcp_socket::addr_family::inet4);
 
-    /* Suspend main thread */
+    if (auto e = fut.get())
+      throw std::runtime_error(std::string("listen failed: ")+e.message());
 
-    pause();
-  } catch (const std::exception& e) {
+    /* Suspend main thread */
+    exit_command_received.get_future().wait();
+  } 
+  catch (const std::exception& e) {
     std::cout << e.what() << std::endl;
     return 1;
   }

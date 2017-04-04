@@ -9,9 +9,12 @@
 
 using namespace wampcc;
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
   try {
+    if (argc < 3)
+      throw std::runtime_error("arguments must be: ADDR PORT");
+
     /* Create the wampcc kernel, configured to support SSL. */
     config conf;
     conf.ssl.enable = true;
@@ -21,7 +24,7 @@ int main(int, char**)
     ssl_socket sock(&the_kernel);
 
     /* Attempt to connect to peer, and wait for success/failure. */
-    if (auto err = sock.connect("127.0.0.1", 55555).get())
+    if (auto err = sock.connect(argv[1], atoi(argv[2])).get())
       throw std::runtime_error(err.message());
 
     /* Important! Before doing anything with the SSL socket, we must enable it
