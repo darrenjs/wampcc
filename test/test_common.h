@@ -59,7 +59,7 @@ class internal_server
 public:
   internal_server()
     : m_kernel(new kernel({}, logger::nolog())),
-      m_route(new wamp_router(m_kernel.get(), nullptr))
+      m_router(new wamp_router(m_kernel.get(), nullptr))
   {
   }
 
@@ -113,13 +113,23 @@ private:
 };
 
 
-enum {
+enum callback_status_t {
   e_callback_not_invoked,
   e_close_callback_with_sp,
   e_close_callback_without_sp,
   e_open_callback_with_sp,
   e_open_callback_without_sp
 } callback_status;
+
+
+std::unique_ptr< std::promise<callback_status_t> > sessioncb_promise;
+std::future<callback_status_t> reset_callback_result()
+{
+  sessioncb_promise.reset( new std::promise<callback_status_t>());
+  return sessioncb_promise->get_future();
+}
+
+
 
 
 void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
@@ -137,6 +147,9 @@ void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
     else
       callback_status = e_open_callback_without_sp;
   }
+
+  if (sessioncb_promise)
+    sessioncb_promise->set_value(callback_status);
 }
 
 
@@ -186,6 +199,67 @@ std::shared_ptr<wamp_session> establish_session(
 
   return session;
 }
+
+
+void perform_realm_logon(std::shared_ptr<wamp_session>&session,
+                         std::string realm="default_realm")
+{
+  if (!session)
+    throw std::runtime_error("perform_realm_logon: null session");
+
+  auto fut = reset_callback_result();
+
+  wampcc::client_credentials credentials;
+  credentials.realm  = realm;
+  credentials.authid = "peter";
+  credentials.authmethods = {"wampcra"};
+  credentials.secret_fn =  [=]() -> std::string { return "secret2"; };
+
+  session->initiate_hello(credentials);
+
+  auto long_time = std::chrono::milliseconds(200);
+
+  if (fut.wait_for(long_time) != std::future_status::ready)
+    throw std::runtime_error("timeout waiting for realm logon");
+
+  if (fut.get() != e_open_callback_with_sp)
+    throw std::runtime_error("realm logon failed");
+}
+
+
+enum class rpc_result_expect {nocheck, success, fail };
+wamp_call_result sync_rpc_all(std::shared_ptr<wamp_session>&session,
+                              const char* rpc_name,
+                              wamp_args call_args,
+                              rpc_result_expect expect)
+{
+  if (!session)
+    throw std::runtime_error("sync_rpc_all: null session");
+
+  std::promise<wamp_call_result> result_prom;
+  std::future<wamp_call_result> result_fut = result_prom.get_future();
+  session->call(rpc_name, {}, call_args,
+                [&result_prom](wamp_call_result r) {
+                  result_prom.set_value(r);
+                });
+
+  auto long_time = std::chrono::milliseconds(200);
+
+  if (result_fut.wait_for(long_time) != std::future_status::ready)
+    throw std::runtime_error("timeout waiting for RPC reply");
+
+  wamp_call_result result = result_fut.get();
+
+  if (expect==rpc_result_expect::success && result.was_error==true)
+    throw std::runtime_error("expected call to succeed");
+
+  if (expect==rpc_result_expect::fail && result.was_error==false)
+    throw std::runtime_error("expected call to fail");
+
+  return result;
+}
+
+
 }
 
 #endif

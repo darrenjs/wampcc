@@ -11,78 +11,59 @@ using namespace wampcc;
 using namespace std;
 
 
-
-
-void test_fast_close_after_normal_close_and_wait(int port)
-{
-  cout << "---------- "<< __FUNCTION__ <<" ----------\n";
-
-  callback_status = e_callback_not_invoked;
-
-  {
-    unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
-    auto session = establish_session(the_kernel, port);
-    if (!session) return;
-
-    session->close();
-    session->closed_future().wait();
-    session->fast_close();
-    assert(session->is_open() == false);
-    assert(session->is_closed() == true);
-  }
-
-  // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
-}
-
-
-
 void test_rpc(int port, internal_server& server)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  server.router()->provide("default_realm", "greeting", {},
+  server.router()->provide("default_realm", "hello", {},
                            [](wampcc::wamp_invocation& invocation) {
                              invocation.yield({"hello"});
                            });
-  {
-    unique_ptr<kernel> the_kernel(new kernel({}, logger::stdout()));
-    auto session = establish_session(the_kernel, port);
+  server.router()->provide("default_realm", "echo", {},
+                           [](wampcc::wamp_invocation& invocation) {
+                             invocation.yield(invocation.args.args_list,
+                                              invocation.args.args_dict);
+                           });
 
-    if (!session)
-      throw std::runtime_error("fail");
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::stdout()));
+  auto session = establish_session(the_kernel, port);
+  perform_realm_logon(session);
 
-    wampcc::client_credentials credentials;
-    credentials.realm  = "default_realm";
-    credentials.authid = "peter";
-    credentials.authmethods = {"wampcra"};
-    credentials.secret_fn =  [=]() -> std::string { return "secret2"; };
-    session->initiate_hello(credentials);
-    callback_status = e_callback_not_invoked;
+  wamp_args call_args;
+  call_args.args_list = json_array({"hello from basic_caller"}, {});
 
-    sleep(1);
+  wamp_call_result result = sync_rpc_all(session, "echo", call_args,
+                                         rpc_result_expect::success);
 
-    if (callback_status != e_open_callback_with_sp)
-      throw std::runtime_error("fail");
+  if (result.args.args_list != call_args.args_list)
+    throw runtime_error("call result-list does not match expected");
 
-    std::promise<void> on_reply;
-    std::future<void> fut = on_reply.get_future();
-    wamp_args call_args;
-    call_args.args_list = json_array({"hello from basic_caller"});
-     session->call("greeting", {}, call_args,
-                   [&on_reply](wamp_call_result result) {
-                     try {
-                       on_reply.set_value();
-                     } catch (...) { /* ignore promise already set error */}
-                   });
+  if (result.args.args_dict != call_args.args_dict)
+    throw runtime_error("call result-dict does not match expected");
 
-     auto fut_status = fut.wait_for(std::chrono::milliseconds(200));
-     if (fut_status != std::future_status::ready)
-       throw runtime_error("timeout waiting for RPC reply");
-       cout << "got reply\n";
+  result = sync_rpc_all(session, "hello", {}, rpc_result_expect::success);
 
-     session->close().wait();
-  }
+  if (result.args.args_list != json_array({"hello"}))
+    throw runtime_error("call result-list does not match expected");
+
+  session->close().wait();
+}
+
+void test_call_non_existing_rpc(int port, internal_server& server)
+{
+  cout << "---------- "<< __FUNCTION__ <<" ----------\n";
+
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::stdout()));
+  auto session = establish_session(the_kernel, port);
+  perform_realm_logon(session);
+
+  wamp_call_result result = sync_rpc_all(session, "xxNOTFOUNDxx", {},
+                                         rpc_result_expect::fail);
+
+  if (result.error_uri != WAMP_ERROR_URI_NO_SUCH_PROCEDURE)
+    throw runtime_error("actual error_uri doesn't match expected");
+
+  session->close().wait();
 }
 
 int main(int argc, char** argv)
@@ -97,6 +78,7 @@ int main(int argc, char** argv)
     auto all_tests = [](int port, internal_server& server)
       {
         test_rpc(port, server);
+        test_call_non_existing_rpc(port, server);
       };
 
     // one-off test
@@ -113,12 +95,13 @@ int main(int argc, char** argv)
       int port = iserver.start(starting_port_number++);
       all_tests(port, iserver);
 
+      // TODO: to enable this, need to remove the procedure
       // for (int j=0; j < 100; j++)
-      //   all_tests(port);
+      //   all_tests(port, iserver);
     }
 
     // use one internal_server per test
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 500; i++)
     {
       internal_server iserver;
       int port = iserver.start(starting_port_number++);
