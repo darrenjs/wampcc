@@ -223,6 +223,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               os << "Upgrade: websocket" << "\r\n";
               os << "Connection: Upgrade" << "\r\n";
               os << "Sec-WebSocket-Accept: " << make_accept_key(m_http_parser->get("Sec-WebSocket-Key")) << "\r\n";
+              os << "Sec-WebSocket-Protocol: wamp.2.json\r\n";
               os << "\r\n";
 
               std::string msg = os.str();
@@ -386,7 +387,6 @@ void websocket_protocol::initiate(t_initiate_cb cb)
       << "Host: " << m_options.connect_host << ":" << m_options.connect_port <<  "\r\n"
       << "Origin: " << hostname() << "\r\n"
       << "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
-         "Sec-WebSocket-Version: 13\r\n"
          "\r\n";
   std::string http_request = oss.str();
 
