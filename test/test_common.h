@@ -113,12 +113,12 @@ private:
 };
 
 
-enum callback_status_t {
-  e_callback_not_invoked,
-  e_close_callback_with_sp,
-  e_close_callback_without_sp,
-  e_open_callback_with_sp,
-  e_open_callback_without_sp
+enum class callback_status_t {
+  not_invoked,
+  close_with_sp,
+  close_without_sp,
+  open_with_sp,
+  open_without_sp
 } callback_status;
 
 
@@ -136,16 +136,16 @@ void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
 {
   if (is_open == false) {
     if (auto sp = wp.lock())
-      callback_status = e_close_callback_with_sp;
+      callback_status = callback_status_t::close_with_sp;
     else
-      callback_status = e_close_callback_without_sp;
+      callback_status = callback_status_t::close_without_sp;
   }
   else
   {
     if (auto sp = wp.lock())
-      callback_status = e_open_callback_with_sp;
+      callback_status = callback_status_t::open_with_sp;
     else
-      callback_status = e_open_callback_without_sp;
+      callback_status = callback_status_t::open_without_sp;
   }
 
   if (sessioncb_promise)
@@ -222,7 +222,7 @@ void perform_realm_logon(std::shared_ptr<wamp_session>&session,
   if (fut.wait_for(long_time) != std::future_status::ready)
     throw std::runtime_error("timeout waiting for realm logon");
 
-  if (fut.get() != e_open_callback_with_sp)
+  if (fut.get() != callback_status_t::open_with_sp)
     throw std::runtime_error("realm logon failed");
 }
 

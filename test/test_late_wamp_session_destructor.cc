@@ -20,7 +20,7 @@ void test_WS_destroyed_after_kernel(int port)
 {
   TLOG("----- "<< __FUNCTION__<<" -----");
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   // Store a wamp_session resource outside of the kernel scope, so that we can
   // have a wamp_session that outlives the kernel.
@@ -68,7 +68,7 @@ void test_WS_destroyed_after_kernel(int port)
   // design is that is wont be called back, because as the tcp_socket is force
   // closes during kernel unwind, that in itself does not cause a callback into
   // the wamp_session to say the session is closed.
-  assert(callback_status == e_callback_not_invoked);
+  assert(callback_status == callback_status_t::not_invoked);
 
   TLOG("test success");
 }

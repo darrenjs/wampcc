@@ -15,7 +15,7 @@ void test_fast_close(int port)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   {
     unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
@@ -28,7 +28,7 @@ void test_fast_close(int port)
   }
 
   // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 }
 
 
@@ -36,7 +36,7 @@ void test_fast_close_duplicate(int port)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   {
     unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
@@ -56,7 +56,7 @@ void test_fast_close_duplicate(int port)
   }
 
   // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 }
 
 
@@ -65,7 +65,7 @@ void test_fast_close_on_ev(int port)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   {
     unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
@@ -82,7 +82,7 @@ void test_fast_close_on_ev(int port)
   }
 
   // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 }
 
 
@@ -90,7 +90,7 @@ void test_fast_close_after_normal_close(int port)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   {
     unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
@@ -104,7 +104,7 @@ void test_fast_close_after_normal_close(int port)
   }
 
   // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 }
 
 
@@ -112,7 +112,7 @@ void test_fast_close_after_normal_close_and_wait(int port)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   {
     unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
@@ -127,7 +127,7 @@ void test_fast_close_after_normal_close_and_wait(int port)
   }
 
   // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 }
 
 
@@ -135,7 +135,7 @@ void normal_close_and_wait_after_close(int port)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   {
     unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
@@ -150,7 +150,7 @@ void normal_close_and_wait_after_close(int port)
   }
 
   // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 }
 
 int main(int argc, char** argv)

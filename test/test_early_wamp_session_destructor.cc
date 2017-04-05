@@ -14,7 +14,7 @@ void test_WS_destroyed_before_kernel(int port)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   {
     unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
@@ -51,7 +51,7 @@ void test_WS_destroyed_before_kernel(int port)
   }
 
   // ensure callback was invoked
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 
   cout << "test success\n";
 }

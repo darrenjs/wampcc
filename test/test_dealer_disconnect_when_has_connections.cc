@@ -20,7 +20,7 @@ void test_WS_destroyed_after_kernel(int port)
 {
   TLOG("----- test_WS_destroyed_after_kernel -----");
 
-  callback_status = e_callback_not_invoked;
+  callback_status = callback_status_t::not_invoked;
 
   shared_ptr<wamp_session> ws_outer;
   {
@@ -58,7 +58,7 @@ void test_WS_destroyed_after_kernel(int port)
   // In this test, the kernel is deleted before the wamp_session is deleted (due
   // to the outer shared_ptr holding on to it). This ordering means that the
   // wamp_session is still available during the wamp_session callback.
-  assert(callback_status == e_close_callback_with_sp);
+  assert(callback_status == callback_status_t::close_with_sp);
 
   TLOG("test success");
 }
