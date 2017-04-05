@@ -62,6 +62,8 @@ private:
   options m_options;
 
   std::string m_expected_accept_key;
+
+  int m_version;
 };
 
 }

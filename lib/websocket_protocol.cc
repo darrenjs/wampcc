@@ -33,7 +33,8 @@ websocket_protocol::websocket_protocol(tcp_socket* h,
     m_state(_mode==connect_mode::passive? eHandlingHttpRequest : eHandlingHttpResponse),
     m_http_parser(new http_parser(_mode==connect_mode::passive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
-    m_options(std::move(opts))
+    m_options(std::move(opts)),
+    m_version(13) // TODO: replace with header defined constant
 {
 }
 
@@ -387,6 +388,7 @@ void websocket_protocol::initiate(t_initiate_cb cb)
       << "Host: " << m_options.connect_host << ":" << m_options.connect_port <<  "\r\n"
       << "Origin: " << hostname() << "\r\n"
       << "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
+      << "Sec-WebSocket-Version: " << m_version << "\r\n"
          "\r\n";
   std::string http_request = oss.str();
 
