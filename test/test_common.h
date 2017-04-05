@@ -65,7 +65,7 @@ public:
 
   ~internal_server()
   {
-    m_route.reset();
+    m_router.reset();
     m_kernel.reset();
   }
 
@@ -84,7 +84,7 @@ public:
            const std::string& /*realm*/) { return "secret2"; };
 
     for (int port = starting_port_number; port < 65535; port++) {
-      std::future<uverr> fut_listen_err = m_route->listen(std::string("127.0.0.1"), std::to_string(port), server_auth);
+      std::future<uverr> fut_listen_err = m_router->listen(std::string("127.0.0.1"), std::to_string(port), server_auth);
       std::future_status status =
           fut_listen_err.wait_for(std::chrono::milliseconds(100));
       if (status == std::future_status::ready) {
@@ -101,20 +101,24 @@ public:
 
   void reset_kernel() { m_kernel.reset(); }
 
-  void reset_dealer() { m_route.reset(); }
+  void reset_dealer() { m_router.reset(); }
 
   kernel* get_kernel() { return m_kernel.get(); }
 
+  wamp_router* router() { return m_router.get(); }
+
 private:
   std::unique_ptr<kernel> m_kernel;
-  std::shared_ptr<wamp_router> m_route;
+  std::shared_ptr<wamp_router> m_router;
 };
 
 
 enum {
   e_callback_not_invoked,
   e_close_callback_with_sp,
-  e_close_callback_without_sp
+  e_close_callback_without_sp,
+  e_open_callback_with_sp,
+  e_open_callback_without_sp
 } callback_status;
 
 
@@ -125,6 +129,13 @@ void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
       callback_status = e_close_callback_with_sp;
     else
       callback_status = e_close_callback_without_sp;
+  }
+  else
+  {
+    if (auto sp = wp.lock())
+      callback_status = e_open_callback_with_sp;
+    else
+      callback_status = e_open_callback_without_sp;
   }
 }
 

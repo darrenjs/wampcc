@@ -29,7 +29,7 @@ test_evthread_wamp_session_destructor test_early_wamp_session_destructor	\
 test_late_wamp_session_destructor test_late_dealer_destructor				\
 test_dealer_disconnect_when_has_connections 		\
 test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
-test_wamp_session_fast_close test_tcp_socket
+test_wamp_session_fast_close test_tcp_socket test_wamp_rpc
 
 noinst_PROGRAMS=$(check_PROGRAMS)
 TESTS=$(check_PROGRAMS)
@@ -66,3 +66,6 @@ test_wamp_session_fast_close_LDADD=libgtest.la
 
 test_tcp_socket_SOURCES=test_tcp_socket.cc
 test_tcp_socket_LDADD=libgtest.la
+
+test_wamp_rpc_SOURCES=test_wamp_rpc.cc
+test_wamp_rpc_LDADD=libgtest.la
