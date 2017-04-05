@@ -1575,12 +1575,12 @@ void wamp_session::process_inbound_call(json_array & msg)
       {
         if (!error_uri)
         {
-          json_array msg {RESULT,request_id, {}, args.args_list, args.args_dict};
+          json_array msg {RESULT,request_id, json_object(), args.args_list, args.args_dict};
           sp->send_msg(msg);
         }
         else
         {
-          json_array msg {ERROR, CALL, request_id, {}, *error_uri,
+          json_array msg {ERROR, CALL, request_id, json_object(), *error_uri,
                           args.args_list, args.args_dict};
           sp->send_msg(msg);
         }
@@ -1758,7 +1758,7 @@ void wamp_session::process_inbound_register(json_array & msg)
 void wamp_session::invocation_yield(int request_id,
                                     wamp_args args)
 {
-  json_array msg {YIELD, request_id, {}, args.args_list, args.args_dict};
+  json_array msg {YIELD, request_id, json_object(), args.args_list, args.args_dict};
   send_msg(msg);
 }
 
@@ -1769,7 +1769,7 @@ void wamp_session::reply_with_error(
   wamp_args args,
   std::string error_uri)
 {
-  json_array msg {ERROR, request_type, request_id, {},
+  json_array msg {ERROR, request_type, request_id, json_object(),
       error_uri, args.args_list, args.args_dict};
   send_msg(msg);
 }
