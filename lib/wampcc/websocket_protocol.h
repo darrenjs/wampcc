@@ -35,6 +35,10 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
+  static const int HYBI_07 = 7;
+  static const int HYBI_10 = 8;
+  static const int RFC6455 = 13;
+
   websocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connect_mode _mode, options);
 
   void on_timer() override;
