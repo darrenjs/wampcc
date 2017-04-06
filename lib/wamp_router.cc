@@ -321,12 +321,16 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
       options.node, options.service,
       [on_new_client](std::unique_ptr<tcp_socket>& clt, uverr ec) {
         /* IO thread */
-        if (!ec) {
+        if (!ec)
           on_new_client(std::move(clt));
-        } else {
-          std::cout << "TODO: handle case of failure to accept client, ec "
-                    << ec << std::endl;
+        else {
+          // TODO: need to capture 'this' for this logging line to work, however
+          // first need to make sure wamp_router shutdown is controlled.
+
+//          LOG_WARN("accept() failed: " << ec.os_value() << ", "
+//                   << e.message());
         }
+
       },
       options.af);
 
