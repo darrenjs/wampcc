@@ -140,11 +140,12 @@ protected:
   tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
 
   virtual void handle_read_bytes(ssize_t, const uv_buf_t*);
-  virtual std::unique_ptr<tcp_socket> invoke_user_accept(uverr, uv_tcp_t*);
   virtual void service_pending_write();
 
+  typedef std::function<std::unique_ptr<tcp_socket>(uverr ec,  uv_tcp_t* h)> acceptor_fn_t;
   void do_write(std::vector<uv_buf_t>&);
-  std::future<uverr> listen_impl(const std::string&,const std::string&,addr_family);
+  std::future<uverr> listen_impl(const std::string&,const std::string&,
+                                 addr_family, acceptor_fn_t);
 
   kernel* m_kernel;
   logger& __logger;
@@ -188,10 +189,12 @@ private:
   size_t m_bytes_written;
   size_t m_bytes_read;
 
-  on_accept_cb m_user_accept_fn;
   on_close_cb m_user_close_fn;
 
   std::shared_ptr<tcp_socket> m_self;
+
+  /* Handler for creating a new instance when a socket is accepted. */
+  acceptor_fn_t m_accept_fn;
 
   friend io_loop;
 };

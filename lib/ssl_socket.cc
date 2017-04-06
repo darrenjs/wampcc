@@ -54,30 +54,26 @@ ssl_socket::~ssl_socket() {}
 
 std::future<uverr> ssl_socket::listen(const std::string& node,
                                       const std::string& service,
-                                      ssl_on_accept_cb accept_fn,
+                                      ssl_on_accept_cb user_accept_fn,
                                       addr_family af)
 {
   if (is_initialised())
     throw tcp_socket::error("listen(): ssl_socket already initialised");
 
-  m_ssl_on_accept_cb = std::move(accept_fn);
-
-  return listen_impl(node, service, af);
-}
+  if (!user_accept_fn)
+    throw tcp_socket::error("ssl_on_accept_cb is null");
 
 
-std::unique_ptr<tcp_socket> ssl_socket::invoke_user_accept(uverr ec,
-                                                           uv_tcp_t* h)
-{
-  assert(m_kernel->get_io()->this_thread_is_io() == true);
-
-  std::unique_ptr<ssl_socket> up(
+  auto accept_fn=[this, user_accept_fn](uverr ec,uv_tcp_t* h) {
+    std::unique_ptr<ssl_socket> up(
       h ? new ssl_socket(m_kernel, h, socket_state::connected) : 0);
 
-  if (m_ssl_on_accept_cb)
-    m_ssl_on_accept_cb(up, ec);
+    user_accept_fn(up, ec);
 
-  return std::unique_ptr<tcp_socket>(std::move(up));
+    return std::unique_ptr<tcp_socket>(std::move(up));
+  };
+
+  return listen_impl(node, service, af, std::move(accept_fn));
 }
 
 

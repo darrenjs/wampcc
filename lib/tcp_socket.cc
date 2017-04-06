@@ -572,19 +572,6 @@ void tcp_socket::on_write_cb(uv_write_t* req, int status)
 }
 
 
-std::unique_ptr<tcp_socket> tcp_socket::invoke_user_accept(uverr ec,
-                                                           uv_tcp_t* h)
-{
-  /* IO thread */
-  std::unique_ptr<tcp_socket> up(
-    h? new tcp_socket(m_kernel, h, socket_state::connected):0);
-
-  if (m_user_accept_fn)
-    m_user_accept_fn(up, ec);
-
-  return up;
-}
-
 /**
  * Called on the IO thread when a new socket is available to be accepted.
  */
@@ -594,7 +581,7 @@ void tcp_socket::on_listen_cb(int status)
   uverr ec{status};
 
   if (ec) {
-    invoke_user_accept(ec, nullptr);
+    m_accept_fn(ec, nullptr);
     return;
   }
 
@@ -604,7 +591,7 @@ void tcp_socket::on_listen_cb(int status)
 
   ec = uv_accept((uv_stream_t*)m_uv_tcp, (uv_stream_t*)client);
   if (ec == 0) {
-    auto new_sock = invoke_user_accept(0, client);
+    auto new_sock = m_accept_fn(0, client);
     if (new_sock) // user callback did not take ownership of socket
     {
       tcp_socket* ptr = new_sock.release();
@@ -625,8 +612,12 @@ bool tcp_socket::is_initialised() const
 
 std::future<uverr> tcp_socket::listen_impl(const std::string& node,
                                            const std::string& service,
-                                           addr_family af)
+                                           addr_family af,
+                                           acceptor_fn_t accept_fn)
 {
+  assert(m_accept_fn == nullptr);
+  m_accept_fn = std::move(accept_fn);
+
   auto completion_promise = std::make_shared<std::promise<uverr>>();
 
   m_kernel->get_io()->push_fn([this, node, service, af, completion_promise]() {
@@ -638,17 +629,26 @@ std::future<uverr> tcp_socket::listen_impl(const std::string& node,
 
 std::future<uverr> tcp_socket::listen(const std::string& node,
                                       const std::string& service,
-                                      on_accept_cb accept_fn, addr_family af)
+                                      on_accept_cb user_accept_fn,
+                                      addr_family af)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
     if (m_state != socket_state::uninitialised)
-      throw tcp_socket::error("listen(): tcp_socket already initialised");
+      throw tcp_socket::error("tcp_socket already initialised");
   }
 
-  m_user_accept_fn = std::move(accept_fn);
+  if (!user_accept_fn)
+    throw tcp_socket::error("on_accept_cb is null");
 
-  return listen_impl(node, service, af);
+  auto accept_fn=[this, user_accept_fn](uverr ec,uv_tcp_t* h) {
+    std::unique_ptr<tcp_socket> up(
+      h? new tcp_socket(m_kernel, h, socket_state::connected):0);
+    user_accept_fn(up, ec);
+    return up;
+  };
+
+  return listen_impl(node, service, af, accept_fn);
 }
 
 

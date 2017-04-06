@@ -56,7 +56,6 @@ private:
   ssl_socket(kernel* k, uv_tcp_t*, socket_state ss);
 
   void handle_read_bytes(ssize_t, const uv_buf_t*) override;
-  std::unique_ptr<tcp_socket> invoke_user_accept(uverr, uv_tcp_t*) override;
   void service_pending_write() override;
 
   std::pair<int, size_t> do_encrypt_and_write(char*, size_t);
@@ -65,7 +64,6 @@ private:
   int ssl_do_read(char* src, size_t len);
 
   std::unique_ptr<ssl_session> m_ssl;
-  ssl_on_accept_cb m_ssl_on_accept_cb;
 
   t_handshake_state m_handshake_state;
   std::promise<t_handshake_state> m_prom_handshake;
