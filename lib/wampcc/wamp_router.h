@@ -34,18 +34,36 @@ public:
 
   struct listen_options
   {
-    enum protocol  { rawsocket = 0x01, websocket = 0x02 };
-    enum serialise { json = 0x01, msgpack = 0x02 };
+    enum bits {
+      /* socket protocols */
+      rawsocket = 0x01,
+      websocket = 0x02,
+
+      /* message formats */
+      json = 0x04,
+      msgpack = 0x08,
+
+      ssl = 0x10,
+
+      all_sockets = websocket|rawsocket,
+      all_formats = json|msgpack,
+    };
 
     // protocol options
-    bool use_ssl;
-    unsigned char allow_protocols;
-    unsigned char allow_serialisers;
+    int flags;
 
     // socket options
     std::string node;     // interface addr, or leave blank
     std::string service;  // service or port number
     tcp_socket::addr_family af;
+
+    listen_options()
+      : flags(all_sockets|all_formats), af(tcp_socket::addr_family::unspec)
+    {}
+
+    listen_options(int flags_, std::string node_, std::string svc_, tcp_socket::addr_family af_)
+      : flags(flags_), node(node_), service(svc_), af(af_)
+    {}
   };
 
   wamp_router(kernel* __svc, on_rpc_registered = nullptr);

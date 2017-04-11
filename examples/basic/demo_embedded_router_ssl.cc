@@ -36,9 +36,9 @@ int main(int argc, char** argv)
     /* Create the listen socket configuration, to support SSL/TLS and all
      * available protocols & message formats. */
     wamp_router::listen_options opts;
-    opts.use_ssl = true;
-    opts.allow_protocols = 0xFF;
-    opts.allow_serialisers = 0xFF;
+    opts.flags = wamp_router::listen_options::ssl |
+      wamp_router::listen_options::all_sockets |
+      wamp_router::listen_options::all_formats;
     opts.service=argv[1];
     opts.af = tcp_socket::addr_family::inet4;
 
