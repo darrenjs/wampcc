@@ -66,7 +66,7 @@ std::future<uverr> ssl_socket::listen(const std::string& node,
 
   auto accept_fn=[this, user_accept_fn](uverr ec,uv_tcp_t* h) {
     std::unique_ptr<ssl_socket> up(
-      h ? new ssl_socket(m_kernel, h, socket_state::connected) : 0);
+      h ? create(m_kernel, h, socket_state::connected) : 0);
 
     user_accept_fn(up, ec);
 
@@ -315,6 +315,14 @@ int ssl_socket::ssl_do_read(char* src, size_t len)
   service_pending_write();
 
   return 0;
+}
+
+
+/* This is the inherited virtual constructor from tcp_socket, but with a
+ * ssl_socket return type (C++ covariant types). */
+ssl_socket* ssl_socket::create(kernel* k, uv_tcp_t* h, tcp_socket::socket_state s)
+{
+  return new ssl_socket(k, h, s);
 }
 
 // namespace wampcc

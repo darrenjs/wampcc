@@ -642,8 +642,13 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
     throw tcp_socket::error("on_accept_cb is null");
 
   auto accept_fn=[this, user_accept_fn](uverr ec,uv_tcp_t* h) {
+
+    /* Invoke the virtual constructor function 'create', so that if this
+     * listen(...) method is called for an instance of a derived class, we will
+     * create a instance of the derived class. */
     std::unique_ptr<tcp_socket> up(
-      h? new tcp_socket(m_kernel, h, socket_state::connected):0);
+      h? create(m_kernel, h, socket_state::connected):0);
+
     user_accept_fn(up, ec);
     return up;
   };
@@ -910,4 +915,11 @@ void tcp_socket::service_pending_write()
   do_write();
 }
 
+tcp_socket* tcp_socket::create(kernel* k, uv_tcp_t* h, socket_state s)
+{
+  return new tcp_socket(k, h, s);
+}
+
 } // namespace wampcc
+
+

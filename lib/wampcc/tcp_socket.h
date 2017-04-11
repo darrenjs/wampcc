@@ -141,6 +141,7 @@ protected:
 
   virtual void handle_read_bytes(ssize_t, const uv_buf_t*);
   virtual void service_pending_write();
+  virtual tcp_socket* create(kernel*, uv_tcp_t*, socket_state);
 
   typedef std::function<std::unique_ptr<tcp_socket>(uverr ec,  uv_tcp_t* h)> acceptor_fn_t;
   void do_write(std::vector<uv_buf_t>&);

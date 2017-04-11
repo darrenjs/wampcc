@@ -57,6 +57,7 @@ private:
 
   void handle_read_bytes(ssize_t, const uv_buf_t*) override;
   void service_pending_write() override;
+  ssl_socket* create(kernel*, uv_tcp_t*, tcp_socket::socket_state) override;
 
   std::pair<int, size_t> do_encrypt_and_write(char*, size_t);
   sslstatus do_handshake();
