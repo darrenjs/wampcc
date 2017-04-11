@@ -127,6 +127,10 @@ void ssl_socket::service_pending_write()
       std::lock_guard<std::mutex> guard(m_pending_write_lock);
       tmp.insert(tmp.end(), m_pending_write.begin(), m_pending_write.end());
       m_pending_write.swap(tmp);
+
+      /* break loop, because iterator has been incremented in loop body,
+       * otherwise the it!=end check() can be skipped over */
+      break;
     }
   }
 }
@@ -180,6 +184,10 @@ ssl_socket::t_handshake_state ssl_socket::handshake_state()
 std::future<ssl_socket::t_handshake_state> ssl_socket::handshake()
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
+
+  if (m_state == socket_state::uninitialised)
+    throw tcp_socket::error("ssl_socket::handshake() before connect");
+
   if (m_state == socket_state::closing || m_state == socket_state::closed)
     throw tcp_socket::error("ssl_socket::handshake() when closing or closed");
 
@@ -240,9 +248,9 @@ void ssl_socket::write_encrypted_bytes(const char* src, size_t len)
 }
 
 
-/* Arrival of bytes from the socket (nread>0) must be passed to SSL for
- * unencryption.  If SSL fails, or there is socket error, call the user error
- * callback.  For EOF (nread==0), invoke standard user callback.
+/* Arrival of raw bytes from the actual socket, if nread>0. These must be passed
+ * to SSL for unencryption.  If SSL fails, or there is socket error, call the
+ * user error callback.  For EOF (nread==0), invoke standard user callback.
  */
 void ssl_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
 {
@@ -256,9 +264,8 @@ void ssl_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
     m_io_on_error(uverr(nread));
 }
 
-/* Handle arrival of raw bytes from the underlying socket.  These need to be
- * first unencrypted by the SSL object, and the obtained unencrypted data passed
- * back to the user. */
+
+/* Pass raw bytes from the socket into SSL for unencryption. */
 int ssl_socket::ssl_do_read(char* src, size_t len)
 {
   assert(m_kernel->get_io()->this_thread_is_io() == true);
