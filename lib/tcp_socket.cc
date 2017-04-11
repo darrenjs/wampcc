@@ -318,7 +318,7 @@ std::future<uverr> tcp_socket::start_read(io_on_read on_read,
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
     if (m_state != socket_state::connected)
-      throw tcp_socket::error("tcp_socket: start_read() when not connected");
+      throw tcp_socket::error("tcp_socket::start_read() when not connected");
   }
 
   auto completion_promise = std::make_shared<std::promise<uverr>>();
@@ -402,7 +402,7 @@ void tcp_socket::write(const char* src, size_t len)
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
     if (m_state == socket_state::closing || m_state == socket_state::closed)
-      throw tcp_socket::error("tcp_socket: write() when closing or closed");
+      throw tcp_socket::error("tcp_socket::write() when closing or closed");
 
     {
       std::lock_guard<std::mutex> guard(m_pending_write_lock);
@@ -436,7 +436,7 @@ void tcp_socket::write(std::pair<const char*, size_t>* srcbuf, size_t count)
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
     if (m_state == socket_state::closing || m_state == socket_state::closed)
-      throw tcp_socket::error("tcp_socket: write() when closing or closed");
+      throw tcp_socket::error("tcp_socket::write() when closing or closed");
 
     {
       std::lock_guard<std::mutex> guard(m_pending_write_lock);
@@ -635,7 +635,7 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
     if (m_state != socket_state::uninitialised)
-      throw tcp_socket::error("tcp_socket already initialised");
+      throw tcp_socket::error("tcp_socket::listen() when already initialised");
   }
 
   if (!user_accept_fn)
@@ -758,7 +758,7 @@ std::future<uverr> tcp_socket::connect(const std::string& node,
     std::lock_guard<std::mutex> guard(m_state_lock);
 
     if (m_state != socket_state::uninitialised)
-      throw tcp_socket::error("connect(): tcp_socket already initialised");
+      throw tcp_socket::error("tcp_socket::connect() when already initialised");
 
     m_state = socket_state::connecting;
   }

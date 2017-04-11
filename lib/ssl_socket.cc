@@ -58,7 +58,7 @@ std::future<uverr> ssl_socket::listen(const std::string& node,
                                       addr_family af)
 {
   if (is_initialised())
-    throw tcp_socket::error("listen(): ssl_socket already initialised");
+    throw tcp_socket::error("ssl_socket::listen() when already initialised");
 
   if (!user_accept_fn)
     throw tcp_socket::error("ssl_on_accept_cb is null");
@@ -181,7 +181,7 @@ std::future<ssl_socket::t_handshake_state> ssl_socket::handshake()
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
   if (m_state == socket_state::closing || m_state == socket_state::closed)
-    throw tcp_socket::error("ssl_socket: handshake() when closing or closed");
+    throw tcp_socket::error("ssl_socket::handshake() when closing or closed");
 
   auto fut = m_prom_handshake.get_future();
 
