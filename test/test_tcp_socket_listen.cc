@@ -173,7 +173,7 @@ void test_listen_duplicate_port(int port)
   {
 
     tcp_socket sever_sock_first( the_kernel.get() );
-    sever_sock_first.listen("", std::to_string(port), {}).wait();
+    sever_sock_first.listen("", std::to_string(port), [](std::unique_ptr<tcp_socket>&,uverr){}).wait();
     if (!sever_sock_first.is_listening())
     {
       cout << "unable to get port" << endl;
