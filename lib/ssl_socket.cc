@@ -256,7 +256,13 @@ void ssl_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
 {
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
-  if (nread > 0 && ssl_do_read(buf->base, size_t(nread)) == -1)
+  if (nread > 0 && ssl_do_read(buf->base, size_t(nread)) == 0)
+    return; /* data received and successfully fed into SSL */
+
+  if (m_handshake_state == t_handshake_state::pending)
+    m_prom_handshake.set_value(m_handshake_state=t_handshake_state::failed);
+
+  if (nread > 0)
     m_io_on_error(uverr(SSL_UV_FAIL));
   else if (nread == 0)
     m_io_on_read(nullptr, 0);
