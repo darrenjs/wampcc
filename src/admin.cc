@@ -359,7 +359,7 @@ int main_impl(int argc, char** argv)
   wampcc::ssl_socket* sslsock = nullptr;
   std::unique_ptr<wampcc::tcp_socket> sock;
   if(uopts.use_ssl)
-    sock.reset(sslsock = new wampcc::ssl_socket(g_kernel.get());
+    sock.reset(sslsock = new wampcc::ssl_socket(g_kernel.get()));
   else
     sock.reset(new wampcc::tcp_socket(g_kernel.get()));
 
