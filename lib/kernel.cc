@@ -10,6 +10,7 @@
 #include "wampcc/io_loop.h"
 #include "wampcc/event_loop.h"
 #include "wampcc/ssl.h"
+#include "config.h"
 
 #include <iostream>
 
@@ -22,8 +23,8 @@
 namespace wampcc
 {
 
-const char* name() { return WAMPCC_NAME; }
-const char* name_version() { return WAMPCC_NAME_VERSION; }
+const char* name() { return PACKAGE_NAME; }
+const char* name_version() { return PACKAGE_STRING; }
 int major_version() { return WAMPCC_MAJOR_VERSION; }
 int minor_version() { return WAMPCC_MINOR_VERSION; }
 int micro_version() { return WAMPCC_MICRO_VERSION; }

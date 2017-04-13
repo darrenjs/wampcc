@@ -14,13 +14,9 @@
 
 /* Compile-time name & version */
 
-#define WAMPCC_NAME "wampcc"
 #define WAMPCC_MAJOR_VERSION 1
 #define WAMPCC_MINOR_VERSION 0
 #define WAMPCC_MICRO_VERSION 0
-
-/* Micro version is omitted if it's 0 */
-#define WAMPCC_NAME_VERSION "wampcc 1.0"
 
 namespace wampcc
 {
