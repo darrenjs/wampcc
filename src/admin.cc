@@ -356,9 +356,10 @@ int main_impl(int argc, char** argv)
   std::unique_ptr<wampcc::kernel> g_kernel(
     new wampcc::kernel(make_config(), console_logger));
 
+  wampcc::ssl_socket* sslsock = nullptr;
   std::unique_ptr<wampcc::tcp_socket> sock;
   if(uopts.use_ssl)
-    sock.reset(new wampcc::ssl_socket(g_kernel.get()));
+    sock.reset(sslsock = new wampcc::ssl_socket(g_kernel.get());
   else
     sock.reset(new wampcc::tcp_socket(g_kernel.get()));
 
@@ -400,6 +401,16 @@ int main_impl(int argc, char** argv)
 
   if (!ws)
     throw std::runtime_error("failed to obtain wamp session");
+
+  /* Perform an explicit SSL handshake.  This step is actually optional, since
+   * the handshake will automatically be made during the wamp hello. */
+  if (sslsock) {
+    auto fut=sslsock->handshake();
+    if (fut.wait_for(std::chrono::seconds(10))==std::future_status::timeout)
+      throw std::runtime_error("time-out during ssl handshake");
+    if (fut.get() != wampcc::ssl_socket::t_handshake_state::success)
+      throw std::runtime_error("ssl handshake failed");
+  }
 
   wampcc::client_credentials credentials;
   credentials.realm  = uopts.realm? uopts.realm.value() : "default_realm";
