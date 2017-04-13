@@ -7,8 +7,9 @@
 **Features**
 
  - Roles: Caller, Callee, Subscriber, Publisher, Dealer, Router
- - Serializations: JSON
+ - Message serializations: JSON
  - Transports: TCP using raw-socket and web-socket
+ - SSL/TLS supported for both client and server sessions
  - Uses modern C++
  - Extensively tested
  - Permissive license (MIT)
@@ -17,9 +18,10 @@
 
 *wampcc* aims to depend only on C libraries, making it easier to build and work  on a range of platforms.
 
- - [libuv](http://libuv.org/) for socket IO
- - [jansson](http://www.digip.org/jansson/) for JSON encoding
+ - [libuv](http://libuv.org/) (network IO)
+ - [jansson](http://www.digip.org/jansson/) (JSON encode & decode)
  - [http-parser](https://github.com/nodejs/http-parser)
+ - [OpenSSL](https://www.openssl.org/)
  - C++11 compiler, GNU autotools
 
 ## Show me some code!
@@ -120,7 +122,7 @@ session->close().wait();
 
 **Embedding a wamp router**
 
-An embedded wamp router is provided by creating a `wamp_router` object. 
+An embedded wamp router is provided by creating a `wamp_router` object.
 
 ```c++
 wamp_router router(&the_kernel);
