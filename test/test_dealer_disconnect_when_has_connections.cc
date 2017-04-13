@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     {
       // build a client
       std::unique_ptr<internal_server> iserver(new internal_server());
-      int port = iserver->start(starting_port_number++);
+      iserver->start(starting_port_number++);
 
       // add connections
       //add_client_connections(port, 10);
