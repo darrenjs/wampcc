@@ -58,7 +58,7 @@ int main(int argc, char** argv)
     session->provide("math.service.add", {}, [](wamp_invocation& invoke) {
       int total = 0;
       for (auto& item : invoke.args.args_list)
-        if (item.as_int())
+        if (item.is_int())
           total += item.as_int();
       invoke.yield({total});
     });
