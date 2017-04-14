@@ -47,7 +47,7 @@ kernel::kernel(config conf, logger nlog)
   // SSL initialisation can fail, so we start the loops only after it has been
   // set up
   if (conf.ssl.enable)
-    m_ssl.reset(new ssl_context(conf.ssl));
+    m_ssl.reset(new ssl_context(__logger, conf.ssl));
 
   m_io_loop.reset(new io_loop(*this));
   m_evl.reset(new event_loop(this));

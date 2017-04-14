@@ -6,10 +6,10 @@
  */
 
 #include "wampcc/ssl.h"
+#include "wampcc/log_macros.h"
 
 namespace wampcc
 {
-
 
 sslstatus get_sslstatus(SSL* ssl, int n)
 {
@@ -27,7 +27,11 @@ sslstatus get_sslstatus(SSL* ssl, int n)
   }
 }
 
-ssl_context::ssl_context(const ssl_config& conf) : m_ctx(nullptr), m_config(conf)
+ssl_context::ssl_context(logger & l,
+                         const ssl_config& conf)
+  : __logger(l),
+    m_ctx(nullptr),
+    m_config(conf)
 {
   /* SSL library initialisation */
   SSL_library_init();
@@ -72,7 +76,7 @@ void ssl_context::log_ssl_error_queue()
   // TODO: using logging
   while ((l = ERR_get_error()) != 0) {
     ERR_error_string_n(l, buf, sizeof buf);
-    std::cout << "SSL " << buf << std::endl;
+    LOG_ERROR("ssl " << buf);
   }
 }
 

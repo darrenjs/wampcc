@@ -11,8 +11,6 @@
 #include "wampcc/kernel.h"
 #include "wampcc/types.h"
 
-#include <iostream>
-
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -20,12 +18,13 @@
 
 namespace wampcc
 {
+struct logger;
 
 /* Represent the global context OpenSSL object. */
 class ssl_context
 {
 public:
-  ssl_context(const ssl_config& conf);
+  ssl_context(logger &, const ssl_config& conf);
 
   /* log all entries in the SSL error queue */
   void log_ssl_error_queue();
@@ -51,6 +50,7 @@ public:
   SSL_CTX* context() { return m_ctx; };
 
 private:
+  logger & __logger;
   SSL_CTX* m_ctx;
   ssl_config m_config;
 };

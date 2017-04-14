@@ -55,7 +55,7 @@ struct logger
       write;
 
   /** create a logger for stdout or stderr */
-  static logger stdlog(std::ostream&, int level_mask, bool inc_file_line);
+  static logger stdlog(std::ostream&, int level_mask, bool inc_file_line = false);
 
   /** create a logger for stdout that logs error,warn and info */
   static logger stdout();
