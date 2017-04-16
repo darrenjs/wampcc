@@ -59,6 +59,8 @@ struct user_options
   std::string arg_list;
   std::string arg_dict;
 
+  std::chrono::seconds timeout { 3 };
+
   bool use_ssl = false;
 } uopts;
 
@@ -162,7 +164,8 @@ static void usage()
   HELPLN("-c, --call=URI",sp2,"call procedure");
   HELPLN("--arglist=ARG",sp3,"wamp argument list, ARG is a JSON arra");
   HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
-  HELPLN("--ssl", sp4, "connect using SSL/TLS socket");
+  HELPLN("--ssl", sp4, "connect using TLS/SSL socket");
+  HELPLN("--timeout N", sp3, "wait upto N seconds during connect & logon");
   HELPLN("-h", sp4, "display this help");
   HELPLN("-v, --version", sp3, "print program version");
   std::cout << std::endl << "Examples:" <<std::endl;
@@ -194,10 +197,11 @@ static void process_options(int argc, char** argv)
   // these enums are used for options that don't have a short version
   enum
   {
-    NO_URI_CHECK = 1,
-    ARGLIST,
-    ARGDICT,
+    OPT_NO_URI_CHECK = 1,
+    OPT_ARGLIST,
+    OPT_ARGDICT,
     OPT_SSL,
+    OPT_TIMEOUT,
   };
 
 //  int digit_optind = 0;
@@ -212,10 +216,11 @@ static void process_options(int argc, char** argv)
     {"username",  required_argument, 0, 'U'},
     {"password",  required_argument, 0, 'P'},
     {"realm",     required_argument, 0, 'R'},
-    {"arglist",   required_argument, 0, ARGLIST},
-    {"argdict",   required_argument, 0, ARGDICT},
-    {"no-uri-check", no_argument,    0, NO_URI_CHECK},
+    {"arglist",   required_argument, 0, OPT_ARGLIST},
+    {"argdict",   required_argument, 0, OPT_ARGDICT},
+    {"no-uri-check", no_argument,    0, OPT_NO_URI_CHECK},
     {"ssl",       no_argument,       0, OPT_SSL},
+    {"timeout",   required_argument, 0, OPT_TIMEOUT},
     {NULL, 0, NULL, 0}
   };
   const char* optstr="hvds:p:m:r:c:U:P:R:";
@@ -240,11 +245,13 @@ static void process_options(int argc, char** argv)
 
     switch(c)
     {
-      case 0: /* got long option */ break;
-      case NO_URI_CHECK : uopts.no_uri_check = true; break;
-      case ARGLIST : uopts.arg_list = optarg; break;
-      case ARGDICT : uopts.arg_dict = optarg; break;
+      case OPT_NO_URI_CHECK : uopts.no_uri_check = true; break;
+      case OPT_ARGLIST : uopts.arg_list = optarg; break;
+      case OPT_ARGDICT : uopts.arg_dict = optarg; break;
       case OPT_SSL : uopts.use_ssl = true; break;
+      case OPT_TIMEOUT :
+        uopts.timeout = std::chrono::seconds(atoi(optarg));
+        break;
       case 'd' : uopts.verbose++; break;
       case 'h' : usage();
       case 'v' : version();
@@ -369,7 +376,7 @@ int main_impl(int argc, char** argv)
   auto fut = sock->connect(uopts.addr.value(), atoi(uopts.port.value().c_str()));
 
   /* Wait for a connection result */
-  status = fut.wait_for(std::chrono::seconds(3));
+  status = fut.wait_for(uopts.timeout);
 
   if (status == std::future_status::deferred)
     throw std::runtime_error("unexpected deffered connect");
@@ -389,9 +396,9 @@ int main_impl(int argc, char** argv)
   if (!sock->is_connected())
     throw std::runtime_error("socket not connected");
 
-  wampcc::rawsocket_protocol::options proto_opts;
+  wampcc::websocket_protocol::options proto_opts;
   std::shared_ptr<wampcc::wamp_session> ws =
-    wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
+    wampcc::wamp_session::create<wampcc::websocket_protocol>(
       g_kernel.get(),
       std::move(sock),
       [](wampcc::session_handle wp, bool is_open) {
@@ -406,7 +413,7 @@ int main_impl(int argc, char** argv)
    * the handshake will automatically be made during the wamp hello. */
   if (sslsock) {
     auto fut=sslsock->handshake();
-    if (fut.wait_for(std::chrono::seconds(10))==std::future_status::timeout)
+    if (fut.wait_for(uopts.timeout)==std::future_status::timeout)
       throw std::runtime_error("time-out during ssl handshake");
     if (fut.get() != wampcc::ssl_socket::t_handshake_state::success)
       throw std::runtime_error("ssl handshake failed");
@@ -421,12 +428,11 @@ int main_impl(int argc, char** argv)
   ws->initiate_hello(credentials);
 
   /* Wait for the WAMP session to authenticate and become open */
-  auto wait_interval = std::chrono::seconds(50);
   {
     std::unique_lock<std::mutex> guard(g_active_session_mutex);
 
     bool hasevent = g_active_session_condition.wait_for(guard,
-                                                        wait_interval,
+                                                        uopts.timeout,
                                                         [](){ return g_active_session_notifed; });
 
     if (!hasevent)
@@ -496,7 +502,7 @@ int main_impl(int argc, char** argv)
   {
     std::unique_lock< std::mutex > guard( event_queue_mutex );
 
-    /*bool hasevent =*/ event_queue_condition.wait_for(guard, wait_interval,
+    /*bool hasevent =*/ event_queue_condition.wait_for(guard, uopts.timeout,
                                                        [](){ return !event_queue.empty(); });
 
     while (!event_queue.empty())
