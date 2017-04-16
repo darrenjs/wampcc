@@ -1042,7 +1042,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
     if ( msg.size() > 4 )
       invoke.args.args_list = std::move(msg[4].as_array());
     if ( msg.size() > 5 )
-      invoke.args.args_dict = std::move(msg[4].as_object());
+      invoke.args.args_dict = std::move(msg[5].as_object());
 
     session_handle wp = this->handle();
     invoke.yield_fn = [wp,request_id](json_array arg_list, json_object arg_dict)
@@ -1559,8 +1559,10 @@ void wamp_session::process_inbound_call(json_array & msg)
   std::string procedure_uri = std::move(msg[3].as_string());
 
   wamp_args my_wamp_args;
-  if ( msg.size() > 4 ) my_wamp_args.args_list = msg[4].as_array();
-  if ( msg.size() > 5 ) my_wamp_args.args_dict = msg[5].as_object();
+  if ( msg.size() > 4 )
+    my_wamp_args.args_list = msg[4].as_array();
+  if ( msg.size() > 5 )
+    my_wamp_args.args_dict = msg[5].as_object();
 
   session_handle wp = this->handle();
   auto reply_fn = [wp, request_id](wamp_args args,
@@ -1634,8 +1636,10 @@ void wamp_session::process_inbound_yield(json_array & msg)
   t_request_id request_id = extract_request_id(msg, 1);
 
   wamp_args args;
-  if ( msg.size() > 3 ) args.args_list = msg[3].as_array();
-  if ( msg.size() > 4 ) args.args_dict = msg[4].as_object();
+  if ( msg.size() > 3 )
+    args.args_list = msg[3].as_array();
+  if ( msg.size() > 4 )
+    args.args_dict = msg[4].as_object();
 
   auto iter = m_pending_invocation.find(request_id);
   if (iter != m_pending_invocation.end())
@@ -1666,8 +1670,10 @@ void wamp_session::process_inbound_publish(json_array & msg)
     if (!msg[3].is_string()) throw protocol_error("topic uri must be string");
 
     wamp_args args;
-    if ( msg.size() > 4 ) args.args_list = std::move(msg[4].as_array());
-    if ( msg.size() > 5 ) args.args_dict = std::move(msg[5].as_object());
+    if ( msg.size() > 4 )
+      args.args_list = std::move(msg[4].as_array());
+    if ( msg.size() > 5 )
+      args.args_dict = std::move(msg[5].as_object());
 
     m_server_handler.handle_inbound_publish(this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
   }
