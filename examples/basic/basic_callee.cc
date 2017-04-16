@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 
     /* Create the wampcc kernel, which provides event and IO threads. */
 
-    std::unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
+    std::unique_ptr<kernel> the_kernel(new kernel({}, logger::stdout()));
 
     /* Create the TCP socket and attempt to connect. */
 
@@ -43,10 +43,11 @@ int main(int argc, char** argv)
     if (uverr ec = fut.get())
       throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
 
-    /* Using the connected socket, now create the wamp session object. */
+    /* Using the connected socket, now create the wamp session object, using
+       the WebSocket protocol. */
 
     std::promise<void> ready_to_exit;
-    std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
+    std::shared_ptr<wamp_session> session = wamp_session::create<websocket_protocol>(
       the_kernel.get(),
       std::move(sock),
       [&ready_to_exit](session_handle, bool is_open) {
