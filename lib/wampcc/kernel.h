@@ -15,8 +15,8 @@
 /* Compile-time name & version */
 
 #define WAMPCC_MAJOR_VERSION 1
-#define WAMPCC_MINOR_VERSION 0
-#define WAMPCC_MICRO_VERSION 0
+#define WAMPCC_MINOR_VERSION 1
+#define WAMPCC_MICRO_VERSION 1
 
 namespace wampcc
 {

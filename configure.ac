@@ -1,7 +1,7 @@
 
 #========== Initialisation ==========
 
-AC_INIT([wampcc], [1.0.0], [wampcc@darrenjs.net], [wampcc], [ ] )
+AC_INIT([wampcc], [1.1.1], [wampcc@darrenjs.net], [wampcc], [ ] )
 AC_PREREQ([2.59])
 
 AC_CONFIG_AUX_DIR([.])
