@@ -40,6 +40,12 @@ private:
 
 struct user_options
 {
+  enum class transport_bit
+  {
+    rawsocket = 0x01,
+    websocket = 0x02,
+  } transport = transport_bit::websocket;
+
   std::string username;
   std::string password;
   user_optional<std::string> realm;
@@ -166,6 +172,7 @@ static void usage()
   HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
   HELPLN("--ssl", sp4, "connect using TLS/SSL socket");
   HELPLN("--timeout N", sp3, "wait upto N seconds during connect & logon");
+  HELPLN("--proto [web|raw]", sp2, "protocol options, web=websocket, raw=rawsocket");
   HELPLN("-h", sp4, "display this help");
   HELPLN("-v, --version", sp3, "print program version");
   std::cout << std::endl << "Examples:" <<std::endl;
@@ -176,10 +183,24 @@ static void usage()
   exit(0);
 }
 
-static void version()
+void version()
 {
   std::cout << wampcc::name_version()  << std::endl;
   exit(0);
+}
+
+void parse_proto(const char* src)
+{
+  auto keywords = wampcc::tokenize(src, ',', false);
+  for (auto item : keywords)
+  {
+    if (item=="web")
+      uopts.transport = user_options::transport_bit::websocket;
+    else if (item=="raw")
+      uopts.transport = user_options::transport_bit::rawsocket;
+    else
+      throw std::runtime_error("unknown proto flag");
+  }
 }
 
 static void process_options(int argc, char** argv)
@@ -202,6 +223,7 @@ static void process_options(int argc, char** argv)
     OPT_ARGDICT,
     OPT_SSL,
     OPT_TIMEOUT,
+    OPT_PROTO,
   };
 
 //  int digit_optind = 0;
@@ -221,6 +243,7 @@ static void process_options(int argc, char** argv)
     {"no-uri-check", no_argument,    0, OPT_NO_URI_CHECK},
     {"ssl",       no_argument,       0, OPT_SSL},
     {"timeout",   required_argument, 0, OPT_TIMEOUT},
+    {"proto",     required_argument, 0, OPT_PROTO},
     {NULL, 0, NULL, 0}
   };
   const char* optstr="hvds:p:m:r:c:U:P:R:";
@@ -245,6 +268,7 @@ static void process_options(int argc, char** argv)
 
     switch(c)
     {
+      case OPT_PROTO : parse_proto(optarg); break;
       case OPT_NO_URI_CHECK : uopts.no_uri_check = true; break;
       case OPT_ARGLIST : uopts.arg_list = optarg; break;
       case OPT_ARGDICT : uopts.arg_dict = optarg; break;
@@ -396,15 +420,32 @@ int main_impl(int argc, char** argv)
   if (!sock->is_connected())
     throw std::runtime_error("socket not connected");
 
-  wampcc::websocket_protocol::options proto_opts;
-  std::shared_ptr<wampcc::wamp_session> ws =
-    wampcc::wamp_session::create<wampcc::websocket_protocol>(
-      g_kernel.get(),
-      std::move(sock),
-      [](wampcc::session_handle wp, bool is_open) {
-        if (auto sp = wp.lock())
-          session_state_cb(is_open);
-      }, proto_opts);
+  std::shared_ptr<wampcc::wamp_session> ws;
+
+  switch (uopts.transport) {
+    case user_options::transport_bit::websocket: {
+      wampcc::websocket_protocol::options proto_opts;
+      ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(
+        g_kernel.get(),
+        std::move(sock),
+        [](wampcc::session_handle wp, bool is_open) {
+          if (auto sp = wp.lock())
+            session_state_cb(is_open);
+        }, proto_opts);
+      break;
+    }
+    case user_options::transport_bit::rawsocket: {
+      wampcc::rawsocket_protocol::options proto_opts;
+      ws = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
+        g_kernel.get(),
+        std::move(sock),
+        [](wampcc::session_handle wp, bool is_open) {
+          if (auto sp = wp.lock())
+            session_state_cb(is_open);
+        }, proto_opts);
+      break;
+    }
+  }
 
   if (!ws)
     throw std::runtime_error("failed to obtain wamp session");
