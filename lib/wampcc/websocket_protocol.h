@@ -10,6 +10,8 @@
 
 #include "wampcc/protocol.h"
 
+#include <random>
+
 namespace wampcc
 {
 
@@ -35,6 +37,9 @@ public:
   static const int OPCODE_PING     = 0x9;
   static const int OPCODE_PONG     = 0xA;
 
+  static constexpr const char* WAMPV2_JSON_SUBPROTOCOL = "wamp.2.json";
+  static constexpr const char* WAMPV2_MSGPACK_SUBPROTOCOL = "wamp.2.msgpack";
+
   static const int HYBI_07 = 7;
   static const int HYBI_10 = 8;
   static const int RFC6455 = 13;
@@ -50,7 +55,7 @@ public:
 
 private:
 
-  const char* protocol_reply_header();
+  const char* subprotocol_header();
 
   enum
   {
@@ -70,7 +75,9 @@ private:
   std::string m_expected_accept_key;
 
   int m_version;
+  std::unique_ptr<std::mt19937> m_rand_engine;
 };
+
 
 }
 

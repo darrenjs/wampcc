@@ -36,6 +36,7 @@ websocket_protocol::websocket_protocol(tcp_socket* h,
     m_options(std::move(opts)),
     m_version(RFC6455)
 {
+  m_rand_engine.reset(new std::mt19937(std::random_device()()));
 }
 
 
@@ -104,7 +105,7 @@ struct frame_builder
 
 
   /** Construct  */
-  frame_builder(int opcode, bool is_fin, size_t payload_len)
+  frame_builder(int opcode, bool is_fin, size_t payload_len, const uint8_t * mask = nullptr)
   {
     unsigned char is_fin_bit = is_fin?FRAME_FIN:0;
 
@@ -132,17 +133,15 @@ struct frame_builder
       for (int i = 0; i<8; ++i) m_image[2+i]=temp.m[i];
       m_header_len = 10;
     }
-  }
 
-  frame_builder(int opcode, bool is_fin, size_t payload_len, std::array<char,4> mask)
-    : frame_builder(opcode, is_fin, payload_len)
-  {
-    m_image[1] |= FRAME_MASKED;
-    m_image[m_header_len+0] = mask[0];
-    m_image[m_header_len+1] = mask[1];
-    m_image[m_header_len+2] = mask[2];
-    m_image[m_header_len+3] = mask[3];
-    m_header_len += 4;
+    if (mask) {
+      m_image[1] |= FRAME_MASKED;
+      m_image[m_header_len+0] = mask[0];
+      m_image[m_header_len+1] = mask[1];
+      m_image[m_header_len+2] = mask[2];
+      m_image[m_header_len+3] = mask[3];
+      m_header_len += 4;
+    }
   }
 
   char * data() { return m_image; }
@@ -169,14 +168,25 @@ void websocket_protocol::send_msg(const json_array& ja)
 {
   std::string msg ( json_encode( ja ) );
 
-  frame_builder fb(OPCODE_TEXT, true, msg.size());
+  /* Only wamp client needs to apply a frame mask */
+  bool should_mask = (mode() == connect_mode::active);
+
+  uint32_converter mask;
+  if (should_mask) {
+    std::uniform_int_distribution<uint32_t> distr;
+    mask.i = distr(*m_rand_engine);
+  }
+
+  frame_builder fb(OPCODE_TEXT, true, msg.size(), (should_mask?mask.m:nullptr));
 
   std::pair<const char*, size_t> bufs[2];
-
   bufs[0] = fb.buf();
-
-  bufs[1].first  = (const char*)msg.c_str();;
+  bufs[1].first  = (const char*)msg.c_str();
   bufs[1].second = msg.size();
+
+  if (should_mask)
+    for (size_t i = 0; i < msg.size(); ++i)
+      (const_cast<char*>(bufs[1].first))[i] ^= mask.m[i%4];
 
   m_socket->write(bufs, 2);
 }
@@ -224,7 +234,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               os << "Upgrade: websocket" << "\r\n";
               os << "Connection: Upgrade" << "\r\n";
               os << "Sec-WebSocket-Accept: " << make_accept_key(m_http_parser->get("Sec-WebSocket-Key")) << "\r\n";
-              os << "Sec-WebSocket-Protocol: " << protocol_reply_header() << "\r\n";
+              os << "Sec-WebSocket-Protocol: " << subprotocol_header() << "\r\n";
               os << "\r\n";
 
               std::string msg = os.str();
@@ -388,6 +398,7 @@ void websocket_protocol::initiate(t_initiate_cb cb)
       << "Host: " << m_options.connect_host << ":" << m_options.connect_port <<  "\r\n"
       << "Origin: " << hostname() << "\r\n"
       << "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
+      << "Sec-WebSocket-Protocol: "<< subprotocol_header() << "\r\n"
       << "Sec-WebSocket-Version: " << m_version << "\r\n"
          "\r\n";
   std::string http_request = oss.str();
@@ -412,10 +423,10 @@ void websocket_protocol::on_timer()
   }
 }
 
-const char* websocket_protocol::protocol_reply_header()
+const char* websocket_protocol::subprotocol_header()
 {
   // TODO: needs to be smarter, when wampcc has support for msgpack
-  return "wamp.2.json";
+  return WAMPV2_JSON_SUBPROTOCOL;
 }
 
 }
