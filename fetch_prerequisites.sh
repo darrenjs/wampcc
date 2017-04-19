@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 
+##
+## if you are behind a firewall, set a proxy
+##
+##    export http_proxy=http://your_ip_proxy:port/
+##    export https_proxy=$http_proxy
+##
 
-# if you are behind a firewall, set a proxy
-#export http_proxy=http://your_ip_proxy:port/
-#export https_proxy=$http_proxy
+# get msgpack-c
+version=2.1.1
+tarfile=cpp-${version}.tar.gz
+echo '***' fetching msgpack-c $version '***'
+echo
+
+test -f $tarfile || wget https://github.com/msgpack/msgpack-c/archive/$tarfile
+
+if [ -f ${tarfile} ]; then
+    tar xfz ${tarfile}  -C external --transform "s/msgpack-c-cpp-${version}/msgpack-c-cpp/"
+else
+    echo failed to download ${tarfile} ... please try manually
+fi
+unset version tarfile
+
 
 # get googletest
 googletest_ver=1.8.0
