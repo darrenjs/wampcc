@@ -66,7 +66,7 @@ public:
   static constexpr int           FRAME_PREFIX_SIZE = 4;
   static constexpr unsigned char MAGIC = 0x7F;
 
-  rawsocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks callbacks, connect_mode, options);
+  rawsocket_protocol(kernel*, tcp_socket*, t_msg_cb, protocol::protocol_callbacks , connect_mode, options);
 
   void on_timer() override;
   void io_on_read(char*, size_t) override;
@@ -83,8 +83,6 @@ private:
   static const int MSG_TYPE_WAMP = 0;
   static const int MSG_TYPE_PING = 1;
   static const int MSG_TYPE_PONG = 2;
-
-  void decode(const char*, size_t);
 
   enum handshake_error_code
   {

@@ -7,13 +7,13 @@
 
 #include "wampcc/protocol.h"
 
+#include "wampcc/http_parser.h"
+#include "wampcc/log_macros.h"
+#include "wampcc/rawsocket_protocol.h"
 #include "wampcc/tcp_socket.h"
 #include "wampcc/utils.h"
-#include "wampcc/rawsocket_protocol.h"
 #include "wampcc/websocket_protocol.h"
-#include "wampcc/http_parser.h"
 
-#include <iostream>
 #include <stdexcept>
 
 #include <string.h>
@@ -80,13 +80,16 @@ namespace wampcc {
   }
 
 
-  protocol::protocol(tcp_socket* h,
+  protocol::protocol(kernel* kernel,
+                     tcp_socket* h,
                      t_msg_cb cb,
                      protocol_callbacks callbacks,
                      connect_mode _mode,
                      size_t buf_initial_size,
                      size_t buf_max_size)
-  : m_socket(h),
+  : m_kernel(kernel),
+    __logger(kernel->get_logger()),
+    m_socket(h),
     m_msg_processor(cb),
     m_callbacks(callbacks),
     m_buf(buf_initial_size, buf_max_size),
@@ -95,12 +98,20 @@ namespace wampcc {
 }
 
 
+int protocol::fd() const
+{
+  return m_socket->fd().second;
+}
+
+
 void protocol::decode_json(const char* ptr, size_t msglen)
 {
   /* IO thread */
   try
   {
-    json_value jv =  json_decode(ptr, msglen);
+    json_value jv = json_decode(ptr, msglen);
+
+    LOG_TRACE("fd: " << fd() << ", json_rx: " << jv);
 
     json_array& msg = jv.as_array();
 
@@ -118,10 +129,10 @@ void protocol::decode_json(const char* ptr, size_t msglen)
   }
 }
 
-selector_protocol::selector_protocol(tcp_socket* sock,
-                                       t_msg_cb msg_cb,
-                                       protocol::protocol_callbacks callbacks)
-  : protocol(sock, msg_cb, callbacks, connect_mode::passive,
+selector_protocol::selector_protocol(kernel* k, tcp_socket* sock,
+                                     t_msg_cb msg_cb,
+                                     protocol::protocol_callbacks callbacks)
+  : protocol(k, sock, msg_cb, callbacks, connect_mode::passive,
              1, buffer_size_required())
 {
 }
@@ -142,7 +153,8 @@ void selector_protocol::io_on_read(char* src, size_t len)
     {
       rawsocket_protocol::options default_opts;
       std::unique_ptr<protocol> up (
-        new rawsocket_protocol(m_socket,
+        new rawsocket_protocol(m_kernel,
+                               m_socket,
                                m_msg_processor,
                                m_callbacks,
                                connect_mode::passive,
@@ -160,7 +172,8 @@ void selector_protocol::io_on_read(char* src, size_t len)
     {
       websocket_protocol::options default_opts;
       std::unique_ptr<protocol> up (
-        new websocket_protocol(m_socket,
+        new websocket_protocol(m_kernel,
+                               m_socket,
                                m_msg_processor,
                                m_callbacks,
                                connect_mode::passive,

@@ -44,7 +44,7 @@ public:
   static const int HYBI_10 = 8;
   static const int RFC6455 = 13;
 
-  websocket_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connect_mode _mode, options);
+  websocket_protocol(kernel*, tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connect_mode _mode, options);
 
   void on_timer() override;
   void io_on_read(char*, size_t) override;

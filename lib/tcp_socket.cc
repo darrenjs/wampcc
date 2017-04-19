@@ -365,6 +365,10 @@ void tcp_socket::close_once_on_io()
 
 void tcp_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
 {
+  LOG_TRACE("fd: " << fd().second << ", tcp_rx: len " << nread
+            << (nread>0? ", hex ":"")
+            << (nread>0? to_hex(buf->base,nread):""));
+
   if (nread >= 0 && m_io_on_read)
     m_io_on_read(buf->base, nread);
   else if (nread < 0 && m_io_on_error)
@@ -507,6 +511,13 @@ void tcp_socket::do_write()
   size_t bytes_to_send = 0;
   for (size_t i = 0; i < copy.size(); i++)
     bytes_to_send += copy[i].len;
+
+  if (LOG_FOR_LEVEL(logger::eTrace)) {
+    for (size_t i = 0; i < copy.size(); i++)
+      LOG_TRACE("fd: " << fd().second << ", tcp_tx: len " << copy[i].len
+            << (copy[i].len>0? ", hex ":"")
+            << (copy[i].len>0? to_hex(copy[i].base,copy[i].len):""));
+  }
 
   const size_t pend_max = m_kernel->get_config().socket_max_pending_write_bytes;
 

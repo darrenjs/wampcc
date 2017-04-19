@@ -130,9 +130,11 @@ static const char* level_str(logger::Level l)
       return " INFO";
     case logger::eDebug:
       return "DEBUG";
+    case logger::eTrace:
+      return "TRACE";
   }
 
-  return "unhandled_switch";
+  return "UNKNOWN";
 }
 
 

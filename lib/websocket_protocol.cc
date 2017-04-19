@@ -10,9 +10,8 @@
 #include "wampcc/utils.h"
 #include "wampcc/tcp_socket.h"
 #include "wampcc/http_parser.h"
+#include "wampcc/log_macros.h"
 #include "external/apache/base64.h"
-
-#include <iostream>
 
 #include <string.h>
 #include <assert.h>
@@ -20,16 +19,16 @@
 #include <openssl/sha.h>
 #include <arpa/inet.h>
 
-
 namespace wampcc
 {
 
-websocket_protocol::websocket_protocol(tcp_socket* h,
+websocket_protocol::websocket_protocol(kernel* k,
+                                       tcp_socket* h,
                                        t_msg_cb msg_cb,
                                        protocol::protocol_callbacks callbacks,
                                        connect_mode _mode,
                                        options opts)
-  : protocol(h, msg_cb, callbacks, _mode),
+  : protocol(k, h, msg_cb, callbacks, _mode),
     m_state(_mode==connect_mode::passive? eHandlingHttpRequest : eHandlingHttpResponse),
     m_http_parser(new http_parser(_mode==connect_mode::passive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
@@ -91,100 +90,174 @@ union uint64_converter
     uint8_t  m[8];
 };
 
-struct frame_builder
-{
-  // Minimum length of a WebSocket frame header.
-  static unsigned int const BASIC_HEADER_LENGTH = 2;
 
+/* Websocket frame-header encoder and decoder */
+struct frame
+{
   // Maximum length of a WebSocket header (2+8+4)
   static unsigned int const MAX_HEADER_LENGTH = 14;
+  static int const MASK_LEN = 4;
 
   static uint8_t const FRAME_OPCODE = 0x0F;
   static uint8_t const FRAME_FIN    = 0x80;
   static uint8_t const FRAME_MASKED = 0x80;
+  static uint8_t const FRAME_PAYLOAD = 0x7F;
 
 
-  /** Construct  */
-  frame_builder(int opcode, bool is_fin, size_t payload_len, const uint8_t * mask = nullptr)
+  struct header
   {
-    unsigned char is_fin_bit = is_fin?FRAME_FIN:0;
+    bool complete;
+    bool fin_bit;
+    bool mask_bit;
+    int opcode;
+    uint8_t mask[4]; /* valid iff mask_bit set */
+    size_t payload_len;
+    size_t header_len;
+    header() : complete(false){}
 
-    m_image[0] = is_fin_bit | (FRAME_OPCODE & opcode);
-
-    if (payload_len < 126)
+    header(int opcode__, bool fin__, size_t payload_len__, const uint8_t * mask__ = nullptr)
+      : complete(true),
+        fin_bit(fin__),
+        mask_bit(mask__ != nullptr),
+        opcode(opcode__),
+        payload_len(payload_len__)
     {
-      m_image[1] = (unsigned char)(payload_len);
-      m_header_len = 2;
+      if (payload_len < 126)
+        header_len = 2 + (mask_bit?4:0);
+      else if (payload_len < 65536)
+        header_len = 4 + (mask_bit?4:0);
+      else
+        header_len = 10 + (mask_bit?4:0);
+
+      if (mask_bit)
+        for (int i = 0; i < 4; i++)
+          mask[i] = mask__[i];
     }
-    else if (payload_len < 65536)
+
+    size_t frame_len() const { return header_len + payload_len; }
+    size_t mask_offset() const { return header_len - 4; }
+
+    void to_stream(std::ostream& os) const
+    {
+      os << "fin " << fin_bit
+         << ", opcode " << opcode
+         << ", mask " << (mask_bit? to_hex((const char *)mask, 4) : "0")
+         << ", header_len " << header_len
+         << ", payload_len " << payload_len
+         << ", frame_len " << (header_len+payload_len);
+    }
+  };
+
+  static std::array<char, MAX_HEADER_LENGTH> encode_header(header& hdr)
+  {
+    std::array<char, MAX_HEADER_LENGTH> dest;
+    encode_header(hdr, dest);
+    return dest;
+  }
+
+  static void encode_header(header& hdr, std::array<char, MAX_HEADER_LENGTH>& dest)
+  {
+    dest[0] = (hdr.fin_bit?FRAME_FIN:0) | (FRAME_OPCODE & hdr.opcode);
+
+    if (hdr.payload_len < 126)
+      dest[1] = (unsigned char)(hdr.payload_len);
+    else if (hdr.payload_len < 65536)
     {
       uint16_converter temp;
-      temp.i = htons(payload_len & 0xFFFF);
-      m_image[1] = (unsigned char)126;
-      m_image[2] = temp.m[0];
-      m_image[3] = temp.m[1];
-      m_header_len = 4;
+      temp.i = htons(hdr.payload_len & 0xFFFF);
+      dest[1] = (unsigned char)126;
+      dest[2] = temp.m[0];
+      dest[3] = temp.m[1];
     }
     else
     {
       uint64_converter temp;
-      temp.i = __bswap_64(payload_len);
-      m_image[1] = (unsigned char)127;
-      for (int i = 0; i<8; ++i) m_image[2+i]=temp.m[i];
-      m_header_len = 10;
+      temp.i = __bswap_64(hdr.payload_len);
+      dest[1] = (unsigned char)127;
+      for (int i = 0; i<8; ++i)
+        dest[2+i]=temp.m[i];
     }
 
-    if (mask) {
-      m_image[1] |= FRAME_MASKED;
-      m_image[m_header_len+0] = mask[0];
-      m_image[m_header_len+1] = mask[1];
-      m_image[m_header_len+2] = mask[2];
-      m_image[m_header_len+3] = mask[3];
-      m_header_len += 4;
+    if (hdr.mask_bit) {
+      dest[1] |= FRAME_MASKED;
+      for (int i = 0; i < 4; i++)
+        dest[hdr.mask_offset()+i] = hdr.mask[i];
     }
   }
 
-  char * data() { return m_image; }
-  const char * data() const { return m_image; }
-  size_t size() const { return m_header_len; }
-
-  std::pair<const char*, size_t> buf() const
+  static header decode_header(char src[], size_t len)
   {
-    return { data(), size() };
+    header p;
+
+    if (len<2)
+      return header(); /* frame header incomplete */
+
+    p.fin_bit  = src[0] & FRAME_FIN;
+    p.opcode   = src[0] & FRAME_OPCODE;
+    p.mask_bit = src[1] & FRAME_MASKED;
+    p.header_len = 2 + (p.mask_bit?4:0);
+
+    if (len < p.header_len)
+      return header(); /* frame header incomplete */
+
+    p.payload_len = src[1] & FRAME_PAYLOAD;
+
+    if (p.payload_len == 126) {
+      p.header_len += 2;
+      if (len < p.header_len)
+        return header(); /* frame header incomplete */
+      uint16_t raw_length;
+      memcpy(&raw_length, &src[2], 2);
+      p.payload_len = ntohs(raw_length);
+    }
+    else if (p.payload_len == 127) {
+      p.header_len += 8;
+      if (len < p.header_len)
+        return header(); /* frame header incomplete */
+      uint64_t raw_length;
+      memcpy(&raw_length, &src[2], 8);
+      p.payload_len = __bswap_64(raw_length);
+    }
+
+    if (p.mask_bit)
+      for (int i = 0; i < 4; i++)
+        p.mask[i] = src[p.header_len - 4 + i];
+
+    p.complete = true;
+    return p; /* header complete */
   }
 
-private:
-
-  // Storage for frame being created.
-  char m_image[MAX_HEADER_LENGTH];
-
-  // Actual frame size, since frame size depends on payload size and masking
-  size_t m_header_len;
 };
 
-
+std::ostream& operator<<(std::ostream& os, const wampcc::frame::header& hdr)
+{
+  hdr.to_stream(os);
+  return os;
+}
 
 void websocket_protocol::send_msg(const json_array& ja)
 {
   std::string msg ( json_encode( ja ) );
 
+  LOG_TRACE("fd: " << fd() << ", json_tx: " << ja);
+
   /* Only wamp client needs to apply a frame mask */
-  bool should_mask = (mode() == connect_mode::active);
+  bool use_mask = (mode() == connect_mode::active);
 
   uint32_converter mask;
-  if (should_mask) {
-    std::uniform_int_distribution<uint32_t> distr;
-    mask.i = distr(*m_rand_engine);
-  }
+  if (use_mask)
+    mask.i = std::uniform_int_distribution<uint32_t>()(*m_rand_engine);
 
-  frame_builder fb(OPCODE_TEXT, true, msg.size(), (should_mask?mask.m:nullptr));
+  frame::header hdr(OPCODE_TEXT, true, msg.size(), (use_mask?mask.m:nullptr));
+  auto hdr_buf = frame::encode_header(hdr);
 
-  std::pair<const char*, size_t> bufs[2];
-  bufs[0] = fb.buf();
-  bufs[1].first  = (const char*)msg.c_str();
-  bufs[1].second = msg.size();
+  std::pair<const char*, size_t> bufs[2] = {
+    { hdr_buf.data(), hdr.header_len },
+    { (const char*)msg.c_str(), msg.size() } };
 
-  if (should_mask)
+  LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
+
+  if (use_mask) /* apply mask to the payload */
     for (size_t i = 0; i < msg.size(); ++i)
       (const_cast<char*>(bufs[1].first))[i] ^= mask.m[i%4];
 
@@ -208,6 +281,9 @@ void websocket_protocol::io_on_read(char* src, size_t len)
       if (m_state == eHandlingHttpRequest)
       {
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
+
+        LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
+
         rd.advance(consumed);
 
         if (not m_http_parser->good())
@@ -225,24 +301,23 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           {
             auto websocket_version = std::stoi(m_http_parser->get("Sec-WebSocket-Version").c_str());
 
-            // TODO: hande version 0 ?
-
-            if (websocket_version == 13) // RFC6455
+            if (websocket_version == RFC6455 /* 13 */)
             {
               std::ostringstream os;
               os << "HTTP/1.1 101 Switching Protocols" << "\r\n";
               os << "Upgrade: websocket" << "\r\n";
               os << "Connection: Upgrade" << "\r\n";
               os << "Sec-WebSocket-Accept: " << make_accept_key(m_http_parser->get("Sec-WebSocket-Key")) << "\r\n";
-              os << "Sec-WebSocket-Protocol: " << subprotocol_header() << "\r\n";
+
+              // TODO: here need to resolve the subprotocols advertised by the client and those available in the server
+              if (m_http_parser->has("Sec-WebSocket-Protocol"))
+                os << "Sec-WebSocket-Protocol: " << subprotocol_header() << "\r\n";
+
               os << "\r\n";
 
               std::string msg = os.str();
-              std::pair<const char*, size_t> buf;
-              buf.first  = msg.c_str();
-              buf.second = msg.size();
-
-              m_socket->write(&buf, 1);
+              LOG_TRACE("fd: " << fd() << ", http_tx: " << msg);
+              m_socket->write(msg.c_str(), msg.size());
               m_state = eOpen;
             }
             else
@@ -256,70 +331,36 @@ void websocket_protocol::io_on_read(char* src, size_t len)
       }
       else if (m_state == eOpen)
       {
-        if (rd.avail() < 2) break;
+        const frame::header hdr = frame::decode_header(rd.ptr(), rd.avail());
 
-        bool       fin_bit = rd[0] & 0x80;
-        int         opcode = rd[0] & 0x0F;
-        bool      mask_bit = rd[1] & 0x80;
-        size_t payload_len = rd[1] & 0x7F;
-        size_t   frame_len = 2 + (mask_bit? 4:0);
-        int       mask_pos = 2;
-        int    payload_pos;
+        if (!hdr.complete || rd.avail() < hdr.frame_len())
+          break;
 
-        if (payload_len == 126)
+        LOG_TRACE("fd: " << fd() << ", frame_rx: " << hdr);
+
+        int const payload_pos = hdr.header_len;
+
+        for (size_t i = 0; i < (hdr.mask_bit?hdr.payload_len:0); ++i)
+          rd[payload_pos+i] ^= hdr.mask[i%4];
+
+
+        if (!hdr.fin_bit)
+          throw protocol_error("websocket continuations not supported");
+
+        switch (hdr.opcode)
         {
-          if (rd.avail() < 4) break;
-          frame_len   += 2;
-          mask_pos    += 2;
-          uint16_t raw_length;
-          memcpy(&raw_length, &rd[2], 2);
-          payload_len = ntohs(raw_length);
-        }
-        else if (payload_len == 127)
-        {
-          if (rd.avail() < 10) break;
-          frame_len   += 8;
-          mask_pos    += 8;
-
-          uint64_t raw_length;
-          memcpy(&raw_length, &rd[2], 8);
-          payload_len = __bswap_64(raw_length);
-
-        }
-        frame_len += payload_len;
-        payload_pos = mask_pos + (mask_bit? 4:0);
-
-        if (rd.avail() < frame_len) break;
-
-        for (size_t i = 0; i < (mask_bit?payload_len:0); ++i)
-          rd[payload_pos+i] ^= rd[mask_pos + (i%4)];
-
-        //std::cout << "fin=" << fin_bit << ", opcode=" << opcode << ", "
-        //          << "framelen=" << frame_len << ", ";
-        //if (mask_bit) std::cout << "mask=" << to_hex(&rd[mask_pos], 4) << ", ";
-        //std::cout << "payloadlen=" << payload_len << ", ";
-
-        std::string payload(&rd[payload_pos], payload_len);
-        //std::cout << "payload=" << payload << "\n";
-
-        if (!fin_bit)
-          throw protocol_error("websocket continuations not yet supported");
-
-        switch (opcode)
-        {
-          case 0x00: /* cont. */ break;
-          case 0x01: /* text  */ break;
-          case 0x02: /* bin.  */
-          {
+          case OPCODE_CONTINUE: break;
+          case OPCODE_TEXT:  break;
+          case OPCODE_BINARY: {
             throw protocol_error("websocket binary messages not supported");
           }
-          case OPCODE_CLOSE :
-          {
+          case OPCODE_CLOSE : {
             // issue a close frame
             m_state = eClosing;
-            frame_builder fb(OPCODE_CLOSE, true, 0);
-            auto buf = fb.buf();
-            m_socket->write(&buf, 1);
+            frame::header hdr(OPCODE_CLOSE, true, 0);
+            auto hdr_buf = frame::encode_header(hdr);
+            LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
+            m_socket->write(hdr_buf.data(), hdr.header_len);
 
             // TODO: request for close should be initiaied from the owning session?
             m_socket->close();
@@ -328,14 +369,16 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           default: break;
         }
 
-        if (fin_bit && opcode == OPCODE_TEXT)
-          decode_json(rd.ptr()+payload_pos, payload_len);
+        if (hdr.fin_bit && hdr.opcode == OPCODE_TEXT) {
+          decode_json(rd.ptr()+payload_pos, hdr.payload_len);
+        }
 
-        rd.advance(frame_len);
+        rd.advance(hdr.frame_len());
       }
       else if (m_state == eHandlingHttpResponse)
       {
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
+        LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
         rd.advance(consumed);
 
         if (not m_http_parser->good())
@@ -357,7 +400,6 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             if (sec_websocket_accept != m_expected_accept_key)
               throw handshake_error("Sec-WebSocket-Accept incorrect");
 
-            // std::cout << "*** upgrade ok ***\n";
             m_state = eOpen;
             m_initiate_cb();
           }
@@ -405,11 +447,8 @@ void websocket_protocol::initiate(t_initiate_cb cb)
 
   m_expected_accept_key = make_accept_key(sec_websocket_key);
 
-  std::pair<const char*, size_t> bufs[1];
-  bufs[0].first  = http_request.c_str();
-  bufs[0].second = http_request.size();
-
-  m_socket->write(bufs, 1);
+  LOG_TRACE("fd: " << fd() << ", http_tx: " << http_request);
+  m_socket->write(http_request.c_str(), http_request.size());
 }
 
 
@@ -417,9 +456,10 @@ void websocket_protocol::on_timer()
 {
   if (m_state == eOpen)
   {
-    frame_builder fb(OPCODE_PING, true, 0);
-    auto buf = fb.buf();
-    m_socket->write(&buf, 1);
+    frame::header hdr(OPCODE_PING, true, 0);
+    auto hdr_buf = frame::encode_header(hdr);
+    LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
+    m_socket->write(hdr_buf.data(), hdr.header_len);
   }
 }
 

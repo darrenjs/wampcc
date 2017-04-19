@@ -42,6 +42,7 @@ struct logger
     eError = 0x02,
     eWarn = 0x04,
     eInfo = 0x10,
+    eTrace = 0x20,
     eDebug = 0x40,
   };
 

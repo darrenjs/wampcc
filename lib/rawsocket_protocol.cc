@@ -8,6 +8,7 @@
 #include "wampcc/rawsocket_protocol.h"
 
 #include "wampcc/tcp_socket.h"
+#include "wampcc/log_macros.h"
 
 #include <sstream>
 
@@ -46,12 +47,13 @@ const char* rawsocket_protocol::handshake_error_code_to_sting(handshake_error_co
 }
 
 
-rawsocket_protocol::rawsocket_protocol(tcp_socket* h,
+rawsocket_protocol::rawsocket_protocol(kernel* k,
+                                       tcp_socket* h,
                                        t_msg_cb msg_cb,
                                        protocol::protocol_callbacks callbacks,
                                        connect_mode __mode,
                                        options __options)
-  : protocol(h, msg_cb, callbacks, __mode),
+  : protocol(k, h, msg_cb, callbacks, __mode),
     m_options(__options),
     m_self_max_msg_size( 1<<(9+m_options.inbound_max_msg_size) ),
     m_peer_max_msg_size(0),
@@ -176,7 +178,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
         {
           case MSG_TYPE_WAMP :
           {
-            decode(rd.ptr()+FRAME_PREFIX_SIZE, msglen);
+            decode_json(rd.ptr()+FRAME_PREFIX_SIZE, msglen);
             break;
           }
           case MSG_TYPE_PING :
@@ -217,35 +219,13 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
 }
 
 
-void rawsocket_protocol::decode(const char* ptr, size_t msglen)
-{
-  /* IO thread */
-  try
-  {
-    json_value jv = json_decode(ptr, msglen);
-
-    json_array& msg = jv.as_array();
-
-    if (msg.size() == 0)
-      throw protocol_error("json array empty");
-
-    if (!msg[0].is_uint())
-      throw protocol_error("message type must be uint");
-
-    m_msg_processor(msg, msg[0].as_uint());
-  }
-  catch( const json_error& e)
-  {
-    throw protocol_error(e.what());
-  }
-}
-
-
-void rawsocket_protocol::send_msg(const json_array& jv)
+void rawsocket_protocol::send_msg(const json_array& ja)
 {
   std::pair<const char*, size_t> bufs[2];
 
-  std::string msg ( json_encode( jv ) );
+  std::string msg ( json_encode( ja ) );
+
+  LOG_TRACE("fd: " << fd() << ", json_tx: " << ja);
 
   uint32_t msglen = htonl(  msg.size() );
   bufs[0].first  = (char*)&msglen;
@@ -261,11 +241,7 @@ void rawsocket_protocol::reply_handshake(int high, int low)
 {
   char handshake[ HANDSHAKE_SIZE ];
   format_handshake(handshake, high, low);
-
-  std::pair<const char*, size_t> bufs[1];
-  bufs[0].first  = handshake;
-  bufs[0].second = HANDSHAKE_SIZE;
-  m_socket->write(bufs, 1);
+  m_socket->write(handshake, HANDSHAKE_SIZE);
 }
 
 
@@ -277,11 +253,7 @@ void rawsocket_protocol::on_timer()
     // TTT bits in the first octet.
     uint32_t out_frame_hdr = (MSG_TYPE_PING << FRAME_FIRST_OCTECT_SHIFT);
     out_frame_hdr = htonl(out_frame_hdr);
-
-    std::pair<const char*, size_t> bufs;
-    bufs.first  = (char*)&out_frame_hdr;
-    bufs.second = FRAME_PREFIX_SIZE;
-    m_socket->write(&bufs, 1);
+    m_socket->write((char*)&out_frame_hdr, FRAME_PREFIX_SIZE);
   }
 }
 

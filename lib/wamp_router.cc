@@ -277,11 +277,11 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
     int fd = sock->fd().second;
 
-    protocol_builder_fn builder_fn;
-    builder_fn = [](tcp_socket* sock, protocol::t_msg_cb _msg_cb,
-                    protocol::protocol_callbacks callbacks) {
+    protocol_builder_fn builder_fn = [this](tcp_socket* sock,
+                                            protocol::t_msg_cb _msg_cb,
+                                            protocol::protocol_callbacks cb) {
       std::unique_ptr<protocol> up(
-          new selector_protocol(sock, _msg_cb, callbacks));
+        new selector_protocol(m_kernel, sock, _msg_cb, cb));
       return up;
     };
 

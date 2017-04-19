@@ -16,6 +16,8 @@
 
 namespace wampcc {
 
+class kernel;
+struct logger;
 class tcp_socket;
 
 class buffer
@@ -128,7 +130,7 @@ public:
   typedef std::function<void(json_array msg, int msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
 
-  protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,
+  protocol(kernel*, tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,
            size_t buf_initial_size=1, size_t buf_max_size=1024);
 
   virtual void on_timer() {}
@@ -142,8 +144,12 @@ public:
 
 protected:
 
+  int fd() const;
+
   void decode_json(const char* ptr, size_t msglen);
 
+  kernel* m_kernel;
+  logger& __logger;
   tcp_socket * m_socket; /* non owning */
   t_msg_cb    m_msg_processor;
   protocol_callbacks m_callbacks;
@@ -162,7 +168,7 @@ class selector_protocol : public protocol
 public:
   static constexpr const char* NAME = "selector";
 
-  selector_protocol(tcp_socket*, t_msg_cb, protocol::protocol_callbacks);
+  selector_protocol(kernel*, tcp_socket*, t_msg_cb, protocol::protocol_callbacks);
 
   void io_on_read(char*, size_t) override;
 

@@ -14,15 +14,20 @@
 
 #define LOGIMPL( X, LEVEL )                                           \
   do {                                                                \
-    if ( __logger.wants_level and                                        \
-         __logger.write and                                              \
-         __logger.wants_level(LEVEL) )                                   \
+    if ( __logger.wants_level and                                     \
+         __logger.write and                                           \
+         __logger.wants_level(LEVEL) )                                \
     {                                                                 \
       std::ostringstream __xx_oss;                                    \
       __xx_oss <<  X ;                                                \
-      __logger.write(LEVEL, __xx_oss.str(), __FILE__,__LINE__  ) ;       \
+      __logger.write(LEVEL, __xx_oss.str(), __FILE__,__LINE__  ) ;    \
     }                                                                 \
   } while (0)
+
+#define LOG_FOR_LEVEL( LEVEL )                                        \
+  ( __logger.wants_level and                                          \
+    __logger.write and                                                \
+    __logger.wants_level(LEVEL))
 
 #define LOG_INFO( X )                           \
   LOGIMPL( X, wampcc::logger::eInfo )
@@ -35,5 +40,9 @@
 
 #define LOG_DEBUG( X )                          \
   LOGIMPL( X, wampcc::logger::eDebug )
+
+#define LOG_TRACE( X )                          \
+  LOGIMPL( X, wampcc::logger::eTrace )
+
 
 #endif

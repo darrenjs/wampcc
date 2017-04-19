@@ -240,12 +240,12 @@ namespace wampcc {
                                                 typename T::options protocol_options = {})
     {
       protocol_builder_fn factory_fn;
-      factory_fn = [protocol_options](tcp_socket* socket,
-                                      protocol::t_msg_cb _msg_cb,
-                                      protocol::protocol_callbacks callbacks)
+      factory_fn = [protocol_options, k](tcp_socket* socket,
+                                         protocol::t_msg_cb _msg_cb,
+                                         protocol::protocol_callbacks callbacks)
         {
           std::unique_ptr<protocol> up (
-            new T(socket, _msg_cb, callbacks,
+            new T(k, socket, _msg_cb, callbacks,
                   connect_mode::active, protocol_options)
             );
           return up;
