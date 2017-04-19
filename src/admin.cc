@@ -174,6 +174,7 @@ static void usage()
   HELPLN("--timeout N", sp3, "wait upto N seconds during connect & logon");
   HELPLN("--proto [web|raw]", sp2, "protocol options, web=websocket, raw=rawsocket");
   HELPLN("-h", sp4, "display this help");
+  HELPLN("-d [-d]", sp3, "verbose output, use -d -d for trace output");
   HELPLN("-v, --version", sp3, "print program version");
   std::cout << std::endl << "Examples:" <<std::endl;
   std::cout << std::endl << "Call a procedure with JSON argument as array and object" << std::endl;
@@ -376,10 +377,16 @@ int main_impl(int argc, char** argv)
 
   /* Setup wampcc core components */
 
-
+  int verbose = uopts.verbose;
   wampcc::logger console_logger {
-    [](wampcc::logger::Level l){ return l <= wampcc::logger::eWarn;; },
-    [](wampcc::logger::Level, const std::string& msg, const char*, int){
+    [verbose](wampcc::logger::Level l){
+      switch (verbose) {
+        case 2 : return l <= wampcc::logger::eTrace;
+        case 1 : return l <= wampcc::logger::eInfo;
+        default: return l <= wampcc::logger::eWarn;
+      }
+    },
+    [verbose](wampcc::logger::Level, const std::string& msg, const char*, int){
       std::cout << msg << std::endl;
     }
   };
