@@ -96,6 +96,14 @@ enum class connect_mode
   passive
 };
 
+/* Message serialisation types supported by WAMP */
+enum class serialiser : int
+{
+  none = 0x00,
+  json = 0x01,
+  msgpack = 0x02
+};
+
 } // namespace
 
 #endif

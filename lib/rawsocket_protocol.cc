@@ -71,7 +71,12 @@ void rawsocket_protocol::initiate(t_initiate_cb cb)
   m_initiate_cb = cb;
 
   char handshake[HANDSHAKE_SIZE];
-  format_handshake( handshake, m_options.inbound_max_msg_size, e_JSON);
+
+  int codecs = 0;
+  codecs |= (m_options.serialisers & serialiser::json)? e_JSON : 0;
+  codecs |= (m_options.serialisers & serialiser::msgpack)? e_MSGPACK : 0;
+
+  format_handshake( handshake, m_options.inbound_max_msg_size, codecs);
 
   std::pair<const char*, size_t> buf;
   buf.first  = &handshake[0];
@@ -178,7 +183,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
         {
           case MSG_TYPE_WAMP :
           {
-            decode_json(rd.ptr()+FRAME_PREFIX_SIZE, msglen);
+            decode(rd.ptr()+FRAME_PREFIX_SIZE, msglen);
             break;
           }
           case MSG_TYPE_PING :
@@ -221,18 +226,19 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
 
 void rawsocket_protocol::send_msg(const json_array& ja)
 {
-  std::pair<const char*, size_t> bufs[2];
-
-  std::string msg ( json_encode( ja ) );
-
   LOG_TRACE("fd: " << fd() << ", json_tx: " << ja);
 
-  uint32_t msglen = htonl(  msg.size() );
+  auto bytes = encode(ja);
+
+  std::pair<const char*, size_t> bufs[2];
+
+  uint32_t msglen = htonl(bytes.size());
   bufs[0].first  = (char*)&msglen;
   bufs[0].second = sizeof(msglen);
 
-  bufs[1].first  = (const char*)msg.c_str();
-  bufs[1].second = msg.size();
+  bufs[1].first  = bytes.data();
+  bufs[1].second = bytes.size();
+
   m_socket->write(bufs, 2);
 }
 

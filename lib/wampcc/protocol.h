@@ -20,6 +20,13 @@ class kernel;
 struct logger;
 class tcp_socket;
 
+constexpr inline int operator & (int lhs, serialiser rhs) {
+  return lhs & static_cast<int>(rhs);
+}
+constexpr inline int operator | (serialiser lhs, serialiser rhs) {
+  return (int) (static_cast<int>(lhs) & static_cast<int>(rhs));
+}
+
 class buffer
 {
 public:
@@ -78,6 +85,7 @@ private:
   size_t m_bytes_avail;
 };
 
+
 /** Exception thrown during IO processing of a new connection. This is an
  * unrecoverable error that prevents the correct construction of a protocol
  * encoder/decoder object, and so prevents creationg of a WAMP session from a
@@ -91,6 +99,7 @@ public:
     : std::runtime_error(msg.c_str())
   {}
 };
+
 
 /** Exception thrown due to any sort of malformed WAMP message.  Generally this
  * error is thrown when the peer has failed to respect the terms of the WAMP
@@ -108,6 +117,17 @@ public:
 
 };
 
+
+class codec
+{
+public:
+  virtual ~codec() {}
+  virtual json_value decode(const char* ptr, size_t msglen) = 0;
+  virtual std::vector<char> encode(const json_array&) = 0;
+  virtual serialiser type() const = 0;
+};
+
+
 /* Base class for encoding & decoding of bytes on the wire. */
 class protocol
 {
@@ -117,6 +137,7 @@ public:
   {
     std::string connect_host;
     std::string connect_port;
+    int serialisers = serialiser::json|serialiser::msgpack;
     std::chrono::milliseconds ping_interval = std::chrono::milliseconds(10000); /* set to 0 for no pings/heartbeats */
   };
 
@@ -125,7 +146,6 @@ public:
     std::function<void(std::unique_ptr<protocol>&)> upgrade_protocol;
     std::function<void(std::chrono::milliseconds)>  request_timer;
   };
-
 
   typedef std::function<void(json_array msg, int msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
@@ -144,9 +164,13 @@ public:
 
 protected:
 
+  static std::shared_ptr<codec> create_codec(serialiser);
+
   int fd() const;
 
-  void decode_json(const char* ptr, size_t msglen);
+  void decode(const char* ptr, size_t msglen);
+  std::vector<char> encode(const json_array&);
+
 
   kernel* m_kernel;
   logger& __logger;
@@ -154,6 +178,7 @@ protected:
   t_msg_cb    m_msg_processor;
   protocol_callbacks m_callbacks;
   buffer m_buf;
+  std::shared_ptr<codec> m_codec;
 
 private:
   connect_mode m_mode;

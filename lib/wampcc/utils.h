@@ -167,6 +167,10 @@ inline char* skip_whitespace(char* str)
   return str;
 }
 
+/* Return whether token exists in src, where token must be bounded on each side
+ * by either a string boundary or delim character. */
+bool has_token(const std::string& src, const std::string token, char delim=',');
+
 /** Return local hostname, or throw upon failure. */
 std::string hostname();
 
@@ -195,8 +199,6 @@ public:
 private:
     std::function<void()> m_fn;
 };
-
-
 
 
 /** Optionally store a value of value of type T.  Methods to assign

@@ -284,4 +284,16 @@ std::string hostname()
   return buffer.nodename;
 }
 
+
+bool has_token(const std::string& src, const std::string tok, char delim)
+{
+  size_t i = src.find(tok);
+
+  return (i != std::string::npos) &&
+    (i==0 || src[i-1]==delim) &&
+    (src[i+tok.size()]==delim || src[i+tok.size()]==0);
+}
+
+
+
 } // namespace wampcc

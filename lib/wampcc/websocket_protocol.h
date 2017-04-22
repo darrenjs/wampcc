@@ -40,9 +40,7 @@ public:
   static constexpr const char* WAMPV2_JSON_SUBPROTOCOL = "wamp.2.json";
   static constexpr const char* WAMPV2_MSGPACK_SUBPROTOCOL = "wamp.2.msgpack";
 
-  static const int HYBI_07 = 7;
-  static const int HYBI_10 = 8;
-  static const int RFC6455 = 13;
+  static constexpr const char* RFC6455 = "13";
 
   websocket_protocol(kernel*, tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connect_mode _mode, options);
 
@@ -55,7 +53,10 @@ public:
 
 private:
 
-  const char* subprotocol_header();
+  const std::string& check_parser_for_field(const char*) const;
+
+  static serialiser to_serialiser(const std::string& s);
+  static const char* to_header(serialiser);
 
   enum
   {
@@ -74,7 +75,6 @@ private:
 
   std::string m_expected_accept_key;
 
-  int m_version;
   std::unique_ptr<std::mt19937> m_rand_engine;
 };
 

@@ -20,6 +20,28 @@
 
 namespace wampcc {
 
+  class json_codec : public codec
+  {
+  public:
+    json_value decode(const char* ptr, size_t msglen) override
+    {
+      json_value jv = wampcc::json_decode(ptr, msglen);
+      return jv;
+    }
+
+    std::vector<char> encode(const json_array& src) override
+    {
+      std::string s = wampcc::json_encode(src);
+      std::vector<char> retval(s.size());
+      memcpy(retval.data(), s.c_str(), s.size());
+      return retval;
+    }
+
+    serialiser type() const override { return serialiser::json;}
+  };
+
+
+
   buffer::read_pointer::read_pointer(char * p, size_t avail)
     : m_ptr(p),
       m_avail(avail)
@@ -80,6 +102,20 @@ namespace wampcc {
   }
 
 
+
+
+std::shared_ptr<codec> protocol::create_codec(serialiser p)
+{
+  switch(p) {
+    case serialiser::json:
+      return std::shared_ptr<codec>(new json_codec());
+  }
+
+	return {};
+}
+
+
+
   protocol::protocol(kernel* kernel,
                      tcp_socket* h,
                      t_msg_cb cb,
@@ -95,6 +131,8 @@ namespace wampcc {
     m_buf(buf_initial_size, buf_max_size),
     m_mode(_mode)
 {
+  // TODO: replace with user selection
+  m_codec.reset(new json_codec());
 }
 
 
@@ -104,12 +142,18 @@ int protocol::fd() const
 }
 
 
-void protocol::decode_json(const char* ptr, size_t msglen)
+std::vector<char> protocol::encode(const json_array& ja)
+{
+  return m_codec->encode(ja);
+}
+
+
+void protocol::decode(const char* ptr, size_t len)
 {
   /* IO thread */
   try
   {
-    json_value jv = json_decode(ptr, msglen);
+    json_value jv = m_codec->decode(ptr, len);
 
     LOG_TRACE("fd: " << fd() << ", json_rx: " << jv);
 

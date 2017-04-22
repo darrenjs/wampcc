@@ -63,7 +63,7 @@ public:
     if (it != m_headers.end())
       return it->second;
     else
-      throw std::runtime_error("requested http header not found");
+      throw std::runtime_error("http header field not found");
   }
 
   /* HTTP response status-line textual phrase */
