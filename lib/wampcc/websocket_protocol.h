@@ -53,19 +53,19 @@ public:
 
 private:
 
-  const std::string& check_parser_for_field(const char*) const;
+  const std::string& header_field(const char*) const;
 
   static serialiser to_serialiser(const std::string& s);
   static const char* to_header(serialiser);
 
-  enum
+  enum class state
   {
-    eInvalid,
-    eHandlingHttpRequest, // server
-    eHandlingHttpResponse,  // client
-    eOpen,
-    eClosing
-  } m_state = eInvalid;
+    invalid,
+    handling_http_request, // server
+    handling_http_response,  // client
+    open,
+    closing
+  } m_state = state::invalid;
 
   t_initiate_cb m_initiate_cb;
 

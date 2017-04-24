@@ -102,19 +102,16 @@ namespace wampcc {
   }
 
 
+  /* select & create a codec from range of choices */
+  void protocol::create_codec(int choices)
+  {
 
-
-std::shared_ptr<codec> protocol::create_codec(serialiser p)
-{
-  switch(p) {
-    case serialiser::json:
-      return std::shared_ptr<codec>(new json_codec());
+    if (choices & serialiser::msgpack)
+      throw handshake_error("msgpack not implemented");
+    //m_codec = nullptr // TODO
+    else if (choices & serialiser::json)
+      m_codec = std::shared_ptr<codec>(new json_codec());
   }
-
-	return {};
-}
-
-
 
   protocol::protocol(kernel* kernel,
                      tcp_socket* h,
@@ -131,8 +128,6 @@ std::shared_ptr<codec> protocol::create_codec(serialiser p)
     m_buf(buf_initial_size, buf_max_size),
     m_mode(_mode)
 {
-  // TODO: replace with user selection
-  m_codec.reset(new json_codec());
 }
 
 

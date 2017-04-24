@@ -164,13 +164,12 @@ public:
 
 protected:
 
-  static std::shared_ptr<codec> create_codec(serialiser);
+  void create_codec(int choices);
 
   int fd() const;
 
   void decode(const char* ptr, size_t msglen);
   std::vector<char> encode(const json_array&);
-
 
   kernel* m_kernel;
   logger& __logger;

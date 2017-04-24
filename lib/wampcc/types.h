@@ -96,7 +96,7 @@ enum class connect_mode
   passive
 };
 
-/* Message serialisation types supported by WAMP */
+/* Bit-flags for message serialisation types supported by WAMP */
 enum class serialiser : int
 {
   none = 0x00,

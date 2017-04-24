@@ -29,7 +29,7 @@ websocket_protocol::websocket_protocol(kernel* k,
                                        connect_mode _mode,
                                        options opts)
   : protocol(k, h, msg_cb, callbacks, _mode),
-    m_state(_mode==connect_mode::passive? eHandlingHttpRequest : eHandlingHttpResponse),
+    m_state(_mode==connect_mode::passive? state::handling_http_request : state::handling_http_response),
     m_http_parser(new http_parser(_mode==connect_mode::passive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
     m_options(std::move(opts))
@@ -263,7 +263,7 @@ void websocket_protocol::send_msg(const json_array& ja)
 }
 
 
-const std::string& websocket_protocol::check_parser_for_field(const char* field) const
+const std::string& websocket_protocol::header_field(const char* field) const
 {
   if (!m_http_parser->has(field)) {
     std::string msg = "http header missing ";
@@ -288,7 +288,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
     auto rd = m_buf.read_ptr();
     while (rd.avail())
     {
-      if (m_state == eHandlingHttpRequest)
+      if (m_state == state::handling_http_request)
       {
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
         LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
@@ -305,9 +305,9 @@ void websocket_protocol::io_on_read(char* src, size_t len)
                m_http_parser->has("Connection") &&
                string_list_contains(m_http_parser->get("Connection"), "Upgrade") )
           {
-            auto& websock_key = check_parser_for_field("Sec-WebSocket-Key");
-            auto& websock_ver = check_parser_for_field("Sec-WebSocket-Version");
-            auto& websock_sub = check_parser_for_field("Sec-WebSocket-Protocol");
+            auto& websock_key = header_field("Sec-WebSocket-Key");
+            auto& websock_ver = header_field("Sec-WebSocket-Version");
+            auto& websock_sub = header_field("Sec-WebSocket-Protocol");
 
             if (websock_ver != RFC6455 /* 13 */)
               throw handshake_error("incorrect websocket version");
@@ -317,12 +317,9 @@ void websocket_protocol::io_on_read(char* src, size_t len)
               ((has_token(websock_sub,WAMPV2_JSON_SUBPROTOCOL)?serialiser::json:serialiser::none) |
                (has_token(websock_sub,WAMPV2_MSGPACK_SUBPROTOCOL)?serialiser::msgpack:serialiser::none));
 
-            /* select a protocol */
-            if (common & serialiser::msgpack)
-              m_codec = create_codec(serialiser::msgpack);
-            else if (common & serialiser::json)
-              m_codec = create_codec(serialiser::json);
-            else
+            /* create the actual codec */
+            create_codec(common);
+            if (!m_codec)
               throw handshake_error("failed to negotiate websocket subprotocol");
 
             std::ostringstream os;
@@ -337,13 +334,13 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             LOG_TRACE("fd: " << fd() << ", http_tx: " << msg);
 
             m_socket->write(msg.c_str(), msg.size());
-            m_state = eOpen;
+            m_state = state::open;
           }
           else
             throw handshake_error("http header is not a websocket upgrade");
         }
       }
-      else if (m_state == eOpen)
+      else if (m_state == state::open)
       {
         const frame::header hdr = frame::decode_header(rd.ptr(), rd.avail());
 
@@ -369,7 +366,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           }
           case OPCODE_CLOSE : {
             // issue a close frame
-            m_state = eClosing;
+            m_state = state::closing;
             frame::header hdr(OPCODE_CLOSE, true, 0);
             auto hdr_buf = frame::encode_header(hdr);
             LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
@@ -387,7 +384,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 
         rd.advance(hdr.frame_len());
       }
-      else if (m_state == eHandlingHttpResponse)
+      else if (m_state == state::handling_http_response)
       {
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
         LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
@@ -406,22 +403,18 @@ void websocket_protocol::io_on_read(char* src, size_t len)
                m_http_parser->http_status_phrase() == "Switching Protocols" &&
                m_http_parser->http_status_code() == http_parser::status_code_switching_protocols)
           {
-            auto& websock_key = check_parser_for_field("Sec-WebSocket-Accept");
-            auto& websock_sub = check_parser_for_field("Sec-WebSocket-Protocol");
+            auto& websock_key = header_field("Sec-WebSocket-Accept");
+            auto& websock_sub = header_field("Sec-WebSocket-Protocol");
 
             if (websock_key != m_expected_accept_key)
               throw handshake_error("incorrect key for Sec-WebSocket-Accept");
 
-            int common = m_options.serialisers & to_serialiser(websock_sub);
+            create_codec(m_options.serialisers & to_serialiser(websock_sub));
 
-            if (common & serialiser::json)
-              m_codec = create_codec(serialiser::json);
-            else if (common & serialiser::msgpack)
-              m_codec = create_codec(serialiser::msgpack);
-            else
-              throw handshake_error("failed to negiotiate a Sec-WebSocket-Protocol");
+            if (!m_codec)
+              throw handshake_error("failed to negotiate websocket subprotocol");
 
-            m_state = eOpen;
+            m_state = state::open;
             m_initiate_cb();
           }
           else
@@ -484,7 +477,7 @@ void websocket_protocol::initiate(t_initiate_cb cb)
 
 void websocket_protocol::on_timer()
 {
-  if (m_state == eOpen)
+  if (m_state == state::open)
   {
     frame::header hdr(OPCODE_PING, true, 0);
     auto hdr_buf = frame::encode_header(hdr);

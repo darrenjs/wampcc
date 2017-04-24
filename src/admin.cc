@@ -46,6 +46,8 @@ struct user_options
     websocket = 0x02,
   } transport = transport_bit::websocket;
 
+  int serialisers = -1; /* all bits set */
+
   std::string username;
   std::string password;
   user_optional<std::string> realm;
@@ -170,12 +172,18 @@ static void usage()
   HELPLN("-c, --call=URI",sp2,"call procedure");
   HELPLN("--arglist=ARG",sp3,"wamp argument list, ARG is a JSON arra");
   HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
-  HELPLN("--ssl", sp4, "connect using TLS/SSL socket");
+  HELPLN("--ssl", sp4, "connect using SSL/TLS socket");
   HELPLN("--timeout N", sp3, "wait upto N seconds during connect & logon");
-  HELPLN("--proto [web|raw]", sp2, "protocol options, web=websocket, raw=rawsocket");
+  HELPLN("--proto PROTO_OPTIONS", sp2, "comma separated list of options, see below");
   HELPLN("-h", sp4, "display this help");
   HELPLN("-d [-d]", sp3, "verbose output, use -d -d for trace output");
   HELPLN("-v, --version", sp3, "print program version");
+  std::cout << std::endl << "Protocol options:" <<std::endl
+            << "  web - select websocket protocol" << std::endl
+            << "  raw - select rawsocket protocol" << std::endl
+            << "  json - support only json serialiser" << std::endl
+            << "  msgpack - support only msgpack serialiser" << std::endl
+            << "  ssl - use SSL/TLS transport" << std::endl;
   std::cout << std::endl << "Examples:" <<std::endl;
   std::cout << std::endl << "Call a procedure with JSON argument as array and object" << std::endl;
   std::cout << "  admin -U peter -P secret2 -R public -c set_color --arglist '[\"green\", \"light\"]'"   << std::endl;
@@ -199,6 +207,12 @@ void parse_proto(const char* src)
       uopts.transport = user_options::transport_bit::websocket;
     else if (item=="raw")
       uopts.transport = user_options::transport_bit::rawsocket;
+    else if (item=="ssl")
+      uopts.use_ssl = true;
+    else if (item=="json")
+      uopts.serialisers = static_cast<int>(wampcc::serialiser::json);
+    else if (item=="msgpack")
+      uopts.serialisers = static_cast<int>(wampcc::serialiser::msgpack);
     else
       throw std::runtime_error("unknown proto flag");
   }
@@ -432,6 +446,7 @@ int main_impl(int argc, char** argv)
   switch (uopts.transport) {
     case user_options::transport_bit::websocket: {
       wampcc::websocket_protocol::options proto_opts;
+      proto_opts.serialisers = uopts.serialisers;
       ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(
         g_kernel.get(),
         std::move(sock),
@@ -443,6 +458,7 @@ int main_impl(int argc, char** argv)
     }
     case user_options::transport_bit::rawsocket: {
       wampcc::rawsocket_protocol::options proto_opts;
+      proto_opts.serialisers = uopts.serialisers;
       ws = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
         g_kernel.get(),
         std::move(sock),
