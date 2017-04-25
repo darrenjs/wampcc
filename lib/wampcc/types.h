@@ -97,7 +97,7 @@ enum class connect_mode
 };
 
 /* Bit-flags for message serialisation types supported by WAMP */
-enum class serialiser : int
+enum class serialiser
 {
   none = 0x00,
   json = 0x01,

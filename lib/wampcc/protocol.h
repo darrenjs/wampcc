@@ -24,7 +24,7 @@ constexpr inline int operator & (int lhs, serialiser rhs) {
   return lhs & static_cast<int>(rhs);
 }
 constexpr inline int operator | (serialiser lhs, serialiser rhs) {
-  return (int) (static_cast<int>(lhs) & static_cast<int>(rhs));
+  return (int) (static_cast<int>(lhs) | static_cast<int>(rhs));
 }
 
 class buffer
@@ -137,8 +137,13 @@ public:
   {
     std::string connect_host;
     std::string connect_port;
-    int serialisers = serialiser::json|serialiser::msgpack;
-    std::chrono::milliseconds ping_interval = std::chrono::milliseconds(10000); /* set to 0 for no pings/heartbeats */
+    int serialisers;
+    std::chrono::milliseconds ping_interval; /* set to 0 for no pings/heartbeats */
+    options()
+      : serialisers(serialiser::json|serialiser::msgpack),
+        ping_interval(std::chrono::milliseconds(10000))
+    {
+    }
   };
 
   struct protocol_callbacks
@@ -164,6 +169,7 @@ public:
 
 protected:
 
+  bool have_codec() const { return (bool) m_codec; }
   void create_codec(int choices);
 
   int fd() const;

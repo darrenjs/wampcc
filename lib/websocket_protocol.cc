@@ -236,6 +236,9 @@ std::ostream& operator<<(std::ostream& os, const wampcc::frame::header& hdr)
 
 void websocket_protocol::send_msg(const json_array& ja)
 {
+  if (!have_codec())
+    return;
+
   LOG_TRACE("fd: " << fd() << ", json_tx: " << ja);
 
   auto bytes = encode(ja);
@@ -412,7 +415,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             create_codec(m_options.serialisers & to_serialiser(websock_sub));
 
             if (!m_codec)
-              throw handshake_error("failed to negotiate websocket subprotocol");
+              throw handshake_error("failed to negotiate websocket message serialiser");
 
             m_state = state::open;
             m_initiate_cb();

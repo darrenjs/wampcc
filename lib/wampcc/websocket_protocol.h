@@ -21,10 +21,8 @@ class websocket_protocol : public protocol
 {
 public:
 
-  struct options : public protocol::options
-  {
-    options(){}
-  };
+  struct options : public protocol::options { };
+
   static constexpr const char* NAME = "websocket";
 
   static constexpr const int    HEADER_SIZE = 4; /* "GET " */

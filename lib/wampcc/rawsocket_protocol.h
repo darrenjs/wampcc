@@ -52,11 +52,13 @@ public:
   {
     max_msg_size_flag inbound_max_msg_size;
     options()
-      : inbound_max_msg_size(rawsocket_protocol::default_max_rxmsg_size)
+      : protocol::options(),
+        inbound_max_msg_size(rawsocket_protocol::default_max_rxmsg_size)
     {}
 
     options(max_msg_size_flag __inbound_max_msg_size)
-      : inbound_max_msg_size(__inbound_max_msg_size)
+      : protocol::options(),
+        inbound_max_msg_size(__inbound_max_msg_size)
     {}
   };
 
@@ -93,6 +95,8 @@ private:
   };
 
   static const char* handshake_error_code_to_sting(handshake_error_code);
+  static serialiser to_serialiser(uint8_t flag);
+  static int to_rawsocket_flag(serialiser);
 
   void reply_handshake(int, int);
 

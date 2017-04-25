@@ -117,17 +117,24 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
             throw handshake_error("handshake reserved bytes must be zero");
           }
 
-          switch(rd_1 & 0x0F)
-          {
-            case e_JSON : break;
-            case e_MSGPACK :
-            default:
-              reply_handshake(e_SerialiserUnsupported, 0);
-              throw handshake_error("unsupported rawsocket serializer type");
+          /* determine the protocols common to both client and server */
+
+          int common = m_options.serialisers &
+            (((rd_1 & 0x0F & e_JSON)? serialiser::json : serialiser::none) |
+             ((rd_1 & 0x0F & e_MSGPACK)? serialiser::msgpack : serialiser::none));
+
+          /* create the actual codec */
+
+          create_codec(common);
+          if (!m_codec) {
+            reply_handshake(e_SerialiserUnsupported, 0);
+            throw handshake_error("failed to negotiate websocket subprotocol");
           }
 
           // complete the handshake
-          reply_handshake((int) m_options.inbound_max_msg_size, (int) e_JSON);
+
+          reply_handshake((int) m_options.inbound_max_msg_size,
+                          (int) to_rawsocket_flag(m_codec->type()));
           m_state = eOpen;
         }
         else
@@ -154,6 +161,10 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
               os << " (" << err_str << ")";
             throw handshake_error(os.str());
           }
+
+          create_codec(m_options.serialisers & to_serialiser(serializer));
+            if (!m_codec)
+              throw handshake_error("failed to negotiate rawsocket message serialiser");
 
           m_state = eOpen;
           m_initiate_cb();
@@ -226,6 +237,9 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
 
 void rawsocket_protocol::send_msg(const json_array& ja)
 {
+  if (!have_codec())
+    return;
+
   LOG_TRACE("fd: " << fd() << ", json_tx: " << ja);
 
   auto bytes = encode(ja);
@@ -263,4 +277,25 @@ void rawsocket_protocol::on_timer()
   }
 }
 
+serialiser rawsocket_protocol::to_serialiser(uint8_t s)
+{
+  switch (s) {
+    case serialiser_flag::e_INVALID : return serialiser::none;
+    case serialiser_flag::e_JSON : return serialiser::json;
+    case serialiser_flag::e_MSGPACK : return serialiser::msgpack;
+  }
+
+  return serialiser::none;
+}
+
+int rawsocket_protocol::to_rawsocket_flag(serialiser p)
+{
+  switch (p)
+  {
+    case serialiser::none: return 0;
+    case serialiser::json: return e_JSON;
+    case serialiser::msgpack: return e_MSGPACK;
+  }
+  return 0;
+}
 }

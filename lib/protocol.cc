@@ -139,7 +139,7 @@ int protocol::fd() const
 
 std::vector<char> protocol::encode(const json_array& ja)
 {
-  return m_codec->encode(ja);
+  return m_codec?m_codec->encode(ja):std::vector<char>();
 }
 
 

@@ -24,12 +24,12 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib  $(libuvinc)						\
 AM_LDFLAGS=-lpthread -L../lib -lwampcc  $(LIBLS)  -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
 
-check_PROGRAMS=test_connect_timeout test_tcp_socket_connect					\
-test_evthread_wamp_session_destructor test_early_wamp_session_destructor	\
-test_late_wamp_session_destructor test_late_dealer_destructor				\
-test_dealer_disconnect_when_has_connections 		\
-test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
-test_wamp_session_fast_close test_tcp_socket test_wamp_rpc
+check_PROGRAMS=test_basic_codecs test_connect_timeout test_tcp_socket_connect	\
+test_evthread_wamp_session_destructor test_early_wamp_session_destructor		\
+test_late_wamp_session_destructor test_late_dealer_destructor					\
+test_dealer_disconnect_when_has_connections test_tcp_socket_listen				\
+test_tcp_socket_passive_disconnect test_wamp_session_fast_close test_tcp_socket	\
+test_wamp_rpc
 
 noinst_PROGRAMS=$(check_PROGRAMS)
 TESTS=$(check_PROGRAMS)
@@ -69,3 +69,7 @@ test_tcp_socket_LDADD=libgtest.la
 
 test_wamp_rpc_SOURCES=test_wamp_rpc.cc
 test_wamp_rpc_LDADD=libgtest.la
+
+test_basic_codecs_SOURCES=test_basic_codecs.cc
+test_basic_codecs_LDADD=libgtest.la
+

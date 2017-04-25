@@ -173,8 +173,16 @@ std::unique_ptr<tcp_socket> tcp_connect(kernel& k, int port)
   return sock;
 }
 
+
+enum class establsh_options {
+    websocket,
+    rawsocket,
+    mixed
+};
+
 std::shared_ptr<wamp_session> establish_session(
-    std::unique_ptr<kernel>& the_kernel, int port)
+  std::unique_ptr<kernel>& the_kernel, int port, establsh_options options = establsh_options::mixed,
+  int serialisers = serialiser::json|serialiser::msgpack)
 {
   static int count = 0;
   count++;
@@ -188,14 +196,40 @@ std::shared_ptr<wamp_session> establish_session(
     return std::shared_ptr<wamp_session>();
   }
 
+  if (fut.get())
+    throw std::runtime_error("tcp connect failed during establish_session()");
+
+  websocket_protocol::options ws_opts;
+  ws_opts.serialisers = serialisers;
+
+  rawsocket_protocol::options rs_opts;
+  rs_opts.serialisers = serialisers;
+
+
   /* attempt to create a session */
   std::shared_ptr<wamp_session> session;
-  if (count % 2)
-    session = wamp_session::create<rawsocket_protocol>(
-        the_kernel.get(), std::move(sock), session_cb, {});
-  else
-    session = wamp_session::create<websocket_protocol>(
-        the_kernel.get(), std::move(sock), session_cb, {});
+  switch(options)
+  {
+    case establsh_options::websocket : {
+      session = wamp_session::create<websocket_protocol>(
+        the_kernel.get(), std::move(sock), session_cb, ws_opts);
+      break;
+    }
+    case establsh_options::rawsocket : {
+      session = wamp_session::create<rawsocket_protocol>(
+        the_kernel.get(), std::move(sock), session_cb, rs_opts);
+      break;
+    }
+    case establsh_options::mixed : {
+      if (count % 2)
+        session = wamp_session::create<rawsocket_protocol>(
+          the_kernel.get(), std::move(sock), session_cb, rs_opts);
+      else
+        session = wamp_session::create<websocket_protocol>(
+          the_kernel.get(), std::move(sock), session_cb, ws_opts);
+      break;
+    }
+  }
 
   return session;
 }
