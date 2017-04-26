@@ -37,7 +37,7 @@ namespace wampcc {
       return retval;
     }
 
-    serialiser type() const override { return serialiser::json;}
+    serialiser_type type() const override { return serialiser_type::json;}
   };
 
 
@@ -106,10 +106,10 @@ namespace wampcc {
   void protocol::create_codec(int choices)
   {
 
-    if (choices & serialiser::msgpack)
+    if (choices & serialiser_type::msgpack)
       throw handshake_error("msgpack not implemented");
     //m_codec = nullptr // TODO
-    else if (choices & serialiser::json)
+    else if (choices & serialiser_type::json)
       m_codec = std::shared_ptr<codec>(new json_codec());
   }
 
@@ -170,9 +170,11 @@ void protocol::decode(const char* ptr, size_t len)
 
 selector_protocol::selector_protocol(kernel* k, tcp_socket* sock,
                                      t_msg_cb msg_cb,
-                                     protocol::protocol_callbacks callbacks)
+                                     protocol::protocol_callbacks callbacks,
+                                     options opts)
   : protocol(k, sock, msg_cb, callbacks, connect_mode::passive,
-             1, buffer_size_required())
+             1, buffer_size_required()),
+    m_opts(opts)
 {
 }
 
@@ -190,7 +192,11 @@ void selector_protocol::io_on_read(char* src, size_t len)
     if (rd.avail() >= rawsocket_protocol::HANDSHAKE_SIZE
         && rd[0] == rawsocket_protocol::MAGIC)
     {
+      if ((m_opts.protocols & static_cast<int>(protocol_type::rawsocket)) == 0)
+        throw handshake_error("rawsocket protocol not enabled");
+
       rawsocket_protocol::options default_opts;
+      default_opts.serialisers = m_opts.serialisers;
       std::unique_ptr<protocol> up (
         new rawsocket_protocol(m_kernel,
                                m_socket,
@@ -209,7 +215,11 @@ void selector_protocol::io_on_read(char* src, size_t len)
     else if (rd.avail() >= websocket_protocol::HEADER_SIZE &&
              http_parser::is_http_get(rd.ptr(), rd.avail()))
     {
+      if ((m_opts.protocols & static_cast<int>(protocol_type::websocket)) == 0)
+        throw handshake_error("websocket protocol not enabled");
+
       websocket_protocol::options default_opts;
+      default_opts.serialisers = m_opts.serialisers;
       std::unique_ptr<protocol> up (
         new websocket_protocol(m_kernel,
                                m_socket,

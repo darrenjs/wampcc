@@ -53,8 +53,8 @@ private:
 
   const std::string& header_field(const char*) const;
 
-  static serialiser to_serialiser(const std::string& s);
-  static const char* to_header(serialiser);
+  static serialiser_type to_serialiser(const std::string& s);
+  static const char* to_header(serialiser_type);
 
   enum class state
   {

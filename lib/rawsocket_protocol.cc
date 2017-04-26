@@ -73,8 +73,8 @@ void rawsocket_protocol::initiate(t_initiate_cb cb)
   char handshake[HANDSHAKE_SIZE];
 
   int codecs = 0;
-  codecs |= (m_options.serialisers & serialiser::json)? e_JSON : 0;
-  codecs |= (m_options.serialisers & serialiser::msgpack)? e_MSGPACK : 0;
+  codecs |= (m_options.serialisers & serialiser_type::json)? e_JSON : 0;
+  codecs |= (m_options.serialisers & serialiser_type::msgpack)? e_MSGPACK : 0;
 
   format_handshake( handshake, m_options.inbound_max_msg_size, codecs);
 
@@ -120,8 +120,8 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
           /* determine the protocols common to both client and server */
 
           int common = m_options.serialisers &
-            (((rd_1 & 0x0F & e_JSON)? serialiser::json : serialiser::none) |
-             ((rd_1 & 0x0F & e_MSGPACK)? serialiser::msgpack : serialiser::none));
+            (((rd_1 & 0x0F & e_JSON)? serialiser_type::json : serialiser_type::none) |
+             ((rd_1 & 0x0F & e_MSGPACK)? serialiser_type::msgpack : serialiser_type::none));
 
           /* create the actual codec */
 
@@ -277,24 +277,24 @@ void rawsocket_protocol::on_timer()
   }
 }
 
-serialiser rawsocket_protocol::to_serialiser(uint8_t s)
+serialiser_type rawsocket_protocol::to_serialiser(uint8_t s)
 {
   switch (s) {
-    case serialiser_flag::e_INVALID : return serialiser::none;
-    case serialiser_flag::e_JSON : return serialiser::json;
-    case serialiser_flag::e_MSGPACK : return serialiser::msgpack;
+    case serialiser_flag::e_INVALID : return serialiser_type::none;
+    case serialiser_flag::e_JSON : return serialiser_type::json;
+    case serialiser_flag::e_MSGPACK : return serialiser_type::msgpack;
   }
 
-  return serialiser::none;
+  return serialiser_type::none;
 }
 
-int rawsocket_protocol::to_rawsocket_flag(serialiser p)
+int rawsocket_protocol::to_rawsocket_flag(serialiser_type p)
 {
   switch (p)
   {
-    case serialiser::none: return 0;
-    case serialiser::json: return e_JSON;
-    case serialiser::msgpack: return e_MSGPACK;
+    case serialiser_type::none: return 0;
+    case serialiser_type::json: return e_JSON;
+    case serialiser_type::msgpack: return e_MSGPACK;
   }
   return 0;
 }

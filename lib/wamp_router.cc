@@ -72,14 +72,18 @@ std::future<uverr> wamp_router::listen(const std::string& node,
                                        auth_provider auth,
                                        tcp_socket::addr_family af)
 {
-  return listen(std::move(auth), {listen_options::all_sockets|listen_options::all_formats, node, service, af});
+  return listen(std::move(auth),
+                {false, wampcc::all_protocols, wampcc::all_serialisers,
+                 node, service, af});
 }
 
 
 std::future<uverr> wamp_router::listen(auth_provider auth, int p)
 {
-  return listen(std::move(auth), {listen_options::all_sockets|listen_options::all_formats, "", std::to_string(p),
-                                  tcp_socket::addr_family::inet4});
+  return listen(std::move(auth),
+                {false, wampcc::all_protocols, wampcc::all_serialisers,
+                 "", std::to_string(p),
+                 tcp_socket::addr_family::inet4});
 }
 
 
@@ -233,12 +237,12 @@ void wamp_router::check_has_closed()
 }
 
 std::future<uverr> wamp_router::listen(auth_provider auth,
-                                       const listen_options& options)
+                                       const listen_options& listen_opts)
 {
-  if ((options.flags & listen_options::ssl) && m_kernel->get_ssl() == nullptr)
+  if (listen_opts.ssl && m_kernel->get_ssl() == nullptr)
     throw std::runtime_error("wampcc kernel SSL context is null; can't use SSL");
 
-  auto on_new_client = [this, auth](std::unique_ptr<tcp_socket> sock) {
+  auto on_new_client = [this, auth, listen_opts](std::unique_ptr<tcp_socket> sock) {
     /* IO thread */
 
     /* This lambda is invoked the when a socket has been accepted. */
@@ -277,11 +281,14 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
     int fd = sock->fd().second;
 
-    protocol_builder_fn builder_fn = [this](tcp_socket* sock,
-                                            protocol::t_msg_cb _msg_cb,
-                                            protocol::protocol_callbacks cb) {
+    protocol_builder_fn builder_fn = [this, listen_opts](tcp_socket* sock,
+                                                         protocol::t_msg_cb _msg_cb,
+                                                         protocol::protocol_callbacks cb) {
+      selector_protocol::options selector_opts;
+      selector_opts.protocols = listen_opts.protocols;
+      selector_opts.serialisers = listen_opts.serialisers;
       std::unique_ptr<protocol> up(
-        new selector_protocol(m_kernel, sock, _msg_cb, cb));
+        new selector_protocol(m_kernel, sock, _msg_cb, cb, selector_opts));
       return up;
     };
 
@@ -307,8 +314,8 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
   /* Create the actual IO server socket */
 
-  std::unique_ptr<tcp_socket> sock(options.flags&listen_options::ssl? new ssl_socket(m_kernel)
-                                   : new tcp_socket(m_kernel));
+  std::unique_ptr<tcp_socket> sock(
+    listen_opts.ssl? new ssl_socket(m_kernel) : new tcp_socket(m_kernel));
 
   tcp_socket* ptr = sock.get();
 
@@ -318,7 +325,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
   }
 
   auto fut = ptr->listen(
-      options.node, options.service,
+      listen_opts.node, listen_opts.service,
       [on_new_client](std::unique_ptr<tcp_socket>& clt, uverr ec) {
         /* IO thread */
         if (!ec)
@@ -332,7 +339,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
         }
 
       },
-      options.af);
+      listen_opts.af);
 
   return fut;
 }

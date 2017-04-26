@@ -97,12 +97,28 @@ enum class connect_mode
 };
 
 /* Bit-flags for message serialisation types supported by WAMP */
-enum class serialiser
+enum class serialiser_type
 {
   none = 0x00,
   json = 0x01,
   msgpack = 0x02
 };
+
+constexpr int all_serialisers =
+  static_cast<int>(serialiser_type::json) |
+  static_cast<int>(serialiser_type::msgpack);
+
+/* Bit-flags for message serialisation types supported by WAMP */
+enum class protocol_type
+{
+  none = 0x00,
+  websocket = 0x01,
+  rawsocket = 0x02
+};
+
+constexpr int all_protocols =
+  static_cast<int>(protocol_type::websocket) |
+  static_cast<int>(protocol_type::rawsocket);
 
 } // namespace
 

@@ -95,8 +95,8 @@ private:
   };
 
   static const char* handshake_error_code_to_sting(handshake_error_code);
-  static serialiser to_serialiser(uint8_t flag);
-  static int to_rawsocket_flag(serialiser);
+  static serialiser_type to_serialiser(uint8_t flag);
+  static int to_rawsocket_flag(serialiser_type);
 
   void reply_handshake(int, int);
 

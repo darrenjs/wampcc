@@ -20,10 +20,14 @@ class kernel;
 struct logger;
 class tcp_socket;
 
-constexpr inline int operator & (int lhs, serialiser rhs) {
+constexpr inline int operator & (int lhs, serialiser_type rhs) {
   return lhs & static_cast<int>(rhs);
 }
-constexpr inline int operator | (serialiser lhs, serialiser rhs) {
+constexpr inline int operator | (serialiser_type lhs, serialiser_type rhs) {
+  return (int) (static_cast<int>(lhs) | static_cast<int>(rhs));
+}
+
+constexpr inline int operator | (protocol_type lhs, protocol_type rhs) {
   return (int) (static_cast<int>(lhs) | static_cast<int>(rhs));
 }
 
@@ -124,7 +128,7 @@ public:
   virtual ~codec() {}
   virtual json_value decode(const char* ptr, size_t msglen) = 0;
   virtual std::vector<char> encode(const json_array&) = 0;
-  virtual serialiser type() const = 0;
+  virtual serialiser_type type() const = 0;
 };
 
 
@@ -137,10 +141,12 @@ public:
   {
     std::string connect_host;
     std::string connect_port;
-    int serialisers;
+
+    int serialisers; /* mask of enum serialiser_type bits */
+
     std::chrono::milliseconds ping_interval; /* set to 0 for no pings/heartbeats */
     options()
-      : serialisers(serialiser::json|serialiser::msgpack),
+      : serialisers(wampcc::all_serialisers),
         ping_interval(std::chrono::milliseconds(10000))
     {
     }
@@ -198,7 +204,16 @@ class selector_protocol : public protocol
 public:
   static constexpr const char* NAME = "selector";
 
-  selector_protocol(kernel*, tcp_socket*, t_msg_cb, protocol::protocol_callbacks);
+  struct options : public protocol::options
+  {
+    int protocols;
+    options() :
+      protocol::options(),
+      protocols(protocol_type::websocket|protocol_type::rawsocket){}
+  };
+
+  selector_protocol(kernel*, tcp_socket*, t_msg_cb,
+                    protocol::protocol_callbacks, options = {});
 
   void io_on_read(char*, size_t) override;
 
@@ -215,6 +230,9 @@ public:
   }
 
   static size_t buffer_size_required();
+
+private:
+  options m_opts;
 };
 
 }

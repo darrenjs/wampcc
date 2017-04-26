@@ -54,12 +54,18 @@ struct socket_listener
 
 enum test_outcome { e_expected, e_unexpected };
 
+logger trace_logger()
+{
+  return logger::stdlog(std::cout, logger::levels_upto(logger::eTrace));
+}
+
 class internal_server
 {
 public:
-  internal_server()
-    : m_kernel(new kernel({}, logger::nolog())),
-      m_router(new wamp_router(m_kernel.get(), nullptr))
+  internal_server(logger log = logger::nolog())
+    : m_kernel(new kernel({}, log)),
+      m_router(new wamp_router(m_kernel.get(), nullptr)),
+      m_port(0)
   {
   }
 
@@ -90,7 +96,44 @@ public:
       if (status == std::future_status::ready) {
         wampcc::uverr err = fut_listen_err.get();
         if (err == 0)
-          return port;
+          return m_port = port;
+      }
+    }
+
+    throw std::runtime_error(
+        "failed to find an available port number for listen socket");
+    return 0;
+  }
+
+  int start(int starting_port_number,
+            int allowed_protocols,
+            int allowed_serialisers)
+  {
+    auth_provider server_auth;
+    server_auth.provider_name = [](const std::string) { return "programdb"; };
+    server_auth.policy =
+        [](const std::string& /*user*/, const std::string& /*realm*/) {
+      std::set<std::string> methods{"wampcra"};
+      return std::make_tuple(auth_provider::mode::authenticate,
+                             std::move(methods));
+    };
+    server_auth.user_secret =
+        [](const std::string& /*user*/,
+           const std::string& /*realm*/) { return "secret2"; };
+
+    wamp_router::listen_options opts;
+    opts.protocols = allowed_protocols;
+    opts.serialisers = allowed_serialisers;
+    opts.node = "127.0.0.1";
+    for (int port = starting_port_number; port < 65535; port++) {
+      opts.service = std::to_string(port);
+      std::future<uverr> fut_listen_err = m_router->listen(server_auth, opts);
+      std::future_status status =
+          fut_listen_err.wait_for(std::chrono::milliseconds(100));
+      if (status == std::future_status::ready) {
+        wampcc::uverr err = fut_listen_err.get();
+        if (err == 0)
+          return m_port = port;
       }
     }
 
@@ -107,9 +150,12 @@ public:
 
   wamp_router* router() { return m_router.get(); }
 
+  int port() const { return m_port; }
+
 private:
   std::unique_ptr<kernel> m_kernel;
   std::shared_ptr<wamp_router> m_router;
+  int m_port;
 };
 
 
@@ -174,15 +220,10 @@ std::unique_ptr<tcp_socket> tcp_connect(kernel& k, int port)
 }
 
 
-enum class establsh_options {
-    websocket,
-    rawsocket,
-    mixed
-};
-
 std::shared_ptr<wamp_session> establish_session(
-  std::unique_ptr<kernel>& the_kernel, int port, establsh_options options = establsh_options::mixed,
-  int serialisers = serialiser::json|serialiser::msgpack)
+  std::unique_ptr<kernel>& the_kernel, int port,
+  int protocols = wampcc::all_protocols,
+  int serialisers = wampcc::all_serialisers)
 {
   static int count = 0;
   count++;
@@ -208,19 +249,19 @@ std::shared_ptr<wamp_session> establish_session(
 
   /* attempt to create a session */
   std::shared_ptr<wamp_session> session;
-  switch(options)
+  switch(protocols)
   {
-    case establsh_options::websocket : {
+    case static_cast<int>(protocol_type::websocket) : {
       session = wamp_session::create<websocket_protocol>(
         the_kernel.get(), std::move(sock), session_cb, ws_opts);
       break;
     }
-    case establsh_options::rawsocket : {
+    case static_cast<int>(protocol_type::rawsocket) : {
       session = wamp_session::create<rawsocket_protocol>(
         the_kernel.get(), std::move(sock), session_cb, rs_opts);
       break;
     }
-    case establsh_options::mixed : {
+    case wampcc::all_protocols : {
       if (count % 2)
         session = wamp_session::create<rawsocket_protocol>(
           the_kernel.get(), std::move(sock), session_cb, rs_opts);

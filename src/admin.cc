@@ -46,7 +46,7 @@ struct user_options
     websocket = 0x02,
   } transport = transport_bit::websocket;
 
-  int serialisers = -1; /* all bits set */
+  int serialisers = wampcc::all_serialisers;
 
   std::string username;
   std::string password;
@@ -210,9 +210,9 @@ void parse_proto(const char* src)
     else if (item=="ssl")
       uopts.use_ssl = true;
     else if (item=="json")
-      uopts.serialisers = static_cast<int>(wampcc::serialiser::json);
+      uopts.serialisers = static_cast<int>(wampcc::serialiser_type::json);
     else if (item=="msgpack")
-      uopts.serialisers = static_cast<int>(wampcc::serialiser::msgpack);
+      uopts.serialisers = static_cast<int>(wampcc::serialiser_type::msgpack);
     else
       throw std::runtime_error("unknown proto flag");
   }

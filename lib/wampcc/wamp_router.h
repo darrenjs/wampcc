@@ -34,23 +34,9 @@ public:
 
   struct listen_options
   {
-    enum bits {
-      /* socket protocols */
-      rawsocket = 0x01,
-      websocket = 0x02,
-
-      /* message formats */
-      json = 0x04,
-      msgpack = 0x08,
-
-      ssl = 0x10,
-
-      all_sockets = websocket|rawsocket,
-      all_formats = json|msgpack,
-    };
-
-    // protocol options
-    int flags;
+    bool ssl;     /* if true, use SSL/TLS socket */
+    int protocols;  /* mask of protocol_type bits */
+    int serialisers;  /* maks of serialiser_type bits */
 
     // socket options
     std::string node;     // interface addr, or leave blank
@@ -58,11 +44,21 @@ public:
     tcp_socket::addr_family af;
 
     listen_options()
-      : flags(all_sockets|all_formats), af(tcp_socket::addr_family::unspec)
+      : ssl(false),
+        protocols(all_protocols),
+        serialisers(all_serialisers),
+        af(tcp_socket::addr_family::unspec)
+
     {}
 
-    listen_options(int flags_, std::string node_, std::string svc_, tcp_socket::addr_family af_)
-      : flags(flags_), node(node_), service(svc_), af(af_)
+    listen_options(bool ssl_, int protocols_, int serialisers_, std::string node_,
+                   std::string svc_, tcp_socket::addr_family af_)
+      : ssl(ssl_),
+        protocols(protocols_),
+        serialisers(serialisers_),
+        node(node_),
+        service(svc_),
+        af(af_)
     {}
   };
 

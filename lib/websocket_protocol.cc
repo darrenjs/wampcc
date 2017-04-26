@@ -317,8 +317,8 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 
             /* determine the protocols common to both client and server */
             int common = m_options.serialisers &
-              ((has_token(websock_sub,WAMPV2_JSON_SUBPROTOCOL)?serialiser::json:serialiser::none) |
-               (has_token(websock_sub,WAMPV2_MSGPACK_SUBPROTOCOL)?serialiser::msgpack:serialiser::none));
+              ((has_token(websock_sub,WAMPV2_JSON_SUBPROTOCOL)?serialiser_type::json:serialiser_type::none) |
+               (has_token(websock_sub,WAMPV2_MSGPACK_SUBPROTOCOL)?serialiser_type::msgpack:serialiser_type::none));
 
             /* create the actual codec */
             create_codec(common);
@@ -460,12 +460,12 @@ void websocket_protocol::initiate(t_initiate_cb cb)
     "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
     "Sec-WebSocket-Protocol: ";
 
-  if (m_options.serialisers & serialiser::json)
+  if (m_options.serialisers & serialiser_type::json)
     oss << WAMPV2_JSON_SUBPROTOCOL;
-  if ((m_options.serialisers & serialiser::json) &&
-      (m_options.serialisers & serialiser::msgpack))
+  if ((m_options.serialisers & serialiser_type::json) &&
+      (m_options.serialisers & serialiser_type::msgpack))
     oss << ",";
-  if (m_options.serialisers & serialiser::msgpack)
+  if (m_options.serialisers & serialiser_type::msgpack)
     oss << WAMPV2_MSGPACK_SUBPROTOCOL;
   oss << "\r\n";
 
@@ -489,23 +489,23 @@ void websocket_protocol::on_timer()
   }
 }
 
-serialiser websocket_protocol::to_serialiser(const std::string& s)
+serialiser_type websocket_protocol::to_serialiser(const std::string& s)
 {
   if (s==WAMPV2_JSON_SUBPROTOCOL)
-    return serialiser::json;
+    return serialiser_type::json;
   else if (s==WAMPV2_MSGPACK_SUBPROTOCOL)
-    return serialiser::json;
+    return serialiser_type::json;
   else
-    return serialiser::none;
+    return serialiser_type::none;
 }
 
-const char* websocket_protocol::to_header(serialiser p)
+const char* websocket_protocol::to_header(serialiser_type p)
 {
   switch (p)
   {
-    case serialiser::none: return "";
-    case serialiser::json: return WAMPV2_JSON_SUBPROTOCOL;
-    case serialiser::msgpack: return WAMPV2_MSGPACK_SUBPROTOCOL;
+    case serialiser_type::none: return "";
+    case serialiser_type::json: return WAMPV2_JSON_SUBPROTOCOL;
+    case serialiser_type::msgpack: return WAMPV2_MSGPACK_SUBPROTOCOL;
   }
   return "";
 }
