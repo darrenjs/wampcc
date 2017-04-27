@@ -7,23 +7,30 @@
 
 #include "msgpack.h"
 
-
 #include <iostream>
 #include <stack>
 
-
-
 namespace wampcc {
+
+static void mspack_region_free(region * ptr)
+{
+  if (ptr)
+    ::free(ptr->first);
+}
+
 
 msgpack_encoder::msgpack_encoder()
   : m_packer(m_sbuf)
 {
 }
 
-std::pair<char *, size_t> msgpack_encoder::encode(const json_array & src)
+std::unique_ptr<region, void(*)(region*)> msgpack_encoder::encode(const json_array & src)
 {
   pack_array(src);
-  return {m_sbuf.data(), m_sbuf.size()};
+
+  size_t len = m_sbuf.size(); // must take size before release() called
+
+  return { new region{m_sbuf.release(), len}, mspack_region_free};
 }
 
 void msgpack_encoder::pack_string(const std::string& s)

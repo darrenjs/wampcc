@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <memory>
 
 #if __cplusplus < 201103L
 #error "C++11 required"
@@ -208,6 +209,7 @@ public:
   static json_value make_object();
   static json_value make_string(const char* v = "");
   static json_value make_string(const char* v, size_t);
+  static json_value make_string(std::string);
   static json_value make_bool(bool v = false);
   static json_value make_int(long long v = 0);
   static json_value make_uint(unsigned long long v = 0);
@@ -451,8 +453,12 @@ inline json_array&   json_value::insert_array (const std::string& key)
 }
 
 /* Decode a msgpack byte stream */
+
+
 void json_msgpack_decode(json_value& dest, const char*, size_t);
-std::pair<char*, size_t> json_msgpack_encode(const json_array& src);
+
+typedef std::pair<char*,size_t> region;
+std::unique_ptr<region, void(*)(region*)> json_msgpack_encode(const json_array& src);
 
 } // namespace
 

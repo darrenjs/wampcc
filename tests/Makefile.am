@@ -5,9 +5,11 @@ AM_CPPFLAGS = -I$(top_srcdir)/src -Wall -pthread -Wall -std=c++11 -DJALSONDIR=\"
 # NOTE: -lrt added for posix clock support
 AM_LDFLAGS=-L$(top_builddir)/src -lwampcc_json -lrt -pthread
 
-TESTS=test_json_pointer test_json_patch test_json_patch2 test_basic_jalson test_single_functions
+TESTS=test_json_pointer test_json_patch test_json_patch2 test_basic_jalson	\
+test_single_functions test_msgpack
 
-noinst_PROGRAMS=test_json_pointer test_json_patch test_json_patch2 test_basic_jalson test_single_functions
+noinst_PROGRAMS=test_json_pointer test_json_patch test_json_patch2	\
+test_basic_jalson test_single_functions test_msgpack
 #noinst_PROGRAMS=server_demo
 
 
@@ -23,3 +25,6 @@ test_basic_jalson_LDADD=$(janssonlib)
 
 test_single_functions_SOURCES=test_single_functions.cc
 test_single_functions_LDADD=$(janssonlib)
+
+test_msgpack_SOURCES=test_msgpack.cc
+test_msgpack_LDADD=$(janssonlib)

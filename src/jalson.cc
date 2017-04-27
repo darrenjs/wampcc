@@ -428,6 +428,18 @@ json_value json_value::make_string(const char* s)
   return retval;
 }
 
+json_value json_value::make_string(const char* s, size_t l)
+{
+  json_value retval = std::string(s, l) ;
+  return retval;
+}
+
+json_value json_value::make_string(std::string s)
+{
+  json_value retval = std::move(s);
+  return retval;
+}
+
 json_value json_value::make_bool(bool v)
 {
   return json_value(v);
@@ -678,13 +690,11 @@ void json_msgpack_decode(json_value& dest, const char*, size_t)
 
 }
 
-std::pair<char*, size_t> json_msgpack_encode(const json_array& src)
+std::unique_ptr<region, void(*)(region*)> json_msgpack_encode(const json_array& src)
 {
   msgpack_encoder encoder;
 
-  encoder.encode(src);
-
-  return {0,0};
+  return encoder.encode(src);
 }
 
 
