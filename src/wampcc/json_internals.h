@@ -96,7 +96,6 @@ public:
 
 public:
 
-
   valueimpl();
   valueimpl(const valueimpl&);
 
@@ -205,14 +204,13 @@ public:
     return false;
   }
 
+  bool equal_int_value(const valueimpl&) const;
 };
 
 #if __cplusplus >= 201103L
 static_assert( std::is_pod<valueimpl::Details>::value,
                "expected to be POD" );
 #endif
-
-
 
 }
 

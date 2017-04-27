@@ -12,7 +12,6 @@ namespace wampcc {
 
 namespace internals {
 
-
   bool valueimpl::is_sint()  const
   {
     if  (details.type == e_signed) return true;
@@ -59,7 +58,6 @@ const char* type_to_str(JSONType t)
 
 
 namespace internals {
-
 
 valueimpl::Details valueimpl::init_details(JSONDetailedType t)
 {
@@ -248,7 +246,10 @@ bool valueimpl::operator==(const valueimpl& rhs) const
       default: return false;
     }
   }
-  else return false;
+  else if (equal_int_value(rhs)) /* check for uint / int match */
+    return true;
+  else
+    return false;
 }
 
 long long valueimpl::as_sint_repr()  const
@@ -304,6 +305,31 @@ bool valueimpl::as_bool_unchecked() const
 {
   /* caller takes responsibilty for ensuring 'details' holds a boolean */
   return details.data.boolean;
+}
+
+
+/* Check if this and rhs are both integer types with equivalent value */
+bool valueimpl::equal_int_value(const valueimpl& rhs) const
+{
+  if (details.type == valueimpl::e_signed &&
+      rhs.details.type == valueimpl::e_signed)
+    return details.data.sint == rhs.details.data.sint;
+
+  if (details.type == valueimpl::e_unsigned &&
+      rhs.details.type == valueimpl::e_unsigned)
+    return details.data.uint == rhs.details.data.uint;
+
+  if (details.type == valueimpl::e_signed &&
+      rhs.details.type == valueimpl::e_unsigned &&
+      details.data.sint >= 0)
+    return static_cast<json_uint_t>(details.data.sint)==rhs.details.data.uint;
+
+  if (details.type == valueimpl::e_unsigned &&
+      rhs.details.type == valueimpl::e_signed &&
+      rhs.details.data.sint >= 0)
+    return details.data.uint==static_cast<json_uint_t>(rhs.details.data.sint);
+
+  return false;
 }
 
 
