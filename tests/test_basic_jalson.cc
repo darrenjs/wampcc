@@ -452,6 +452,17 @@ DEFTEST( getters_api )
   return 1;
 }
 //----------------------------------------------------------------------
+DEFTEST( compare_unint_and_int )
+{
+  // Check that an int(0) is equal to a uint(0)
+
+  ASSERT_TRUE(wampcc::json_value::make_int(0) == wampcc::json_value::make_uint(0));
+  ASSERT_TRUE(wampcc::json_value::make_int(1) == wampcc::json_value::make_uint(1));
+
+  return 1;
+}
+
+//----------------------------------------------------------------------
 // DEFTEST( demo_test )
 // {
 //   wampcc::json_array msg;
