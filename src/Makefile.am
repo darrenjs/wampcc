@@ -19,7 +19,7 @@
 #
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CXXFLAGS =  -std=c++11 -Wall -g3 -ggdb -O0 $(janssoninc)
+AM_CXXFLAGS =  -I$(top_srcdir)/external/msgpack-c/include -std=c++11 -Wall -g3 -ggdb -O0 $(janssoninc)
 
 
 AM_LDFLAGS=-pthread
@@ -39,7 +39,7 @@ nobase_include_HEADERS = wampcc/json.h wampcc/json_internals.h
 
 
 # List the sources for an individual library
-libwampcc_json_la_SOURCES=json_pointer.cc jalson.cc vendors.cc
+libwampcc_json_la_SOURCES=json_pointer.cc jalson.cc vendors.cc msgpack.cc
 libwampcc_json_la_LIBADD=$(janssonlib)
 
 # Include compile and link flags for an individual library.

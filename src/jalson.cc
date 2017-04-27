@@ -1,4 +1,5 @@
 #include "wampcc/json.h"
+#include "msgpack.h"
 #include "json_pointer.h"
 
 #include <iostream>
@@ -670,6 +671,22 @@ json_value json_get_copy(const json_array& ar, size_t i,
 {
   return i < ar.size()? ar[i] : default_value_ref;
 }
+
+
+void json_msgpack_decode(json_value& dest, const char*, size_t)
+{
+
+}
+
+std::pair<char*, size_t> json_msgpack_encode(const json_array& src)
+{
+  msgpack_encoder encoder;
+
+  encoder.encode(src);
+
+  return {0,0};
+}
+
 
 
 } // namespace wampcc
