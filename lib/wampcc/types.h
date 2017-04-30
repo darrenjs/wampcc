@@ -108,7 +108,7 @@ constexpr int all_serialisers =
   static_cast<int>(serialiser_type::json) |
   static_cast<int>(serialiser_type::msgpack);
 
-/* Bit-flags for message serialisation types supported by WAMP */
+/* Bit-flags for supported protocols */
 enum class protocol_type
 {
   none = 0x00,
