@@ -39,7 +39,7 @@ nobase_include_HEADERS = wampcc/json.h wampcc/json_internals.h
 
 
 # List the sources for an individual library
-libwampcc_json_la_SOURCES=json_pointer.cc jalson.cc vendors.cc msgpack.cc
+libwampcc_json_la_SOURCES=json_pointer.cc jalson.cc vendors.cc msgpack_serialiser.cc
 libwampcc_json_la_LIBADD=$(janssonlib)
 
 # Include compile and link flags for an individual library.

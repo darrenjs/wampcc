@@ -1,5 +1,5 @@
 #include "wampcc/json.h"
-#include "msgpack.h"
+#include "msgpack_serialiser.h"
 #include "json_pointer.h"
 
 #include <iostream>
