@@ -55,10 +55,30 @@
       "expected": "bar",
       "disabled": true },
 
+    { "comment": "replace object document with array document?",
+      "doc": {},
+      "patch": [{"op": "add", "path": "", "value": []}],
+      "expected": [] },
+
+    { "comment": "replace array document with object document?",
+      "doc": [],
+      "patch": [{"op": "add", "path": "", "value": {}}],
+      "expected": {} },
+
+    { "comment": "append to root array document?",
+      "doc": [],
+      "patch": [{"op": "add", "path": "/-", "value": "hi"}],
+      "expected": ["hi"] },
+
     { "comment": "Add, / target",
       "doc": {},
       "patch": [ {"op": "add", "path": "/", "value":1 } ],
       "expected": {"":1} },
+
+    { "comment": "Add, /foo/ deep target (trailing slash)",
+      "doc": {"foo": {}},
+      "patch": [ {"op": "add", "path": "/foo/", "value":1 } ],
+      "expected": {"foo":{"": 1}} },
 
     { "comment": "Add composite value at top level",
       "doc": {"foo": 1},
@@ -378,5 +398,32 @@
     { "comment": "unrecognized op should fail",
       "doc": {"foo": 1},
       "patch": [{"op": "spam", "path": "/foo", "value": 1}],
-      "error": "Unrecognized op 'spam'" }
+      "error": "Unrecognized op 'spam'" },
+
+    { "comment": "test with bad array number that has leading zeros",
+      "doc": ["foo", "bar"],
+      "patch": [{"op": "test", "path": "/00", "value": "foo"}],
+      "error": "test op should reject the array value, it has leading zeros" },
+
+    { "comment": "test with bad array number that has leading zeros",
+      "doc": ["foo", "bar"],
+      "patch": [{"op": "test", "path": "/01", "value": "bar"}],
+      "error": "test op should reject the array value, it has leading zeros" },
+
+    { "comment": "Removing nonexistent field",
+      "doc": {"foo" : "bar"},
+      "patch": [{"op": "remove", "path": "/baz"}],
+      "error": "removing a nonexistent field should fail" },
+
+    { "comment": "Removing nonexistent index",
+      "doc": ["foo", "bar"],
+      "patch": [{"op": "remove", "path": "/2"}],
+      "error": "removing a nonexistent index should fail" },
+
+    { "comment": "Patch with different capitalisation than doc",
+       "doc": {"foo":"bar"},
+       "patch": [{"op": "add", "path": "/FOO", "value": "BAR"}],
+       "expected": {"foo": "bar", "FOO": "BAR"}
+    }
+
 ]
