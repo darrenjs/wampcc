@@ -169,6 +169,7 @@ int main(int argc, char * argv [])
   int usertest = (argc>1)? atoi(argv[1]) : -1;
 
   json_array json_tests;
+  load_tests(json_tests, JALSONDIR "/tests/spec_tests.json");
   load_tests(json_tests, JALSONDIR "/tests/tests.json");
   load_tests(json_tests, JALSONDIR "/tests/extra.json");
 

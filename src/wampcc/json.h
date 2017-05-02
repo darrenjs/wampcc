@@ -138,6 +138,16 @@ public:
              size_t index);
 };
 
+class msgpack_error : public json_error
+{
+public:
+  size_t parsed_offset;
+  size_t error_offset;
+  msgpack_error(const std::string& msg,
+                size_t parsed_offset = 0,
+                size_t error_offset = 0);
+  virtual ~msgpack_error() throw() {}
+};
 // ======================================================================
 //
 // Container types
@@ -453,12 +463,11 @@ inline json_array&   json_value::insert_array (const std::string& key)
 }
 
 /* Decode a msgpack byte stream */
+json_value json_msgpack_decode(const char*, size_t);
 
-
-void json_msgpack_decode(json_value& dest, const char*, size_t);
-
+/* Encode to msgpack.  Returned memory region is managed by unique_ptr. */
 typedef std::pair<char*,size_t> region;
-std::unique_ptr<region, void(*)(region*)> json_msgpack_encode(const json_array& src);
+std::unique_ptr<region, void(*)(region*)> json_msgpack_encode(const json_value& src);
 
 } // namespace
 

@@ -19,7 +19,7 @@ class msgpack_encoder
 {
 public:
   msgpack_encoder();
-  std::unique_ptr<region, void(*)(region*)> encode(const json_array &);
+  std::unique_ptr<region, void(*)(region*)> encode(const json_value &);
 
 private:
   msgpack::sbuffer m_sbuf;
@@ -35,7 +35,9 @@ private:
 class msgpack_decoder
 {
 public:
-  json_value decode(const char *, size_t);
+  json_value result;
+
+  bool decode(const char *, size_t);
 };
 
 

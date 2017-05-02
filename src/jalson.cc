@@ -581,10 +581,18 @@ bad_pointer::bad_pointer(const std::string& msg, size_t __index_failed)
 bad_patch::bad_patch(const std::string& msg,
                      size_t i)
   : json_error(msg),
-      patch_index(i)
+    patch_index(i)
 {
 }
 
+msgpack_error::msgpack_error(const std::string& msg,
+                             size_t parsed_offset_,
+                             size_t error_offset_)
+: json_error(msg),
+  parsed_offset(parsed_offset_),
+  error_offset(error_offset_)
+{
+}
 
 //----------------------------------------------------------------------
 
@@ -711,12 +719,16 @@ json_value json_get_copy(const json_array& ar, size_t i,
 }
 
 
-void json_msgpack_decode(json_value& dest, const char*, size_t)
+json_value json_msgpack_decode(const char* p , size_t l)
 {
-
+  msgpack_decoder decoder;
+  if (decoder.decode(p, l))
+    return std::move(decoder.result);
+  else
+    throw msgpack_error("msgpack deocde failed");
 }
 
-std::unique_ptr<region, void(*)(region*)> json_msgpack_encode(const json_array& src)
+std::unique_ptr<region, void(*)(region*)> json_msgpack_encode(const json_value& src)
 {
   msgpack_encoder encoder;
 
