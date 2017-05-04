@@ -107,6 +107,13 @@ int main(int, char**)
 }
 ```
 
+Msgpack
+-------
+
+Jalson depends on msgpack-c [https://github.com/msgpack/msgpack-c] for msgpack
+support, requiring only the msgpack-c headers.  Msgpack must be downloaded into
+the jalson source directory `external`. The script `fetch_prerequisites.sh` can
+be run to perform the download and unzip.
 
 Source Configuration & Build
 ----------------------------
