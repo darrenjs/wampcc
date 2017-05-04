@@ -7,20 +7,37 @@
 ##    export https_proxy=$http_proxy
 ##
 
-# get msgpack-c
-version=2.1.1
-tarfile=cpp-${version}.tar.gz
-echo '***' fetching msgpack-c $version '***'
-echo
+mkdir -p external
 
-test -f $tarfile || wget https://github.com/msgpack/msgpack-c/archive/$tarfile
+# get msgpack-c (take repo head, until the new C++11 header-only approach has
+# bugs fixed, doesn't work in version 2.1.1)
 
-if [ -f ${tarfile} ]; then
-    tar xfz ${tarfile}  -C external --transform "s/msgpack-c-cpp-${version}/msgpack-c-cpp/"
+
+zipfile=msgpack.master.zip
+test -f $zipfile || wget https://github.com/msgpack/msgpack-c/archive/master.zip -O $zipfile
+
+if [ -f ${zipfile} ]; then
+    unzip -q -d external msgpack.master.zip
+    mv external/msgpack-c-master external/msgpack-c
 else
-    echo failed to download ${tarfile} ... please try manually
+    echo failed to download msgpack ... please try manually
 fi
-unset version tarfile
+
+
+
+# version=2.1.1
+# tarfile=cpp-${version}.tar.gz
+# echo '***' fetching msgpack-c $version '***'
+# echo
+
+# test -f $tarfile || wget https://github.com/msgpack/msgpack-c/archive/$tarfile
+
+# if [ -f ${tarfile} ]; then
+#     tar xfz ${tarfile}  -C external --transform "s/msgpack-c-cpp-${version}/msgpack-c-cpp/"
+# else
+#     echo failed to download ${tarfile} ... please try manually
+# fi
+# unset version tarfile
 
 
 # get googletest
@@ -52,6 +69,8 @@ then
   then
     test -d jalson && rm -fr jalson
     mv jalson-${jalson_ver} jalson
+    mkdir -p jalson/external
+    ln -rsnf -t jalson/external external/msgpack-c
   else
     echo failed to find the directory jalson-${jalson_ver}
   fi
