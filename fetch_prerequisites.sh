@@ -13,7 +13,7 @@ zipfile=msgpack.master.zip
 test -f $zipfile || wget https://github.com/msgpack/msgpack-c/archive/master.zip -O $zipfile
 
 if [ -f ${zipfile} ]; then
-    unzip -d external msgpack.master.zip
+    unzip -q -d external msgpack.master.zip
     mv external/msgpack-c-master external/msgpack-c
 else
     echo failed to download msgpack ... please try manually

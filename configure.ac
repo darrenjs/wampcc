@@ -70,28 +70,9 @@ AC_HEADER_STDBOOL
 AC_C_CONST
 AC_C_INLINE
 
-
-#========== Check functions ==========
-
-
-AC_LINK_IFELSE([AC_LANG_SOURCE([
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <stdlib.h>
-int main(void) {
-	char *c;
-	return __sync_add_and_fetch(c, 1);
-}])],[has___sync_add_and_fetch=yes])
-if test "x$has___sync_add_and_fetch" = xyes; then
-	AC_DEFINE(HAVE___SYNC_ADD_AND_FETCH,1,[Define to 1 if you have the __sync_add_and_fetch gcc builtin function])
-	AC_MSG_RESULT(yes)
-else
-	AC_MSG_RESULT(no)
-fi
-
-
-
+AC_CHECK_FILE("${srcdir}/external/msgpack-c/include/msgpack.hpp",[ AC_MSG_NOTICE([msgpack found]) ],[
+  AC_MSG_ERROR([Could not locate msgpack. Please ensure msgpack is downloaded into the external/ directory.])
+])
 
 #========== User options ==========
 
