@@ -2,7 +2,7 @@
 #========== Initialisation ==========
 
 # use 1.9, older, to work on SUSE 10
-AC_INIT([jalson], [1.9], [jalson@darrenjs.net], [jalson], [ ] )
+AC_INIT([jalson], [1.2], [jalson@darrenjs.net], [jalson], [ ] )
 AC_PREREQ([2.59])
 
 # This macro causes the environment variables, $host, $build and $target to be

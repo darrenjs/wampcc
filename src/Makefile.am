@@ -19,7 +19,7 @@
 #
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CXXFLAGS =  -I$(top_srcdir)/external/msgpack-c/include -std=c++11 -Wall -g3 -ggdb -O0 $(janssoninc)
+AM_CXXFLAGS =  -I$(top_srcdir)/external/msgpack-c/include -std=c++11 -Wall $(janssoninc)
 
 
 AM_LDFLAGS=-pthread
@@ -64,4 +64,4 @@ libwampcc_json_la_LIBADD=$(janssonlib)
 # - AGE: indicates compatibilty with previous version of the shlib.
 #
 #libwampcc_json_la_LDFLAGS = -version-info 0:0:0  /home/darrens/opt/jansson-2.7/lib/libjansson.la
-libwampcc_json_la_LDFLAGS = -version-info 0:0:0
+libwampcc_json_la_LDFLAGS = -version-info 2:0:0
