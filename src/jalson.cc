@@ -10,6 +10,10 @@
 
 namespace wampcc {
 
+static_assert(std::is_nothrow_move_constructible<json_value>::value, "json_value should be nothrow move constructible");
+static_assert(std::is_copy_constructible<json_value>::value, "json_value should be copy constructible");
+static_assert(std::is_nothrow_move_assignable<json_value>::value, "json_value should be nothrow move assignable");
+
 namespace internals {
 
   bool valueimpl::is_sint()  const
@@ -33,10 +37,7 @@ namespace internals {
 
     return false;
   }
-
-
 }
-
 
 const char* type_to_str(JSONType t)
 {
@@ -53,10 +54,6 @@ const char* type_to_str(JSONType t)
   }
 }
 
-
-
-
-
 namespace internals {
 
 valueimpl::Details valueimpl::init_details(JSONDetailedType t)
@@ -64,8 +61,8 @@ valueimpl::Details valueimpl::init_details(JSONDetailedType t)
   // create variable ... assume its in an undefined state
   valueimpl::Details d;
 
-  // make best effort to initialise everything
-  memset(&d, 0, sizeof(d));
+  // make best effort to initialise union to zero
+  d.data.uint = {};
   d.type = t;
 
   return d;
@@ -96,18 +93,21 @@ void valueimpl::dispose_details(valueimpl::Details& d)
   d = init_details();
 }
 
-
 valueimpl::valueimpl()
   : details( init_details() )
 {
 }
 
+valueimpl::valueimpl(valueimpl&& rhs) noexcept
+  : details(rhs.details)
+{
+  rhs.details = init_details();
+}
 
 valueimpl::valueimpl(const valueimpl& rhs)
   : details( rhs.clone_details() )
 {
 }
-
 
 valueimpl::valueimpl(bool b, BoolConstructor)
   : details( init_details( valueimpl::e_bool ))
@@ -152,6 +152,12 @@ valueimpl::valueimpl(json_string* a)
   details.data.string = a;
 }
 
+valueimpl& valueimpl::operator=(valueimpl&& rhs) noexcept
+{
+  this->details = rhs.details;  // bitwise
+  rhs.details = init_details();
+  return *this;
+}
 
 valueimpl& valueimpl::operator=(const valueimpl& rhs)
 {
@@ -357,11 +363,6 @@ json_value::json_value(const char* s, size_t  n)
 {
 }
 
-json_value::json_value(const json_value& rhs)
-  : m_impl( rhs.m_impl )
-{
-}
-
 json_value::json_value(const json_array& rhs)
   : m_impl(new json_array(rhs))
 {
@@ -488,14 +489,6 @@ json_value json_value::make_double(double v)
   json_value retval(v);
   return retval;
 }
-
-
-json_value& json_value::operator=(const json_value& src)
-{
-  m_impl = src.m_impl;
-  return *this;
-}
-
 
 bool json_value::operator==(const json_value& rhs) const
 {

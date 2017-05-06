@@ -97,6 +97,7 @@ public:
 public:
 
   valueimpl();
+  valueimpl(valueimpl&&) noexcept;
   valueimpl(const valueimpl&);
 
   /* Alter the signature of the bool constructor.  If we kept the standard bool
@@ -131,15 +132,14 @@ public:
     }
   }
 
-  /** will free any internal pointer */
   ~valueimpl();
 
-  valueimpl& operator=(const valueimpl& rhs);
+  valueimpl& operator=(valueimpl&&) noexcept;
+  valueimpl& operator=(const valueimpl&);
 
   void swap(valueimpl&);
 
-  bool operator==(const valueimpl& rhs) const;
-
+  bool operator==(const valueimpl& ) const;
 
 private:
 
