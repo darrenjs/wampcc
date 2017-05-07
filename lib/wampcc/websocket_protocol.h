@@ -55,6 +55,7 @@ private:
 
   static serialiser_type to_serialiser(const std::string& s);
   static const char* to_header(serialiser_type);
+  static int to_opcode(serialiser_type);
 
   enum class state
   {

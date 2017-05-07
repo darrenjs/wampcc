@@ -68,28 +68,6 @@ static bool string_list_contains(const std::string & source,
 }
 
 
-// Two byte conversion union
-union uint16_converter
-{
-    uint16_t i;
-    uint8_t  m[2];
-};
-
-// Four byte conversion union
-union uint32_converter
-{
-    uint32_t i;
-    uint8_t m[4];
-};
-
-// Eight byte conversion union
-union uint64_converter
-{
-    uint64_t i;
-    uint8_t  m[8];
-};
-
-
 /* Websocket frame-header encoder and decoder */
 struct frame
 {
@@ -253,7 +231,7 @@ void websocket_protocol::send_msg(const json_array& ja)
       bytes[i] ^= mask.m[i%4];
   }
 
-  frame::header hdr(OPCODE_TEXT, true, bytes.size(), (use_mask?mask.m:nullptr));
+  frame::header hdr(to_opcode(m_codec->type()), true, bytes.size(), (use_mask?mask.m:nullptr));
   auto hdr_buf = frame::encode_header(hdr);
 
   LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
@@ -363,10 +341,8 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         switch (hdr.opcode)
         {
           case OPCODE_CONTINUE: break;
-          case OPCODE_TEXT:  break;
-          case OPCODE_BINARY: {
-            throw protocol_error("websocket binary messages not supported");
-          }
+          case OPCODE_TEXT: break;
+          case OPCODE_BINARY: break;
           case OPCODE_CLOSE : {
             // issue a close frame
             m_state = state::closing;
@@ -382,7 +358,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           default: break;
         }
 
+        // TODO: when decoding text, should check for UTF8 complete string
         if (hdr.fin_bit && hdr.opcode == OPCODE_TEXT)
+          decode(rd.ptr()+payload_pos, hdr.payload_len);
+        else if (hdr.fin_bit && hdr.opcode == OPCODE_BINARY)
           decode(rd.ptr()+payload_pos, hdr.payload_len);
 
         rd.advance(hdr.frame_len());
@@ -494,7 +473,7 @@ serialiser_type websocket_protocol::to_serialiser(const std::string& s)
   if (s==WAMPV2_JSON_SUBPROTOCOL)
     return serialiser_type::json;
   else if (s==WAMPV2_MSGPACK_SUBPROTOCOL)
-    return serialiser_type::json;
+    return serialiser_type::msgpack;
   else
     return serialiser_type::none;
 }
@@ -509,5 +488,18 @@ const char* websocket_protocol::to_header(serialiser_type p)
   }
   return "";
 }
+
+int websocket_protocol::to_opcode(serialiser_type p)
+{
+  switch (p)
+  {
+    case serialiser_type::none: return 0;
+    case serialiser_type::json: return websocket_protocol::OPCODE_TEXT;
+    case serialiser_type::msgpack: return websocket_protocol::OPCODE_BINARY;
+  }
+
+  return 0;
+}
+
 
 }

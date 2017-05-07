@@ -56,15 +56,14 @@ fi
 
 
 # get jalson
-jalson_ver=1.0
+jalson_ver=1.2
 echo '***' fetching jalson $jalson_ver '***'
 echo
-test -f jalson-${jalson_ver}.tar.gz && rm -f jalson-${jalson_ver}.tar.gz
-wget https://github.com/darrenjs/jalson/archive/v${jalson_ver}.tar.gz  -O jalson-${jalson_ver}.tar.gz
-jalson_tar=jalson-${jalson_ver}.tar.gz
-if [ -f ${jalson_tar} ];
+tarfile=jalson-${jalson_ver}.tar.gz
+test -f $tarfile || wget https://github.com/darrenjs/jalson/archive/v${jalson_ver}.tar.gz -O $tarfile
+if [ -f ${tarfile} ];
 then
-  tar xfz ${jalson_tar}
+  tar xfz ${tarfile}
   if [ -d jalson-${jalson_ver} ]
   then
     test -d jalson && rm -fr jalson

@@ -129,6 +129,7 @@ public:
   virtual json_value decode(const char* ptr, size_t msglen) = 0;
   virtual std::vector<char> encode(const json_array&) = 0;
   virtual serialiser_type type() const = 0;
+  virtual const char* name() const = 0;
 };
 
 

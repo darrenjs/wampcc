@@ -1,4 +1,10 @@
 
+# 2017-05-07 version 1.2
+
+  * library.so version, 2.0.0
+  * added msgpack support 
+  * uses jalson 1.2
+
 # 16/04/17 version 1.1.1
 
   * bug fix: incorrect array index during invocation processig

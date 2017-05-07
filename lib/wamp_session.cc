@@ -26,26 +26,24 @@
 #include <unistd.h>
 #include <assert.h>
 
-#define MAX_HEARTBEATS_MISSED 3
-
 template<typename T>
-bool is_in(T t, T v) {
+static bool is_in(T t, T v) {
   return t == v;
 }
 
-template<>
-bool is_in(const char* t, const char* v) {
-  return strcmp(t,v) == 0;
-}
-
-
 template<typename T, typename... Args>
-bool is_in(T t, T v, Args... args) {
+static bool is_in(T t, T v, Args... args) {
   return  t==v ||  is_in(t,args...);
 }
 
 
 namespace wampcc {
+
+static_assert(std::is_copy_constructible<wamp_args>::value, "is_copy_constructible<wamp_args>");
+static_assert(std::is_move_constructible<wamp_args>::value, "is_move_constructible<wamp_args>");
+static_assert(std::is_move_assignable<wamp_args>::value, "is_move_assignable<wamp_args>");
+static_assert(std::is_move_constructible<wamp_args>::value, "is_move_constructible<wamp_args>");
+static_assert(std::is_nothrow_move_constructible<wamp_args>::value, "is_nothrow_move_constructible<wamp_args>");
 
 /** Exception class used to indicate failure of authentication. */
 class auth_error : public std::runtime_error

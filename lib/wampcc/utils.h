@@ -245,6 +245,26 @@ private:
   T m_value;
 };
 
+// Two byte conversion union
+union uint16_converter
+{
+    uint16_t i;
+    uint8_t  m[2];
+};
+
+// Four byte conversion union
+union uint32_converter
+{
+    uint32_t i;
+    uint8_t m[4];
+};
+
+// Eight byte conversion union
+union uint64_converter
+{
+    uint64_t i;
+    uint8_t  m[8];
+};
 
 
 } // namespace wampcc

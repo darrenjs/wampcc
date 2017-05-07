@@ -18,6 +18,26 @@ std::vector<protocol_type> protocols{protocol_type::websocket,
 std::vector<serialiser_type> serialisers{serialiser_type::json,
                                          serialiser_type::msgpack};
 
+std::string protocol_str(protocol_type p)
+{
+  switch(p) {
+    case protocol_type::none : return "none";
+    case protocol_type::websocket : return "websocket";
+    case protocol_type::rawsocket : return "rawsocket";
+  }
+  return "unknown";
+}
+std::string serialiser_str(serialiser_type p)
+{
+  switch(p) {
+    case serialiser_type::none : return "none";
+    case serialiser_type::json : return "json";
+    case serialiser_type::msgpack : return "msgpack";
+  }
+  return "unknown";
+}
+
+
 std::shared_ptr<internal_server> create_server(
     int& port, int allowed_protocols = wampcc::all_protocols,
     int allowed_serialisers = wampcc::all_serialisers)
@@ -45,8 +65,10 @@ void run_rpc_test(std::shared_ptr<internal_server>& server,
                   protocol_type client_protocol,
                   serialiser_type client_serialiser, bool expect_success)
 {
-  std::cout << __FUNCTION__ << ", protocol:" << (int)client_protocol
-       << ", serialiser:" << (int)client_serialiser << std::endl;
+  std::ostringstream oss;
+  oss << __FUNCTION__ << ", protocol:" << protocol_str(client_protocol)
+      << ", serialiser:" << serialiser_str(client_serialiser)
+      << ", expect: " << expect_success << std::endl;
   bool actual_result = false;
 
   // create the client
@@ -76,9 +98,9 @@ void run_rpc_test(std::shared_ptr<internal_server>& server,
   }
 
   if (actual_result && !expect_success)
-    throw std::runtime_error("run_rpc_test passed but expected fail");
+    throw std::runtime_error("run_rpc_test passed but expected fail: " + oss.str());
   if (!actual_result && expect_success)
-    throw std::runtime_error("run_rpc_test failed but expected pass");
+    throw std::runtime_error("run_rpc_test failed but expected pass :" + oss.str());
 }
 
 
@@ -90,6 +112,7 @@ void run_tests_against_null_server(int& port)
       create_server(port, 0, wampcc::all_serialisers),
       create_server(port, wampcc::all_protocols, 0)};
 
+  /* these should all fail */
   for (auto& svr : servers)
     for (auto pt : protocols)
       for (auto st : serialisers)
@@ -100,7 +123,7 @@ void run_tests_against_null_server(int& port)
 void run_compatible_protocol_tests(int& port)
 {
   /* These tests check that an incompatible server & client protocol will
-   * fail. */
+   * fail, and compatible servers are successful. */
 
   {
     auto server = create_server(++port, (int)protocol_type::websocket);

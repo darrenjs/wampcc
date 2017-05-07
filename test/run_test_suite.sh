@@ -14,6 +14,7 @@ test_evthread_wamp_session_destructor       23800
 test_wamp_session_fast_close                24000
 test_tcp_socket                             24100
 test_connect_timeout                        24200
+test_basic_codecs                           24300
 
 echo Note: test test_dealer_disconnect_when_has_connections has been commented out.
 

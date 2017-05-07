@@ -38,8 +38,29 @@ namespace wampcc {
     }
 
     serialiser_type type() const override { return serialiser_type::json;}
+    const char* name() const override { return "json"; }
   };
 
+  class msgpack_codec : public codec
+  {
+  public:
+    json_value decode(const char* ptr, size_t msglen) override
+    {
+      json_value jv = wampcc::json_msgpack_decode(ptr, msglen);
+      return jv;
+    }
+
+    std::vector<char> encode(const json_array& src) override
+    {
+      auto region = wampcc::json_msgpack_encode(src);
+      std::vector<char> retval(region->second);
+      memcpy(retval.data(), region->first, region->second);
+      return retval;
+    }
+
+    serialiser_type type() const override { return serialiser_type::msgpack;}
+    const char* name() const override { return "msgpack"; }
+  };
 
 
   buffer::read_pointer::read_pointer(char * p, size_t avail)
@@ -105,10 +126,8 @@ namespace wampcc {
   /* select & create a codec from range of choices */
   void protocol::create_codec(int choices)
   {
-
     if (choices & serialiser_type::msgpack)
-      throw handshake_error("msgpack not implemented");
-    //m_codec = nullptr // TODO
+      m_codec = std::shared_ptr<codec>(new msgpack_codec());
     else if (choices & serialiser_type::json)
       m_codec = std::shared_ptr<codec>(new json_codec());
   }
