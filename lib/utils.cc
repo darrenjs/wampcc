@@ -14,26 +14,23 @@
 #include <string.h>
 #include <regex.h>
 
-namespace wampcc {
-
+namespace wampcc
+{
 
 /*
   Compute the HMAC-SHA256 using a secret over a message.
 
   On success, zero is returned.  On error, -1 is returned.
  */
-int compute_HMACSHA256(const char* key,
-                       int keylen,
-                       const char* msg,
-                       int msglen,
-                       char * dest,
-                       unsigned int * destlen,
+int compute_HMACSHA256(const char* key, int keylen, const char* msg, int msglen,
+                       char* dest, unsigned int* destlen,
                        HMACSHA256_Mode output_mode)
 {
-  const char * hexalphabet="0123456789abcdef";
-  const char * base64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const char* hexalphabet = "0123456789abcdef";
+  const char* base64 =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-  int retval = -1;  /* success=0, fail=-1 */
+  int retval = -1; /* success=0, fail=-1 */
 
   /* initialise HMAC context */
   HMAC_CTX ctx;
@@ -43,96 +40,119 @@ int compute_HMACSHA256(const char* key,
   memset(md, 0, sizeof(md));
   unsigned int mdlen;
 
-  HMAC(EVP_sha256(),
-       key, keylen,
-       (const unsigned char*) msg, msglen,
-       md, &mdlen);
+  HMAC(EVP_sha256(), key, keylen, (const unsigned char*)msg, msglen, md,
+       &mdlen);
 
-  if (output_mode == HMACSHA256_Mode::HEX)
-  {
+  if (output_mode == HMACSHA256_Mode::HEX) {
     // convert to hex representation in the output buffer
-    if ( (mdlen*2) > *destlen)
-    {
+    if ((mdlen * 2) > *destlen) {
       // cannot encode
-    }
-    else
-    {
-      unsigned int i,j;
-      for (i=0, j=0; i<mdlen; ++i,j+=2)
-      {
-        dest[j]   = hexalphabet[( md[i] >>4) & 0xF];
-        dest[j+1] = hexalphabet[  md[i] & 0xF];
+    } else {
+      unsigned int i, j;
+      for (i = 0, j = 0; i < mdlen; ++i, j += 2) {
+        dest[j] = hexalphabet[(md[i] >> 4) & 0xF];
+        dest[j + 1] = hexalphabet[md[i] & 0xF];
       }
-      if (*destlen > (mdlen*2)+1)
-      {
-        dest[ mdlen*2 ] ='\0';
-        *destlen = mdlen*2 + 1;
-      }
-      else
-      {
-        *destlen = mdlen*2;
+      if (*destlen > (mdlen * 2) + 1) {
+        dest[mdlen * 2] = '\0';
+        *destlen = mdlen * 2 + 1;
+      } else {
+        *destlen = mdlen * 2;
       }
       retval = 0;
     }
-  }
-  else if (output_mode == HMACSHA256_Mode::BASE64)
-  {
+  } else if (output_mode == HMACSHA256_Mode::BASE64) {
     /* Base 64 */
     unsigned int i = 0;
     int j = 0;
-    const int jmax = * destlen;
+    const int jmax = *destlen;
 
-    while ( i < mdlen)
-    {
-      char t[3];  // we encode three bytes at a time
-      t[0]=0;
-      t[1]=0;
-      t[2]=0;
+    while (i < mdlen) {
+      char t[3]; // we encode three bytes at a time
+      t[0] = 0;
+      t[1] = 0;
+      t[2] = 0;
 
       unsigned int b = 0;
-      for(b=0; b<3 && i<mdlen;)
-      {
-        if (i<mdlen) t[b] = md[i];
+      for (b = 0; b < 3 && i < mdlen;) {
+        if (i < mdlen)
+          t[b] = md[i];
         b++;
         i++;
       }
 
       // b is now count of input bytes
       int idx[4];
-      idx[0] = (t[0]&0xFC)>> 2;
-      idx[1] = ((t[0]&0x3)<<4) | (t[1]>>4 & 0xF);
-      idx[2] = ((t[1]&0xF)<<2) | ((t[2]&0xC0) >> 6 );
+      idx[0] = (t[0] & 0xFC) >> 2;
+      idx[1] = ((t[0] & 0x3) << 4) | (t[1] >> 4 & 0xF);
+      idx[2] = ((t[1] & 0xF) << 2) | ((t[2] & 0xC0) >> 6);
       idx[3] = (t[2] & 0x3F);
 
-      switch (b)
-      {
-        case 1 :
-        {
-          if (j < jmax) { dest[j] = base64[ idx[0] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = base64[ idx[1] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = '='; j++; }
-          if (j < jmax) { dest[j] = '='; j++; }
+      switch (b) {
+        case 1: {
+          if (j < jmax) {
+            dest[j] = base64[idx[0] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = base64[idx[1] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = '=';
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = '=';
+            j++;
+          }
           break;
         }
-        case 2 :
-        {
-          if (j < jmax) { dest[j] = base64[ idx[0] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = base64[ idx[1] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = base64[ idx[2] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = '='; j++; }
+        case 2: {
+          if (j < jmax) {
+            dest[j] = base64[idx[0] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = base64[idx[1] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = base64[idx[2] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = '=';
+            j++;
+          }
           break;
         }
-        case 3 :
-        {
-          if (j < jmax) { dest[j] = base64[ idx[0] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = base64[ idx[1] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = base64[ idx[2] & 0x3F ]; j++; }
-          if (j < jmax) { dest[j] = base64[ idx[3] & 0x3F ]; j++; }
+        case 3: {
+          if (j < jmax) {
+            dest[j] = base64[idx[0] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = base64[idx[1] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = base64[idx[2] & 0x3F];
+            j++;
+          }
+          if (j < jmax) {
+            dest[j] = base64[idx[3] & 0x3F];
+            j++;
+          }
           break;
         }
       }
     }
-    if (j < jmax) { dest[j] = '\0';  retval = 0; *destlen=j+1;}
+    if (j < jmax) {
+      dest[j] = '\0';
+      retval = 0;
+      *destlen = j + 1;
+    }
   }
 
   /* cleanup HMAC */
@@ -141,17 +161,13 @@ int compute_HMACSHA256(const char* key,
   return retval;
 }
 
-void log_exception(logger & __logger, const char* callsite)
+void log_exception(logger& __logger, const char* callsite)
 {
   try {
     throw;
-  }
-  catch (std::exception& e)
-  {
+  } catch (std::exception& e) {
     LOG_WARN("exception thrown for " << callsite << " : " << e.what());
-  }
-  catch (...)
-  {
+  } catch (...) {
     LOG_WARN("exception thrown for " << callsite << " : unknown");
   }
 }
@@ -169,23 +185,23 @@ std::string iso8601_utc_timestamp()
   char temp[32];
   memset(temp, 0, sizeof(temp));
 
-  strftime(temp, sizeof(temp)-1, "%FT%T", &_tm);
-  sprintf(&temp[19], ".%03dZ", (int) epoch.tv_usec/1000);
-  temp[24]='\0';
+  strftime(temp, sizeof(temp) - 1, "%FT%T", &_tm);
+  sprintf(&temp[19], ".%03dZ", (int)epoch.tv_usec / 1000);
+  temp[24] = '\0';
 
   return temp;
 }
 
 
-std::string random_ascii_string(const size_t len,
-                                unsigned int seed)
+std::string random_ascii_string(const size_t len, unsigned int seed)
 {
-  char temp [len+1];
+  char temp[len + 1];
 
   std::mt19937 engine(seed);
   std::uniform_int_distribution<> distr('!', '~'); // asci printables
 
-  for (auto & x : temp) x = distr(engine);
+  for (auto& x : temp)
+    x = distr(engine);
   temp[len] = '\0';
 
   return temp;
@@ -198,31 +214,22 @@ struct regex_impl
 
   regex_impl()
   {
-    int flags = REG_EXTENDED|REG_NOSUB;
+    int flags = REG_EXTENDED | REG_NOSUB;
     if (::regcomp(&m_re, R"(^([0-9a-z_]+\.)*([0-9a-z_]+)$)", flags) != 0)
       throw std::runtime_error("regcomp failed");
   }
 
-  ~regex_impl()
-  {
-    regfree(&m_re);
-  }
+  ~regex_impl() { regfree(&m_re); }
 
-  bool matches(const char * s) const
+  bool matches(const char* s) const
   {
-    return (::regexec(&m_re, s, (size_t) 0, NULL, 0) == 0);
+    return (::regexec(&m_re, s, (size_t)0, NULL, 0) == 0);
   }
 };
 
-uri_regex::uri_regex()
-  : m_impl(new regex_impl)
-{
-}
+uri_regex::uri_regex() : m_impl(new regex_impl) {}
 
-uri_regex::~uri_regex()
-{
-  delete m_impl;
-}
+uri_regex::~uri_regex() { delete m_impl; }
 
 
 bool uri_regex::is_strict_uri(const char* s) const
@@ -230,14 +237,12 @@ bool uri_regex::is_strict_uri(const char* s) const
   return m_impl->matches(s);
 }
 
-std::string to_hex(const char * p,
-                   size_t size)
+std::string to_hex(const char* p, size_t size)
 {
   static const char digits[] = "0123456789abcdef";
-  std::string s(size*2,' ');
+  std::string s(size * 2, ' ');
 
-  for (size_t i = 0; i < size; ++i)
-  {
+  for (size_t i = 0; i < size; ++i) {
     unsigned char uc = p[i];
     s[i * 2 + 0] = digits[(uc & 0xF0) >> 4];
     s[i * 2 + 1] = digits[(uc & 0x0F)];
@@ -247,28 +252,29 @@ std::string to_hex(const char * p,
 }
 
 
-std::list<std::string> tokenize(const char* src,
-                                char delim,
+std::list<std::string> tokenize(const char* src, char delim,
                                 bool want_empty_tokens)
 {
   std::list<std::string> tokens;
 
   if (src and *src != '\0')
-    while( true )  {
+    while (true) {
       const char* d = strchr(src, delim);
-      size_t len = (d)? d-src : strlen(src);
+      size_t len = (d) ? d - src : strlen(src);
 
       if (len or want_empty_tokens)
-        tokens.push_back( { src, len } ); // capture token
+        tokens.push_back({src, len}); // capture token
 
-      if (d) src += len+1; else break;
+      if (d)
+        src += len + 1;
+      else
+        break;
     }
   return tokens;
 }
 
 
-bool case_insensitive_same(const std::string &lhs,
-                           const std::string &rhs)
+bool case_insensitive_same(const std::string& lhs, const std::string& rhs)
 {
   return strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
 }
@@ -289,11 +295,9 @@ bool has_token(const std::string& src, const std::string tok, char delim)
 {
   size_t i = src.find(tok);
 
-  return (i != std::string::npos) &&
-    (i==0 || src[i-1]==delim) &&
-    (src[i+tok.size()]==delim || src[i+tok.size()]==0);
+  return (i != std::string::npos) && (i == 0 || src[i - 1] == delim) &&
+         (src[i + tok.size()] == delim || src[i + tok.size()] == 0);
 }
-
 
 
 } // namespace wampcc

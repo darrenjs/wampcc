@@ -14,27 +14,20 @@
 #include <memory>
 #include <mutex>
 
-namespace wampcc {
+namespace wampcc
+{
 
 struct logger;
 
-enum class HMACSHA256_Mode
-{
-  HEX,
-  BASE64
-};
+enum class HMACSHA256_Mode { HEX, BASE64 };
 
-int compute_HMACSHA256(const char* key,
-                       int keylen,
-                       const char* msg,
-                       int msglen,
-                       char * dest,
-                       unsigned int * destlen,
+int compute_HMACSHA256(const char* key, int keylen, const char* msg, int msglen,
+                       char* dest, unsigned int* destlen,
                        HMACSHA256_Mode output_mode);
 
 
 /* must be called with an active exception */
-void log_exception(logger &__logptr, const char* callsite);
+void log_exception(logger& __logptr, const char* callsite);
 
 
 /* Generate iso8601 timestamp, like YYYY-MM-DDThh:mm:ss.sssZ */
@@ -47,11 +40,12 @@ std::string random_ascii_string(const size_t len,
 /* Implements a general list of observers, which can be notified with a generic
  * function with variadic arguments. Observer objects should be plain structs
  * that consist of a set of std::function members. */
-template<typename T>
-class observer_list
+template <typename T> class observer_list
 {
 public:
-  struct key {};
+  struct key
+  {
+  };
 
   /* Add observer, returning a unique key used for later removal. */
   key* add(T&& obs)
@@ -62,31 +56,28 @@ public:
 
   /* Notify observers, by applying a functional object, with supplied
    * arguments. */
-  template<typename F, typename... Args>
+  template <typename F, typename... Args>
   void notify(const F& fn, Args&&... args)
   {
-    for (auto & item : m_observers)
-      fn( item.second, args... );
+    for (auto& item : m_observers)
+      fn(item.second, args...);
   }
 
   void remove(key* const k)
   {
-    for (auto it = m_observers.begin();
-         it != m_observers.end(); ++it)
-    {
-      if (k == it->first.get())
-      {
+    for (auto it = m_observers.begin(); it != m_observers.end(); ++it) {
+      if (k == it->first.get()) {
         m_observers.erase(it);
         return;
       }
     }
   }
 
-  size_t size()  const { return m_observers.size(); }
-  bool   empty() const { return m_observers.empty(); }
+  size_t size() const { return m_observers.size(); }
+  bool empty() const { return m_observers.empty(); }
 
 private:
-  std::vector<std::pair< std::unique_ptr<key>, T>> m_observers;
+  std::vector<std::pair<std::unique_ptr<key>, T>> m_observers;
 };
 
 
@@ -99,14 +90,13 @@ public:
   uri_regex();
   ~uri_regex();
 
-  uri_regex(const uri_regex &) = delete;
-  uri_regex& operator=(const uri_regex &) = delete;
+  uri_regex(const uri_regex&) = delete;
+  uri_regex& operator=(const uri_regex&) = delete;
 
   bool is_strict_uri(const char*) const;
 
 private:
-  regex_impl * m_impl;
-
+  regex_impl* m_impl;
 };
 
 
@@ -116,10 +106,7 @@ public:
   static const uint64_t m_min = 0;
   static const uint64_t m_max = 9007199254740992ull;
 
-  global_scope_id_generator()
-    : m_next(0)
-  {
-  }
+  global_scope_id_generator() : m_next(0) {}
 
   uint64_t next()
   {
@@ -134,7 +121,7 @@ private:
 };
 
 
-std::string to_hex(const char *p, size_t size);
+std::string to_hex(const char* p, size_t size);
 
 /*
  * Tokenize a string based on a single delimiter.
@@ -142,34 +129,35 @@ std::string to_hex(const char *p, size_t size);
  * want_empty_tokens==true  : include empty tokens, like strsep()
  * want_empty_tokens==false : exclude empty tokens, like strtok()
  */
-std::list<std::string> tokenize(const char* src,
-                                char delim,
+std::list<std::string> tokenize(const char* src, char delim,
                                 bool include_empty_tokens);
 
 
-inline std::string trim(const std::string& s, const std::string& d = " \f\n\r\t\v")
+inline std::string trim(const std::string& s,
+                        const std::string& d = " \f\n\r\t\v")
 {
   size_t f = s.find_first_not_of(d);
   if (f == std::string::npos)
     return std::string(); // string is all delims
   else
-    return s.substr(f, 1+s.find_last_not_of(d)-f);
+    return s.substr(f, 1 + s.find_last_not_of(d) - f);
 }
 
 
-bool case_insensitive_same(const std::string &,
-                           const std::string &);
+bool case_insensitive_same(const std::string&, const std::string&);
 
 
 inline char* skip_whitespace(char* str)
 {
-  while (std::isspace(*str)) ++str;
+  while (std::isspace(*str))
+    ++str;
   return str;
 }
 
 /* Return whether token exists in src, where token must be bounded on each side
  * by either a string boundary or delim character. */
-bool has_token(const std::string& src, const std::string token, char delim=',');
+bool has_token(const std::string& src, const std::string token,
+               char delim = ',');
 
 /** Return local hostname, or throw upon failure. */
 std::string hostname();
@@ -178,40 +166,40 @@ std::string hostname();
 class scope_guard
 {
 public:
-    template<class Callable>
-    scope_guard(Callable && undo_func) : m_fn(std::forward<Callable>(undo_func)) {}
+  template <class Callable>
+  scope_guard(Callable&& undo_func)
+    : m_fn(std::forward<Callable>(undo_func))
+  {
+  }
 
-    scope_guard(scope_guard && other) : m_fn(std::move(other.m_fn)) {
-        other.m_fn = nullptr;
-    }
+  scope_guard(scope_guard&& other) : m_fn(std::move(other.m_fn))
+  {
+    other.m_fn = nullptr;
+  }
 
-    ~scope_guard() {
-        if(m_fn) m_fn(); // must not throw
-    }
+  ~scope_guard()
+  {
+    if (m_fn)
+      m_fn(); // must not throw
+  }
 
-    void dismiss() noexcept {
-        m_fn = nullptr;
-    }
+  void dismiss() noexcept { m_fn = nullptr; }
 
-    scope_guard(const scope_guard&) = delete;
-    void operator = (const scope_guard&) = delete;
+  scope_guard(const scope_guard&) = delete;
+  void operator=(const scope_guard&) = delete;
 
 private:
-    std::function<void()> m_fn;
+  std::function<void()> m_fn;
 };
 
 
 /** Optionally store a value of value of type T.  Methods to assign
     the value and compare with it are protected by an internal mutex.
 */
-template <typename T>
-class synchronized_optional
+template <typename T> class synchronized_optional
 {
 public:
-  synchronized_optional()
-    : m_valid(false)
-  {
-  }
+  synchronized_optional() : m_valid(false) {}
 
   void set_value(const T& new_value)
   {
@@ -248,22 +236,22 @@ private:
 // Two byte conversion union
 union uint16_converter
 {
-    uint16_t i;
-    uint8_t  m[2];
+  uint16_t i;
+  uint8_t m[2];
 };
 
 // Four byte conversion union
 union uint32_converter
 {
-    uint32_t i;
-    uint8_t m[4];
+  uint32_t i;
+  uint8_t m[4];
 };
 
 // Eight byte conversion union
 union uint64_converter
 {
-    uint64_t i;
-    uint8_t  m[8];
+  uint64_t i;
+  uint8_t m[8];
 };
 
 

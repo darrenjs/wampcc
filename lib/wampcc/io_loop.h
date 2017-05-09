@@ -19,7 +19,8 @@
 
 #include <uv.h>
 
-namespace wampcc {
+namespace wampcc
+{
 
 class io_loop;
 class kernel;
@@ -36,26 +37,28 @@ class handle_data
 public:
   enum { DATA_CHECK = 0x5555555555555555 };
 
-  enum class handle_type {unknown = 0, tcp_socket, tcp_connect};
+  enum class handle_type { unknown = 0, tcp_socket, tcp_connect };
 
   handle_data(tcp_socket* ptr)
-    : m_check( DATA_CHECK ),
+    : m_check(DATA_CHECK),
       m_type(handle_type::tcp_socket),
-      m_tcp_socket_ptr(ptr) {}
+      m_tcp_socket_ptr(ptr)
+  {
+  }
 
   handle_data(handle_type ht)
-    : m_check( DATA_CHECK ),
-      m_type(ht),
-      m_tcp_socket_ptr(nullptr) {}
+    : m_check(DATA_CHECK), m_type(ht), m_tcp_socket_ptr(nullptr)
+  {
+  }
 
   uint64_t check() const { return m_check; }
   tcp_socket* tcp_socket_ptr() { return m_tcp_socket_ptr; }
-  handle_type type()  const noexcept { return m_type; }
+  handle_type type() const noexcept { return m_type; }
 
 private:
   uint64_t m_check; /* retain as first member */
   handle_type m_type;
-  tcp_socket    * m_tcp_socket_ptr;
+  tcp_socket* m_tcp_socket_ptr;
 };
 
 void free_socket(uv_handle_t* h);
@@ -72,7 +75,6 @@ public:
 class io_loop
 {
 public:
-
   io_loop(kernel&, std::function<void()> io_starting_cb = nullptr);
   ~io_loop();
 
@@ -91,28 +93,27 @@ public:
 
   uv_loop_t* uv_loop() { return m_uv_loop; }
 
-  logger & get_logger() const { return __logger; }
-  kernel & get_kernel() const { return m_kernel; }
+  logger& get_logger() const { return __logger; }
+  kernel& get_kernel() const { return m_kernel; }
 
   /** Test whether current thread is the IO thread */
   bool this_thread_is_io() const;
 
 private:
-
   void run_loop();
 
   void on_tcp_connect_cb(uv_connect_t* __req, int status);
 
   void push_request(std::unique_ptr<io_request>);
 
-  kernel & m_kernel;
-  struct logger & __logger;
-  uv_loop_t*   m_uv_loop;
+  kernel& m_kernel;
+  struct logger& __logger;
+  uv_loop_t* m_uv_loop;
   std::unique_ptr<uv_async_t> m_async;
 
-  enum state {open, closing, closed}         m_pending_requests_state;
-  std::vector< std::unique_ptr<io_request> > m_pending_requests;
-  std::mutex                                 m_pending_requests_lock;
+  enum state { open, closing, closed } m_pending_requests_state;
+  std::vector<std::unique_ptr<io_request>> m_pending_requests;
+  std::mutex m_pending_requests_lock;
 
   synchronized_optional<std::thread::id> m_io_thread_id;
 
