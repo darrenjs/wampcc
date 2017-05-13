@@ -9,15 +9,18 @@
 
 #include "wampcc/tcp_socket.h"
 
+#include "mini_test.h"
+
 #include <stdexcept>
 
 using namespace wampcc;
 using namespace std;
 
+int global_port;
+int global_loops = 50;
 
 void test_close_of_connected_socket(int port)
 {
-  cout << "---------- " << __FUNCTION__ << " ----------\n";
   kernel the_kernel;
 
   {
@@ -35,10 +38,24 @@ void test_close_of_connected_socket(int port)
   }
 }
 
+TEST_CASE("test_close_of_connected_socket")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_close_of_connected_socket(port);
+}
+
+TEST_CASE("test_close_of_connected_socket_bulk")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; i++)
+    test_close_of_connected_socket(port);
+}
 
 void test_close_of_unconnected_socket(int port)
 {
-  cout << "---------- " << __FUNCTION__ << " ----------\n";
+  //std::cout << __FUNCTION__ << std::endl;
   kernel the_kernel;
 
   {
@@ -55,10 +72,22 @@ void test_close_of_unconnected_socket(int port)
     assert(cb_will_be_invoked == cb_invoked);
   }
 }
+TEST_CASE("test_close_of_unconnected_socket")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_close_of_unconnected_socket(port);
+}
+TEST_CASE("test_close_of_unconnected_socket_bulk")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; i++)
+    test_close_of_unconnected_socket(port);
+}
 
 void test_close_of_listen_socket(int port)
 {
-  cout << "---------- " << __FUNCTION__ << " ----------\n";
   kernel the_kernel;
 
   {
@@ -88,31 +117,46 @@ void test_close_of_listen_socket(int port)
     assert(cb_will_be_invoked == cb_invoked);
   }
 }
+TEST_CASE("test_close_of_listen_socket")
+{
+  int port = global_port++;
+  test_close_of_listen_socket(port);
+}
+TEST_CASE("test_close_of_listen_socket_bulk")
+{
+  int port = global_port++;
+  for (int i = 0; i < global_loops; i++)
+    test_close_of_listen_socket(port);
+}
+
+TEST_CASE("test_all")
+{
+  auto all_tests = [](int port) {
+    test_close_of_connected_socket(port);
+    test_close_of_unconnected_socket(port);
+    test_close_of_listen_socket(port + 1);
+  };
+
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+
+  all_tests(port);
+
+  for (int i = 0; i < global_loops; i++)
+    all_tests(port);
+}
 
 int main(int argc, char** argv)
 {
   try {
-    int starting_port_number = 23100;
+    global_port = 23100;
+
     if (argc > 1)
-      starting_port_number = atoi(argv[1]);
+      global_port = atoi(argv[1]);
 
-    internal_server iserver;
-    int port = iserver.start(starting_port_number++);
+    int result = minitest::run(argc, argv);
 
-    auto all_tests = [](int port) {
-      test_close_of_connected_socket(port);
-      test_close_of_unconnected_socket(port);
-      test_close_of_listen_socket(port + 1);
-    };
-
-    all_tests(port);
-
-    // use one internal_server per test
-    int loops = 50;
-    for (int i = 0; i < loops; i++)
-      all_tests(port);
-
-    return 0;
+    return (result < 0xFF ? result : 0xFF );
   } catch (exception& e) {
     cout << e.what() << endl;
     return 1;
