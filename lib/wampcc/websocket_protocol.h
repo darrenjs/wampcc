@@ -16,6 +16,7 @@ namespace wampcc
 {
 
 class http_parser;
+class websocketpp_impl;
 
 class websocket_protocol : public protocol
 {
@@ -27,13 +28,6 @@ public:
 
   static constexpr const int    HEADER_SIZE = 4; /* "GET " */
   static constexpr const char*  MAGIC = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-
-  static const int OPCODE_CONTINUE = 0x0;
-  static const int OPCODE_TEXT     = 0x1;
-  static const int OPCODE_BINARY   = 0x2;
-  static const int OPCODE_CLOSE    = 0x8;
-  static const int OPCODE_PING     = 0x9;
-  static const int OPCODE_PONG     = 0xA;
 
   static constexpr const char* WAMPV2_JSON_SUBPROTOCOL = "wamp.2.json";
   static constexpr const char* WAMPV2_MSGPACK_SUBPROTOCOL = "wamp.2.msgpack";
@@ -51,11 +45,16 @@ public:
 
 private:
 
+  void process_frame_bytes(buffer::read_pointer&);
+
   const std::string& header_field(const char*) const;
 
   static serialiser_type to_serialiser(const std::string& s);
   static const char* to_header(serialiser_type);
   static int to_opcode(serialiser_type);
+
+  void send_ping();
+  void send_pong();
 
   enum class state
   {
@@ -74,7 +73,8 @@ private:
 
   std::string m_expected_accept_key;
 
-  std::unique_ptr<std::mt19937> m_rand_engine;
+  std::unique_ptr<websocketpp_impl> m_websock_impl;
+
 };
 
 

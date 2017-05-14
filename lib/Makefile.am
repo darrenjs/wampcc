@@ -5,7 +5,9 @@
 # it under the terms of the MIT license. See LICENSE for details.
 #
 
-AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)  -I$(jalsoninc) $(libuvinc)
+AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)						\
+-I$(top_srcdir)/external/websocketpp -I$(top_srcdir)/external -I$(jalsoninc)	\
+$(libuvinc)
 
 AM_LDFLAGS=-lpthread
 
@@ -26,11 +28,11 @@ wampcc/websocket_protocol.h wampcc/tcp_socket.h wampcc/data_model.h				\
 wampcc/error.h wampcc/wampcc.h wampcc/ssl_socket.h
 
 # List the sources for an individual library
-libwampcc_la_SOURCES = ssl.cc ssl_socket.cc tcp_socket.cc wamp_session.cc	\
-wamp_router.cc event_loop.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc	\
-utils.cc protocol.cc rawsocket_protocol.cc websocket_protocol.cc			\
-../external/http_parser/http_parser.c http_parser.cc data_model.cc error.cc	\
-../external/apache/base64.c
+libwampcc_la_SOURCES = websocketpp_impl.cc websocket_protocol.cc ssl.cc		\
+ssl_socket.cc tcp_socket.cc wamp_session.cc wamp_router.cc event_loop.cc	\
+io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc protocol.cc			\
+rawsocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc	\
+data_model.cc error.cc ../external/apache/base64.c
 
 
 # Include compile and link flags for an individual library.

@@ -11,13 +11,14 @@
 #include "wampcc/tcp_socket.h"
 #include "wampcc/http_parser.h"
 #include "wampcc/log_macros.h"
-#include "external/apache/base64.h"
+#include "wampcc/websocketpp_impl.h"
+
+#include "apache/base64.h"
 
 #include <string.h>
 #include <assert.h>
 
 #include <openssl/sha.h>
-#include <arpa/inet.h>
 
 namespace wampcc
 {
@@ -26,15 +27,18 @@ websocket_protocol::websocket_protocol(kernel* k,
                                        tcp_socket* h,
                                        t_msg_cb msg_cb,
                                        protocol::protocol_callbacks callbacks,
-                                       connect_mode _mode,
+                                       connect_mode mode,
                                        options opts)
-  : protocol(k, h, msg_cb, callbacks, _mode),
-    m_state(_mode==connect_mode::passive? state::handling_http_request : state::handling_http_response),
-    m_http_parser(new http_parser(_mode==connect_mode::passive?
+  : protocol(k, h, msg_cb, callbacks, mode),
+    m_state(mode==connect_mode::passive? state::handling_http_request : state::handling_http_response),
+    m_http_parser(new http_parser(mode==connect_mode::passive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
-    m_options(std::move(opts))
+    m_options(std::move(opts)),
+    m_websock_impl( new websocketpp_impl(mode) )
 {
-  m_rand_engine.reset(new std::mt19937(std::random_device()()));
+  // register with owner to receive heartbeat thread
+  if (opts.ping_interval.count() > 0)
+    callbacks.request_timer(opts.ping_interval);
 }
 
 
@@ -68,150 +72,6 @@ static bool string_list_contains(const std::string & source,
 }
 
 
-/* Websocket frame-header encoder and decoder */
-struct frame
-{
-  // Maximum length of a WebSocket header (2+8+4)
-  static unsigned int const MAX_HEADER_LENGTH = 14;
-  static int const MASK_LEN = 4;
-
-  static uint8_t const FRAME_OPCODE = 0x0F;
-  static uint8_t const FRAME_FIN    = 0x80;
-  static uint8_t const FRAME_MASKED = 0x80;
-  static uint8_t const FRAME_PAYLOAD = 0x7F;
-
-
-  struct header
-  {
-    bool complete;
-    bool fin_bit;
-    bool mask_bit;
-    int opcode;
-    uint8_t mask[4]; /* valid iff mask_bit set */
-    size_t payload_len;
-    size_t header_len;
-    header() : complete(false){}
-
-    header(int opcode__, bool fin__, size_t payload_len__, const uint8_t * mask__ = nullptr)
-      : complete(true),
-        fin_bit(fin__),
-        mask_bit(mask__ != nullptr),
-        opcode(opcode__),
-        payload_len(payload_len__)
-    {
-      if (payload_len < 126)
-        header_len = 2 + (mask_bit?4:0);
-      else if (payload_len < 65536)
-        header_len = 4 + (mask_bit?4:0);
-      else
-        header_len = 10 + (mask_bit?4:0);
-
-      if (mask_bit)
-        for (int i = 0; i < 4; i++)
-          mask[i] = mask__[i];
-    }
-
-    size_t frame_len() const { return header_len + payload_len; }
-    size_t mask_offset() const { return header_len - 4; }
-
-    void to_stream(std::ostream& os) const
-    {
-      os << "fin " << fin_bit
-         << ", opcode " << opcode
-         << ", mask " << (mask_bit? to_hex((const char *)mask, 4) : "0")
-         << ", header_len " << header_len
-         << ", payload_len " << payload_len
-         << ", frame_len " << (header_len+payload_len);
-    }
-  };
-
-  static std::array<char, MAX_HEADER_LENGTH> encode_header(header& hdr)
-  {
-    std::array<char, MAX_HEADER_LENGTH> dest;
-    encode_header(hdr, dest);
-    return dest;
-  }
-
-  static void encode_header(header& hdr, std::array<char, MAX_HEADER_LENGTH>& dest)
-  {
-    dest[0] = (hdr.fin_bit?FRAME_FIN:0) | (FRAME_OPCODE & hdr.opcode);
-
-    if (hdr.payload_len < 126)
-      dest[1] = (unsigned char)(hdr.payload_len);
-    else if (hdr.payload_len < 65536)
-    {
-      uint16_converter temp;
-      temp.i = htons(hdr.payload_len & 0xFFFF);
-      dest[1] = (unsigned char)126;
-      dest[2] = temp.m[0];
-      dest[3] = temp.m[1];
-    }
-    else
-    {
-      uint64_converter temp;
-      temp.i = __bswap_64(hdr.payload_len);
-      dest[1] = (unsigned char)127;
-      for (int i = 0; i<8; ++i)
-        dest[2+i]=temp.m[i];
-    }
-
-    if (hdr.mask_bit) {
-      dest[1] |= FRAME_MASKED;
-      for (int i = 0; i < 4; i++)
-        dest[hdr.mask_offset()+i] = hdr.mask[i];
-    }
-  }
-
-  static header decode_header(char src[], size_t len)
-  {
-    header p;
-
-    if (len<2)
-      return header(); /* frame header incomplete */
-
-    p.fin_bit  = src[0] & FRAME_FIN;
-    p.opcode   = src[0] & FRAME_OPCODE;
-    p.mask_bit = src[1] & FRAME_MASKED;
-    p.header_len = 2 + (p.mask_bit?4:0);
-
-    if (len < p.header_len)
-      return header(); /* frame header incomplete */
-
-    p.payload_len = src[1] & FRAME_PAYLOAD;
-
-    if (p.payload_len == 126) {
-      p.header_len += 2;
-      if (len < p.header_len)
-        return header(); /* frame header incomplete */
-      uint16_t raw_length;
-      memcpy(&raw_length, &src[2], 2);
-      p.payload_len = ntohs(raw_length);
-    }
-    else if (p.payload_len == 127) {
-      p.header_len += 8;
-      if (len < p.header_len)
-        return header(); /* frame header incomplete */
-      uint64_t raw_length;
-      memcpy(&raw_length, &src[2], 8);
-      p.payload_len = __bswap_64(raw_length);
-    }
-
-    if (p.mask_bit)
-      for (int i = 0; i < 4; i++)
-        p.mask[i] = src[p.header_len - 4 + i];
-
-    p.complete = true;
-    return p; /* header complete */
-  }
-
-};
-
-std::ostream& operator<<(std::ostream& os, const wampcc::frame::header& hdr)
-{
-  hdr.to_stream(os);
-  return os;
-}
-
 void websocket_protocol::send_msg(const json_array& ja)
 {
   if (!have_codec())
@@ -221,24 +81,33 @@ void websocket_protocol::send_msg(const json_array& ja)
 
   auto bytes = encode(ja);
 
-  /* Only wamp client needs to apply a frame mask */
-  bool use_mask = (mode() == connect_mode::active);
-
-  uint32_converter mask;
-  if (use_mask) {
-    mask.i = std::uniform_int_distribution<uint32_t>()(*m_rand_engine);
-    for (size_t i = 0; i < bytes.size(); ++i)
-      bytes[i] ^= mask.m[i%4];
+  websocketpp::frame::opcode::value op{};
+  switch (m_codec->type())
+  {
+    case serialiser_type::none: break;
+    case serialiser_type::json: op = websocketpp::frame::opcode::text; break;
+    case serialiser_type::msgpack: op = websocketpp::frame::opcode::binary; break;
   }
 
-  frame::header hdr(to_opcode(m_codec->type()), true, bytes.size(), (use_mask?mask.m:nullptr));
-  auto hdr_buf = frame::encode_header(hdr);
+  // TODO: handle 0x00 opcode.  How to close the session?
 
-  LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
+  auto msg_ptr = m_websock_impl->msg_manager()->get_message(op,bytes.size());
+  msg_ptr->append_payload(bytes.data(), bytes.size());
+  auto out_msg_ptr = m_websock_impl->msg_manager()->get_message();
+
+  // TODO: handle null outgoing_msg_ptr
+//         if (!outgoing_msg) {
+//             return error::make_error_code(error::no_outgoing_buffers);
+//         }
+
+  auto err = m_websock_impl->processor()->prepare_data_frame(msg_ptr, out_msg_ptr);
+
+  LOG_TRACE("fd: " << fd() << ", frame_tx: " <<
+            websocketpp_impl::frame_to_string(out_msg_ptr));
 
   std::pair<const char*, size_t> bufs[2] = {
-    { hdr_buf.data(), hdr.header_len },
-    { bytes.data(), bytes.size() } };
+    { out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size() },
+    { out_msg_ptr->get_payload().data(), out_msg_ptr->get_payload().size()  } };
 
   m_socket->write(bufs, 2);
 }
@@ -323,48 +192,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
       }
       else if (m_state == state::open)
       {
-        const frame::header hdr = frame::decode_header(rd.ptr(), rd.avail());
-
-        if (!hdr.complete || rd.avail() < hdr.frame_len())
-          break;
-
-        LOG_TRACE("fd: " << fd() << ", frame_rx: " << hdr);
-
-        int const payload_pos = hdr.header_len;
-
-        for (size_t i = 0; i < (hdr.mask_bit?hdr.payload_len:0); ++i)
-          rd[payload_pos+i] ^= hdr.mask[i%4];
-
-        if (!hdr.fin_bit)
-          throw protocol_error("websocket continuations not supported");
-
-        switch (hdr.opcode)
-        {
-          case OPCODE_CONTINUE: break;
-          case OPCODE_TEXT: break;
-          case OPCODE_BINARY: break;
-          case OPCODE_CLOSE : {
-            // issue a close frame
-            m_state = state::closing;
-            frame::header hdr(OPCODE_CLOSE, true, 0);
-            auto hdr_buf = frame::encode_header(hdr);
-            LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
-            m_socket->write(hdr_buf.data(), hdr.header_len);
-
-            // TODO: request for close should be initiaied from the owning session?
-            m_socket->close();
-            break;
-          };
-          default: break;
-        }
-
-        // TODO: when decoding text, should check for UTF8 complete string
-        if (hdr.fin_bit && hdr.opcode == OPCODE_TEXT)
-          decode(rd.ptr()+payload_pos, hdr.payload_len);
-        else if (hdr.fin_bit && hdr.opcode == OPCODE_BINARY)
-          decode(rd.ptr()+payload_pos, hdr.payload_len);
-
-        rd.advance(hdr.frame_len());
+        process_frame_bytes(rd);
       }
       else if (m_state == state::handling_http_response)
       {
@@ -457,15 +285,42 @@ void websocket_protocol::initiate(t_initiate_cb cb)
   m_socket->write(http_request.c_str(), http_request.size());
 }
 
+void websocket_protocol::send_ping()
+{
+  auto out_msg_ptr = m_websock_impl->msg_manager()->get_message();
+  m_websock_impl->processor()->prepare_ping("", out_msg_ptr);
+
+  LOG_TRACE("fd: " << fd() << ", frame_tx: " <<
+            websocketpp_impl::frame_to_string(out_msg_ptr));
+
+  assert(out_msg_ptr->get_payload().size() == 0); /* expect no payload */
+
+  std::array< std::pair<const char*, size_t>, 1> bufs {
+    {{ out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size()}} };
+  m_socket->write(bufs.data(), bufs.size());
+}
+
+void websocket_protocol::send_pong()
+{
+  auto out_msg_ptr = m_websock_impl->msg_manager()->get_message();
+  m_websock_impl->processor()->prepare_pong("", out_msg_ptr);
+
+  LOG_TRACE("fd: " << fd() << ", frame_tx: " <<
+            websocketpp_impl::frame_to_string(out_msg_ptr));
+
+  assert(out_msg_ptr->get_payload().size() == 0); /* expect no payload */
+
+  std::array< std::pair<const char*, size_t>, 1> bufs {
+    {{ out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size()}} };
+  m_socket->write(bufs.data(), bufs.size());
+}
+
+
+
 void websocket_protocol::on_timer()
 {
   if (m_state == state::open)
-  {
-    frame::header hdr(OPCODE_PING, true, 0);
-    auto hdr_buf = frame::encode_header(hdr);
-    LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
-    m_socket->write(hdr_buf.data(), hdr.header_len);
-  }
+    send_ping();
 }
 
 serialiser_type websocket_protocol::to_serialiser(const std::string& s)
@@ -489,17 +344,111 @@ const char* websocket_protocol::to_header(serialiser_type p)
   return "";
 }
 
-int websocket_protocol::to_opcode(serialiser_type p)
+
+void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
 {
-  switch (p)
+
+  websocketpp::lib::error_code ec;
+  size_t consumed = m_websock_impl->processor()->consume((uint8_t*) rd.ptr(), rd.avail(), ec);
+  rd.advance(consumed);
+
+  // TODO: check ec
+
+  if (m_websock_impl->processor()->ready())
   {
-    case serialiser_type::none: return 0;
-    case serialiser_type::json: return websocket_protocol::OPCODE_TEXT;
-    case serialiser_type::msgpack: return websocket_protocol::OPCODE_BINARY;
+    auto msg = m_websock_impl->processor()->get_message(); // shared_ptr<message_buffer::message<message_buffer::alloc::con_msg_manager> >
+
+    if (!msg) {
+      // raise failure
+//        m_alog.write(log::alevel::devel, "null message from m_processor");
+    } else if (!is_control(msg->get_opcode())) {
+
+      // data message, dispatch to user
+
+      // TODO: handle case of state closed but message arrived
+//         if (m_state != session::state::open) {
+//           //m_elog.write(log::elevel::warn, "got non-close frame while closing"
+
+      LOG_TRACE("fd: " << fd() << ", frame_rx: " <<
+                websocketpp_impl::frame_to_string(msg));
+
+      if (msg->get_opcode() == websocketpp::frame::opcode::binary) {
+        decode(msg->get_payload().data(), msg->get_payload().size());
+      }
+      else if (msg->get_opcode() == websocketpp::frame::opcode::text) {
+        decode(msg->get_payload().data(), msg->get_payload().size());
+      }
+
+    } else {
+      websocketpp::frame::opcode::value op = msg->get_opcode();
+
+      if (op == websocketpp::frame::opcode::PING) {
+        send_pong();
+      } else if (op == websocketpp::frame::opcode::PONG) {
+
+        /* Track loss of ping, after ping expected? */
+
+      } else if (op == websocketpp::frame::opcode::CLOSE) {
+
+        // TODO: need to reply with close ack frame
+
+        // issue a close frame
+        m_state = state::closing;
+
+        // TODO: request for close should be initiaied from the owning session?
+
+        m_socket->close();
+      }
+
+    }
   }
 
-  return 0;
-}
 
+
+
+
+  // const frame::header hdr = frame::decode_header(rd.ptr(), rd.avail());
+
+  // if (!hdr.complete || rd.avail() < hdr.frame_len())
+  //   return;
+
+  // LOG_TRACE("fd: " << fd() << ", frame_rx: " << hdr);
+
+  // int const payload_pos = hdr.header_len;
+
+  // for (size_t i = 0; i < (hdr.mask_bit?hdr.payload_len:0); ++i)
+  //   rd[payload_pos+i] ^= hdr.mask[i%4];
+
+  // if (!hdr.fin_bit)
+  //   throw protocol_error("websocket continuations not supported");
+
+  // switch (hdr.opcode)
+  // {
+  //   case OPCODE_CONTINUE: break;
+  //   case OPCODE_TEXT: break;
+  //   case OPCODE_BINARY: break;
+  //   case OPCODE_CLOSE : {
+  //     // issue a close frame
+  //     m_state = state::closing;
+  //     frame::header hdr(OPCODE_CLOSE, true, 0);
+  //     auto hdr_buf = frame::encode_header(hdr);
+  //     LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
+  //     m_socket->write(hdr_buf.data(), hdr.header_len);
+
+  //     // TODO: request for close should be initiaied from the owning session?
+  //     m_socket->close();
+  //     break;
+  //   };
+  //   default: break;
+  // }
+
+  // // TODO: when decoding text, should check for UTF8 complete string
+  // if (hdr.fin_bit && hdr.opcode == OPCODE_TEXT)
+  //   decode(rd.ptr()+payload_pos, hdr.payload_len);
+  // else if (hdr.fin_bit && hdr.opcode == OPCODE_BINARY)
+  //   decode(rd.ptr()+payload_pos, hdr.payload_len);
+
+  // rd.advance(hdr.frame_len());
+}
 
 }
