@@ -6,10 +6,13 @@
  */
 
 #include "test_common.h"
+#include "mini_test.h"
 
 using namespace wampcc;
 using namespace std;
 
+int global_port;
+int global_loops = 500;
 
 void test_rpc(int port, internal_server& server)
 {
@@ -66,49 +69,47 @@ void test_call_non_existing_rpc(int port, internal_server& server)
   session->close().wait();
 }
 
+auto all_tests = [](int port, internal_server& server)
+{
+  test_rpc(port, server);
+  test_call_non_existing_rpc(port, server);
+};
+
+TEST_CASE("test_all")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  all_tests(port, iserver);
+}
+
+TEST_CASE("test_all_bulk")
+{
+
+  // share a common internal_server
+  for (int i = 0; i < global_loops; i++)
+  {
+    internal_server iserver;
+    int port = iserver.start(global_port++);
+    all_tests(port, iserver);
+
+    // TODO: to enable this, need to remove the procedure
+    // for (int j=0; j < 100; j++)
+    //   all_tests(port, iserver);
+  }
+}
+
 int main(int argc, char** argv)
 {
   try
   {
-    int starting_port_number = 25000;
+    global_port = 26000;
 
-    if (argc>1)
-      starting_port_number = atoi(argv[1]);
+    if (argc > 1)
+      global_port = atoi(argv[1]);
 
-    auto all_tests = [](int port, internal_server& server)
-      {
-        test_rpc(port, server);
-        test_call_non_existing_rpc(port, server);
-      };
+    int result = minitest::run(argc, argv);
 
-    // one-off test
-    {
-      internal_server iserver;
-      int port = iserver.start(starting_port_number++);
-      all_tests(port, iserver);
-    }
-
-    // share a common internal_server
-    for (int i = 0; i < 50; i++)
-    {
-      internal_server iserver;
-      int port = iserver.start(starting_port_number++);
-      all_tests(port, iserver);
-
-      // TODO: to enable this, need to remove the procedure
-      // for (int j=0; j < 100; j++)
-      //   all_tests(port, iserver);
-    }
-
-    // use one internal_server per test
-    for (int i = 0; i < 500; i++)
-    {
-      internal_server iserver;
-      int port = iserver.start(starting_port_number++);
-      all_tests(port, iserver);
-    }
-
-    return 0;
+    return result < 0xFF ? result : 0xFF;
   }
   catch (exception& e)
   {
