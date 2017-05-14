@@ -16,12 +16,13 @@
 
 **Dependencies**
 
-*wampcc* aims to depend only on C libraries, making it easier to build and work  on a range of platforms.
+*wampcc* aims to depend mostly on C libraries, making it easier to build and work on a range of platforms.
 
  - [libuv](http://libuv.org/) (network IO)
  - [jansson](http://www.digip.org/jansson/) (JSON encode & decode)
  - [http-parser](https://github.com/nodejs/http-parser)
  - [OpenSSL](https://www.openssl.org/)
+ - [websocketpp](https://www.zaphoyd.com/websocketpp) -- C++ header only
  - C++11 compiler, GNU autotools
 
 ## Show me some code!

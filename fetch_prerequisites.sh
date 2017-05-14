@@ -13,6 +13,9 @@ mkdir -p external
 # bugs fixed, doesn't work in version 2.1.1)
 
 
+##
+## msgpack-c
+##
 zipfile=msgpack.master.zip
 test -f $zipfile || wget https://github.com/msgpack/msgpack-c/archive/master.zip -O $zipfile
 
@@ -23,15 +26,14 @@ else
     echo failed to download msgpack ... please try manually
 fi
 
-
-
+# !!! Use this section once msgpackc is released, need version > 2.1.1
 # version=2.1.1
 # tarfile=cpp-${version}.tar.gz
 # echo '***' fetching msgpack-c $version '***'
 # echo
-
+#
 # test -f $tarfile || wget https://github.com/msgpack/msgpack-c/archive/$tarfile
-
+#
 # if [ -f ${tarfile} ]; then
 #     tar xfz ${tarfile}  -C external --transform "s/msgpack-c-cpp-${version}/msgpack-c-cpp/"
 # else
@@ -39,23 +41,25 @@ fi
 # fi
 # unset version tarfile
 
-
-# get googletest
-googletest_ver=1.8.0
-echo '***' fetching GoogleTest $googletest_ver '***'
+##
+## websocketpp
+##
+websocketpp_ver=0.7.0
+echo '***' fetching websocketpp_ver $websocketpp_ver '***'
 echo
-test -f release-${googletest_ver}.tar.gz && rm -f release-${googletest_ver}.tar.gz
-wget https://github.com/google/googletest/archive/release-${googletest_ver}.tar.gz
-googletest_tar=release-${googletest_ver}.tar.gz
-if [ -f ${googletest_tar} ];
-then
-  tar xfz ${googletest_tar}  -C external --transform "s/googletest-release-${googletest_ver}/googletest/"
+tarfile=websocketpp-${websocketpp_ver}.tar.gz
+test -f $tarfile || wget https://github.com/zaphoyd/websocketpp/archive/${websocketpp_ver}.tar.gz  -O $tarfile
+
+if [ -f ${tarfile} ]; then
+    tar xfz  ${tarfile}   -C external --transform "s/^websocketpp-${websocketpp_ver}/websocketpp/"
 else
-  echo failed to download googletest ${googletest_ver} into googletest directory ... please try manually
+  echo failed to download websocketpp ... please try manually
 fi
 
 
-# get jalson
+##
+## get jalson
+##
 jalson_ver=1.2
 echo '***' fetching jalson $jalson_ver '***'
 echo
