@@ -6,9 +6,12 @@
  */
 
 #include "test_common.h"
+#include "mini_test.h"
 
 using namespace wampcc;
 
+int global_port;
+int global_loops = 50;
 
 /* Perform basic RPC test using range of protocols supported by wampcc. */
 
@@ -100,7 +103,7 @@ void run_rpc_test(std::shared_ptr<internal_server>& server,
   if (actual_result && !expect_success)
     throw std::runtime_error("run_rpc_test passed but expected fail: " + oss.str());
   if (!actual_result && expect_success)
-    throw std::runtime_error("run_rpc_test failed but expected pass :" + oss.str());
+    throw std::runtime_error("run_rpc_test failed but expected pass:" + oss.str());
 }
 
 
@@ -119,6 +122,11 @@ void run_tests_against_null_server(int& port)
         run_rpc_test(svr, pt, st, false);
 }
 
+TEST_CASE("run_tests_against_null_server")
+{
+  /* create a generic server that will support all protocols and serialisers */
+  run_tests_against_null_server(++global_port);
+}
 
 void run_compatible_protocol_tests(int& port)
 {
@@ -142,14 +150,17 @@ void run_compatible_protocol_tests(int& port)
   }
 }
 
-
-void run_tests(int& port)
+TEST_CASE("run_compatible_protocol_tests")
 {
   /* create a generic server that will support all protocols and serialisers */
-  auto generic_server = create_server(++port);
+  run_compatible_protocol_tests(++global_port);
+}
 
-  run_tests_against_null_server(++port);
-  run_compatible_protocol_tests(++port);
+
+TEST_CASE("basic_generic_server")
+{
+  /* create a generic server that will support all protocols and serialisers */
+  auto generic_server = create_server(++global_port);
 
   for (auto pt : protocols)
     run_rpc_test(generic_server, pt, serialiser_type::json, true);
@@ -158,17 +169,17 @@ void run_tests(int& port)
     run_rpc_test(generic_server, pt, serialiser_type::msgpack, true);
 }
 
-
 int main(int argc, char** argv)
 {
   try {
-    int starting_port_number = 25000;
+    global_port = 25000;
 
     if (argc > 1)
-      starting_port_number = atoi(argv[1]);
+      global_port = atoi(argv[1]);
 
-    run_tests(starting_port_number);
+    int result = minitest::run(argc, argv);
 
+    return (result < 0xFF ? result : 0xFF );
   } catch (std::exception& e) {
     std::cout << e.what() << std::endl;
     return 1;
