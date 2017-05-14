@@ -26,6 +26,11 @@
 namespace wampcc
 {
 
+logger debug_logger()
+{
+  return logger::stdlog(std::cout, -1, true);
+}
+
 
 struct socket_listener
 {
