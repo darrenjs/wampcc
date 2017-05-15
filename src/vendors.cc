@@ -5,7 +5,7 @@
 #undef HAVE_SOME_VENDOR
 
 #if defined(HAVE_JANSSON) && HAVE_JANSSON == 1
-#include "vendor_jansson.cc"
+#include "vendor_jansson.h"
 #define HAVE_SOME_VENDOR 1
 #endif
 
