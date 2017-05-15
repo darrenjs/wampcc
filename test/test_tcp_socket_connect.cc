@@ -6,6 +6,7 @@
  */
 
 #include "test_common.h"
+#include "mini_test.h"
 
 #include "wampcc/tcp_socket.h"
 #include "wampcc/io_loop.h"
@@ -15,27 +16,29 @@
 using namespace wampcc;
 using namespace std;
 
+int global_port;
+int global_loops = 50;
 
 void test_unused_socket()
 {
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
-  tcp_socket sock( the_kernel.get() );
+  tcp_socket sock(the_kernel.get());
 }
 
 void test_canonical_connect(int port)
 {
-  cout << "---------- test_canonical_connect ----------\n";
+  TSTART();
+
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   {
-    tcp_socket sock( the_kernel.get() );
+    tcp_socket sock(the_kernel.get());
 
     auto fut = sock.connect("127.0.0.1", port);
 
     std::future_status status = fut.wait_for(std::chrono::milliseconds(100));
 
-    if (status != std::future_status::ready)
-    {
+    if (status != std::future_status::ready) {
       cout << "result not ready ... waiting\n";
       fut.wait();
     }
@@ -52,16 +55,17 @@ void test_canonical_connect(int port)
 
 void test_future_and_socket_discarded(int port)
 {
-  cout << "---------- test_future_and_socket_discarded ----------\n";
+  TSTART();
+
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   {
-    tcp_socket sock( the_kernel.get() );
+    tcp_socket sock(the_kernel.get());
     auto fut = sock.connect("127.0.0.1", port);
   }
 
   {
-    tcp_socket sock( the_kernel.get() );
+    tcp_socket sock(the_kernel.get());
     sock.connect("127.0.0.1", port);
   }
 
@@ -80,11 +84,11 @@ void test_future_and_socket_discarded(int port)
 }
 
 
-
 void test_future_and_socket_discarded_v2(int port)
 {
-  cout << "---------- test_future_and_socket_discarded_v2 ----------\n";
-  unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
+  TSTART();
+
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
   {
     std::shared_ptr<tcp_socket> sp(new tcp_socket(the_kernel.get()));
     sp->connect("127.0.0.1", port);
@@ -94,9 +98,9 @@ void test_future_and_socket_discarded_v2(int port)
 
 void test_connect_and_delete(int port)
 {
-  cout << "---------- test_connect_and_delete(1)----------\n";
+  TSTART();
 
-  unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
   {
     tcp_socket my_socket_1(the_kernel.get());
     my_socket_1.connect("127.0.0.1", port);
@@ -106,7 +110,6 @@ void test_connect_and_delete(int port)
     my_socket_3.connect("127.0.0.1", port);
   }
 
-  cout << "---------- test_connect_and_delete(2) ----------\n";
   {
     std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
     sp_1->connect("127.0.0.1", port);
@@ -115,36 +118,31 @@ void test_connect_and_delete(int port)
     std::shared_ptr<tcp_socket> sp_3(new tcp_socket(the_kernel.get()));
     sp_3->connect("127.0.0.1", port);
   }
-
 }
-
-
-
 
 
 void test_connect_read_close(int port)
 {
-  cout << "---------- test_connect_read_close ----------\n";
+  TSTART();
 
-  unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   socket_listener my_listener;
 
   {
     std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
     sp_1->connect("127.0.0.1", port).wait();
-    my_listener.start_listening( sp_1 );
+    my_listener.start_listening(sp_1);
     sp_1->close();
   }
-
 }
 
 
 void test_connect_then_io_stop(int port)
 {
-  cout << "---------- " << __FUNCTION__ << " ----------\n";
+  TSTART();
 
-  unique_ptr<kernel> the_kernel( new kernel({}, logger::nolog() ) );
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
 
   socket_listener my_listener;
 
@@ -152,84 +150,131 @@ void test_connect_then_io_stop(int port)
     std::shared_ptr<tcp_socket> sp_1(new tcp_socket(the_kernel.get()));
     auto fut = sp_1->connect("127.0.0.1", port);
     fut.wait();
-    my_listener.start_listening( sp_1 );
+    my_listener.start_listening(sp_1);
     the_kernel->get_io()->sync_stop();
 
     // deletion of the socket will proceed fine, because completion of the IO
     // loop implies all sockets have been closed.
     sp_1.reset();
   }
+}
 
+
+TEST_CASE("test_canonical_connect")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_canonical_connect(port);
+}
+
+TEST_CASE("test_canonical_connect_bulk")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; ++i)
+    test_canonical_connect(port);
+}
+
+TEST_CASE("test_connect_then_io_stop")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_connect_then_io_stop(port);
+}
+
+TEST_CASE("test_connect_then_io_stop_bulk")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; ++i)
+    test_connect_then_io_stop(port);
+}
+
+
+TEST_CASE("test_future_and_socket_discarded")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_future_and_socket_discarded(port);
+}
+
+TEST_CASE("test_future_and_socket_discarded_bulkd")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; ++i)
+    test_future_and_socket_discarded(port);
+}
+
+TEST_CASE("test_future_and_socket_discarded_v2")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_future_and_socket_discarded_v2(port);
+}
+
+TEST_CASE("test_future_and_socket_discarded_v2_bulks")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; ++i)
+    test_future_and_socket_discarded_v2(port);
+}
+
+TEST_CASE("test_connect_and_delete")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_connect_and_delete(port);
+}
+
+TEST_CASE("test_connect_and_delete_bulk")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; ++i)
+    test_connect_and_delete(port);
+}
+
+auto all_tests = [](int port) {
+  test_unused_socket();
+  test_canonical_connect(port);
+  test_connect_then_io_stop(port);
+  test_future_and_socket_discarded(port);
+  test_future_and_socket_discarded_v2(port);
+  test_connect_and_delete(port);
+  test_connect_read_close(port);
+};
+
+TEST_CASE("all_tests")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  all_tests(port);
+}
+
+TEST_CASE("all_tests_bulk")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  for (int i = 0; i < global_loops; ++i)
+    all_tests(port);
 }
 
 int main(int argc, char** argv)
 {
-  int starting_port_number = 23100;
-  int port;
+  try {
+    global_port = 25000;
+    global_loops = 500;
 
-  if (argc>1)
-    starting_port_number = atoi(argv[1]);
+    if (argc > 1)
+      global_port = atoi(argv[1]);
 
-  auto all_tests = [](int port)
-  {
-    test_unused_socket();
-    test_canonical_connect(port);
-    test_connect_then_io_stop(port);
-    test_future_and_socket_discarded(port);
-    test_future_and_socket_discarded_v2(port);
-    test_connect_and_delete(port);
-    test_connect_read_close(port);
-  };
+    int result = minitest::run(argc, argv);
 
-  {
-    internal_server iserver;
-    port = iserver.start(starting_port_number++);
-    all_tests(port);
+    return (result < 0xFF ? result : 0xFF);
+  } catch (std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return 1;
   }
-
-
-  {
-    internal_server iserver;
-    port = iserver.start(starting_port_number++);
-
-    for (int i = 0; i < 500; i++)
-      all_tests(port);
-  }
-
-
-  {
-    internal_server iserver;
-    port = iserver.start(starting_port_number++);
-    for (int i = 0; i < 2000; ++i)
-      test_canonical_connect(port);
-  }
-
-  {
-    internal_server iserver;
-    port = iserver.start(starting_port_number++);
-    for (int i = 0; i < 1000; ++i)
-      test_connect_then_io_stop(port);
-  }
-  {
-    internal_server iserver;
-    port = iserver.start(starting_port_number++);
-    for (int i = 0; i < 2000; ++i)
-      test_future_and_socket_discarded(port);
-  }
-  {
-    internal_server iserver;
-    port = iserver.start(starting_port_number++);
-    for (int i = 0; i < 2000; ++i)
-      test_future_and_socket_discarded_v2(port);
-  }
-  {
-    internal_server iserver;
-    port = iserver.start(starting_port_number++);
-    for (int i = 0; i < 2000; ++i)
-      test_connect_and_delete(port);
-  }
-
-  cout << "tests complete\n";
-
-  return 0;
 }
