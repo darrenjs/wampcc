@@ -15,8 +15,10 @@
 #include <vector>
 #include <memory>
 
-#if __cplusplus < 201103L
-#error "C++11 required"
+#ifndef _WIN32
+#  if __cplusplus < 201103L
+#    error "C++11 required"
+#  endif
 #endif
 
 #include <type_traits>

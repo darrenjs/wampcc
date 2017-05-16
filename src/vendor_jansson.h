@@ -5,9 +5,9 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include "jansson.h"
-
 #include "wampcc/json.h"
+
+#include "jansson.h" // place after json.h, else MSVC++ complains
 
 #include <string>
 #include <sstream>

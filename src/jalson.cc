@@ -20,8 +20,8 @@ namespace internals {
   {
     if  (details.type == e_signed) return true;
 
-    if ((details.type == e_unsigned)   // 0----------SMAX--------UMAX
-        and
+    // 0----------SMAX--------UMAX
+    if ((details.type == e_unsigned) &&
         (details.data.uint <= (json_uint_t)std::numeric_limits<json_int_t>::max() )) return true;
 
     return false;
@@ -31,8 +31,7 @@ namespace internals {
   {
     if  (details.type == e_unsigned) return true;
 
-    if ((details.type == e_signed)
-        and
+    if ((details.type == e_signed) &&
         (details.data.sint >= 0)) return true;
 
     return false;
