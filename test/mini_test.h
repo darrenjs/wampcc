@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2017 Darren Smith <wampcc@darrenjs.net>
  *
- * Jalson is free software; you can redistribute it and/or modify
- * it under the terms of the MIT license. See LICENSE for details.
+ * minitest is free software; you can redistribute it and/or modify it under the
+ * terms of the MIT license. See LICENSE for details.
  */
 
 /* minitest is a simple test framework. Aim is to be quick to compile, has only
@@ -10,11 +10,15 @@
  * can be replaced by catch.hpp for when power of catch.hpp is needed.
  */
 
+// Version: 17/05/17
+
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include <map>
 
-namespace minitest {
+namespace minitest
+{
 
 const char* colour_none(int bold = 0) { return bold ? "\033[1m" : "\033[0m"; }
 
@@ -58,18 +62,20 @@ void raise_error(const char* msg, const char* file, int line);
 #define INFO(X) std::cout << X << std::endl
 
 #define CAPTURE(X)                                                             \
-  std::cout << minitest::colour_cyan() << #X << ":" << X << minitest::colour_none() << std::endl
+  std::cout << minitest::colour_cyan() << #X << ":" << X                       \
+            << minitest::colour_none() << std::endl
 
 #define REQUIRE(X)                                                             \
   do {                                                                         \
     bool b(X);                                                                 \
     if (!b) {                                                                  \
-      raise_error("REQUIRE( " #X " )", __FILE__, __LINE__);                    \
-      throw test_exception();                                                  \
+      minitest::raise_error("REQUIRE( " #X " )", __FILE__, __LINE__);          \
+      throw minitest::test_exception();                                        \
     }                                                                          \
   } while (false)
 
 std::vector<test_case*> global_test_reg;
+std::map<std::string, test_case*> global_test_map;
 
 enum class outcome { fail, pass };
 
@@ -110,14 +116,20 @@ struct test_result
 class test_case
 {
 public:
-  test_case(std::string file, int line)
-    : m_has_failed(false), m_file(file), m_line(line)
+  test_case(std::string label, std::string file, int line)
+    : m_has_failed(false), m_label(label), m_file(file), m_line(line)
   {
     global_test_reg.push_back(this);
+
+    if (global_test_map.find(label) != end(global_test_map)) {
+      std::cout << "error, duplicate test_case '" << label << "'" << std::endl;
+      exit(1);
+    } else
+      global_test_map.insert({label, this});
   }
   virtual ~test_case() {}
   virtual void impl() = 0;
-  virtual const char* testname() const = 0;
+  const std::string& testname() const { return m_label; }
 
   void exception_caught(const char* err)
   {
@@ -164,6 +176,7 @@ public:
 
 private:
   bool m_has_failed;
+  std::string m_label;
   std::string m_file;
   int m_line;
 };
@@ -194,7 +207,7 @@ int run(int argc, char** argv)
   }
 
   banner();
-  std::cout << std::endl << "Results\n";
+  std::cout << std::endl << "Results" << std::endl;
   banner();
   std::cout << std::endl;
 
@@ -229,18 +242,17 @@ void raise_error(const char* err, const char* file, int line)
 
 #define MINITEST_NAME_LINE(name, line) MINITEST_CONCAT2(name, line)
 
-#define TEST_CASE_IMPL(label, file, line, token)                        \
-  void MINITEST_CONCAT(impl_, token)() /*forward*/;                     \
-  class token : public minitest::test_case                              \
-  {                                                                     \
-    public:                                                             \
-    token(std::string f, int l) : test_case(f, l){};                    \
-    void impl() { MINITEST_CONCAT(impl_, token)(); }                    \
-    const char* testname() const { return label; }                      \
-  };                                                                    \
-  static token MINITEST_CONCAT(my__, token)(file, line);                \
+#define TEST_CASE_IMPL(label, file, line, token)                               \
+  void MINITEST_CONCAT(impl_, token)() /*forward*/;                            \
+  class token : public minitest::test_case                                     \
+  {                                                                            \
+  public:                                                                      \
+    token(std::string l, std::string f, int n) : test_case(l, f, n){};         \
+    void impl() { MINITEST_CONCAT(impl_, token)(); }                           \
+  };                                                                           \
+  static token MINITEST_CONCAT(my__, token)(label, file, line);                \
   void MINITEST_CONCAT(impl_, token)()
 
-#define TEST_CASE(X)                                                    \
-  TEST_CASE_IMPL(X, __FILE__, __LINE__,                                 \
+#define TEST_CASE(X)                                                           \
+  TEST_CASE_IMPL(X, __FILE__, __LINE__,                                        \
                  MINITEST_NAME_LINE(minitest__, __LINE__))
