@@ -62,7 +62,7 @@ void raise_error(const char* msg, const char* file, int line);
 #define INFO(X) std::cout << X << std::endl
 
 #define CAPTURE(X)                                                             \
-  std::cout << minitest::colour_cyan() << #X << ":" << X                       \
+  std::cout << minitest::colour_cyan() << #X << ": " << X               \
             << minitest::colour_none() << std::endl
 
 #define REQUIRE(X)                                                             \

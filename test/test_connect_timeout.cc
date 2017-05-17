@@ -11,15 +11,13 @@
 #include "wampcc/rawsocket_protocol.h"
 #include "wampcc/tcp_socket.h"
 
+#include "mini_test.h"
+
 #include <iostream>
 
 using namespace wampcc;
 
-enum test_outcome
-{
-  e_expected,
-  e_unexpected
-};
+int global_loops = 100;
 
 /*
 
@@ -28,63 +26,63 @@ enum test_outcome
   telnet: Unable to connect to remote host: Network is unreachable
 
  */
-test_outcome unreachable_network()
+void unreachable_network()
 {
-  kernel the_kernel( {}, logger::nolog() );
+  kernel the_kernel({}, logger::nolog());
 
   std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
-  auto fut = sock->connect("255.255.255.255", /* IP selected to be unreachable */
-                               55555);
+  auto fut =
+      sock->connect("255.255.255.255", /* IP selected to be unreachable */
+                    55555);
 
   auto completed = fut.wait_for(std::chrono::milliseconds(200));
 
-  if (completed == std::future_status::ready)
-  {
-    if (sock->is_connected())
-      return e_unexpected;
+  REQUIRE(completed == std::future_status::ready);
 
-    // otherwise, close the socket
+  if (completed == std::future_status::ready) {
+    REQUIRE(sock->is_connected() == false);
     sock->close();
-    return e_expected;
   }
-
-  return e_unexpected;
 }
 
-
-
-test_outcome invalid_address()
+TEST_CASE("unreachable_network")
 {
-  kernel the_kernel( {}, logger::nolog() );
+  for (int i = 0; i < global_loops; i++)
+    unreachable_network();
+}
+
+void invalid_address()
+{
+  kernel the_kernel({}, logger::nolog());
 
   std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
   auto fut = sock->connect("0.42.42.42", /* Invalid argument */
-                               55555);
+                           55555);
 
   auto completed = fut.wait_for(std::chrono::milliseconds(50));
 
-  if (completed == std::future_status::ready)
-  {
-    if (sock->is_connected())
-      return e_unexpected;
+  REQUIRE(completed == std::future_status::ready);
 
-    // otherwise, close the socket
+  if (completed == std::future_status::ready) {
+    REQUIRE(sock->is_connected() == false);
     sock->close();
-    return e_expected;
   }
-
-  return e_unexpected;
 }
 
+TEST_CASE("invalid_address")
+{
+  for (int i = 0; i < global_loops; i++)
+    invalid_address();
+}
 
 /*
  Attempting to connect to 10.0.0.0 55555 will normally just hang
  */
-test_outcome timeout_for_unreachable_connect()
+void timeout_for_unreachable_connect()
 {
-  kernel the_kernel( {}, logger::nolog() );
+  kernel the_kernel({}, logger::nolog());
 
   std::unique_ptr<tcp_socket> sock(new tcp_socket(&the_kernel));
 
@@ -92,45 +90,28 @@ test_outcome timeout_for_unreachable_connect()
 
   auto completed = fut.wait_for(std::chrono::milliseconds(50));
 
-  if (completed == std::future_status::timeout)
-  {
-    sock->close();
-    return e_expected ;
-  }
+  REQUIRE(completed == std::future_status::timeout);
 
-  return e_unexpected;
+  if (completed == std::future_status::timeout) {
+    sock->close();
+  }
 }
 
-
-#define TEST( X )                                       \
-  {                                                     \
-  std::cout << "---------- " << #X << " ----------\n";   \
-  if ( X () != e_expected)                              \
-  {                                                     \
-    std::cout << "FAIL for:  " << #X << std::endl;      \
-    result = 1;                                        \
-  }                                                     \
-  }
-
+TEST_CASE("timeout_for_unreachable_connect")
+{
+  for (int i = 0; i < global_loops; i++)
+    timeout_for_unreachable_connect();
+}
 
 /* Note, these tests will only succeed if the system has access to a network. */
 
-int main()
+int main(int argc, char** argv)
 {
-  int result = 0;
-  int loops = 100;
-
-  for (int i =0; i < loops && !result; i++)
-    TEST( unreachable_network );
-
-  for (int i =0; i < loops && !result; i++)
-    TEST( invalid_address );
-
-  for (int i =0; i < loops && !result; i++)
-    TEST( timeout_for_unreachable_connect );
-
-
-  /* We let any uncaught exceptions (which are not expected) to terminate main,
-   * and cause test failure. */
-  return result;
+  try {
+    int result = minitest::run(argc, argv);
+    return (result < 0xFF ? result : 0xFF);
+  } catch (std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
 }

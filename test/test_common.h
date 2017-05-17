@@ -21,7 +21,11 @@
 
 #define TLOG(X) std::cout << X << std::endl
 
-#define TSTART() std::cout << "==== " << __FUNCTION__ << std::endl
+//#define TSTART() std::cout << "==> " << __PRETTY_FUNCTION__ << std::endl
+
+#ifndef TSTART
+# define TSTART() while(false){}
+#endif
 
 namespace wampcc
 {
