@@ -398,7 +398,7 @@ namespace wampcc {
       sent_auth,       //
 
       open,
-      closing_wait,    // server only
+      closing_wait,    // server & client
       closing,
       closed
     } m_state;
@@ -406,7 +406,7 @@ namespace wampcc {
 
     void change_state(state expected, state next);
     void change_state(state expecte1, state expecte2, state next);
-    void initiate_close(std::lock_guard<std::mutex>&);
+    void terminate(std::lock_guard<std::mutex>&);
     void transition_to_closed();
 
     void handle_HELLO(json_array& ja);
@@ -477,10 +477,11 @@ namespace wampcc {
 
     void drop_connection(std::string);
 
-    enum class t_drop_event {request, recv_abort, recv_goodbye, sock_eof};
-    static const char* to_string(t_drop_event v);
+    enum class close_event {local_request, recv_abort, recv_goodbye, sock_eof}; //rename, local_request
+    static const char* to_string(close_event v);
 
-    void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, t_drop_event reason = t_drop_event::request);
+    void schedule_terminate_on_timeout();
+    void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, close_event);
 
     bool user_cb_allowed() const { return m_state != state::closed; }
 

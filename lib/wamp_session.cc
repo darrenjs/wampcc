@@ -36,7 +36,6 @@ static bool is_in(T t, T v, Args... args) {
   return  t==v ||  is_in(t,args...);
 }
 
-
 namespace wampcc {
 
 static_assert(std::is_copy_constructible<wamp_args>::value, "is_copy_constructible<wamp_args>");
@@ -289,7 +288,7 @@ void wamp_session::io_on_read(char* src, size_t len)
       //   assert(false);  /* unexpected, we are on IO thread */
       // }
       std::lock_guard<std::mutex> guard(m_state_lock);
-      drop_connection_impl("peer_eof", guard, t_drop_event::sock_eof);
+      drop_connection_impl("peer_eof", guard, close_event::sock_eof);
     }
   }
   catch (...)
@@ -302,7 +301,7 @@ void wamp_session::io_on_read(char* src, size_t len)
 void wamp_session::io_on_error(uverr ec)
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  drop_connection_impl("peer_eof", guard, t_drop_event::sock_eof);
+  drop_connection_impl("peer_eof", guard, close_event::sock_eof);
 }
 
 
@@ -392,18 +391,18 @@ void wamp_session::change_state(state expected1, state expected2, state next)
   else
   {
     LOG_ERROR(m_log_prefix << "state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
-    drop_connection_impl(WAMP_ERROR_UNEXPECTED_STATE, guard);
+    drop_connection_impl(WAMP_ERROR_UNEXPECTED_STATE, guard, close_event::local_request);
   }
 }
 
-const char* wamp_session::to_string(t_drop_event v)
+const char* wamp_session::to_string(close_event v)
 {
   switch (v)
   {
-    case t_drop_event::request      : return "request";
-    case t_drop_event::recv_abort   : return "recv_abort";
-    case t_drop_event::recv_goodbye : return "recv_goodbye";
-    case t_drop_event::sock_eof     : return "sock_eof";
+    case close_event::local_request : return "local_request";
+    case close_event::recv_abort    : return "recv_abort";
+    case close_event::recv_goodbye  : return "recv_goodbye";
+    case close_event::sock_eof      : return "sock_eof";
   };
 
   return "unknown";
@@ -415,14 +414,15 @@ void wamp_session::process_inbound_abort(json_array &)
 
   std::lock_guard<std::mutex> guard(m_state_lock);
   drop_connection_impl("received ABORT from peer", guard,
-                       t_drop_event::recv_abort);
+                       close_event::recv_abort);
 }
 
 
 void wamp_session::process_inbound_goodbye(json_array &)
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  drop_connection_impl(WAMP_ERROR_GOODBYE_AND_OUT, guard, t_drop_event::recv_goodbye);
+
+  drop_connection_impl(WAMP_ERROR_GOODBYE_AND_OUT, guard, close_event::recv_goodbye);
 }
 
 
@@ -1791,6 +1791,12 @@ json_array wamp_session::build_abort_message(std::string reason)
 }
 
 
+void wamp_session::upgrade_protocol(std::unique_ptr<protocol>& new_proto)
+{
+  m_proto.swap(new_proto);
+}
+
+
 std::shared_future<void> wamp_session::close()
 {
   drop_connection(WAMP_ERROR_CLOSE_REALM);
@@ -1803,35 +1809,7 @@ void wamp_session::drop_connection(std::string reason)
   /* ANY thread */
 
   std::lock_guard<std::mutex> guard(m_state_lock);
-  drop_connection_impl(reason, guard);
-}
-
-
-/* Initiate the session close. The state mutex must be provided as an argument.
- * All this methods does it check existing state, and if not closed, request
- * actual closure on the event thread. */
-void wamp_session::initiate_close(std::lock_guard<std::mutex>&)
-{
-  /* ANY thread */
-
-  if (is_in(m_state, state::closing, state::closed))
-    return;
-
-  m_state = state::closing;
-  LOG_INFO(m_log_prefix << "closing");
-
-  try { m_socket->close(); } catch (...){};
-
-  // TODO: what if the EV thread is closed? Have the EV to throw an exception to
-  // detect this.
-  std::shared_ptr<wamp_session> sp = shared_from_this();
-  m_kernel->get_event_loop()->dispatch([sp](){ sp->transition_to_closed(); });
-}
-
-
-void wamp_session::upgrade_protocol(std::unique_ptr<protocol>& new_proto)
-{
-  m_proto.swap(new_proto);
+  drop_connection_impl(reason, guard, close_event::local_request);
 }
 
 
@@ -1848,7 +1826,7 @@ void wamp_session::fast_close()
     {
       std::lock_guard<std::mutex> guard(m_state_lock);
       if (m_state != state::closed)
-        initiate_close(guard);
+        terminate(guard);
       else
         return;
     }
@@ -1894,30 +1872,60 @@ void wamp_session::transition_to_closed()
   m_has_closed.set_value();
 }
 
+
+void wamp_session::schedule_terminate_on_timeout()
+{
+  /* Schedule a timeout so that if graceful closure has not been achieved within
+   * a reasonable period then we forcefully terminate the session. */
+  std::weak_ptr<wamp_session> wp = shared_from_this();
+
+  event_loop::timer_fn fn = [wp]()
+    {
+      if (auto sp = wp.lock()) {
+        std::lock_guard<std::mutex> guard(sp->m_state_lock);
+        if (sp->m_state == state::closing_wait) {
+          logger & __logger = sp->__logger;
+          LOG_WARN(sp->m_log_prefix << "timeout waiting for peer");
+          sp->terminate(guard);
+        }
+      }
+      return std::chrono::milliseconds(0);
+    };
+
+  m_kernel->get_event_loop()->dispatch(
+    std::chrono::milliseconds(500),
+    std::move(fn));
+}
+
+
 void wamp_session::drop_connection_impl(std::string reason,
                                         std::lock_guard<std::mutex>& guard,
-                                        t_drop_event event)
+                                        close_event event)
 {
   /* ANY thread */
 
   if (is_in(m_state, state::closed, state::closing))
     return;
 
-  // std::cout << "reason: " << reason << ", enum: " << to_string(event) << std::endl;
+  /* If we are dropping the connection as a result of a socket eof, then nothing
+   * else to do other than initiate session close. */
+  if (event==close_event::sock_eof)
+    return terminate(guard);
 
-  if (event==t_drop_event::sock_eof)
-    return initiate_close(guard);
+  auto const cur_state = m_state;
 
   if (session_mode() == mode::server)
   {
-    if (m_state == state::closing_wait)
+    /* Server-side closure management. */
+
+    if (cur_state == state::closing_wait)
       return;
 
-    if (event != t_drop_event::recv_abort)
+    if (event != close_event::recv_abort)
     {
       try
       {
-        if (m_state == state::open)
+        if (cur_state == state::open)
           m_proto->send_msg(build_goodbye_message(reason));
         else
           m_proto->send_msg(build_abort_message(reason));
@@ -1926,46 +1934,59 @@ void wamp_session::drop_connection_impl(std::string reason,
     }
 
     m_state = state::closing_wait;
-
-    // schedule a timeout so that if the peer has not closed the connection
-    // within a reasonable time period, we force close it from server side
-    std::weak_ptr<wamp_session> wp = shared_from_this();
-    event_loop::timer_fn fn = [wp]()
-      {
-        if (auto sp = wp.lock())
-        {
-          std::lock_guard<std::mutex> guard(sp->m_state_lock);
-          if (sp->m_state == state::closing_wait)
-          {
-            logger & __logger = sp->__logger;
-            LOG_WARN(sp->m_log_prefix << "timeout waiting for peer");
-            sp->initiate_close(guard);
-          }
-        }
-        return std::chrono::milliseconds(0);
-      };
-    m_kernel->get_event_loop()->dispatch(
-      std::chrono::milliseconds(500),
-      std::move(fn));
+    schedule_terminate_on_timeout();
   }
   else
   {
-    /* client side - make effort to be first to initiate socket close */
+    /* Client-side closure management.  Attempt graceful closure, with timeout
+     * if peer does not cooperate. Also make effort to be first to initiate
+     * socket close. */
 
-    if (event != t_drop_event::recv_abort)
+    if (event == close_event::local_request)
     {
-      try
-      {
-        if (m_state == state::open)
-          m_proto->send_msg(build_goodbye_message(reason));
-        else
-          m_proto->send_msg(build_abort_message(reason));
-      }
-      catch (...){}
+      m_state = state::closing_wait;  // next state
+      schedule_terminate_on_timeout();
+
+      if (cur_state == state::open)
+         m_proto->send_msg(build_goodbye_message(reason));
+       else
+         m_proto->send_msg(build_abort_message(reason));
+
+      return;
     }
 
-    initiate_close(guard);
+    if (event == close_event::recv_goodbye)
+    {
+      if (cur_state == state::open)
+        try {
+          m_proto->send_msg(build_goodbye_message(reason));
+        } catch (...) { }
+    }
+
+    terminate(guard);
   }
 }
+
+/* Initiate the session termination, including socket closure. The state mutex
+ * must be provided as an argument.  This method checks existing state, and if
+ * not closed, request actual closure on the event thread. */
+void wamp_session::terminate(std::lock_guard<std::mutex>&)
+{
+  /* ANY thread */
+
+  if (is_in(m_state, state::closing, state::closed))
+    return;
+
+  m_state = state::closing;
+  LOG_INFO(m_log_prefix << "closing");
+
+  try { m_socket->close(); } catch (...){};
+
+  // TODO: what if the EV thread is closed? Have the EV to throw an exception to
+  // detect this.
+  std::shared_ptr<wamp_session> sp = shared_from_this();
+  m_kernel->get_event_loop()->dispatch([sp](){ sp->transition_to_closed(); });
+}
+
 
 } // namespace wampcc
