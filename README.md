@@ -142,3 +142,38 @@ built and installed by running the usual sequence of make commands:
 
     make
     make install
+
+Windows build
+-------------
+
+Building on Windows is supported via cmake.  A CMakeLists.txt file is present
+under `cmake/` folder.
+
+Here is an example of configuring the Windows build using cmake and cygwin.
+
+```shell
+# Path where Visual Studio solution files will be generated
+BUILDDIR="C:\build\jalson"
+
+# Path to the CMakeLists.txt file in jalson source tree
+SOURCEDIR="C:\source\jalson\cmake"
+
+# Path to cmake executable
+CMAKE="C:\Program Files\CMake\bin\cmake.exe"
+
+# Create the build directory
+mkdir -p "$BUILDDIR"
+
+# Change into build directory, so that cmake will create files there
+cd "$BUILDDIR"
+
+# Convert the CMAKE path into a format suitable for cygwin
+CMAKE_CYG=`cygpath.exe -u "$CMAKE"`
+
+# Check we can invoke cmake
+"$CMAKE_CYG" --version
+
+# Invoke cmake to generate build files (Visual Studio solution). Files will
+# appear in current working directory.
+"$CMAKE_CYG" -DJANSSON_INC_DIR="C:\jansson-2.7\include" -DJANSSON_LIB_DIR="C:\jansson-2.7\lib"  "$SOURCEDIR"
+```
