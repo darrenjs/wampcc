@@ -100,7 +100,7 @@ static T string_to_unsigned(const char* p, str_to_num_error* errptr)
   str_to_num_error err = eSuccess;
   register unsigned char c;
 
-  T MAX = std::numeric_limits< T >::max();
+  T MAX = (std::numeric_limits< T >::max)();
   T MAXDIV10 = MAX/10;
 
   if (p==0 || *p=='\0' || (*p=='0' && *(p+1)!='\0'))

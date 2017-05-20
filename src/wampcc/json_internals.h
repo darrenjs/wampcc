@@ -25,10 +25,10 @@ namespace internals
   template<typename V, typename U>
   bool is_integer(U u)
   {
-    const V v_min( std::numeric_limits<V>::min());
-    const V v_max( std::numeric_limits<V>::max());
-    const U u_min( std::numeric_limits<U>::min());
-    const U u_max( std::numeric_limits<U>::max());
+    const V v_min( (std::numeric_limits<V>::min)() );
+    const V v_max( (std::numeric_limits<V>::max)() );
+    const U u_min( (std::numeric_limits<U>::min)() );
+    const U u_max( (std::numeric_limits<U>::max)() );
 
     return ((long long) u_min >= (long long) v_min || u >= (U) v_min)
       && ( (unsigned long long) u_max <= (unsigned long long) v_max || u <= (U) v_max);

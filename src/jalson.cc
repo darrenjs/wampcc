@@ -22,7 +22,7 @@ namespace internals {
 
     // 0----------SMAX--------UMAX
     if ((details.type == e_unsigned) &&
-        (details.data.uint <= (json_uint_t)std::numeric_limits<json_int_t>::max() )) return true;
+        (details.data.uint <= (json_uint_t) (std::numeric_limits<json_int_t>::max)() )) return true;
 
     return false;
   }

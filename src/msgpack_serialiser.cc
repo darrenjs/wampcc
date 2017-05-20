@@ -36,7 +36,7 @@ std::unique_ptr<region, void (*)(region*)> msgpack_encoder::encode(
 
 void msgpack_encoder::pack_string(const std::string& s)
 {
-  if (s.size() > std::numeric_limits<t_msgpack_size>::max())
+  if (s.size() > (std::numeric_limits<t_msgpack_size>::max)())
     throw msgpack_error("string exceeds msgpack max size");
 
 #ifdef WAMPCC_TRACE_MSGPACK
@@ -65,7 +65,7 @@ void msgpack_encoder::pack_object(const json_object& jobject)
 
 void msgpack_encoder::pack_array(const json_array& ja)
 {
-  if (ja.size() > std::numeric_limits<t_msgpack_size>::max())
+  if (ja.size() > (std::numeric_limits<t_msgpack_size>::max)())
     throw msgpack_error("json_array exceeds msgpack max size");
 
 #ifdef WAMPCC_TRACE_MSGPACK
@@ -124,7 +124,7 @@ void msgpack_encoder::pack_value(const json_value& jv)
 #ifdef WAMPCC_TRACE_MSGPACK
         std::cout << "pack_long_long" << std::endl;
 #endif
-        m_packer.pack_int(jv.as_int());
+        m_packer.pack_int(jv.as_int());  // TODO: raises warning on MSVC++
       } else {
 #ifdef WAMPCC_TRACE_MSGPACK
         std::cout << "pack_unsigned_long_long" << std::endl;
