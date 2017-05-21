@@ -1,4 +1,8 @@
 
+# Latest
+
+  * support build on Windows, thanks to @petten for cmakefiles & ideas
+
 # 16/04/17 version 1.1.1
 
   * bug fix: incorrect array index during invocation processig
