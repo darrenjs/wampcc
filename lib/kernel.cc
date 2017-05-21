@@ -10,15 +10,11 @@
 #include "wampcc/io_loop.h"
 #include "wampcc/event_loop.h"
 #include "wampcc/ssl.h"
+#include "wampcc/platform.h"
+
 #include "config.h"
 
 #include <iostream>
-
-#include <unistd.h>
-#include <sys/syscall.h> /* For SYS_xxx definitions */
-#include <sys/time.h>
-#include <stdio.h>
-
 
 namespace wampcc
 {
@@ -34,9 +30,7 @@ config::config()
   : socket_buffer_max_size_bytes(65536), socket_max_pending_write_bytes(65536),
     ssl(false)
 {
-
 }
-
 
 
 /* Constructor */
@@ -98,25 +92,25 @@ private:
 };
 
 
-logger logger::stdlog(std::ostream& ostr, int level_mask, bool inc_src)
+logger logger::stream(std::ostream& ostr, int level_mask, bool inc_src)
 {
   auto sp = std::make_shared<stdout_logger>(ostr, inc_src);
 
   logger my_logger;
 
   my_logger.wants_level =
-      [level_mask](logger::Level l) { return l bitand level_mask; };
+      [level_mask](logger::Level l) { return l & level_mask; };
 
   my_logger.write = [level_mask, sp](logger::Level l, const std::string& msg,
                                      const char* file, int ln) {
-    if (l bitand level_mask)
+    if (l & level_mask)
       sp->write(l, msg, file, ln);
   };
 
   return my_logger;
 }
 
-logger logger::stdout() { return stdlog(std::cout, levels_upto(eInfo), true); }
+logger logger::console() { return stream(std::cout, levels_upto(eInfo), true); }
 
 
 static const char* level_str(logger::Level l)
@@ -139,26 +133,12 @@ static const char* level_str(logger::Level l)
 void stdout_logger::stdout_logger::write(logger::Level l, const std::string& s,
                                          const char* file, int ln)
 {
-  int tid = syscall(SYS_gettid);
+  int tid = wampcc::thread_id();
 
-  // get current time
-  timeval now;
-  struct timezone* const tz = NULL; /* not used on Linux */
-  gettimeofday(&now, tz);
-
-  // break time down into parts
-  struct tm parts;
-  localtime_r(&now.tv_sec, &parts);
-
-  // build timestamp
-  char timestamp[30];
-  snprintf(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06lu ",
-           parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
-           parts.tm_min, parts.tm_sec, now.tv_usec);
-
+  std::string timestamp = wampcc::local_timestamp();
 
   std::lock_guard<std::mutex> lock(m_mutex);
-  m_stream << timestamp;
+  m_stream << std::move(timestamp);
   m_stream << tid << " ";
   m_stream << level_str(l) << " ";
   m_stream << s;

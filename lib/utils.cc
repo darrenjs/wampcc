@@ -7,12 +7,16 @@
 
 #include "wampcc/utils.h"
 #include "wampcc/log_macros.h"
+#include "wampcc/platform.h"
 
 #include <openssl/hmac.h> // crypto functions
-#include <sys/time.h>
-#include <sys/utsname.h>
 #include <string.h>
+
+#include <assert.h>
+
+#ifndef _WIN32
 #include <regex.h>
+#endif
 
 namespace wampcc {
 
@@ -157,41 +161,48 @@ void log_exception(logger & __logger, const char* callsite)
 }
 
 
+// TODO: test on Windows
 std::string iso8601_utc_timestamp()
 {
-  timeval epoch;
-  gettimeofday(&epoch, nullptr);
+  wampcc::time_val tv = wampcc::time_now();
 
+  char buf[64];
+  assert(sizeof(buf) > sizeof "2017-05-21T07:51:17.000Z");
+
+#ifndef _WIN32
   struct tm _tm;
-  gmtime_r(&epoch.tv_sec, &_tm);
+  gmtime_r(&tv.sec, &_tm);
+  strftime(buf, sizeof(buf)-1, "%FT%T", &_tm);
+#else
+  time_t tnow = tv.sec;
+  strftime(buf, sizeof buf-1, "%FT%T", gmtime(&tnow));
+#endif
 
-  // YYYY-MM-DDThh:mm:ss.sssZ
-  char temp[32];
-  memset(temp, 0, sizeof(temp));
-
-  strftime(temp, sizeof(temp)-1, "%FT%T", &_tm);
-  sprintf(&temp[19], ".%03dZ", (int) epoch.tv_usec/1000);
-  temp[24]='\0';
-
-  return temp;
+  // add on the usec
+  sprintf(&buf[19], ".%03dZ", (int) tv.usec/1000);
+  buf[24]='\0';
+  return buf;
 }
 
 
 std::string random_ascii_string(const size_t len,
                                 unsigned int seed)
 {
-  char temp [len+1];
+  std::string temp;
+  temp.reserve(len);
 
   std::mt19937 engine(seed);
   std::uniform_int_distribution<> distr('!', '~'); // asci printables
 
-  for (auto & x : temp) x = distr(engine);
-  temp[len] = '\0';
+  for (auto & x : temp)
+    x = distr(engine);
 
+  temp[len] = '\0';
   return temp;
 }
 
 
+#ifndef _WIN32
 struct regex_impl
 {
   regex_t m_re;
@@ -213,6 +224,13 @@ struct regex_impl
     return (::regexec(&m_re, s, (size_t) 0, NULL, 0) == 0);
   }
 };
+#else
+struct regex_impl
+{
+  /* TODO: provide Windows implementation */
+  bool matches(const char * s) const {  return true;  }
+};
+#endif
 
 uri_regex::uri_regex()
   : m_impl(new regex_impl)
@@ -253,12 +271,12 @@ std::list<std::string> tokenize(const char* src,
 {
   std::list<std::string> tokens;
 
-  if (src and *src != '\0')
+  if (src && *src != '\0')
     while( true )  {
       const char* d = strchr(src, delim);
       size_t len = (d)? d-src : strlen(src);
 
-      if (len or want_empty_tokens)
+      if (len || want_empty_tokens)
         tokens.push_back( { src, len } ); // capture token
 
       if (d) src += len+1; else break;
@@ -270,18 +288,8 @@ std::list<std::string> tokenize(const char* src,
 bool case_insensitive_same(const std::string &lhs,
                            const std::string &rhs)
 {
+  /* TODO: remove this check, should not be needed */
   return strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
-}
-
-
-/** Return local hostname, or throw upon failure. */
-std::string hostname()
-{
-  struct utsname buffer;
-  if (uname(&buffer) != 0)
-    throw std::runtime_error("uname failed");
-
-  return buffer.nodename;
 }
 
 } // namespace wampcc

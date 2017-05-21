@@ -12,16 +12,16 @@
 
 #include <sstream>
 
-#define LOGIMPL( X, LEVEL )                                           \
-  do {                                                                \
-    if ( __logger.wants_level and                                        \
-         __logger.write and                                              \
-         __logger.wants_level(LEVEL) )                                   \
-    {                                                                 \
-      std::ostringstream __xx_oss;                                    \
-      __xx_oss <<  X ;                                                \
-      __logger.write(LEVEL, __xx_oss.str(), __FILE__,__LINE__  ) ;       \
-    }                                                                 \
+#define LOGIMPL( X, LEVEL )                                             \
+  do {                                                                  \
+    if ( __logger.wants_level &&                                        \
+         __logger.write &&                                              \
+         __logger.wants_level(LEVEL) )                                  \
+    {                                                                   \
+      std::ostringstream __xx_oss;                                      \
+      __xx_oss <<  X ;                                                  \
+      __logger.write(LEVEL, __xx_oss.str(), __FILE__,__LINE__  ) ;      \
+    }                                                                   \
   } while (0)
 
 #define LOG_INFO( X )                           \

@@ -39,8 +39,9 @@ struct write_req
   uv_write_t req;
   uv_buf_t* bufs;
   size_t nbufs;
-
-  write_req(size_t n) : bufs(new uv_buf_t[n]), nbufs(n) {}
+  size_t total_bytes;
+  write_req(size_t n, size_t total)
+    : bufs(new uv_buf_t[n]), nbufs(n), total_bytes(total) {}
 
   ~write_req()
   {
@@ -101,7 +102,7 @@ tcp_socket::~tcp_socket()
 
       try {
         m_kernel->get_io()->push_fn([this]() { this->begin_close(); });
-      } catch (io_loop_closed& e) {
+      } catch (io_loop_closed&) {
         io_loop_ended = true;
       }
     }
@@ -193,6 +194,8 @@ void tcp_socket::begin_close(bool no_linger)
 
   if (m_uv_tcp) {
 
+// TODO: support Windows
+#ifndef _WIN32
     uv_os_fd_t fd;
     if (no_linger && (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)) {
       struct linger so_linger;
@@ -200,6 +203,7 @@ void tcp_socket::begin_close(bool no_linger)
       so_linger.l_linger = 0;
       setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
     }
+#endif
 
 
     uv_close((uv_handle_t*)m_uv_tcp, [](uv_handle_t* h) {
@@ -247,13 +251,17 @@ void tcp_socket::close_impl()
 }
 
 
-std::pair<bool, int> tcp_socket::fd() const
+std::pair<bool, std::string> tcp_socket::fd_info() const
 {
   uv_os_fd_t fd;
-  if (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)
-    return {true, fd};
-  else
-    return {false, -1};
+  if (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0) {
+    std::ostringstream oss;
+    oss << fd;
+    return {true, oss.str()};
+  }
+  else {
+    return {false, ""};
+  }
 }
 
 
@@ -469,7 +477,7 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
     }
 
     // build the request
-    write_req* wr = new write_req(bufs.size());
+    write_req* wr = new write_req(bufs.size(), bytes_to_send);
     wr->req.data = this;
     for (size_t i = 0; i < bufs.size(); i++)
       wr->bufs[i] = bufs[i];
@@ -518,7 +526,7 @@ void tcp_socket::do_write()
     }
 
     // build the request
-    write_req* wr = new write_req(copy.size());
+    write_req* wr = new write_req(copy.size(), bytes_to_send);
     wr->req.data = this;
     for (size_t i = 0; i < copy.size(); i++)
       wr->bufs[i] = copy[i];
@@ -551,10 +559,11 @@ void tcp_socket::on_write_cb(uv_write_t* req, int status)
 
   try {
     if (status == 0) {
-      size_t total = 0;
+      size_t total =  wr->total_bytes;
+      /*
       for (size_t i = 0; i < req->nbufs; i++)
         total += req->bufsml[i].len;
-
+      */
       m_bytes_written += total;
       if (m_bytes_pending_write > total)
         m_bytes_pending_write -= total;

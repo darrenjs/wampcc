@@ -18,8 +18,16 @@
 #include <assert.h>
 
 #include <openssl/sha.h>
-#include <arpa/inet.h>
 
+#define bswap_64(x) (                           \
+    (((x) & 0xff00000000000000ull) >> 56) |     \
+    (((x) & 0x00ff000000000000ull) >> 40) |     \
+    (((x) & 0x0000ff0000000000ull) >> 24) |     \
+    (((x) & 0x000000ff00000000ull) >> 8) |      \
+    (((x) & 0x00000000ff000000ull) << 8) |      \
+    (((x) & 0x0000000000ff0000ull) << 24) |     \
+    (((x) & 0x000000000000ff00ull) << 40) |     \
+    (((x) & 0x00000000000000ffull) << 56))
 
 namespace wampcc
 {
@@ -128,7 +136,7 @@ struct frame_builder
     else
     {
       uint64_converter temp;
-      temp.i = __bswap_64(payload_len);
+      temp.i = bswap_64(payload_len);
       m_image[1] = (unsigned char)127;
       for (int i = 0; i<8; ++i) m_image[2+i]=temp.m[i];
       m_header_len = 10;
@@ -210,7 +218,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
         rd.advance(consumed);
 
-        if (not m_http_parser->good())
+        if (m_http_parser->good() == false)
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
         if (m_http_parser->complete() )
@@ -283,7 +291,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 
           uint64_t raw_length;
           memcpy(&raw_length, &rd[2], 8);
-          payload_len = __bswap_64(raw_length);
+          payload_len = bswap_64(raw_length);
 
         }
         frame_len += payload_len;
@@ -338,7 +346,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
         rd.advance(consumed);
 
-        if (not m_http_parser->good())
+        if (m_http_parser->good() == false)
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
         if (m_http_parser->complete())

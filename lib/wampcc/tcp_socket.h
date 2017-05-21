@@ -19,7 +19,6 @@
 #include <vector>
 
 #include <string.h>
-#include <unistd.h>
 
 namespace wampcc
 {
@@ -117,10 +116,10 @@ public:
    * associated with an underlying socket file descriptor (until closed). */
   bool is_initialised() const;
 
-  /** Return the underlying file description, if one is currently associated
-   * with this tcp_socket. The first member of the pair indicates if the fd is
-   * available. */
-  std::pair<bool, int> fd() const;
+  /** Return description of the underlying file description, if one is currently
+   * associated with this tcp_socket. The first member of the pair indicates if
+   * the fd is available. */
+  std::pair<bool, std::string> fd_info() const;
 
   size_t bytes_read() const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }

@@ -17,7 +17,6 @@
 #include "wampcc/log_macros.h"
 #include "wampcc/protocol.h"
 
-#include <unistd.h>
 #include <string.h>
 
 namespace wampcc
@@ -275,7 +274,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
                                                std::move(uri));
     };
 
-    int fd = sock->fd().second;
+    auto fd = sock->fd_info().second;
 
     protocol_builder_fn builder_fn;
     builder_fn = [](tcp_socket* sock, protocol::t_msg_cb _msg_cb,

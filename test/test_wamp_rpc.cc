@@ -25,7 +25,7 @@ void test_rpc(int port, internal_server& server)
                                               invocation.args.args_dict);
                            });
 
-  unique_ptr<kernel> the_kernel(new kernel({}, logger::stdout()));
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::console()));
   auto session = establish_session(the_kernel, port);
   perform_realm_logon(session);
 
@@ -53,7 +53,7 @@ void test_call_non_existing_rpc(int port, internal_server& server)
 {
   cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  unique_ptr<kernel> the_kernel(new kernel({}, logger::stdout()));
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::console()));
   auto session = establish_session(the_kernel, port);
   perform_realm_logon(session);
 

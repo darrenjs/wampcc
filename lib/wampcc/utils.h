@@ -163,7 +163,7 @@ bool case_insensitive_same(const std::string &,
 
 inline char* skip_whitespace(char* str)
 {
-  while (std::isspace(*str)) ++str;
+  while (::isspace(*str)) ++str;
   return str;
 }
 

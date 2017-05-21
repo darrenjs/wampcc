@@ -21,7 +21,7 @@ fi
 
 
 # get jalson
-jalson_ver=1.0
+jalson_ver=1.2
 echo '***' fetching jalson $jalson_ver '***'
 echo
 test -f jalson-${jalson_ver}.tar.gz && rm -f jalson-${jalson_ver}.tar.gz

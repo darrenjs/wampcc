@@ -203,7 +203,7 @@ void pubsub_man::update_topic(const std::string& topic,
 
   json_array msg;
   msg.reserve(6);
-  msg.push_back( EVENT );
+  msg.push_back( msg_type::wamp_msg_event );
   msg.push_back( mt->subscription_id() );
   msg.push_back( mt->next_publication_id() );
   msg.push_back( std::move(options) );
@@ -290,7 +290,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 
   LOG_INFO("session #" << sptr->unique_id() << " subscribed to '"<< topic << "'");
 
-  json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
+  json_array msg({msg_type::wamp_msg_subscribed, request_id,mt->subscription_id()});
   sptr->send_msg(msg);
 
   /* for stateful topic must send initial snapshot (only if an image exists) */
@@ -313,7 +313,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
     event_options[KEY_SNAPSHOT] = 1;
     json_array snapshot_msg;
     snapshot_msg.reserve(5);
-    snapshot_msg.push_back( EVENT );
+    snapshot_msg.push_back( msg_type::wamp_msg_event );
     snapshot_msg.push_back( mt->subscription_id() );
     snapshot_msg.push_back( 0 ); // publication id
     snapshot_msg.push_back( std::move(event_options) );
@@ -339,7 +339,7 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
   {
     it->second->remove(sptr->handle());
 
-    json_array msg({ UNSUBSCRIBED, request_id });
+    json_array msg({msg_type::wamp_msg_unsubscribed, request_id });
     sptr->send_msg(msg);
   }
   else

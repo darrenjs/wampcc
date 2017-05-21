@@ -15,9 +15,7 @@
 #include <list>
 #include <iostream>
 
-#include <unistd.h>
 #include <string.h>
-#include <sys/time.h>
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
 
@@ -321,23 +319,6 @@ static void process_options(int argc, char** argv)
       if (not uri_check.is_strict_uri(i.c_str()))
         die("not strict uri: " + i);
   }
-}
-
-std::string get_timestamp()
-{
-
-  // get current time
-  timeval now;
-  struct timezone * const tz = NULL; /* not used on Linux */
-  gettimeofday(&now, tz);
-
-  struct tm _tm;
-  localtime_r(&now.tv_sec, &_tm);
-
-  std::ostringstream os;
-  os << _tm.tm_hour << ":" << _tm.tm_min << ":" << _tm.tm_sec;
-
-  return os.str();
 }
 
 

@@ -11,7 +11,7 @@
 #include <iostream> // TODO: delete me
 
 #define THROW_FOR_INVALID_FN( X ) \
-if (not m_observer. X) throw std::runtime_error("observer." #X " must be valid");
+if (false == m_observer. X) throw std::runtime_error("observer." #X " must be valid");
 
 namespace wampcc {
 
@@ -59,11 +59,12 @@ void data_model::publish(const json_array& patch,
 {
   /* caller must have locked m_model_topics_mutex */
 
-  for (auto & topic : m_model_topics)
+  for (auto & topic : m_model_topics) {
     try {
       topic->publish_update(patch, rich_event);
     }
     catch (...) { /* ignore exceptions */ }
+  }
 }
 
 //======================================================================

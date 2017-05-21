@@ -14,11 +14,9 @@
 
 #include <system_error>
 
-#include <unistd.h>
 #include <string.h>
 #include <assert.h>
 #include <iostream>
-
 
 namespace wampcc {
 
@@ -72,7 +70,9 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
 
   // prevent SIGPIPE from crashing application when socket writes are
   // interrupted
-  signal(SIGPIPE, SIG_IGN);
+#ifndef _WIN32
+  signal(SIGPIPE, SIG_IGN);  // TODO: add support for Windows
+#endif
 
   m_thread = std::thread([this, io_started_cb]() {
 
@@ -100,9 +100,7 @@ void io_loop::sync_stop()
   try {
     push_request(std::move(r));
   }
-  catch (io_loop_closed& e) {
-    /* ignore */
-  }
+  catch (io_loop_closed&) { /* ignore */  }
 
   if (m_thread.joinable())
     m_thread.join();

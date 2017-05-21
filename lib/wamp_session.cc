@@ -21,9 +21,9 @@
 #include <memory>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 
 #include <string.h>
-#include <unistd.h>
 #include <assert.h>
 
 #define MAX_HEARTBEATS_MISSED 3
@@ -314,11 +314,11 @@ void wamp_session::update_state_for_outbound(const json_array& msg)
 
   if (session_mode() == mode::server)
   {
-    if (message_type == CHALLENGE)
+    if (message_type == msg_type::wamp_msg_challenge)
     {
       change_state(state::recv_hello, state::sent_challenge);
     }
-    else if (message_type == WELCOME)
+    else if (message_type == msg_type::wamp_msg_welcome)
     {
       change_state(m_server_requires_auth?state::recv_auth:state::recv_hello, state::open);
     }
@@ -333,11 +333,11 @@ void wamp_session::update_state_for_outbound(const json_array& msg)
   }
   else
   {
-    if (message_type == HELLO)
+    if (message_type == msg_type::wamp_msg_hello)
     {
       change_state(state::init, state::sent_hello);
     }
-    else if (message_type == AUTHENTICATE)
+    else if (message_type == msg_type::wamp_msg_authenticate)
     {
       change_state(state::recv_challenge, state::sent_auth);
     }
@@ -442,21 +442,21 @@ void wamp_session::process_message(unsigned int message_type,
   {
     /* session state validation */
 
-    if (message_type == ABORT)
+    if (message_type == msg_type::wamp_msg_abort)
       return process_inbound_abort(ja);
 
-    if (message_type == GOODBYE)
+    if (message_type == msg_type::wamp_msg_goodbye)
       return process_inbound_goodbye( ja );
 
     if (session_mode() == mode::server)
     {
-      if (message_type == HELLO)
+      if (message_type == msg_type::wamp_msg_hello)
       {
         change_state(state::init, state::recv_hello);
         handle_HELLO(ja);
         return;
       }
-      else if (message_type == AUTHENTICATE)
+      else if (message_type == msg_type::wamp_msg_authenticate)
       {
         change_state(state::sent_challenge, state::recv_auth);
         handle_AUTHENTICATE(ja);
@@ -470,35 +470,35 @@ void wamp_session::process_message(unsigned int message_type,
 
       switch (message_type)
       {
-        case CALL :
+        case msg_type::wamp_msg_call :
           process_inbound_call(ja);
           return;
 
-        case YIELD :
+        case msg_type::wamp_msg_yield :
           process_inbound_yield(ja);
           return;
 
-        case PUBLISH :
+        case msg_type::wamp_msg_publish :
           process_inbound_publish(ja);
           return;
 
-        case SUBSCRIBE :
+        case msg_type::wamp_msg_subscribe :
           process_inbound_subscribe(ja);
           return;
 
-        case UNSUBSCRIBE :
+        case msg_type::wamp_msg_unsubscribe :
           process_inbound_unsubscribe(ja);
           return;
 
-        case REGISTER :
+        case msg_type::wamp_msg_register :
           process_inbound_register(ja);
           return;
 
-        case ERROR :
+        case msg_type::wamp_msg_error :
           process_inbound_error(ja);
           return;
 
-        case HEARTBEAT: return;
+        case msg_type::wamp_msg_heartbeat: return;
 
         default:
           std::ostringstream os;
@@ -508,13 +508,13 @@ void wamp_session::process_message(unsigned int message_type,
     }
     else
     {
-      if (message_type == CHALLENGE)
+      if (message_type == msg_type::wamp_msg_challenge)
       {
         change_state(state::sent_hello, state::recv_challenge);
         handle_CHALLENGE(ja);
         return;
       }
-      else if (message_type == WELCOME)
+      else if (message_type == msg_type::wamp_msg_welcome)
       {
         change_state(state::sent_auth, state::sent_hello, state::open);
         if (is_open())
@@ -523,41 +523,41 @@ void wamp_session::process_message(unsigned int message_type,
       }
       else
       {
-        if (not is_open())
+        if (!is_open())
           throw protocol_error("received message while session not open");
       }
 
       switch (message_type)
       {
-        case REGISTERED :
+        case msg_type::wamp_msg_registered :
           process_inbound_registered(ja);
           return;
 
-        case INVOCATION :
+        case msg_type::wamp_msg_invocation :
           process_inbound_invocation(ja);
           return;
 
-        case SUBSCRIBED :
+        case msg_type::wamp_msg_subscribed :
           process_inbound_subscribed(ja);
           return;
 
-        case UNSUBSCRIBED :
+        case msg_type::wamp_msg_unsubscribed :
           process_inbound_unsubscribed(ja);
           return;
 
-        case EVENT :
+        case msg_type::wamp_msg_event :
           process_inbound_event(ja);
           return;
 
-        case RESULT :
+        case msg_type::wamp_msg_result :
           process_inbound_result(ja);
           return;
 
-        case ERROR :
+        case msg_type::wamp_msg_error :
           process_inbound_error(ja);
           return;
 
-        case HEARTBEAT: return;
+        case msg_type::wamp_msg_heartbeat: return;
 
         default:
           std::ostringstream os;
@@ -721,7 +721,7 @@ void wamp_session::handle_HELLO(json_array& ja)
   }
 
   json_array msg({
-    CHALLENGE,
+    msg_type::wamp_msg_challenge,
     "wampcra",
     json_object({{"challenge", std::move(challengestr)}})});
   send_msg( msg );
@@ -767,7 +767,7 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
                                HMACSHA256_Mode::BASE64);
 
   if (err == 0) {
-    json_array msg{AUTHENTICATE, digest, json_object()};
+    json_array msg{msg_type::wamp_msg_authenticate, digest, json_object()};
     send_msg(msg);
   }
   else
@@ -834,8 +834,7 @@ void wamp_session::send_WELCOME()
       {"broker", json_value::make_object()},
       {"dealer", json_value::make_object()}} );
 
-  json_array msg {
-    WELCOME,
+  json_array msg { msg_type::wamp_msg_welcome,
       m_sid,
       std::move( details )
       };
@@ -910,7 +909,7 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
           {"callee",     json_object()}
         });
 
-      json_array msg { json_value(HELLO), json_value(cc.realm) };
+      json_array msg { json_value(msg_type::wamp_msg_hello), json_value(cc.realm) };
       json_object& opt = json_append<json_object>( msg );
 
       opt[ "roles" ] = std::move( roles );
@@ -956,11 +955,10 @@ t_request_id wamp_session::provide(std::string uri,
                                    void * data)
 {
   json_array msg;
-  msg.push_back( REGISTER );
+  msg.push_back( msg_type::wamp_msg_register );
   msg.push_back( 0 );
   msg.push_back( options );
   msg.push_back( uri );
-
 
   procedure p;
   p.uri = uri;
@@ -1036,7 +1034,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
 
     std::string uri = iter->second.uri;
 
-    wampcc:: wamp_invocation invoke;
+    wampcc::wamp_invocation invoke;
     invoke.user = iter->second.user_data;
 
     if ( msg.size() > 4 )
@@ -1056,7 +1054,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
       {
         wamp_args args { arg_list, arg_dict };
         if (auto sp = wp.lock())
-          sp->reply_with_error(INVOCATION, request_id, std::move(args), std::move(error_uri));
+          sp->reply_with_error(msg_type::wamp_msg_invocation, request_id, std::move(args), std::move(error_uri));
       };
 
     {
@@ -1067,7 +1065,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
   }
   catch (wampcc::wamp_error& ex)
   {
-    reply_with_error(INVOCATION, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_invocation, request_id, ex.args(), ex.error_uri());
   }
 }
 
@@ -1078,7 +1076,7 @@ t_request_id wamp_session::subscribe(std::string uri,
                                      subscription_event_cb event_cb,
                                      void * user)
 {
-  json_array msg {SUBSCRIBE, 0, options, uri};
+  json_array msg {msg_type::wamp_msg_subscribe, 0, options, uri};
   subscribe_request sub {uri, std::move(req_cb), std::move(event_cb), user};
 
   t_request_id request_id;
@@ -1104,7 +1102,7 @@ t_request_id wamp_session::unsubscribe(t_subscription_id subscription_id,
                                        unsubscribed_cb request_cb,
                                        void * user_data)
 {
-  json_array msg {UNSUBSCRIBE, 0, subscription_id};
+  json_array msg {msg_type::wamp_msg_unsubscribe, 0, subscription_id};
 
   unsubscribe_request req {std::move(request_cb), subscription_id, user_data};
 
@@ -1282,7 +1280,7 @@ t_request_id wamp_session::call(std::string uri,
 {
   /* USER thread */
 
-  json_array msg {CALL, 0, options, uri, args.args_list, args.args_dict};
+  json_array msg {msg_type::wamp_msg_call, 0, options, uri, args.args_list, args.args_dict};
 
   wamp_call mycall;
   mycall.user_cb = user_cb;
@@ -1354,7 +1352,6 @@ void wamp_session::process_inbound_result(json_array & msg)
       log_exception(__logger, "inbound result user callback");
     }
   }
-
 }
 
 
@@ -1374,7 +1371,7 @@ void wamp_session::process_inbound_error(json_array & msg)
   {
     switch (orig_request_type)
     {
-      case INVOCATION:
+      case msg_type::wamp_msg_invocation:
       {
         wamp_invocation orig_request;
 
@@ -1411,7 +1408,7 @@ void wamp_session::process_inbound_error(json_array & msg)
   {
     switch (orig_request_type)
     {
-      case CALL :
+      case msg_type::wamp_msg_call :
       {
         wamp_call orig_call;
         bool found = false;
@@ -1453,7 +1450,7 @@ void wamp_session::process_inbound_error(json_array & msg)
         }
         break;
       }
-      case SUBSCRIBE :
+      case msg_type::wamp_msg_subscribe :
       {
         /* dont hold any locks when calling the user */
         subscribe_request orig_request;
@@ -1485,7 +1482,7 @@ void wamp_session::process_inbound_error(json_array & msg)
 
         break;
       };
-      case UNSUBSCRIBE :
+      case msg_type::wamp_msg_unsubscribe :
       {
         /* dont hold any locks when calling the user */
         unsubscribe_request orig_request;
@@ -1530,7 +1527,7 @@ t_request_id wamp_session::publish(std::string uri,
 {
   /* USER thread */
 
-  json_array msg {PUBLISH, 0, options, uri, args.args_list, args.args_dict};
+  json_array msg {msg_type::wamp_msg_publish, 0, options, uri, args.args_list, args.args_dict};
 
   t_request_id request_id;
 
@@ -1577,12 +1574,12 @@ void wamp_session::process_inbound_call(json_array & msg)
       {
         if (!error_uri)
         {
-          json_array msg {RESULT,request_id, json_object(), args.args_list, args.args_dict};
+          json_array msg {msg_type::wamp_msg_result, request_id, json_object(), args.args_list, args.args_dict};
           sp->send_msg(msg);
         }
         else
         {
-          json_array msg {ERROR, CALL, request_id, json_object(), *error_uri,
+          json_array msg {msg_type::wamp_msg_error, msg_type::wamp_msg_call, request_id, json_object(), *error_uri,
                           args.args_list, args.args_dict};
           sp->send_msg(msg);
         }
@@ -1602,7 +1599,7 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
 {
   /* EV & USER thread */
 
-  json_array msg {INVOCATION, 0, registration_id, options,
+  json_array msg {msg_type::wamp_msg_invocation, 0, registration_id, options,
       args.args_list, args.args_dict};
 
   t_request_id request_id;
@@ -1699,7 +1696,7 @@ void wamp_session::process_inbound_subscribe(json_array & msg)
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(SUBSCRIBE, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_subscribe, request_id, ex.args(), ex.error_uri());
   }
 }
 
@@ -1722,10 +1719,9 @@ void wamp_session::process_inbound_unsubscribe(json_array & msg)
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(UNSUBSCRIBE, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_unsubscribe, request_id, ex.args(), ex.error_uri());
   }
 }
-
 
 
 void wamp_session::process_inbound_register(json_array & msg)
@@ -1747,14 +1743,14 @@ void wamp_session::process_inbound_register(json_array & msg)
                                                                  std::move(uri));
 
     json_array resp;
-    resp.push_back(REGISTERED);
+    resp.push_back(msg_type::wamp_msg_registered);
     resp.push_back(request_id);
     resp.push_back(registration_id);
     send_msg(resp);
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(REGISTER, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_register, request_id, ex.args(), ex.error_uri());
   }
 }
 
@@ -1764,7 +1760,7 @@ void wamp_session::process_inbound_register(json_array & msg)
 void wamp_session::invocation_yield(int request_id,
                                     wamp_args args)
 {
-  json_array msg {YIELD, request_id, json_object(), args.args_list, args.args_dict};
+  json_array msg {msg_type::wamp_msg_yield, request_id, json_object(), args.args_list, args.args_dict};
   send_msg(msg);
 }
 
@@ -1775,7 +1771,7 @@ void wamp_session::reply_with_error(
   wamp_args args,
   std::string error_uri)
 {
-  json_array msg {ERROR, request_type, request_id, json_object(),
+  json_array msg {msg_type::wamp_msg_error, request_type, request_id, json_object(),
       error_uri, args.args_list, args.args_dict};
   send_msg(msg);
 }
@@ -1783,13 +1779,13 @@ void wamp_session::reply_with_error(
 
 json_array wamp_session::build_goodbye_message(std::string reason)
 {
-  return json_array ( {GOODBYE, json_object(), std::move(reason)} );
+  return json_array ({msg_type::wamp_msg_goodbye, json_object(), std::move(reason)} );
 }
 
 
 json_array wamp_session::build_abort_message(std::string reason)
 {
-  return json_array( {ABORT, json_object(), std::move(reason)} );
+  return json_array({msg_type::wamp_msg_abort, json_object(), std::move(reason)} );
 }
 
 

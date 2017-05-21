@@ -26,10 +26,10 @@ wampcc/websocket_protocol.h wampcc/tcp_socket.h wampcc/data_model.h				\
 wampcc/error.h wampcc/wampcc.h wampcc/ssl_socket.h
 
 # List the sources for an individual library
-libwampcc_la_SOURCES = ssl.cc ssl_socket.cc tcp_socket.cc wamp_session.cc	\
-wamp_router.cc event_loop.cc io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc	\
-utils.cc protocol.cc rawsocket_protocol.cc websocket_protocol.cc			\
-../external/http_parser/http_parser.c http_parser.cc data_model.cc error.cc	\
+libwampcc_la_SOURCES = platform.cc ssl.cc ssl_socket.cc tcp_socket.cc			\
+wamp_session.cc wamp_router.cc event_loop.cc io_loop.cc kernel.cc pubsub_man.cc	\
+rpc_man.cc utils.cc protocol.cc rawsocket_protocol.cc websocket_protocol.cc		\
+../external/http_parser/http_parser.c http_parser.cc data_model.cc error.cc		\
 ../external/apache/base64.c
 
 

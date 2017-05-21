@@ -23,7 +23,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib  $(libuvinc)						\
 
 AM_LDFLAGS=-lpthread -L../lib -lwampcc  $(LIBLS)  -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
-
 check_PROGRAMS=test_connect_timeout test_tcp_socket_connect					\
 test_evthread_wamp_session_destructor test_early_wamp_session_destructor	\
 test_late_wamp_session_destructor test_late_dealer_destructor				\
@@ -31,7 +30,10 @@ test_dealer_disconnect_when_has_connections 		\
 test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
 test_wamp_session_fast_close test_tcp_socket test_wamp_rpc
 
-noinst_PROGRAMS=$(check_PROGRAMS)
+# Dont use noinst_PROGRAMS here, otherwise the tests will always get build for
+# each invocation of make
+#noinst_PROGRAMS=$(check_PROGRAMS)
+
 TESTS=$(check_PROGRAMS)
 
 test_connect_timeout_SOURCES=test_connect_timeout.cc
