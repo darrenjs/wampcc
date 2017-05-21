@@ -34,7 +34,8 @@ void version_check_libuv(int uv_major, int uv_minor);
 class handle_data
 {
 public:
-  enum { DATA_CHECK = 0x5555555555555555 };
+
+  const static uint64_t DATA_CHECK = 0x5555555555555555;
 
   enum class handle_type {unknown = 0, tcp_socket, tcp_connect};
 

@@ -283,10 +283,10 @@ namespace wampcc {
     bool is_pending_open() const;
 
     /** Number of seconds since session constructed  */
-    int duration_since_creation() const;
+    long duration_since_creation() const;
 
     /** Time since last message */
-    int duration_since_last() const;
+    long duration_since_last() const;
 
     /** Return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a server session that receives the realm from the peer. */
@@ -467,8 +467,8 @@ namespace wampcc {
     void invocation_yield(int request_id,
                           wamp_args args);
 
-    void reply_with_error(int request_type,
-                          int request_id,
+    void reply_with_error(msg_type request_type,
+                          t_request_id request_id,
                           wamp_args args,
                           std::string error_uri);
 

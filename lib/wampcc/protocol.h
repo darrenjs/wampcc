@@ -125,7 +125,7 @@ public:
   };
 
 
-  typedef std::function<void(json_array msg, int msgtype)> t_msg_cb;
+  typedef std::function<void(json_array msg, unsigned msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
 
   protocol(tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,

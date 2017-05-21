@@ -266,9 +266,9 @@ void websocket_protocol::io_on_read(char* src, size_t len)
       {
         if (rd.avail() < 2) break;
 
-        bool       fin_bit = rd[0] & 0x80;
+        bool       fin_bit = (rd[0] & 0x80) > 0;
         int         opcode = rd[0] & 0x0F;
-        bool      mask_bit = rd[1] & 0x80;
+        bool      mask_bit = (rd[1] & 0x80) > 0;
         size_t payload_len = rd[1] & 0x7F;
         size_t   frame_len = 2 + (mask_bit? 4:0);
         int       mask_pos = 2;

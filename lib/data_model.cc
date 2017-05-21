@@ -568,7 +568,7 @@ void list_subscription::on_update(json_object details,
     if (event &&
         event->size()>1 &&
         event->at(0).is_string() &&
-        event->at(1).is_int() &&
+        event->at(1).is_uint() &&
         event->at(0).as_string() == list_model::key_insert &&
         patch &&
         patch->size()>0 &&
@@ -578,17 +578,17 @@ void list_subscription::on_update(json_object details,
       auto it = patch->at(0).as_object().find("value");
       if (it != patch->at(0).as_object().end())
       {
-        m_observer.on_insert(*this, event->at(1).as_int());
+        m_observer.on_insert(*this, event->at(1).as_uint());
       }
     }
     else if (event &&
              event->size()>=2 &&
              event->at(0).is_string() &&
-             event->at(1).is_int() &&
+             event->at(1).is_uint() &&
              event->at(0).as_string() == list_model::key_remove
       )
     {
-      m_observer.on_erase(*this, event->at(1).as_int());
+      m_observer.on_erase(*this, event->at(1).as_uint());
     }
     else if (event &&
              event->size()>=2 &&
@@ -603,7 +603,7 @@ void list_subscription::on_update(json_object details,
       auto it = patch->at(0).as_object().find("value");
       if (it != patch->at(0).as_object().end())
       {
-        m_observer.on_replace(*this, event->at(1).as_int());
+        m_observer.on_replace(*this, event->at(1).as_uint());
       }
     }
   }

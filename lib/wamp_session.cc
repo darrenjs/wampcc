@@ -75,7 +75,7 @@ static uint64_t generate_unique_session_id()
 static std::string generate_log_prefix(uint64_t i)
 {
   char str[100];
-  sprintf(str, "session #%zu ", i);
+  snprintf(str, sizeof(str), "session #%zu ", i);
   return str;
 }
 
@@ -310,7 +310,7 @@ void wamp_session::io_on_error(uverr ec)
 
 void wamp_session::update_state_for_outbound(const json_array& msg)
 {
-  int message_type = msg[0].as_uint();
+  auto message_type = msg[0].as_uint();
 
   if (session_mode() == mode::server)
   {
@@ -929,13 +929,13 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
 }
 
 
-int wamp_session::duration_since_last() const
+long wamp_session::duration_since_last() const
 {
   return (time(NULL) - m_time_last_msg_recv);
 }
 
 
-int wamp_session::duration_since_creation() const
+long wamp_session::duration_since_creation() const
 {
   return (time(NULL) - m_time_create);
 }
@@ -1766,8 +1766,8 @@ void wamp_session::invocation_yield(int request_id,
 
 
 void wamp_session::reply_with_error(
-  int request_type,
-  int request_id,
+  msg_type request_type,
+  t_request_id request_id,
   wamp_args args,
   std::string error_uri)
 {
