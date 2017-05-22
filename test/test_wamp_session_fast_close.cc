@@ -288,7 +288,7 @@ TEST_CASE("all_tests_bulk")
 int main(int argc, char** argv)
 {
   try {
-    global_port = 25000;
+    global_port = 28000;
 
     if (argc > 1)
       global_port = atoi(argv[1]);

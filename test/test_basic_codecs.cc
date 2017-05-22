@@ -172,7 +172,7 @@ TEST_CASE("basic_generic_server")
 int main(int argc, char** argv)
 {
   try {
-    global_port = 25000;
+    global_port = 24000;
 
     if (argc > 1)
       global_port = atoi(argv[1]);

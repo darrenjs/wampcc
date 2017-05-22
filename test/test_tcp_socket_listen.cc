@@ -313,7 +313,7 @@ TEST_CASE("all")
 int main(int argc, char** argv)
 {
   try {
-    global_port = 23100;
+    global_port = 23000;
 
     if (argc > 1)
       global_port = atoi(argv[1]);

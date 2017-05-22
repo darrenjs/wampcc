@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 {
   try
   {
-    global_port = 26000;
+    global_port = 27000;
 
     if (argc > 1)
       global_port = atoi(argv[1]);
