@@ -33,7 +33,7 @@ struct rpc_details
     eRemote
   } type;
 
-  int         registration_id; // 0 implies invalid
+  uint64_t registration_id; // 0 implies invalid
   std::string uri;
   session_handle session;
   rpc_cb user_cb; // applies only for eInternal
@@ -54,11 +54,11 @@ public:
                                    std::string uri);
 
   // Register and RPC that is handled by the internal session
-  int register_internal_rpc_2(const std::string& realm,
-                              const std::string& uri,
-                              const json_object& options,
-                              rpc_cb cb,
-                              void * data);
+  uint64_t register_internal_rpc_2(const std::string& realm,
+                                   const std::string& uri,
+                                   const json_object& options,
+                                   rpc_cb cb,
+                                   void * data);
 
 
 

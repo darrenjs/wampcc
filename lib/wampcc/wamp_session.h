@@ -373,7 +373,7 @@ namespace wampcc {
     void io_on_read(char*, size_t);
     void io_on_error(uverr);
     void decode_and_process(char*, size_t len);
-    void process_message(unsigned int, json_array&);
+    void process_message(json_array&, json_uint_t);
     void handle_exception();
 
     void update_state_for_outbound(const json_array& msg);
@@ -464,7 +464,7 @@ namespace wampcc {
     void process_inbound_goodbye(json_array &);
     void process_inbound_abort(json_array &);
 
-    void invocation_yield(int request_id,
+    void invocation_yield(t_request_id request_id,
                           wamp_args args);
 
     void reply_with_error(msg_type request_type,

@@ -43,11 +43,11 @@ rpc_details rpc_man::get_rpc_details( const std::string& rpcname,
 }
 
 
-int rpc_man::register_internal_rpc_2(const std::string& realm,
-                                     const std::string& uri,
-                                     const json_object& /*options*/,
-                                     rpc_cb user_cb,
-                                     void * user_data)
+uint64_t rpc_man::register_internal_rpc_2(const std::string& realm,
+                                          const std::string& uri,
+                                          const json_object& /*options*/,
+                                          rpc_cb user_cb,
+                                          void * user_data)
 {
   rpc_details r;
   r.uri = uri;

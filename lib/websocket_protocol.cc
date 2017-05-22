@@ -292,7 +292,6 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           uint64_t raw_length;
           memcpy(&raw_length, &rd[2], 8);
           payload_len = bswap_64(raw_length);
-
         }
         frame_len += payload_len;
         payload_pos = mask_pos + (mask_bit? 4:0);

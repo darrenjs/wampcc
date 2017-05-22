@@ -164,10 +164,13 @@ void log_exception(logger & __logger, const char* callsite)
 // TODO: test on Windows
 std::string iso8601_utc_timestamp()
 {
+  static constexpr char example_full[]  = "2017-05-21T07:51:17.000Z"; // 24
+  static constexpr char example_short[] = "2017-05-21T07:51:17";      // 19
+
   wampcc::time_val tv = wampcc::time_now();
 
   char buf[64];
-  assert(sizeof(buf) > sizeof "2017-05-21T07:51:17.000Z");
+  assert(sizeof(buf) > (sizeof example_full +1));
 
 #ifndef _WIN32
   struct tm _tm;
@@ -179,8 +182,9 @@ std::string iso8601_utc_timestamp()
 #endif
 
   // add on the usec
-  sprintf(&buf[19], ".%03dZ", (int) tv.usec/1000);
-  buf[24]='\0';
+  snprintf(&buf[sizeof example_short], sizeof(buf) - sizeof(example_short),
+           ".%03dZ", (int) tv.usec/1000);
+  buf[sizeof example_full]='\0';
   return buf;
 }
 

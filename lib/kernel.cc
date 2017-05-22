@@ -99,11 +99,11 @@ logger logger::stream(std::ostream& ostr, int level_mask, bool inc_src)
   logger my_logger;
 
   my_logger.wants_level =
-      [level_mask](logger::Level l) { return l & level_mask; };
+    [level_mask](logger::Level l) { return (l & level_mask) != 0; };
 
   my_logger.write = [level_mask, sp](logger::Level l, const std::string& msg,
                                      const char* file, int ln) {
-    if (l & level_mask)
+    if ((l & level_mask) != 0)
       sp->write(l, msg, file, ln);
   };
 

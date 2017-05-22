@@ -154,7 +154,7 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
   // pointer has been set up.
   sp->m_proto = protocol_builder(
     sp->m_socket.get(),
-    [sp](json_array msg, int msg_type)
+    [sp](json_array msg, json_uint_t msg_type)
     {
       /* IO thread */
 
@@ -162,7 +162,7 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
        * protocol and queue them for processing on the EV thread */
       std::function<void()> fn = [sp,msg,msg_type]() mutable
       {
-        sp->process_message(msg_type, msg);
+        sp->process_message(msg, msg_type);
       };
       sp->m_kernel->get_event_loop()->dispatch(std::move(fn));
     },
@@ -428,8 +428,8 @@ void wamp_session::process_inbound_goodbye(json_array &)
 }
 
 
-void wamp_session::process_message(unsigned int message_type,
-                                   json_array& ja)
+  void wamp_session::process_message(json_array& ja,
+                                     json_uint_t message_type)
 {
   /* EV thread */
 
@@ -1362,7 +1362,7 @@ void wamp_session::process_inbound_error(json_array & msg)
 
   check_size_at_least(msg.size(), 5);
 
-  int orig_request_type = msg[1].as_int();
+  auto orig_request_type = msg[1].as_int();
   t_request_id request_id = extract_request_id(msg, 2);
   json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
@@ -1755,9 +1755,8 @@ void wamp_session::process_inbound_register(json_array & msg)
 }
 
 
-
 /* reply to an invocation with a yield message */
-void wamp_session::invocation_yield(int request_id,
+void wamp_session::invocation_yield(t_request_id request_id,
                                     wamp_args args)
 {
   json_array msg {msg_type::wamp_msg_yield, request_id, json_object(), args.args_list, args.args_dict};

@@ -578,6 +578,7 @@ void list_subscription::on_update(json_object details,
       auto it = patch->at(0).as_object().find("value");
       if (it != patch->at(0).as_object().end())
       {
+        // TODO: handle uint > size_t
         m_observer.on_insert(*this, event->at(1).as_uint());
       }
     }

@@ -42,7 +42,7 @@ class managed_topic
 {
 public:
 
-  managed_topic(size_t __subscription_id)
+  managed_topic(t_subscription_id __subscription_id)
   :  m_subscription_id(__subscription_id),
      m_is_valid(false)
   {
@@ -119,7 +119,7 @@ private:
   // allow this, and it has the benefit that we can perform a single message
   // serialisation for all subscribers.  Might have to change later if more
   // complex subscription features are supported.
-  size_t m_subscription_id;
+  t_subscription_id m_subscription_id;
 
   // Track whether this image has ever applied an update
   bool m_is_valid;
