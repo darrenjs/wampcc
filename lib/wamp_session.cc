@@ -74,9 +74,9 @@ static uint64_t generate_unique_session_id()
 
 static std::string generate_log_prefix(uint64_t i)
 {
-  char str[100];
-  snprintf(str, sizeof(str), "session #%zu ", i);
-  return str;
+  std::ostringstream oss;
+  oss << "session #" << i;
+  return oss.str();
 }
 
 static t_request_id extract_request_id(json_array & msg, int index)
@@ -929,15 +929,15 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
 }
 
 
-long wamp_session::duration_since_last() const
+time_t wamp_session::time_last() const
 {
-  return (time(NULL) - m_time_last_msg_recv);
+  return m_time_last_msg_recv;
 }
 
 
-long wamp_session::duration_since_creation() const
+time_t wamp_session::time_created() const
 {
-  return (time(NULL) - m_time_create);
+  return m_time_create;
 }
 
 

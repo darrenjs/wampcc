@@ -161,30 +161,45 @@ void log_exception(logger & __logger, const char* callsite)
 }
 
 
-// TODO: test on Windows
 std::string iso8601_utc_timestamp()
 {
-  static constexpr char example_full[]  = "2017-05-21T07:51:17.000Z"; // 24
-  static constexpr char example_short[] = "2017-05-21T07:51:17";      // 19
+  static constexpr char full_format[]  = "2017-05-21T07:51:17.000Z"; // 24
+  static constexpr char short_format[] = "2017-05-21T07:51:17";      // 19
+  static constexpr int  short_len = 19;
+
+  static_assert(short_len == (sizeof short_format - 1), "short_len check failed");
 
   wampcc::time_val tv = wampcc::time_now();
 
-  char buf[64];
-  assert(sizeof(buf) > (sizeof example_full +1));
+  char buf[32] = { 0 };
+  assert(sizeof buf > (sizeof full_format));
+  assert(sizeof full_format > sizeof short_format);
+
+  struct tm timeinfo;
+  time_t rawtime = tv.sec;
 
 #ifndef _WIN32
-  struct tm _tm;
-  gmtime_r(&tv.sec, &_tm);
-  strftime(buf, sizeof(buf)-1, "%FT%T", &_tm);
+  gmtime_r(&rawtime, &timeinfo);
 #else
-  time_t tnow = tv.sec;
-  strftime(buf, sizeof buf-1, "%FT%T", gmtime(&tnow));
+  gmtime_s(&timeinfo, &rawtime);
 #endif
 
-  // add on the usec
-  snprintf(&buf[sizeof example_short], sizeof(buf) - sizeof(example_short),
-           ".%03dZ", (int) tv.usec/1000);
-  buf[sizeof example_full]='\0';
+  if (0 == strftime(buf, sizeof buf - 1, "%FT%T", &timeinfo))
+    return "";  // strftime not successful
+
+  // append milliseconds
+  int ec;
+#ifndef _WIN32
+  ec = snprintf(&buf[short_len], sizeof(buf) - short_len,
+                ".%03dZ", (int) tv.usec/1000);
+#else
+  ec = sprintf_s(&buf[short_len], sizeof(buf) - short_len,
+                 ".%03dZ", (int) tv.usec/1000);
+#endif
+  if (ec<0)
+    return "";
+
+  buf[sizeof full_format - 1] = '\0';
   return buf;
 }
 

@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 
     /* Create the wampcc kernel, which provides event and IO threads. */
 
-    std::unique_ptr<kernel> the_kernel(new kernel({}, logger::stdout()));
+    std::unique_ptr<kernel> the_kernel(new kernel({}, logger::console()));
 
     /* Create the TCP socket and attempt to connect. */
 

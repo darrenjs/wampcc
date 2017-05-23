@@ -27,7 +27,7 @@ int main(int argc, char** argv)
   {
     auto endpoint = get_addr_port(argc, argv);
 
-    std::unique_ptr<wampcc::kernel> the_kernel( new wampcc::kernel({}, wampcc::logger::stdout() ));
+    std::unique_ptr<wampcc::kernel> the_kernel( new wampcc::kernel({}, wampcc::logger::console() ));
 
     std::unique_ptr<wampcc::tcp_socket> sock (new wampcc::tcp_socket(the_kernel.get()));
     auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));

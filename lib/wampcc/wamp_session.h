@@ -283,10 +283,10 @@ namespace wampcc {
     bool is_pending_open() const;
 
     /** Number of seconds since session constructed  */
-    long duration_since_creation() const;
+    time_t time_created() const;
 
     /** Time since last message */
-    long duration_since_last() const;
+    time_t time_last() const;
 
     /** Return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a server session that receives the realm from the peer. */

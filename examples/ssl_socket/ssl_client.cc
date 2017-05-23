@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     /* Create the wampcc kernel, configured to support SSL. */
     config conf;
     conf.ssl.enable = true;
-    kernel the_kernel(conf, logger::stdout());
+    kernel the_kernel(conf, logger::console());
 
     /* Create the SSL socket, in connector mode. */
     ssl_socket sock(&the_kernel);

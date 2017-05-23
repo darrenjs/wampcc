@@ -49,7 +49,7 @@ int main(int argc, char** argv)
     conf.ssl.enable = true;
     conf.ssl.certificate_file="server.crt";
     conf.ssl.private_key_file="server.key";
-    kernel the_kernel(conf, logger::stdout());
+    kernel the_kernel(conf, logger::console());
 
     /* Create an SSL socket, which will operate in server mode, via the call to
      * listen. */

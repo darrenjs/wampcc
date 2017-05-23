@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     cfg.ssl.certificate_file = "server.crt";
     cfg.ssl.private_key_file = "server.key";
 
-    kernel the_kernel(cfg, logger::stdout());
+    kernel the_kernel(cfg, logger::console());
 
     /* Create an embedded wamp router. */
 
