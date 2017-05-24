@@ -13,8 +13,6 @@
 #include <chrono>
 #include <string.h>
 
-
-#include <unistd.h>
 #undef NDEBUG
 
 #include <assert.h>
