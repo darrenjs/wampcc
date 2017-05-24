@@ -303,8 +303,9 @@ public:
   void swap(json_value&);
   void swap(json_value&&);
 
-  /* Apply a JSON Patch (IETF RFC 6902). Can throw bad_pointer and bad_patch. */
-  void patch(const json_array&);
+  /* Apply a JSON Patch (IETF RFC 6902). Can throw bad_pointer and
+   * bad_patch. Returns true if patch successfully applied. */
+  bool patch(const json_array&);
 
   /* Evaulate a JSON Pointer (IETF RFC 6902). Return a pointer to the value
    * identified by the JSON Pointer, or null if not found. If the JSON Pointer

@@ -613,9 +613,9 @@ std::ostream& operator<<(std::ostream& os, const json_value& v)
 }
 
 
-void json_value::patch(const json_array& patch)
+bool json_value::patch(const json_array& patch)
 {
-  apply_patch(*this, patch);
+  return apply_patch(*this, patch);
 }
 
 const json_value * json_value::eval(const char* path) const
