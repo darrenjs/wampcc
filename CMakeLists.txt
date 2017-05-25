@@ -58,8 +58,28 @@ add_library(wampcc STATIC
     ${LIB_EXTNL_APACH_SRC_FILES}
 )
 
-add_executable(wampccadmin ${EXE_SRC_FILES})
 link_directories(${INSTALL_LIB_DIR})
+
+add_executable(test_misc
+  ${PROJECT_SOURCE_DIR}/test/test_misc.cc
+  ${PROJECT_SOURCE_DIR}/test/test_common.h )
+
+if(WIN32)
+  target_link_libraries(test_misc
+    wampcc
+    wampcc_json
+    jansson
+    libuv
+    advapi32
+    iphlpapi
+    psapi
+    shell32
+    user32
+    userenv
+    ws2_32)
+endif()
+
+add_executable(wampccadmin ${EXE_SRC_FILES})
 target_link_libraries(wampccadmin
     wampcc
     wampcc_json
@@ -77,4 +97,3 @@ install(TARGETS ${TO_INSTALL}
     LIBRARY DESTINATION "${INSTALL_LIB_DIR}")
 install(FILES ${HDR_FILES}
     DESTINATION "${INSTALL_INC_DIR}/wampcc")
-
