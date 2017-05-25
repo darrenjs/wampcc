@@ -314,9 +314,8 @@ static void process_options(int argc, char** argv)
   // check topics
   if (uopts.no_uri_check == false)
   {
-    wampcc::uri_regex uri_check;
     for (auto & i : uopts.subscribe_topics)
-      if (not uri_check.is_strict_uri(i.c_str()))
+      if (wampcc::is_strict_uri(i.c_str()) == false)
         die("not strict uri: " + i);
   }
 }
