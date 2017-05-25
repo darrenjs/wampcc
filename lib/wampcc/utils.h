@@ -90,26 +90,6 @@ private:
 };
 
 
-struct regex_impl;
-
-/** Provide methods to check validity of WAMP URIs */
-class uri_regex
-{
-public:
-  uri_regex();
-  ~uri_regex();
-
-  uri_regex(const uri_regex &) = delete;
-  uri_regex& operator=(const uri_regex &) = delete;
-
-  bool is_strict_uri(const char*) const;
-
-private:
-  regex_impl * m_impl;
-
-};
-
-
 class global_scope_id_generator
 {
 public:
@@ -170,6 +150,8 @@ inline char* skip_whitespace(char* str)
 /** Return local hostname, or throw upon failure. */
 std::string hostname();
 
+/** Return if the string is a wamp strict URI */
+bool is_strict_uri(const char*) noexcept;
 
 class scope_guard
 {

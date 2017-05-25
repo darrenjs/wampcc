@@ -58,8 +58,6 @@ private:
   realm_to_topicreg m_topics;
   t_subscription_id m_next_subscription_id;
   subscriptionid_registry m_subscription_registry;
-
-  uri_regex m_uri_regex;
 };
 
 } // namespace wampcc

@@ -72,7 +72,7 @@ time_val time_now()
   gettimeofday(&epoch, nullptr);
   return {epoch.tv_sec, epoch.tv_usec};
 #else
-  return {0, 0}; /// TODO
+  return {0, 0}; /// TODO: add support for Windows
 #endif
 }
 

@@ -252,13 +252,13 @@ void pubsub_man::inbound_publish(std::string realm,
   if (realm.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "realm has zero length");
 
-  if (m_uri_regex.is_strict_uri(realm.c_str()) == false)
+  if (is_strict_uri(realm.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "realm fails strictness check");
 
   if (topic.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic has zero length");
 
-  if (m_uri_regex.is_strict_uri(topic.c_str()) == false)
+  if (is_strict_uri(topic.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
 
   update_topic(topic, realm, std::move(options), args);
@@ -279,7 +279,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   if (topic.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic has zero length");
 
-  if (m_uri_regex.is_strict_uri(topic.c_str()) == false)
+  if (is_strict_uri(topic.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
 
   // find or create a topic

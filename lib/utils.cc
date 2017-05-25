@@ -221,52 +221,6 @@ std::string random_ascii_string(const size_t len,
 }
 
 
-#ifndef _WIN32
-struct regex_impl
-{
-  regex_t m_re;
-
-  regex_impl()
-  {
-    int flags = REG_EXTENDED|REG_NOSUB;
-    if (::regcomp(&m_re, R"(^([0-9a-z_]+\.)*([0-9a-z_]+)$)", flags) != 0)
-      throw std::runtime_error("regcomp failed");
-  }
-
-  ~regex_impl()
-  {
-    regfree(&m_re);
-  }
-
-  bool matches(const char * s) const
-  {
-    return (::regexec(&m_re, s, (size_t) 0, NULL, 0) == 0);
-  }
-};
-#else
-struct regex_impl
-{
-  /* TODO: provide Windows implementation */
-  bool matches(const char * s) const {  return true;  }
-};
-#endif
-
-uri_regex::uri_regex()
-  : m_impl(new regex_impl)
-{
-}
-
-uri_regex::~uri_regex()
-{
-  delete m_impl;
-}
-
-
-bool uri_regex::is_strict_uri(const char* s) const
-{
-  return m_impl->matches(s);
-}
-
 std::string to_hex(const char * p,
                    size_t size)
 {
@@ -310,5 +264,43 @@ bool case_insensitive_same(const std::string &lhs,
   /* TODO: remove this check, should not be needed */
   return strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
 }
+
+bool is_valid_char(char c)
+{
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') || (c == '_');
+}
+
+/* Check URI conformance directly, rather than use regex.  This is to avoid
+ * compilers with broken regex implementations (eg, some gcc 4.x). */
+bool is_strict_uri(const char* p) noexcept
+{
+  enum class state {component,component_or_delim,fail} st = state::component;
+
+  while (st != state::fail && *p) {
+    switch (st) {
+      case state::component: {
+        if (is_valid_char(*p))
+          st = state::component_or_delim;
+        else
+          st = state::fail;
+        break;
+      }
+      case state::component_or_delim: {
+        if (*p == '.')
+          st = state::component;
+        else if (!is_valid_char(*p))
+          st = state::fail;
+        break;
+      }
+      case state::fail:
+        break;
+    };
+    p++;
+  }
+
+  return st == state::component_or_delim;
+}
+
 
 } // namespace wampcc
