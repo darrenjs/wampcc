@@ -14,10 +14,6 @@
 
 #include <assert.h>
 
-#ifndef _WIN32
-#include <regex.h>
-#endif
-
 namespace wampcc {
 
 
@@ -255,14 +251,6 @@ std::list<std::string> tokenize(const char* src,
       if (d) src += len+1; else break;
     }
   return tokens;
-}
-
-
-bool case_insensitive_same(const std::string &lhs,
-                           const std::string &rhs)
-{
-  /* TODO: remove this check, should not be needed */
-  return strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
 }
 
 bool is_valid_char(char c)

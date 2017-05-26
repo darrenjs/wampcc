@@ -72,7 +72,8 @@ static bool string_list_contains(const std::string & source,
   for (auto & i : tokenize(source.c_str(), ',', true))
   {
     std::string trimmed = trim(i);
-    if (case_insensitive_same(trimmed, match)) return true;
+    if (trimmed == match)
+      return true;
   }
   return false;
 }

@@ -26,10 +26,12 @@ namespace wampcc
 int thread_id()
 {
 #ifndef _WIN32
+  /* On Linux the thread-id returned via syscall is more useful than that C++
+   * get_id(), since it will correspond to the values reported by top and other
+   * tools. */
   return syscall(SYS_gettid);
 #else
   return GetCurrentThreadId();
-//return std::this_thread::get_id();
 #endif
 }
 

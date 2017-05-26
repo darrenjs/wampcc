@@ -136,11 +136,6 @@ inline std::string trim(const std::string& s, const std::string& d = " \f\n\r\t\
     return s.substr(f, 1+s.find_last_not_of(d)-f);
 }
 
-
-bool case_insensitive_same(const std::string &,
-                           const std::string &);
-
-
 inline char* skip_whitespace(char* str)
 {
   while (::isspace(*str)) ++str;
@@ -177,8 +172,6 @@ public:
 private:
     std::function<void()> m_fn;
 };
-
-
 
 
 /** Optionally store a value of value of type T.  Methods to assign
