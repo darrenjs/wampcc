@@ -55,38 +55,24 @@ file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cc)
 add_library(wampcc STATIC
     ${LIB_MAIN_SRC_FILES}
     ${LIB_EXTNL_HTTPPARSER_SRC_FILES}
-    ${LIB_EXTNL_APACH_SRC_FILES}
-)
+    ${LIB_EXTNL_APACH_SRC_FILES})
 
 link_directories(${INSTALL_LIB_DIR})
+
+set(COMMON_LIBS wampcc wampcc_json jansson)
+
+if (WIN32)
+  list(APPEND COMMON_LIBS libuv)
+  list(APPEND COMMON_LIBS advapi32 iphlpapi psapi shell32 user32 userenv ws2_32)
+endif()
 
 add_executable(test_misc
   ${PROJECT_SOURCE_DIR}/test/test_misc.cc
   ${PROJECT_SOURCE_DIR}/test/test_common.h )
-
-if(WIN32)
-  target_link_libraries(test_misc
-    wampcc
-    wampcc_json
-    jansson
-    libuv
-    advapi32
-    iphlpapi
-    psapi
-    shell32
-    user32
-    userenv
-    ws2_32)
-endif()
+target_link_libraries(test_misc ${COMMON_LIBS})
 
 add_executable(wampccadmin ${EXE_SRC_FILES})
-target_link_libraries(wampccadmin
-    wampcc
-    wampcc_json
-    jansson
-    uv
-    ssl
-)
+target_link_libraries(wampccadmin ${COMMON_LIBS})
 
 list(APPEND TO_INSTALL wampcc wampccadmin)
 
