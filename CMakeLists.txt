@@ -126,6 +126,18 @@ endif()
 # endif()
 
 ##
+## example programs
+##
+
+add_executable(example_basic_embedded_router
+  ${PROJECT_SOURCE_DIR}/examples/basic/basic_embedded_router.cc )
+target_link_libraries(example_basic_embedded_router ${COMMON_LIBS})
+
+if (WIN32)
+  set_target_properties(example_basic_embedded_router PROPERTIES LINK_FLAGS "/NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib")
+endif()
+
+##
 ## utility programs
 ##
 
