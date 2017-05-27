@@ -112,7 +112,7 @@ Msgpack
 
 Jalson depends on [msgpack-c](https://github.com/msgpack/msgpack-c) for msgpack
 support, requiring only the msgpack-c headers.  Msgpack must be downloaded into
-the jalson source directory `external`. The script `fetch_prerequisites.sRh` can
+the jalson source directory `external`. The script `fetch_prerequisites.sh` can
 be run to perform the download and unzip.
 
 Source Configuration & Build
@@ -147,16 +147,19 @@ Windows build
 -------------
 
 Building on Windows is supported via cmake.  A CMakeLists.txt file is present
-under `cmake/` folder.
+in the root folder.
 
-Here is an example of configuring the Windows build using cmake and cygwin.
+Here is an example of configuring the Windows build using cmake and cygwin. These commands should be entered into a cygwin shell.
 
 ```shell
-# Path where Visual Studio solution files will be generated
-BUILDDIR="C:\build\jalson"
+# Path where built libraries & headers will be installed
+INSTALLDIR="C:\wampcc_install"
 
-# Path to the CMakeLists.txt file in jalson source tree
-SOURCEDIR="C:\source\jalson\cmake"
+# Path where Visual Studio solution files will be generated
+BUILDDIR="G:\jalson_master\build"
+
+# Path holding the CMakeLists.txt file
+SOURCEDIR="G:\jalson_master\src"
 
 # Path to cmake executable
 CMAKE="C:\Program Files\CMake\bin\cmake.exe"
@@ -175,5 +178,5 @@ CMAKE_CYG=`cygpath.exe -u "$CMAKE"`
 
 # Invoke cmake to generate build files (Visual Studio solution). Files will
 # appear in current working directory.
-"$CMAKE_CYG" -DJANSSON_INC_DIR="C:\jansson-2.7\include" -DJANSSON_LIB_DIR="C:\jansson-2.7\lib"  "$SOURCEDIR"
+"$CMAKE_CYG" -DCMAKE_INSTALL_PREFIX="$INSTALLDIR" -DJANSSON_INC_DIR="C:\jansson-2.7\include" -DJANSSON_LIB_DIR="C:\jansson-2.7\lib"  "$SOURCEDIR"
 ```
