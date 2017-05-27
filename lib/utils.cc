@@ -171,16 +171,16 @@ std::string iso8601_utc_timestamp()
   assert(sizeof buf > (sizeof full_format));
   assert(sizeof full_format > sizeof short_format);
 
-  struct tm timeinfo;
+  struct tm parts;
   time_t rawtime = tv.sec;
 
 #ifndef _WIN32
-  gmtime_r(&rawtime, &timeinfo);
+  gmtime_r(&rawtime, &parts);
 #else
-  gmtime_s(&timeinfo, &rawtime);
+  gmtime_s(&parts, &rawtime);
 #endif
 
-  if (0 == strftime(buf, sizeof buf - 1, "%FT%T", &timeinfo))
+  if (0 == strftime(buf, sizeof buf - 1, "%FT%T", &parts))
     return "";  // strftime not successful
 
   // append milliseconds
@@ -197,6 +197,37 @@ std::string iso8601_utc_timestamp()
 
   buf[sizeof full_format - 1] = '\0';
   return buf;
+}
+
+
+std::string local_timestamp()
+{
+  static constexpr char format[] = "20170527-00:29:48.796000"; // 24
+
+  char timestamp[32] = {0};
+  struct tm parts;
+  time_val now = time_now();
+  int ec;
+
+  static_assert(sizeof timestamp > sizeof format, "buffer too short");
+
+#ifndef _WIN32
+  localtime_r(&now.sec, &parts);
+  ec = snprintf(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06lu",
+	  parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
+	  parts.tm_min, parts.tm_sec, now.usec);
+#else
+  localtime_s(&parts, &now.sec);
+  ec = sprintf_s(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06llu",
+	  parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
+	  parts.tm_min, parts.tm_sec, now.usec);
+#endif
+
+  if (ec < 0)
+    return "";
+
+  timestamp[sizeof timestamp - 1] = '\0';
+  return timestamp;
 }
 
 

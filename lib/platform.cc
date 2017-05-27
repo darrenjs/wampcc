@@ -35,37 +35,6 @@ int thread_id()
 #endif
 }
 
-std::string local_timestamp()
-{
-#ifndef _WIN32
-  // get current time
-  timeval now;
-  struct timezone* const tz = NULL; /* not used on Linux */
-  gettimeofday(&now, tz);
-
-  // break time down into parts
-  struct tm parts;
-  localtime_r(&now.tv_sec, &parts);
-
-  // build timestamp
-  char timestamp[30];
-  snprintf(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06lu ",
-           parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
-           parts.tm_min, parts.tm_sec, now.tv_usec);
-
-  return timestamp;
-#else
-  //  TODO: review this is correct, for Windows
-  SYSTEMTIME st;
-  GetLocalTime(&st);
-  std::ostringstream oss;
-  oss << std::setw(2) << st.wHour << ':' << std::setw(2) << st.wMinute << ':'
-      << std::setw(2) << st.wSecond << '.' << std::setw(3) << st.wMilliseconds
-      << '\n';
-  return oss.str();
-#endif
-}
-
 
 time_val time_now()
 {
@@ -74,9 +43,35 @@ time_val time_now()
   gettimeofday(&epoch, nullptr);
   return {epoch.tv_sec, epoch.tv_usec};
 #else
-  return {0, 0}; /// TODO: add support for Windows
+  SYSTEMTIME systime;
+  GetSystemTime(&systime); // obtain milliseconds
+  time_val::type_type now;
+  time(&now); // seconds elapsed since midnight January 1, 1970
+  time_val tv_systime{now, systime.wMilliseconds * 1000};
+
+  /* C++11 chrono approach */
+  /*
+  auto ts = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+  time_val tv_chrono{ts / 1000000LL, ts % 1000000LL};
+  */
+
+  /* Windows FILETIME approach, has actual usec accuracy */
+  /*
+  FILETIME ft;
+  GetSystemTimeAsFileTime(&ft);
+  time_val::type_type tt = ft.dwHighDateTime;
+  tt <<= 32;
+  tt |= ft.dwLowDateTime;
+  tt /= 10;
+  tt -= 11644473600000000ULL;
+  time_val tv_filetime{tt / 1000000LL, tt % 1000000LL};
+  */
+
+  return tv_systime;
 #endif
 }
+
 
 std::string hostname()
 {

@@ -14,23 +14,21 @@
 #include <sys/time.h>
 #endif
 
-#if defined(_WIN32) || defined(_WIN64)
-  #define snprintf _snprintf
-  #define vsnprintf _vsnprintf
-  #define strcasecmp _stricmp
-  #define strncasecmp _strnicmp
+namespace wampcc
+{
+
+  struct time_val
+  {
+#ifndef _WIN32
+    typedef long type_type;
+#else
+    typedef __time64_t type_type;
 #endif
-
-namespace wampcc {
-
-  struct time_val {
-    long  sec;        /* seconds */
-    long  usec;       /* micros */
+    type_type sec;  /* seconds */
+    type_type usec; /* micros */
   };
 
   int thread_id();
-
-  std::string local_timestamp();
 
   wampcc::time_val time_now();
 

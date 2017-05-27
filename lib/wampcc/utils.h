@@ -40,6 +40,9 @@ void log_exception(logger &__logptr, const char* callsite);
 /* Generate iso8601 timestamp, like YYYY-MM-DDThh:mm:ss.sssZ */
 std::string iso8601_utc_timestamp();
 
+/* Generate local timestamp, like "20170527-00:29:48.796000" */
+std::string local_timestamp();
+
 /* Generate a random string of ascii printables of length 'len' */
 std::string random_ascii_string(const size_t len,
                                 unsigned int seed = std::random_device()());

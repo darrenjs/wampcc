@@ -8,6 +8,7 @@
 #include "test_common.h"
 
 #include "wampcc/utils.h"
+#include "wampcc/platform.h"
 
 using namespace wampcc;
 using namespace std;
@@ -150,12 +151,34 @@ void test_is_strict_uri()
   eval_is_strict_uri("_._.az~AZ09_",false);
 }
 
+void test_localtime()
+{
+	auto str = wampcc::local_timestamp();
+	assert(str.size() == 24);
+	assert(str[8] == '-');
+	assert(str[11] == ':');
+	assert(str[14] == ':');
+	assert(str[17] == '.');
+}
+
+void test_time_now()
+{
+	auto t1 = time_now();
+	auto t2 = time_now();
+
+	assert((t2.sec - t1.sec) < 2);
+	assert(t1.sec > 1495835714LL);
+	assert(t1.usec >= 0);
+	assert(t1.usec < 1000000);
+}
+
 int main(int argc, char** argv)
 {
   try
   {
-    test_rpc();
-    test_is_strict_uri();
+	  test_localtime();
+	  test_time_now();
+      test_is_strict_uri();
     return 0;
   }
   catch (exception& e)
