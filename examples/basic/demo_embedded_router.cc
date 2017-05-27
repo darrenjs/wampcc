@@ -37,8 +37,8 @@ int main(int, char**)
         [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
 
     /* Suspend main thread */
-
-    pause();
+    std::promise<void> forever;
+    forever.get_future().wait();
   } catch (const exception& e) {
     cout << e.what() << endl;
     return 1;

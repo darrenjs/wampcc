@@ -57,8 +57,8 @@ int main(int argc, char** argv)
         [](wamp_invocation& invocation) { invocation.yield({"hello SSL"}); });
 
     /* Suspend main thread */
-
-    pause();
+    std::promise<void> forever;
+    forever.get_future().wait();
   } catch (const exception& e) {
     cout << e.what() << endl;
     return 1;

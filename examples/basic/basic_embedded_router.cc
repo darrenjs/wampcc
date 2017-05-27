@@ -10,16 +10,22 @@
 #include <iostream>
 #include <random>
 
+#ifndef _WIN32
+#include <unistd.h>
+#else
+#include <process.h>
+#endif
+
 int main(int argc, char** argv)
 {
   try {
-    if (argc < 2)
-      throw std::runtime_error("please specify port");
-    int port = std::stoi(argv[1]);
+    int port = 55555;
+    if (argc >1)
+      port = std::stoi(argv[1]);
 
     /* Create the wampcc logger & kernel. */
 
-    auto logger = wampcc::logger::stdlog(
+    auto logger = wampcc::logger::stream(
         std::cout, wampcc::logger::levels_upto(wampcc::logger::eInfo), false);
     std::unique_ptr<wampcc::kernel> the_kernel(
         new wampcc::kernel({}, std::move(logger)));
@@ -71,8 +77,8 @@ int main(int argc, char** argv)
     });
 
     /* Suspend main thread */
-
-    pause();
+    std::promise<void> forever;
+    forever.get_future().wait();
   } catch (const std::exception& e) {
     std::cout << e.what() << std::endl;
     return 1;

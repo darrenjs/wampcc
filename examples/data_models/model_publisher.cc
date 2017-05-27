@@ -127,9 +127,9 @@ std::shared_ptr<wampcc::wamp_router> g_dealer;
 
 int main(int /* argc */, char** /* argv */)
 {
-  auto __logger = wampcc::logger::stdlog(std::cout,
-                                      wampcc::logger::levels_all(),
-                                      true);
+  auto __logger = wampcc::logger::stream(std::cout,
+                                         wampcc::logger::levels_all(),
+                                         true);
 
   std::unique_ptr<wampcc::kernel> the_kernel(new wampcc::kernel({},__logger));
 
