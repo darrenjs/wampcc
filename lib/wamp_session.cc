@@ -75,7 +75,7 @@ static uint64_t generate_unique_session_id()
 static std::string generate_log_prefix(uint64_t i)
 {
   std::ostringstream oss;
-  oss << "session #" << i;
+  oss << "session #" << i << " ";
   return oss.str();
 }
 
