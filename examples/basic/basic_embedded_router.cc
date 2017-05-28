@@ -23,6 +23,8 @@ int main(int argc, char** argv)
     if (argc >1)
       port = std::stoi(argv[1]);
 
+    std::promise<void> can_exit;
+
     /* Create the wampcc logger & kernel. */
 
     auto logger = wampcc::logger::stream(
@@ -76,9 +78,14 @@ int main(int argc, char** argv)
       invocation.error("not implemented");
     });
 
+    /* Demonstrate sending an error as the RPC result. */
+    router.provide("default_realm", "stop", {},
+                   [&can_exit](wampcc::wamp_invocation& invocation) {
+                     can_exit.set_value();
+    });
+
     /* Suspend main thread */
-    std::promise<void> forever;
-    forever.get_future().wait();
+    can_exit.get_future().wait();
   } catch (const std::exception& e) {
     std::cout << e.what() << std::endl;
     return 1;
