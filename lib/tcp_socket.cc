@@ -46,7 +46,7 @@ struct write_req
   ~write_req()
   {
     for (size_t i = 0; i < nbufs; i++)
-      delete bufs[i].base;
+      delete [] bufs[i].base;
     delete[] bufs;
   }
 
@@ -512,6 +512,11 @@ void tcp_socket::do_write()
     m_pending_write.swap(copy);
   }
 
+  scope_guard buf_guard([&copy]() {
+    for (auto& i : copy)
+      delete[] i.base;
+  });
+
   size_t bytes_to_send = 0;
   for (size_t i = 0; i < copy.size(); i++)
     bytes_to_send += copy[i].len;
@@ -539,14 +544,16 @@ void tcp_socket::do_write()
       the_tcp_socket->on_write_cb(req, status);
     });
 
-    if (r) {
+    if (r == 0)
+      buf_guard.dismiss(); /* bufs will be deleted in uv callback */
+    else {
       LOG_WARN("uv_write failed, errno " << std::abs(r) << " ("
                                          << uv_strerror(r)
                                          << "); closing connection");
       delete wr;
       close_once_on_io();
       return;
-    };
+    }
   }
 }
 
