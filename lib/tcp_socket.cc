@@ -194,7 +194,6 @@ void tcp_socket::begin_close(bool no_linger)
 
   if (m_uv_tcp) {
 
-// TODO: support Windows
 #ifndef _WIN32
     uv_os_fd_t fd;
     if (no_linger && (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)) {
@@ -203,8 +202,15 @@ void tcp_socket::begin_close(bool no_linger)
       so_linger.l_linger = 0;
       setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
     }
+#else
+    SOCKET sock = m_uv_tcp->socket;
+    if (no_linger && sock != INVALID_SOCKET) {
+      struct linger so_linger;
+      so_linger.l_onoff = 1;
+      so_linger.l_linger = 0;
+      setsockopt(sock, SOL_SOCKET, SO_LINGER, (const char*) &so_linger, sizeof so_linger);
+    }
 #endif
-
 
     uv_close((uv_handle_t*)m_uv_tcp, [](uv_handle_t* h) {
       /* IO thread, invoked upon uv_close completion */
@@ -937,5 +943,3 @@ tcp_socket* tcp_socket::create(kernel* k, uv_tcp_t* h, socket_state s)
 }
 
 } // namespace wampcc
-
-
