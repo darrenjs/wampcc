@@ -226,7 +226,7 @@ namespace wampcc {
     static std::shared_ptr<wamp_session> create(kernel*,
                                                 std::unique_ptr<tcp_socket>,
                                                 state_fn,
-                                                protocol_builder_fn ,
+                                                protocol_builder_fn,
                                                 server_msg_handler,
                                                 auth_provider);
 
@@ -363,7 +363,7 @@ namespace wampcc {
     wamp_session(kernel*,
                  mode,
                  std::unique_ptr<tcp_socket>,
-                 state_fn state_cb,
+                 state_fn,
                  server_msg_handler,
                  auth_provider);
 
@@ -446,7 +446,6 @@ namespace wampcc {
     bool m_server_requires_auth;
 
     state_fn m_notify_state_change_fn;
-    std::weak_ptr<wamp_session> m_self_weak;
 
     void process_inbound_registered(json_array &);
     void process_inbound_invocation(json_array &);

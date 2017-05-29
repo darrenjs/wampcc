@@ -135,70 +135,81 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
 
 std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
                                                         mode conn_mode,
-                                                        std::unique_ptr<tcp_socket> ioh,
+                                                        std::unique_ptr<tcp_socket> sock,
                                                         state_fn state_cb,
                                                         protocol_builder_fn protocol_builder,
                                                         server_msg_handler handler,
                                                         auth_provider auth)
 {
-  /* Create the wamp_session object. During constuction the internal shared
-   * pointer won't be available, which is required by some setup tasks of the
-   * wamp_session.  Those tasks are occur further down, once the internal weak
-   * pointer is setup . */
+  // Create the new wamp_session, and also, create the first shared_ptr to the
+  // wamp_session.  Creating the shared_ptr is particularly important, since
+  // this initialised the internal shared_ptr inside the wamp_session object
+  // (since it inherits from enable_shared_from_this).
   std::shared_ptr<wamp_session> sp(
-    new wamp_session(k, conn_mode, std::move(ioh), state_cb, handler, auth)
+    new wamp_session(k, conn_mode, std::move(sock), state_cb, handler, auth)
       );
-  sp->m_self_weak = sp;
 
-  // Create the protocol; this can only take place once the session's weak self
-  // pointer has been set up.
-  sp->m_proto = protocol_builder(
-    sp->m_socket.get(),
-    [sp](json_array msg, json_uint_t msg_type)
-    {
-      /* IO thread */
+  wamp_session* rawptr = sp.get(); // rawptr, for capture in lambdas
 
-      /* receive inbound wamp messages that have been decoded by the
-       * protocol and queue them for processing on the EV thread */
-      std::function<void()> fn = [sp,msg,msg_type]() mutable
-      {
-        sp->process_message(msg, msg_type);
-      };
-      sp->m_kernel->get_event_loop()->dispatch(std::move(fn));
-    },
+  auto on_msg_cb = [rawptr](json_array msg, json_uint_t msg_type) {
+    /* IO thread */
+    std::weak_ptr<wamp_session> wp = rawptr->handle();
+
+    /* receive inbound wamp messages that have been decoded by the
+     * protocol and queue them for processing on the EV thread */
+    auto fn = [wp,msg,msg_type]() mutable
     {
-      [sp](std::unique_ptr<protocol>&new_proto) {
-        sp->upgrade_protocol(new_proto);
-      },
-      [sp](std::chrono::milliseconds interval) {
-        /* If protocol has requested a timer, register a reoccurring event to
-         * make of the protocol's on_timer function. */
-        if (interval.count() > 0)
+      if (auto sp = wp.lock())
+        sp->process_message(msg, msg_type); // TODO: check efficiency here
+    };
+    rawptr->m_kernel->get_event_loop()->dispatch(std::move(fn));
+  };
+
+  auto upgrade_cb = [rawptr](std::unique_ptr<protocol>&new_proto) {
+    /* IO thread */
+    rawptr->upgrade_protocol(new_proto);
+  };
+
+  auto request_timer_cb = [rawptr](std::chrono::milliseconds interval) {
+    /* If protocol has requested a timer, register a reoccurring event to make
+     * of the protocol's on_timer function. Called during construction of
+     * protocol. */
+    if (interval.count() > 0)
+    {
+      std::weak_ptr<wamp_session> wp = rawptr->handle();
+      auto fn = [wp,interval]() -> std::chrono::milliseconds {
+        if (auto sp = wp.lock())
         {
-          std::weak_ptr<wamp_session> wp = sp;
-          auto fn = [wp,interval]() -> std::chrono::milliseconds {
-            if (auto sp = wp.lock())
-            {
-              if (sp->is_open())
-              {
-                sp->m_proto->on_timer();
-                return interval;
-              }
-            }
-            return std::chrono::milliseconds(); /* cancel timer */
-          };
-          sp->m_kernel->get_event_loop()->dispatch(interval, std::move(fn));
+          if (sp->is_open())
+          {
+            sp->m_proto->on_timer();
+            return interval;
+          }
         }
-      }
+        return std::chrono::milliseconds(); /* cancel timer */
+      };
+      rawptr->m_kernel->get_event_loop()->dispatch(interval, std::move(fn));
     }
-    );
+  };
+
+  // Create the protocol, using the builder function passed in. Here we use only
+  // the raw pointer, not the shared pointer. If we use the latter (ie if they
+  // were captured by the lambdas), the wamp_session would hold references to
+  // itself, and so would be tricky to delete.
+
+  sp->m_proto = protocol_builder(sp->m_socket.get(),
+                                 std::move(on_msg_cb),
+                                 {
+                                   std::move(upgrade_cb),
+                                   std::move(request_timer_cb)
+                                  });
 
   // Enable the socket for read events; this can only take place once the
   // session's weak self pointer has been set up.
   sp->m_socket->start_read(
-    [sp](char* s, size_t n){sp->io_on_read(s,n);},
-    [sp](uverr ec){sp->io_on_error(ec);}
- );
+    [rawptr](char* s, size_t n){rawptr->io_on_read(s,n);},
+    [rawptr](uverr ec){rawptr->io_on_error(ec);}
+    );
 
   // set up a timer to expire this session if it has not been successfully
   // opened within a maximum time duration
@@ -269,27 +280,12 @@ void wamp_session::io_on_read(char* src, size_t len)
 {
   /* IO thread */
 
-  // if (len>=0)
-  // {
-  //   std::string temp(src,len);
-  //   std::cout << "recv: bytes " << len << ": " << temp << "\n";
-  // }
-
   try
   {
-    if (len > 0)
-    {
+    if (len > 0) {
       m_proto->io_on_read(src,len);
     }
-    else
-    {
-      // // request socket close and initiate closure of this session
-      // try {
-      //   m_socket->close();
-      // }
-      // catch (io_loop_closed&) {
-      //   assert(false);  /* unexpected, we are on IO thread */
-      // }
+    else  {
       std::lock_guard<std::mutex> guard(m_state_lock);
       drop_connection_impl("peer_eof", guard, t_drop_event::sock_eof);
     }
