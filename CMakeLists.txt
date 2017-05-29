@@ -74,7 +74,8 @@ link_directories(${INSTALL_LIB_DIR})
 set(COMMON_LIBS wampcc wampcc_json jansson)
 
 if (WIN32)
-  list(APPEND COMMON_LIBS libuv)
+  list(APPEND COMMON_LIBS libuv ssleay32 libeay32)
+  # libuv library dependencies
   list(APPEND COMMON_LIBS advapi32 iphlpapi psapi shell32 user32 userenv ws2_32)
 endif()
 
@@ -87,7 +88,6 @@ add_library(wampcc STATIC
     ${LIB_MAIN_SRC_FILES}
     ${LIB_EXTNL_HTTPPARSER_SRC_FILES}
     ${LIB_EXTNL_APACH_SRC_FILES})
-
 
 list(APPEND TO_INSTALL wampcc)
 
