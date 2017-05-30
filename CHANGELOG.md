@@ -2,6 +2,7 @@
 # Latest
 
   * support build on Windows, thanks to @petten for cmakefiles & ideas
+  * bug fixed, memory was leaked on each new wamp_session
 
 # 16/04/17 version 1.1.1
 
