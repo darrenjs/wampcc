@@ -6,6 +6,7 @@
 
 **Features**
 
+ - Builds on: Linux & Windows (Visual Studio)
  - Roles: Caller, Callee, Subscriber, Publisher, Dealer, Router
  - Message serializations: JSON
  - Transports: TCP using raw-socket and web-socket
@@ -22,7 +23,7 @@
  - [jansson](http://www.digip.org/jansson/) (JSON encode & decode)
  - [http-parser](https://github.com/nodejs/http-parser)
  - [OpenSSL](https://www.openssl.org/)
- - C++11 compiler, GNU autotools
+ - Modern C++ compiler, GNU autotools (Linux build), CMake (Windows build)
 
 ## Show me some code!
 
