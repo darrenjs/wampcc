@@ -83,6 +83,11 @@ AC_HEADER_STDBOOL
 AC_C_CONST
 AC_C_INLINE
 
+
+# log some directories know to configure
+AC_MSG_NOTICE([notice srcdir: ${srcdir}])
+AC_MSG_NOTICE([notice prefix: ${prefix}])
+
 ##
 ## jalson - can either be included with the source code, or pulled in externally
 ## (although latter not yet implemented)
@@ -90,7 +95,7 @@ AC_C_INLINE
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="../$srcdir/jalson/src"
+jalsoninc="$srcdir/jalson/src"
 jalsonlib="../jalson/src"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)

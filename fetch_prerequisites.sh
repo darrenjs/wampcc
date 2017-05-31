@@ -5,6 +5,8 @@
 #export http_proxy=http://your_ip_proxy:port/
 #export https_proxy=$http_proxy
 
+mkdir -p external
+
 # get googletest
 googletest_ver=1.8.0
 echo '***' fetching GoogleTest $googletest_ver '***'
@@ -34,9 +36,29 @@ then
   then
     test -d jalson && rm -fr jalson
     mv jalson-${jalson_ver} jalson
+    ln -snf ../external jalson/external
   else
     echo failed to find the directory jalson-${jalson_ver}
   fi
 else
   echo failed to download jalson ${jalson_ver}
+fi
+
+
+##
+## msgpack
+##
+
+# Download repo head of msgpack-c, since the latest version, 2.1.1, has a bug in
+# the decoding of msgpack buffers
+
+zipfile=msgpack.master.zip
+test -f $zipfile || wget https://github.com/msgpack/msgpack-c/archive/master.zip -O $zipfile
+
+if [ -f ${zipfile} ]; then
+    unzip -q -d external msgpack.master.zip
+    mv external/msgpack-c-master external/msgpack-c
+else
+    echo failed to download msgpack ... please try manually
+    exit
 fi
