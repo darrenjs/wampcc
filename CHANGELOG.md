@@ -1,19 +1,49 @@
+unreleased
+==========
 
-# Latest
+version 1.3
+===========
 
-  * support build on Windows, thanks to @petten for cmakefiles & ideas
-  * bug fixed, memory was leaked on each new wamp_session
+Released 2017-05-31
 
-# 16/04/17 version 1.1.1
+## Added
 
-  * bug fix: incorrect array index during invocation processig
-  * bug fix: websocket client was not apply frame mask (issue by user 'petten')
-  * feature: admin tool can use either websocket or rawsocket
+- support build on Windows, thanks to @petten for cmakefiles & ideas
 
-# 2017-04-14 version 1.1.0
+## Fixed
 
-  * new feature, TLS/SSL support using OpenSSL, in both client and server mode
+- memory leak on each new wamp_session
 
-# 2017-03-03 version 1.0.0
+## Other
 
-  * initial release
+- soname: 3.0.0
+
+version 1.1.1
+=============
+
+Released 2017-04-16
+
+## Added
+
+- admin tool can use either websocket or rawsocket
+
+## Fixed
+
+- bug fix: incorrect array index during invocation processig
+- bug fix: websocket client was not apply frame mask (issue by user 'petten')
+
+version 1.1.0
+=============
+
+Released 2017-04-14
+
+## Added
+
+- TLS/SSL support using OpenSSL, in both client and server mode
+
+version 1.0.0
+=============
+
+Released 2017-03-03
+
+- initial release
