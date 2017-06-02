@@ -173,7 +173,7 @@ public:
 
   const char* name() const override { return NAME; }
 
-  void send_msg(const json_array& j) override
+  void send_msg(const json_array&) override
   {
     throw std::runtime_error("selector_protocol cannot send");
   }

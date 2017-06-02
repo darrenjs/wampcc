@@ -29,8 +29,12 @@ int main(int argc, char** argv)
 
     auto logger = wampcc::logger::stream(
         std::cout, wampcc::logger::levels_upto(wampcc::logger::eInfo), false);
+
     std::unique_ptr<wampcc::kernel> the_kernel(
         new wampcc::kernel({}, std::move(logger)));
+
+    the_kernel->get_logger().write(wampcc::logger::eInfo, wampcc::name_version(),
+                                   __FILE__, __LINE__);
 
     /* Create an embedded wamp router. */
 
