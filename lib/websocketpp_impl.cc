@@ -11,7 +11,7 @@ namespace wampcc
 {
 
 std::string websocketpp_impl::frame_to_string(
-    websocket_config::message_type::ptr& ptr)
+    const websocket_config::message_type::ptr& ptr)
 {
   std::ostringstream oss;
   oss <<"fin " << ptr->get_fin() <<

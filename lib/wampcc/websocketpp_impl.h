@@ -5,8 +5,8 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-/* The header provides the wampcc types which wrap the websocketpp types  */
-
+/* The header provides the wampcc types which wrap the websocketpp types.  This
+ * is also the file that brings in the websocketpp headers.  */
 
 #include "wampcc/types.h"
 
@@ -21,9 +21,10 @@
 namespace wampcc
 {
 
+/* Config class used with websocketpp, so that we can define the types which
+ * websocketpp will use. */
 struct websocket_config
 {
-
   typedef websocketpp::http::parser::request request_type;
   typedef websocketpp::http::parser::response response_type;
   typedef websocketpp::message_buffer::message<websocketpp::message_buffer::alloc::con_msg_manager> message_type;
@@ -62,7 +63,6 @@ struct websocket_config
 
     /// Global flag for enabling/disabling extensions
     static const bool enable_extensions = true;
-
 };
 
 class websocketpp_impl
@@ -83,14 +83,12 @@ public:
 
 
   /* Get the frame details of the a message as a string, for logging. */
-  static std::string frame_to_string(websocket_config::message_type::ptr&);
+  static std::string frame_to_string(const websocket_config::message_type::ptr&);
 
 private:
   websocket_config::rng_type m_rng_mgr;
   websocketpp::processor::hybi13<websocket_config>::msg_manager_ptr m_msg_manager;
   std::unique_ptr<websocketpp::processor::processor<websocket_config>> m_proc;
 };
-
-
 
 }

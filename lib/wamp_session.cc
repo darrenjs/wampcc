@@ -1924,7 +1924,7 @@ void wamp_session::drop_connection_impl(std::string reason,
       catch (...) {}
     }
 
-    m_state = state::closing_wait;
+    m_state = state::closing_wait; // TODO: move this earlier, just after closing_wait check
     schedule_terminate_on_timeout();
   }
   else

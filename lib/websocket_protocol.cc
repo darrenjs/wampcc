@@ -21,18 +21,36 @@
 
 #include <openssl/sha.h>
 
-#define bswap_64(x) (                           \
-    (((x) & 0xff00000000000000ull) >> 56) |     \
-    (((x) & 0x00ff000000000000ull) >> 40) |     \
-    (((x) & 0x0000ff0000000000ull) >> 24) |     \
-    (((x) & 0x000000ff00000000ull) >> 8) |      \
-    (((x) & 0x00000000ff000000ull) << 8) |      \
-    (((x) & 0x0000000000ff0000ull) << 24) |     \
-    (((x) & 0x000000000000ff00ull) << 40) |     \
-    (((x) & 0x00000000000000ffull) << 56))
+
+/*
+Implementation notes.
+
+Parsing of HTTP headers is handled in this class (using apache project), while
+processing of websocket bytes is delegated to websockpp project.
+
+Things to improve:
+
+- memory usage, since we cache bytes in the rd object, but websockcpp also does
+
+- handle close events
+
+- memory management of websockcpp message object
+
+- why are we not initialting a close in here, ie, sending of a close frame?
+*/
 
 namespace wampcc
 {
+
+/**
+ * This struct is used to hide the websocketpp types from wampcc public
+ * headers.
+ */
+struct websocketpp_msg
+{
+  websocket_config::message_type::ptr ptr;
+};
+
 
 websocket_protocol::websocket_protocol(kernel* k,
                                        tcp_socket* h,
@@ -45,7 +63,7 @@ websocket_protocol::websocket_protocol(kernel* k,
     m_http_parser(new http_parser(mode==connect_mode::passive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
     m_options(std::move(opts)),
-    m_websock_impl( new websocketpp_impl(mode) )
+    m_websock_impl(new websocketpp_impl(mode))
 {
   // register with owner to receive heartbeat thread
   if (opts.ping_interval.count() > 0)
@@ -303,36 +321,42 @@ void websocket_protocol::initiate(t_initiate_cb cb)
   m_socket->write(http_request.c_str(), http_request.size());
 }
 
-void websocket_protocol::send_ping()
+
+void websocket_protocol::send_impl(const websocketpp_msg& msg)
 {
-  auto out_msg_ptr = m_websock_impl->msg_manager()->get_message();
-  m_websock_impl->processor()->prepare_ping("", out_msg_ptr);
-
   LOG_TRACE("fd: " << fd() << ", frame_tx: " <<
-            websocketpp_impl::frame_to_string(out_msg_ptr));
+            websocketpp_impl::frame_to_string(msg.ptr));
 
-  assert(out_msg_ptr->get_payload().size() == 0); /* expect no payload */
+  assert(msg.ptr->get_payload().size() == 0); /* expect no payload */
 
   std::array< std::pair<const char*, size_t>, 1> bufs {
-    {{ out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size()}} };
+    {{ msg.ptr->get_header().data(), msg.ptr->get_header().size()}} };
   m_socket->write(bufs.data(), bufs.size());
 }
+
+
+void websocket_protocol::send_ping()
+{
+  websocketpp_msg msg { m_websock_impl->msg_manager()->get_message() };
+  m_websock_impl->processor()->prepare_ping("", msg.ptr);
+  send_impl(msg);
+}
+
 
 void websocket_protocol::send_pong()
 {
-  auto out_msg_ptr = m_websock_impl->msg_manager()->get_message();
-  m_websock_impl->processor()->prepare_pong("", out_msg_ptr);
-
-  LOG_TRACE("fd: " << fd() << ", frame_tx: " <<
-            websocketpp_impl::frame_to_string(out_msg_ptr));
-
-  assert(out_msg_ptr->get_payload().size() == 0); /* expect no payload */
-
-  std::array< std::pair<const char*, size_t>, 1> bufs {
-    {{ out_msg_ptr->get_header().data(), out_msg_ptr->get_header().size()}} };
-  m_socket->write(bufs.data(), bufs.size());
+  websocketpp_msg msg { m_websock_impl->msg_manager()->get_message() };
+  m_websock_impl->processor()->prepare_pong("", msg.ptr);
+  send_impl(msg);
 }
 
+
+void websocket_protocol::send_close(uint16_t code, const std::string& reason)
+{
+  websocketpp_msg msg { m_websock_impl->msg_manager()->get_message() };
+  m_websock_impl->processor()->prepare_close(code, reason, msg.ptr);
+  send_impl(msg);
+}
 
 
 void websocket_protocol::on_timer()
@@ -340,6 +364,7 @@ void websocket_protocol::on_timer()
   if (m_state == state::open)
     send_ping();
 }
+
 
 serialiser_type websocket_protocol::to_serialiser(const std::string& s)
 {
@@ -350,6 +375,7 @@ serialiser_type websocket_protocol::to_serialiser(const std::string& s)
   else
     return serialiser_type::none;
 }
+
 
 const char* websocket_protocol::to_header(serialiser_type p)
 {
@@ -365,108 +391,52 @@ const char* websocket_protocol::to_header(serialiser_type p)
 
 void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
 {
-
   websocketpp::lib::error_code ec;
   size_t consumed = m_websock_impl->processor()->consume((uint8_t*) rd.ptr(), rd.avail(), ec);
   rd.advance(consumed);
 
-  // TODO: check ec
+  if (ec)
+    throw std::runtime_error(ec.message());
 
   if (m_websock_impl->processor()->ready())
   {
-    auto msg = m_websock_impl->processor()->get_message(); // shared_ptr<message_buffer::message<message_buffer::alloc::con_msg_manager> >
+    // shared_ptr<message_buffer::message<message_buffer::alloc::con_msg_manager> >
+    auto msg = m_websock_impl->processor()->get_message();
 
-    if (!msg) {
-      // raise failure
-//        m_alog.write(log::alevel::devel, "null message from m_processor");
-    } else if (!is_control(msg->get_opcode())) {
+    if (!msg)
+      throw std::runtime_error("null message from processor");
 
+    if (!is_control(msg->get_opcode())) {
       // data message, dispatch to user
 
-      // TODO: handle case of state closed but message arrived
+      // TODO: handle case of state closed/(closing?) but message arrived
 //         if (m_state != session::state::open) {
 //           //m_elog.write(log::elevel::warn, "got non-close frame while closing"
 
       LOG_TRACE("fd: " << fd() << ", frame_rx: " <<
                 websocketpp_impl::frame_to_string(msg));
 
-      if (msg->get_opcode() == websocketpp::frame::opcode::binary) {
+      if ((msg->get_opcode() == websocketpp::frame::opcode::binary) ||
+          (msg->get_opcode() == websocketpp::frame::opcode::text)) {
         decode(msg->get_payload().data(), msg->get_payload().size());
       }
-      else if (msg->get_opcode() == websocketpp::frame::opcode::text) {
-        decode(msg->get_payload().data(), msg->get_payload().size());
-      }
-
     } else {
       websocketpp::frame::opcode::value op = msg->get_opcode();
 
       if (op == websocketpp::frame::opcode::PING) {
+        // TODO: throttle pong's per second
         send_pong();
       } else if (op == websocketpp::frame::opcode::PONG) {
-
         /* Track loss of ping, after ping expected? */
-
       } else if (op == websocketpp::frame::opcode::CLOSE) {
-
-        // TODO: need to reply with close ack frame
-
-        // issue a close frame
+        send_close(websocketpp::close::status::normal, "received peer close");
         m_state = state::closing;
 
-        // TODO: request for close should be initiaied from the owning session?
-
+        // TODO: should schedule a session close here
         m_socket->close();
       }
-
     }
   }
-
-
-
-
-
-  // const frame::header hdr = frame::decode_header(rd.ptr(), rd.avail());
-
-  // if (!hdr.complete || rd.avail() < hdr.frame_len())
-  //   return;
-
-  // LOG_TRACE("fd: " << fd() << ", frame_rx: " << hdr);
-
-  // int const payload_pos = hdr.header_len;
-
-  // for (size_t i = 0; i < (hdr.mask_bit?hdr.payload_len:0); ++i)
-  //   rd[payload_pos+i] ^= hdr.mask[i%4];
-
-  // if (!hdr.fin_bit)
-  //   throw protocol_error("websocket continuations not supported");
-
-  // switch (hdr.opcode)
-  // {
-  //   case OPCODE_CONTINUE: break;
-  //   case OPCODE_TEXT: break;
-  //   case OPCODE_BINARY: break;
-  //   case OPCODE_CLOSE : {
-  //     // issue a close frame
-  //     m_state = state::closing;
-  //     frame::header hdr(OPCODE_CLOSE, true, 0);
-  //     auto hdr_buf = frame::encode_header(hdr);
-  //     LOG_TRACE("fd: " << fd() << ", frame_tx: " << hdr);
-  //     m_socket->write(hdr_buf.data(), hdr.header_len);
-
-  //     // TODO: request for close should be initiaied from the owning session?
-  //     m_socket->close();
-  //     break;
-  //   };
-  //   default: break;
-  // }
-
-  // // TODO: when decoding text, should check for UTF8 complete string
-  // if (hdr.fin_bit && hdr.opcode == OPCODE_TEXT)
-  //   decode(rd.ptr()+payload_pos, hdr.payload_len);
-  // else if (hdr.fin_bit && hdr.opcode == OPCODE_BINARY)
-  //   decode(rd.ptr()+payload_pos, hdr.payload_len);
-
-  // rd.advance(hdr.frame_len());
 }
 
 }
