@@ -96,12 +96,12 @@ AC_MSG_NOTICE([notice wampcc_src_dir: ${wampcc_src_dir}])
 
 ##
 ## jalson - can either be included with the source code, or pulled in externally
-## (although latter not yet implemented)
+## (although latter not yet implemented - below assumes bundled) 
 ##
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="$wampcc_src_dir"/jalson/src
+jalsoninc="$(cd "$srcdir"; pwd)/jalson/src"
 jalsonlib="../jalson/src"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
