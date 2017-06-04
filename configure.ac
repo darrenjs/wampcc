@@ -1,7 +1,7 @@
 
 #========== Initialisation ==========
 
-AC_INIT([wampcc], [1.3], [wampcc@darrenjs.net], [wampcc], [ ] )
+AC_INIT([wampcc], [1.3.1], [wampcc@darrenjs.net], [wampcc], [ ] )
 AC_PREREQ([2.59])
 
 AC_CONFIG_AUX_DIR([.])
@@ -83,20 +83,26 @@ AC_HEADER_STDBOOL
 AC_C_CONST
 AC_C_INLINE
 
+# The user provided 'srcdir' might be a relative or an absolute path, depending
+# on how the configure script was invoked. Here we obtain the absolute path to
+# the srcdir.
+wampcc_src_dir=`(cd "$srcdir"; pwd)`
 
-# log some directories know to configure
+# log some directories known to configure
 AC_MSG_NOTICE([notice srcdir: ${srcdir}])
 AC_MSG_NOTICE([notice prefix: ${prefix}])
+AC_MSG_NOTICE([notice ac_pwd: ${ac_pwd}])
+AC_MSG_NOTICE([notice wampcc_src_dir: ${wampcc_src_dir}])
 
 ##
 ## jalson - can either be included with the source code, or pulled in externally
-## (although latter not yet implemented)
+## (although latter not yet implemented - below assumes bundled) 
 ##
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="$(realpath $srcdir)/jalson/src"
-jalsonlib="$(realpath $srcdir)/jalson/src"
+jalsoninc="$(cd "$srcdir"; pwd)/jalson/src"
+jalsonlib="../jalson/src"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
 

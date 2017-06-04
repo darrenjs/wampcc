@@ -5,6 +5,10 @@
 # it under the terms of the MIT license. See LICENSE for details.
 #
 
+# comment-out these two lines to link to shared libs
+STATIC_LINK_BEGIN=-Wl,-Bstatic
+STATIC_LINK_END=-Wl,-Bdynamic
+
 ifeq ($(WAMPCC_HOME),)
  $(error WAMPCC_HOME undefined - set WAMPCC_HOME to where wampcc was make-installed)
 endif
@@ -28,7 +32,7 @@ JANSSON_LIBS=-L$(JANSSON_HOME)/lib -ljansson
 CXXFLAGS += -MMD -MP
 CXXFLAGS += -Wall -O0 -g3 -ggdb -std=c++11 -pthread   $(WAMPCC_INC) $(JALSON_INC) $(LIBUV_INC)
 
-LDLIBS +=$(WAMPCC_LIBS) $(LIBUV_LIBS) $(JALSON_LIBS) $(JANSSON_LIBS) -lcrypto -lpthread
+LDLIBS += $(STATIC_LINK_BEGIN) $(WAMPCC_LIBS) $(LIBUV_LIBS) $(JANSSON_LIBS) $(STATIC_LINK_END) -lcrypto -lpthread -lssl -lrt
 
 # default: callee
 
