@@ -75,7 +75,7 @@ then
   then
     test -d jalson && rm -fr jalson
     mv jalson-${jalson_ver} jalson
-    ln -snf ../external jalson/external
+    (cd jalson && ln -snf ../external .)
   else
     echo failed to find the directory jalson-${jalson_ver}
   fi
