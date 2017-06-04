@@ -17,7 +17,7 @@ using namespace wampcc;
 using namespace std;
 
 int global_port;
-int global_loops = 50;
+int global_loops = 500;
 
 void test_unused_socket()
 {
@@ -265,7 +265,6 @@ int main(int argc, char** argv)
 {
   try {
     global_port = 25000;
-    global_loops = 500;
 
     if (argc > 1)
       global_port = atoi(argv[1]);

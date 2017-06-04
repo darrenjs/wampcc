@@ -6,19 +6,17 @@
  */
 
 #include "test_common.h"
+#include "mini_test.h"
 
 using namespace wampcc;
 using namespace std;
 
-// logging control
-// #ifdef TLOG
-// #undef TLOG
-// #define TLOG(X)
-// #endif
+int global_port;
+int global_loops = 500;
 
 void test_WS_destroyed_after_kernel(int port)
 {
-  TLOG("----- "<< __FUNCTION__<<" -----");
+  TSTART();
 
   callback_status = callback_status_t::not_invoked;
 
@@ -31,7 +29,7 @@ void test_WS_destroyed_after_kernel(int port)
 
     /* attempt to connect the socket */
     unique_ptr<tcp_socket> sock (new tcp_socket(the_kernel.get()));
-    TLOG("attemping socket connection ...");
+
     auto fut = sock->connect("127.0.0.1", port);
 
     auto connect_status = fut.wait_for(chrono::milliseconds(1000));
@@ -42,24 +40,14 @@ void test_WS_destroyed_after_kernel(int port)
     }
 
     /* attempt to create a session */
-    TLOG("attemping session creation");
     shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
       session_cb, {});
 
-    TLOG("got session #" << session->unique_id());
-
     ws_outer = session;
-
-    TLOG("exiting scope (will trigger kernel, io_loop, ev_loop destruction)");
-
   }
 
-  TLOG("** scope complete");
-
-
-  TLOG("triggering ~wamp_session...");
   ws_outer.reset();
 
   // In this test, the kernel is deleted before the wamp_session is deleted (due
@@ -68,43 +56,45 @@ void test_WS_destroyed_after_kernel(int port)
   // design is that is wont be called back, because as the tcp_socket is force
   // closes during kernel unwind, that in itself does not cause a callback into
   // the wamp_session to say the session is closed.
-  assert(callback_status == callback_status_t::not_invoked);
-
-  TLOG("test success");
+  REQUIRE(callback_status == callback_status_t::not_invoked);
 }
 
+TEST_CASE("test_WS_destroyed_after_kernel")
+{
+  // share a common internal_server
+  for (int i = 0; i < global_loops; i++)
+  {
+    internal_server iserver;
+    int port = iserver.start(global_port++);
+
+    for (int j=0; j < 100; j++) {
+      test_WS_destroyed_after_kernel(port);
+    }
+  }
+}
+
+TEST_CASE("test_WS_destroyed_after_kernel")
+{
+  // use one internal_server per test
+  for (int i = 0; i < global_loops; i++)
+  {
+    internal_server iserver;
+    int port = iserver.start(global_port++);
+    test_WS_destroyed_after_kernel(port);
+  }
+}
 
 int main(int argc, char** argv)
 {
   try
   {
-    int starting_port_number = 20000;
-    int loops = 500;
+    global_port = 20000;
 
     if (argc>1)
-      starting_port_number = atoi(argv[1]);
+      global_port = atoi(argv[1]);
 
-
-    // share a common internal_server
-    for (int i = 0; i < loops; i++)
-    {
-      internal_server iserver;
-      int port = iserver.start(starting_port_number++);
-
-      for (int j=0; j < 100; j++) {
-        test_WS_destroyed_after_kernel(port);
-      }
-    }
-
-    // use one internal_server per test
-    for (int i = 0; i < loops; i++)
-    {
-      internal_server iserver;
-      int port = iserver.start(starting_port_number++);
-      test_WS_destroyed_after_kernel(port);
-    }
-
-    return 0;
+    int result = minitest::run(argc, argv);
+    return (result < 0xFF ? result : 0xFF);
   }
   catch (exception& e)
   {
