@@ -42,7 +42,7 @@ class managed_topic
 {
 public:
 
-  managed_topic(size_t __subscription_id)
+  managed_topic(t_subscription_id __subscription_id)
   :  m_subscription_id(__subscription_id),
      m_is_valid(false)
   {
@@ -119,7 +119,7 @@ private:
   // allow this, and it has the benefit that we can perform a single message
   // serialisation for all subscribers.  Might have to change later if more
   // complex subscription features are supported.
-  size_t m_subscription_id;
+  t_subscription_id m_subscription_id;
 
   // Track whether this image has ever applied an update
   bool m_is_valid;
@@ -203,7 +203,7 @@ void pubsub_man::update_topic(const std::string& topic,
 
   json_array msg;
   msg.reserve(6);
-  msg.push_back( EVENT );
+  msg.push_back( msg_type::wamp_msg_event );
   msg.push_back( mt->subscription_id() );
   msg.push_back( mt->next_publication_id() );
   msg.push_back( std::move(options) );
@@ -252,13 +252,13 @@ void pubsub_man::inbound_publish(std::string realm,
   if (realm.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "realm has zero length");
 
-  if (m_uri_regex.is_strict_uri(realm.c_str()) == false)
+  if (is_strict_uri(realm.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "realm fails strictness check");
 
   if (topic.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic has zero length");
 
-  if (m_uri_regex.is_strict_uri(topic.c_str()) == false)
+  if (is_strict_uri(topic.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
 
   update_topic(topic, realm, std::move(options), args);
@@ -279,7 +279,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   if (topic.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic has zero length");
 
-  if (m_uri_regex.is_strict_uri(topic.c_str()) == false)
+  if (is_strict_uri(topic.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
 
   // find or create a topic
@@ -290,7 +290,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
 
   LOG_INFO("session #" << sptr->unique_id() << " subscribed to '"<< topic << "'");
 
-  json_array msg({SUBSCRIBED,request_id,mt->subscription_id()});
+  json_array msg({msg_type::wamp_msg_subscribed, request_id,mt->subscription_id()});
   sptr->send_msg(msg);
 
   /* for stateful topic must send initial snapshot (only if an image exists) */
@@ -313,7 +313,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
     event_options[KEY_SNAPSHOT] = 1;
     json_array snapshot_msg;
     snapshot_msg.reserve(5);
-    snapshot_msg.push_back( EVENT );
+    snapshot_msg.push_back( msg_type::wamp_msg_event );
     snapshot_msg.push_back( mt->subscription_id() );
     snapshot_msg.push_back( 0 ); // publication id
     snapshot_msg.push_back( std::move(event_options) );
@@ -339,7 +339,7 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
   {
     it->second->remove(sptr->handle());
 
-    json_array msg({ UNSUBSCRIBED, request_id });
+    json_array msg({msg_type::wamp_msg_unsubscribed, request_id });
     sptr->send_msg(msg);
   }
   else

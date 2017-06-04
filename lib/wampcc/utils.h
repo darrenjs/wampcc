@@ -33,6 +33,9 @@ void log_exception(logger& __logptr, const char* callsite);
 /* Generate iso8601 timestamp, like YYYY-MM-DDThh:mm:ss.sssZ */
 std::string iso8601_utc_timestamp();
 
+/* Generate local timestamp, like "20170527-00:29:48.796000" */
+std::string local_timestamp();
+
 /* Generate a random string of ascii printables of length 'len' */
 std::string random_ascii_string(const size_t len,
                                 unsigned int seed = std::random_device()());
@@ -81,25 +84,6 @@ private:
 };
 
 
-struct regex_impl;
-
-/** Provide methods to check validity of WAMP URIs */
-class uri_regex
-{
-public:
-  uri_regex();
-  ~uri_regex();
-
-  uri_regex(const uri_regex&) = delete;
-  uri_regex& operator=(const uri_regex&) = delete;
-
-  bool is_strict_uri(const char*) const;
-
-private:
-  regex_impl* m_impl;
-};
-
-
 class global_scope_id_generator
 {
 public:
@@ -143,10 +127,6 @@ inline std::string trim(const std::string& s,
     return s.substr(f, 1 + s.find_last_not_of(d) - f);
 }
 
-
-bool case_insensitive_same(const std::string&, const std::string&);
-
-
 inline char* skip_whitespace(char* str)
 {
   while (std::isspace(*str))
@@ -162,6 +142,8 @@ bool has_token(const std::string& src, const std::string token,
 /** Return local hostname, or throw upon failure. */
 std::string hostname();
 
+/** Return if the string is a wamp strict URI */
+bool is_strict_uri(const char*) noexcept;
 
 class scope_guard
 {

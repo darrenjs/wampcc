@@ -60,7 +60,7 @@ fi
 ##
 ## get jalson
 ##
-jalson_ver=1.2
+jalson_ver=1.3
 echo '***' fetching jalson $jalson_ver '***'
 echo
 tarfile=jalson-${jalson_ver}.tar.gz
@@ -72,8 +72,7 @@ then
   then
     test -d jalson && rm -fr jalson
     mv jalson-${jalson_ver} jalson
-    mkdir -p jalson/external
-    ln -rsnf -t jalson/external external/msgpack-c
+    ln -snf ../external jalson/external
   else
     echo failed to find the directory jalson-${jalson_ver}
   fi

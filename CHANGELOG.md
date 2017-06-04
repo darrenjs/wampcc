@@ -1,20 +1,52 @@
+unreleased
+==========
 
-# 2017-05-07 version 1.2
+* added msgpack support
+* using websocketpp
 
-  * library.so version, 2.0.0
-  * added msgpack support 
-  * uses jalson 1.2
+version 1.3
+===========
 
-# 16/04/17 version 1.1.1
+Released 2017-05-31
 
-  * bug fix: incorrect array index during invocation processig
-  * bug fix: websocket client was not apply frame mask (issue by user 'petten')
-  * feature: admin tool can use either websocket or rawsocket
+## Added
 
-# 2017-04-14 version 1.1.0
+- support build on Windows, thanks to @petten for cmakefiles & ideas
 
-  * new feature, TLS/SSL support using OpenSSL, in both client and server mode
+## Fixed
 
-# 2017-03-03 version 1.0.0
+- memory leak on each new wamp_session
 
-  * initial release
+## Other
+
+- soname: 3.0.0
+
+version 1.1.1
+=============
+
+Released 2017-04-16
+
+## Added
+
+- admin tool can use either websocket or rawsocket
+
+## Fixed
+
+- bug fix: incorrect array index during invocation processig
+- bug fix: websocket client was not apply frame mask (issue by user 'petten')
+
+version 1.1.0
+=============
+
+Released 2017-04-14
+
+## Added
+
+- TLS/SSL support using OpenSSL, in both client and server mode
+
+version 1.0.0
+=============
+
+Released 2017-03-03
+
+- initial release

@@ -15,9 +15,7 @@
 #include <list>
 #include <iostream>
 
-#include <unistd.h>
 #include <string.h>
-#include <sys/time.h>
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
 
@@ -40,11 +38,17 @@ private:
 
 struct user_options
 {
-  enum class transport_bit
+  enum class transport
   {
-    rawsocket = 0x01,
-    websocket = 0x02,
-  } transport = transport_bit::websocket;
+    rawsocket,
+    websocket,
+  } session_transport = transport::websocket;
+
+  enum class format
+  {
+    json,
+    msgpack,
+  } wire_format = format::json;
 
   int serialisers = wampcc::all_serialisers;
 
@@ -149,7 +153,7 @@ void session_state_cb(bool is_open)
 }
 
 
-static void die(std::string e)
+void die(std::string e)
 {
   std::cout << e << std::endl;
   exit( 1 );
@@ -157,11 +161,12 @@ static void die(std::string e)
 
 
 #define HELPLN( X,S,T) std::cout << "  " << X << S << T << std::endl
-static void usage()
+void usage()
 {
   const char *sp2="\t\t";
   const char *sp3="\t\t\t";
   const char *sp4="\t\t\t\t";
+
   std::cout << "usage: admin [OPTIONS] ADDRESS PORT" << std::endl;
   std::cout << "Options:" << std::endl;
   HELPLN("-U, --username=ARG",sp2,"specify a session username");
@@ -200,18 +205,16 @@ void version()
 
 void parse_proto(const char* src)
 {
-  auto keywords = wampcc::tokenize(src, ',', false);
-  for (auto item : keywords)
-  {
-    if (item=="web")
-      uopts.transport = user_options::transport_bit::websocket;
-    else if (item=="raw")
-      uopts.transport = user_options::transport_bit::rawsocket;
-    else if (item=="ssl")
+  for (auto str : wampcc::tokenize(src, ',', false)) {
+    if (str=="web")
+      uopts.session_transport = user_options::transport::websocket;
+    else if (str=="raw")
+      uopts.session_transport = user_options::transport::rawsocket;
+    else if (str=="ssl")
       uopts.use_ssl = true;
-    else if (item=="json")
+    else if (str=="json")
       uopts.serialisers = static_cast<int>(wampcc::serialiser_type::json);
-    else if (item=="msgpack")
+    else if (str=="msgpack")
       uopts.serialisers = static_cast<int>(wampcc::serialiser_type::msgpack);
     else
       throw std::runtime_error("unknown proto flag");
@@ -236,7 +239,6 @@ static void process_options(int argc, char** argv)
     OPT_NO_URI_CHECK = 1,
     OPT_ARGLIST,
     OPT_ARGDICT,
-    OPT_SSL,
     OPT_TIMEOUT,
     OPT_PROTO,
   };
@@ -256,7 +258,6 @@ static void process_options(int argc, char** argv)
     {"arglist",   required_argument, 0, OPT_ARGLIST},
     {"argdict",   required_argument, 0, OPT_ARGDICT},
     {"no-uri-check", no_argument,    0, OPT_NO_URI_CHECK},
-    {"ssl",       no_argument,       0, OPT_SSL},
     {"timeout",   required_argument, 0, OPT_TIMEOUT},
     {"proto",     required_argument, 0, OPT_PROTO},
     {NULL, 0, NULL, 0}
@@ -287,7 +288,6 @@ static void process_options(int argc, char** argv)
       case OPT_NO_URI_CHECK : uopts.no_uri_check = true; break;
       case OPT_ARGLIST : uopts.arg_list = optarg; break;
       case OPT_ARGDICT : uopts.arg_dict = optarg; break;
-      case OPT_SSL : uopts.use_ssl = true; break;
       case OPT_TIMEOUT :
         uopts.timeout = std::chrono::seconds(atoi(optarg));
         break;
@@ -319,28 +319,10 @@ static void process_options(int argc, char** argv)
   // check topics
   if (uopts.no_uri_check == false)
   {
-    wampcc::uri_regex uri_check;
     for (auto & i : uopts.subscribe_topics)
-      if (not uri_check.is_strict_uri(i.c_str()))
+      if (!wampcc::is_strict_uri(i.c_str()))
         die("not strict uri: " + i);
   }
-}
-
-std::string get_timestamp()
-{
-
-  // get current time
-  timeval now;
-  struct timezone * const tz = NULL; /* not used on Linux */
-  gettimeofday(&now, tz);
-
-  struct tm _tm;
-  localtime_r(&now.tv_sec, &_tm);
-
-  std::ostringstream os;
-  os << _tm.tm_hour << ":" << _tm.tm_min << ":" << _tm.tm_sec;
-
-  return os.str();
 }
 
 
@@ -443,8 +425,8 @@ int main_impl(int argc, char** argv)
 
   std::shared_ptr<wampcc::wamp_session> ws;
 
-  switch (uopts.transport) {
-    case user_options::transport_bit::websocket: {
+  switch (uopts.session_transport) {
+    case user_options::transport::websocket: {
       wampcc::websocket_protocol::options proto_opts;
       proto_opts.serialisers = uopts.serialisers;
       ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(
@@ -456,7 +438,7 @@ int main_impl(int argc, char** argv)
         }, proto_opts);
       break;
     }
-    case user_options::transport_bit::rawsocket: {
+    case user_options::transport::rawsocket: {
       wampcc::rawsocket_protocol::options proto_opts;
       proto_opts.serialisers = uopts.serialisers;
       ws = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(

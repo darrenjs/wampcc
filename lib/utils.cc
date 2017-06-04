@@ -7,12 +7,12 @@
 
 #include "wampcc/utils.h"
 #include "wampcc/log_macros.h"
+#include "wampcc/platform.h"
 
 #include <openssl/hmac.h> // crypto functions
-#include <sys/time.h>
-#include <sys/utsname.h>
 #include <string.h>
-#include <regex.h>
+
+#include <assert.h>
 
 namespace wampcc
 {
@@ -175,67 +175,93 @@ void log_exception(logger& __logger, const char* callsite)
 
 std::string iso8601_utc_timestamp()
 {
-  timeval epoch;
-  gettimeofday(&epoch, nullptr);
+  static constexpr char full_format[]  = "2017-05-21T07:51:17.000Z"; // 24
+  static constexpr char short_format[] = "2017-05-21T07:51:17";      // 19
+  static constexpr int  short_len = 19;
 
-  struct tm _tm;
-  gmtime_r(&epoch.tv_sec, &_tm);
+  static_assert(short_len == (sizeof short_format - 1), "short_len check failed");
 
-  // YYYY-MM-DDThh:mm:ss.sssZ
-  char temp[32];
-  memset(temp, 0, sizeof(temp));
+  wampcc::time_val tv = wampcc::time_now();
 
-  strftime(temp, sizeof(temp) - 1, "%FT%T", &_tm);
-  sprintf(&temp[19], ".%03dZ", (int)epoch.tv_usec / 1000);
-  temp[24] = '\0';
+  char buf[32] = { 0 };
+  assert(sizeof buf > (sizeof full_format));
+  assert(sizeof full_format > sizeof short_format);
 
-  return temp;
+  struct tm parts;
+  time_t rawtime = tv.sec;
+
+#ifndef _WIN32
+  gmtime_r(&rawtime, &parts);
+#else
+  gmtime_s(&parts, &rawtime);
+#endif
+
+  if (0 == strftime(buf, sizeof buf - 1, "%FT%T", &parts))
+    return "";  // strftime not successful
+
+  // append milliseconds
+  int ec;
+#ifndef _WIN32
+  ec = snprintf(&buf[short_len], sizeof(buf) - short_len,
+                ".%03dZ", (int) tv.usec/1000);
+#else
+  ec = sprintf_s(&buf[short_len], sizeof(buf) - short_len,
+                 ".%03dZ", (int) tv.usec/1000);
+#endif
+  if (ec<0)
+    return "";
+
+  buf[sizeof full_format - 1] = '\0';
+  return buf;
+}
+
+
+std::string local_timestamp()
+{
+  static constexpr char format[] = "20170527-00:29:48.796000"; // 24
+
+  char timestamp[32] = {0};
+  struct tm parts;
+  time_val now = time_now();
+  int ec;
+
+  static_assert(sizeof timestamp > sizeof format, "buffer too short");
+
+#ifndef _WIN32
+  localtime_r(&now.sec, &parts);
+  ec = snprintf(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06lu",
+	  parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
+	  parts.tm_min, parts.tm_sec, now.usec);
+#else
+  localtime_s(&parts, &now.sec);
+  ec = sprintf_s(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06llu",
+	  parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
+	  parts.tm_min, parts.tm_sec, now.usec);
+#endif
+
+  if (ec < 0)
+    return "";
+
+  timestamp[sizeof timestamp - 1] = '\0';
+  return timestamp;
 }
 
 
 std::string random_ascii_string(const size_t len, unsigned int seed)
 {
-  char temp[len + 1];
+  std::string temp;
+  temp.reserve(len);
 
   std::mt19937 engine(seed);
   std::uniform_int_distribution<> distr('!', '~'); // asci printables
 
   for (auto& x : temp)
     x = distr(engine);
-  temp[len] = '\0';
 
+  temp[len] = '\0';
   return temp;
 }
 
-
-struct regex_impl
-{
-  regex_t m_re;
-
-  regex_impl()
-  {
-    int flags = REG_EXTENDED | REG_NOSUB;
-    if (::regcomp(&m_re, R"(^([0-9a-z_]+\.)*([0-9a-z_]+)$)", flags) != 0)
-      throw std::runtime_error("regcomp failed");
-  }
-
-  ~regex_impl() { regfree(&m_re); }
-
-  bool matches(const char* s) const
-  {
-    return (::regexec(&m_re, s, (size_t)0, NULL, 0) == 0);
-  }
-};
-
-uri_regex::uri_regex() : m_impl(new regex_impl) {}
-
-uri_regex::~uri_regex() { delete m_impl; }
-
-
-bool uri_regex::is_strict_uri(const char* s) const
-{
-  return m_impl->matches(s);
-}
 
 std::string to_hex(const char* p, size_t size)
 {
@@ -257,12 +283,12 @@ std::list<std::string> tokenize(const char* src, char delim,
 {
   std::list<std::string> tokens;
 
-  if (src and *src != '\0')
+  if (src && *src != '\0')
     while (true) {
       const char* d = strchr(src, delim);
       size_t len = (d) ? d - src : strlen(src);
 
-      if (len or want_empty_tokens)
+      if (len || want_empty_tokens)
         tokens.push_back({src, len}); // capture token
 
       if (d)
@@ -273,21 +299,46 @@ std::list<std::string> tokenize(const char* src, char delim,
   return tokens;
 }
 
-
-bool case_insensitive_same(const std::string& lhs, const std::string& rhs)
+bool is_valid_char(char c)
 {
-  return strcasecmp(lhs.c_str(), rhs.c_str()) == 0;
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+    (c >= '0' && c <= '9') || (c == '_');
 }
 
 
-/** Return local hostname, or throw upon failure. */
-std::string hostname()
+/* Check URI conformance directly, rather than use regex.  This is to avoid
+ * compilers with broken regex implementations (eg, some gcc 4.x). */
+bool is_strict_uri(const char* p) noexcept
 {
-  struct utsname buffer;
-  if (uname(&buffer) != 0)
-    throw std::runtime_error("uname failed");
+  enum class state {
+    component,
+    component_or_delim,
+    fail
+  } st = state::component;
 
-  return buffer.nodename;
+  while (st != state::fail && *p) {
+    switch (st) {
+      case state::component: {
+        if (is_valid_char(*p))
+          st = state::component_or_delim;
+        else
+          st = state::fail;
+        break;
+      }
+      case state::component_or_delim: {
+        if (*p == '.')
+          st = state::component;
+        else if (!is_valid_char(*p))
+          st = state::fail;
+        break;
+      }
+      case state::fail:
+        break;
+    };
+    p++;
+  }
+
+  return st == state::component_or_delim;
 }
 
 

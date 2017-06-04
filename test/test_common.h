@@ -13,8 +13,6 @@
 #include <chrono>
 #include <string.h>
 
-
-#include <unistd.h>
 #undef NDEBUG
 
 #include <assert.h>
@@ -32,7 +30,7 @@ namespace wampcc
 
 logger debug_logger()
 {
-  return logger::stdlog(std::cout, -1, true);
+  return logger::stream(std::cout, -1, true);
 }
 
 
@@ -65,7 +63,7 @@ enum test_outcome { e_expected, e_unexpected };
 
 logger trace_logger()
 {
-  return logger::stdlog(std::cout, logger::levels_upto(logger::eTrace));
+  return logger::stream(std::cout, logger::levels_upto(logger::eTrace));
 }
 
 class internal_server

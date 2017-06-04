@@ -226,7 +226,7 @@ namespace wampcc {
     static std::shared_ptr<wamp_session> create(kernel*,
                                                 std::unique_ptr<tcp_socket>,
                                                 state_fn,
-                                                protocol_builder_fn ,
+                                                protocol_builder_fn,
                                                 server_msg_handler,
                                                 auth_provider);
 
@@ -283,10 +283,10 @@ namespace wampcc {
     bool is_pending_open() const;
 
     /** Number of seconds since session constructed  */
-    int duration_since_creation() const;
+    time_t time_created() const;
 
     /** Time since last message */
-    int duration_since_last() const;
+    time_t time_last() const;
 
     /** Return the realm, or empty string if a realm has not yet been provided,
      * eg, in case of a server session that receives the realm from the peer. */
@@ -363,7 +363,7 @@ namespace wampcc {
     wamp_session(kernel*,
                  mode,
                  std::unique_ptr<tcp_socket>,
-                 state_fn state_cb,
+                 state_fn,
                  server_msg_handler,
                  auth_provider);
 
@@ -373,7 +373,7 @@ namespace wampcc {
     void io_on_read(char*, size_t);
     void io_on_error(uverr);
     void decode_and_process(char*, size_t len);
-    void process_message(unsigned int, json_array&);
+    void process_message(json_array&, json_uint_t);
     void handle_exception();
 
     void update_state_for_outbound(const json_array& msg);
@@ -446,7 +446,6 @@ namespace wampcc {
     bool m_server_requires_auth;
 
     state_fn m_notify_state_change_fn;
-    std::weak_ptr<wamp_session> m_self_weak;
 
     void process_inbound_registered(json_array &);
     void process_inbound_invocation(json_array &);
@@ -464,11 +463,11 @@ namespace wampcc {
     void process_inbound_goodbye(json_array &);
     void process_inbound_abort(json_array &);
 
-    void invocation_yield(int request_id,
+    void invocation_yield(t_request_id request_id,
                           wamp_args args);
 
-    void reply_with_error(int request_type,
-                          int request_id,
+    void reply_with_error(msg_type request_type,
+                          t_request_id request_id,
                           wamp_args args,
                           std::string error_uri);
 

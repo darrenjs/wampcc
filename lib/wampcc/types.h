@@ -43,37 +43,35 @@ namespace wampcc
 #define WAMP_ERROR_BAD_PROTOCOL "wamp.error.bad_protocol"
 #define WAMP_ERROR_UNEXPECTED_STATE "wamp.error.unexpected_state"
 
-enum WampMsgType
-{
-    UNDEF=0,
-    HELLO = 1,
-    WELCOME = 2,
-    ABORT = 3,
-    CHALLENGE = 4,
-    AUTHENTICATE = 5,
-    GOODBYE = 6,
-    HEARTBEAT = 7,
-    ERROR = 8,
-    PUBLISH = 16,
-    PUBLISHED = 17,
-    SUBSCRIBE = 32,
-    SUBSCRIBED = 33,
-    UNSUBSCRIBE = 34,
-    UNSUBSCRIBED = 35,
-    EVENT = 36,
-    CALL = 48,
-    CANCEL = 49,
-    RESULT = 50,
-    REGISTER = 64,
-    REGISTERED = 65,
-    UNREGISTER = 66,
-    UNREGISTERED = 67,
-    INVOCATION = 68,
-    INTERRUPT = 69,
-    YIELD = 70,
-
-    WAMP_MSGID_MAX
-};
+  enum msg_type
+  {
+    wamp_msg_undef = 0,
+    wamp_msg_hello = 1,
+    wamp_msg_welcome = 2,
+    wamp_msg_abort = 3,
+    wamp_msg_challenge = 4,
+    wamp_msg_authenticate = 5,
+    wamp_msg_goodbye = 6,
+    wamp_msg_heartbeat = 7,
+    wamp_msg_error = 8,
+    wamp_msg_publish = 16,
+    wamp_msg_published = 17,
+    wamp_msg_subscribe = 32,
+    wamp_msg_subscribed = 33,
+    wamp_msg_unsubscribe = 34,
+    wamp_msg_unsubscribed = 35,
+    wamp_msg_event = 36,
+    wamp_msg_call = 48,
+    wamp_msg_cancel = 49,
+    wamp_msg_result = 50,
+    wamp_msg_register = 64,
+    wamp_msg_registered = 65,
+    wamp_msg_unregister = 66,
+    wamp_msg_unregistered = 67,
+    wamp_msg_invocation = 68,
+    wamp_msg_interrupt = 69,
+    wamp_msg_yield = 70
+  };
 
 typedef uint64_t t_request_id;
 typedef uint64_t t_invoke_id;

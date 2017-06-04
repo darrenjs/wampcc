@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     cfg.ssl.certificate_file = "server.crt";
     cfg.ssl.private_key_file = "server.key";
 
-    kernel the_kernel(cfg, logger::stdout());
+    kernel the_kernel(cfg, logger::console());
 
     /* Create an embedded wamp router. */
 
@@ -57,8 +57,8 @@ int main(int argc, char** argv)
         [](wamp_invocation& invocation) { invocation.yield({"hello SSL"}); });
 
     /* Suspend main thread */
-
-    pause();
+    std::promise<void> forever;
+    forever.get_future().wait();
   } catch (const exception& e) {
     cout << e.what() << endl;
     return 1;

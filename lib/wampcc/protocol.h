@@ -159,7 +159,7 @@ public:
     std::function<void(std::chrono::milliseconds)>  request_timer;
   };
 
-  typedef std::function<void(json_array msg, int msgtype)> t_msg_cb;
+  typedef std::function<void(json_array msg,  json_uint_t msgtype)> t_msg_cb;
   typedef std::function<void()> t_initiate_cb;
 
   protocol(kernel*, tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,
@@ -179,7 +179,7 @@ protected:
   bool have_codec() const { return (bool) m_codec; }
   void create_codec(int choices);
 
-  int fd() const;
+  std::string fd() const;
 
   void decode(const char* ptr, size_t msglen);
   std::vector<char> encode(const json_array&);

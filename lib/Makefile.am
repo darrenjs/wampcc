@@ -32,7 +32,7 @@ libwampcc_la_SOURCES = websocketpp_impl.cc websocket_protocol.cc ssl.cc		\
 ssl_socket.cc tcp_socket.cc wamp_session.cc wamp_router.cc event_loop.cc	\
 io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc protocol.cc			\
 rawsocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc	\
-data_model.cc error.cc ../external/apache/base64.c
+data_model.cc error.cc ../external/apache/base64.c platform.cc
 
 
 # Include compile and link flags for an individual library.
@@ -57,4 +57,4 @@ libwampcc_la_LIBADD  =  -lpthread -lssl -lcrypto $(libuvlib)
 # - REVISION: revision of current version. Incr. base on internal changes.
 # - AGE: indicates compatibilty with previous version of the shlib.
 #
-libwampcc_la_LDFLAGS =  -version-info 2:0:0
+libwampcc_la_LDFLAGS =  -version-info 3:0:0

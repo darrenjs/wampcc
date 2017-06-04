@@ -19,6 +19,15 @@
 #include <assert.h>
 
 #include <openssl/sha.h>
+#define bswap_64(x) (                           \
+    (((x) & 0xff00000000000000ull) >> 56) |     \
+    (((x) & 0x00ff000000000000ull) >> 40) |     \
+    (((x) & 0x0000ff0000000000ull) >> 24) |     \
+    (((x) & 0x000000ff00000000ull) >> 8) |      \
+    (((x) & 0x00000000ff000000ull) << 8) |      \
+    (((x) & 0x0000000000ff0000ull) << 24) |     \
+    (((x) & 0x000000000000ff00ull) << 40) |     \
+    (((x) & 0x00000000000000ffull) << 56))
 
 namespace wampcc
 {
@@ -62,11 +71,11 @@ inline std::string make_accept_key(const std::string& challenge)
 static bool string_list_contains(const std::string & source,
                                  const std::string & match)
 {
-
   for (auto & i : tokenize(source.c_str(), ',', true))
   {
     std::string trimmed = trim(i);
-    if (case_insensitive_same(trimmed, match)) return true;
+    if (trimmed == match)
+      return true;
   }
   return false;
 }
@@ -144,7 +153,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
         rd.advance(consumed);
 
-        if (not m_http_parser->good())
+        if (m_http_parser->good() == false)
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
         if (m_http_parser->complete() )
@@ -200,7 +209,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
         rd.advance(consumed);
 
-        if (not m_http_parser->good())
+        if (m_http_parser->good() == false)
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
         if (m_http_parser->complete())

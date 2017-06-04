@@ -97,7 +97,7 @@ namespace wampcc {
   {
     if (space() < len) grow_by(len-space());
 
-    size_t consume_len = std::min(space(), len);
+    size_t consume_len = (std::min)(space(), len);
     if (len && consume_len == 0)
       throw std::runtime_error("buffer full, cannot consume data");
 
@@ -110,7 +110,7 @@ namespace wampcc {
   void buffer::grow_by(size_t len)
   {
     size_t grow_max  = m_max_size - m_mem.size();
-    size_t grow_size = std::min(grow_max, len);
+    size_t grow_size = (std::min)(grow_max, len);
     if (grow_size)
       m_mem.resize(m_mem.size() + grow_size);
   }
@@ -150,9 +150,9 @@ namespace wampcc {
 }
 
 
-int protocol::fd() const
+  std::string protocol::fd() const
 {
-  return m_socket->fd().second;
+  return m_socket->fd_info().second;
 }
 
 
@@ -266,8 +266,8 @@ void selector_protocol::io_on_read(char* src, size_t len)
 
 size_t selector_protocol::buffer_size_required()
 {
-  return std::max((size_t) rawsocket_protocol::HANDSHAKE_SIZE,
-                  (size_t) websocket_protocol::HEADER_SIZE);
+  return (std::max)((size_t) rawsocket_protocol::HANDSHAKE_SIZE,
+                    (size_t) websocket_protocol::HEADER_SIZE);
 }
 
 } // namespace

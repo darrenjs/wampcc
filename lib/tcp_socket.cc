@@ -39,13 +39,14 @@ struct write_req
   uv_write_t req;
   uv_buf_t* bufs;
   size_t nbufs;
-
-  write_req(size_t n) : bufs(new uv_buf_t[n]), nbufs(n) {}
+  size_t total_bytes;
+  write_req(size_t n, size_t total)
+    : bufs(new uv_buf_t[n]), nbufs(n), total_bytes(total) {}
 
   ~write_req()
   {
     for (size_t i = 0; i < nbufs; i++)
-      delete bufs[i].base;
+      delete [] bufs[i].base;
     delete[] bufs;
   }
 
@@ -101,7 +102,7 @@ tcp_socket::~tcp_socket()
 
       try {
         m_kernel->get_io()->push_fn([this]() { this->begin_close(); });
-      } catch (io_loop_closed& e) {
+      } catch (io_loop_closed&) {
         io_loop_ended = true;
       }
     }
@@ -193,6 +194,7 @@ void tcp_socket::begin_close(bool no_linger)
 
   if (m_uv_tcp) {
 
+#ifndef _WIN32
     uv_os_fd_t fd;
     if (no_linger && (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)) {
       struct linger so_linger;
@@ -200,7 +202,15 @@ void tcp_socket::begin_close(bool no_linger)
       so_linger.l_linger = 0;
       setsockopt(fd, SOL_SOCKET, SO_LINGER, &so_linger, sizeof so_linger);
     }
-
+#else
+    SOCKET sock = m_uv_tcp->socket;
+    if (no_linger && sock != INVALID_SOCKET) {
+      struct linger so_linger;
+      so_linger.l_onoff = 1;
+      so_linger.l_linger = 0;
+      setsockopt(sock, SOL_SOCKET, SO_LINGER, (const char*) &so_linger, sizeof so_linger);
+    }
+#endif
 
     uv_close((uv_handle_t*)m_uv_tcp, [](uv_handle_t* h) {
       /* IO thread, invoked upon uv_close completion */
@@ -247,13 +257,17 @@ void tcp_socket::close_impl()
 }
 
 
-std::pair<bool, int> tcp_socket::fd() const
+std::pair<bool, std::string> tcp_socket::fd_info() const
 {
   uv_os_fd_t fd;
-  if (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0)
-    return {true, fd};
-  else
-    return {false, -1};
+  if (uv_fileno((uv_handle_t*)m_uv_tcp, &fd) == 0) {
+    std::ostringstream oss;
+    oss << fd;
+    return {true, oss.str()};
+  }
+  else {
+    return {false, ""};
+  }
 }
 
 
@@ -365,7 +379,7 @@ void tcp_socket::close_once_on_io()
 
 void tcp_socket::handle_read_bytes(ssize_t nread, const uv_buf_t* buf)
 {
-  LOG_TRACE("fd: " << fd().second << ", tcp_rx: len " << nread
+  LOG_TRACE("fd: " << fd_info().second << ", tcp_rx: len " << nread
             << (nread>0? ", hex ":"")
             << (nread>0? to_hex(buf->base,nread):""));
 
@@ -473,7 +487,7 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
     }
 
     // build the request
-    write_req* wr = new write_req(bufs.size());
+    write_req* wr = new write_req(bufs.size(), bytes_to_send);
     wr->req.data = this;
     for (size_t i = 0; i < bufs.size(); i++)
       wr->bufs[i] = bufs[i];
@@ -508,13 +522,18 @@ void tcp_socket::do_write()
     m_pending_write.swap(copy);
   }
 
+  scope_guard buf_guard([&copy]() {
+    for (auto& i : copy)
+      delete[] i.base;
+  });
+
   size_t bytes_to_send = 0;
   for (size_t i = 0; i < copy.size(); i++)
     bytes_to_send += copy[i].len;
 
   if (LOG_FOR_LEVEL(logger::eTrace)) {
     for (size_t i = 0; i < copy.size(); i++)
-      LOG_TRACE("fd: " << fd().second << ", tcp_tx: len " << copy[i].len
+      LOG_TRACE("fd: " << fd_info().second << ", tcp_tx: len " << copy[i].len
             << (copy[i].len>0? ", hex ":"")
             << (copy[i].len>0? to_hex(copy[i].base,copy[i].len):""));
   }
@@ -529,7 +548,7 @@ void tcp_socket::do_write()
     }
 
     // build the request
-    write_req* wr = new write_req(copy.size());
+    write_req* wr = new write_req(copy.size(), bytes_to_send);
     wr->req.data = this;
     for (size_t i = 0; i < copy.size(); i++)
       wr->bufs[i] = copy[i];
@@ -542,14 +561,16 @@ void tcp_socket::do_write()
       the_tcp_socket->on_write_cb(req, status);
     });
 
-    if (r) {
+    if (r == 0)
+      buf_guard.dismiss(); /* bufs will be deleted in uv callback */
+    else {
       LOG_WARN("uv_write failed, errno " << std::abs(r) << " ("
                                          << uv_strerror(r)
                                          << "); closing connection");
       delete wr;
       close_once_on_io();
       return;
-    };
+    }
   }
 }
 
@@ -562,10 +583,11 @@ void tcp_socket::on_write_cb(uv_write_t* req, int status)
 
   try {
     if (status == 0) {
-      size_t total = 0;
+      size_t total =  wr->total_bytes;
+      /*
       for (size_t i = 0; i < req->nbufs; i++)
         total += req->bufsml[i].len;
-
+      */
       m_bytes_written += total;
       if (m_bytes_pending_write > total)
         m_bytes_pending_write -= total;
@@ -932,5 +954,3 @@ tcp_socket* tcp_socket::create(kernel* k, uv_tcp_t* h, socket_state s)
 }
 
 } // namespace wampcc
-
-
