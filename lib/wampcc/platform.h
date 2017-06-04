@@ -14,6 +14,13 @@
 #include <sys/time.h>
 #endif
 
+#ifdef _WIN32
+  #define snprintf _snprintf
+  #define vsnprintf _vsnprintf
+  #define strcasecmp _stricmp
+  #define strncasecmp _strnicmp
+#endif
+
 namespace wampcc
 {
 

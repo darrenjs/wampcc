@@ -1,8 +1,23 @@
 unreleased
 ==========
 
-* added msgpack support
-* using websocketpp
+## Added
+
+* msgpack serialiser support
+* using websocketpp project for websocket protocol
+
+version 1.3.1
+=============
+
+Released 2017-06-02
+
+## Fixed
+
+- configure script can handle relative path to source, when invoked
+
+- using case-insensitive string comparison when processing HTTP headers
+
+- examples now are built statically
 
 version 1.3
 ===========

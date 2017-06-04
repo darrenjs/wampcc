@@ -7,6 +7,7 @@
 
 #include "wampcc/websocket_protocol.h"
 
+#include "wampcc/platform.h"
 #include "wampcc/utils.h"
 #include "wampcc/tcp_socket.h"
 #include "wampcc/http_parser.h"
@@ -19,6 +20,7 @@
 #include <assert.h>
 
 #include <openssl/sha.h>
+
 #define bswap_64(x) (                           \
     (((x) & 0xff00000000000000ull) >> 56) |     \
     (((x) & 0x00ff000000000000ull) >> 40) |     \
@@ -68,13 +70,17 @@ inline std::string make_accept_key(const std::string& challenge)
 }
 
 
-static bool string_list_contains(const std::string & source,
-                                 const std::string & match)
+/* Test whether a HTTP header contains a desired value.  Note that when checking
+ * request and response headers, we are generally case
+ * insensitive. I.e. according to RFC2616, all header field names in both HTTP
+ * requests and HTTP responses are case-insensitive. */
+static bool header_contains(const std::string & source,
+                            const std::string & match)
 {
   for (auto & i : tokenize(source.c_str(), ',', true))
   {
     std::string trimmed = trim(i);
-    if (trimmed == match)
+    if (strcasecmp(trimmed.c_str(), match.c_str())==0)
       return true;
   }
   return false;
@@ -160,9 +166,11 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         {
           if ( m_http_parser->is_upgrade() &&
                m_http_parser->has("Upgrade") &&
-               string_list_contains(m_http_parser->get("Upgrade"), "websocket") &&
+               header_contains(m_http_parser->get("Upgrade"), "websocket") &&
                m_http_parser->has("Connection") &&
-               string_list_contains(m_http_parser->get("Connection"), "Upgrade") )
+               header_contains(m_http_parser->get("Connection"), "Upgrade") &&
+               m_http_parser->has("Sec-WebSocket-Key") &&
+               m_http_parser->has("Sec-WebSocket-Version") )
           {
             auto& websock_key = header_field("Sec-WebSocket-Key");
             auto& websock_ver = header_field("Sec-WebSocket-Version");
@@ -216,9 +224,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         {
           if ( m_http_parser->is_upgrade() &&
                m_http_parser->has("Upgrade") &&
-               string_list_contains(m_http_parser->get("Upgrade"), "websocket") &&
+               header_contains(m_http_parser->get("Upgrade"), "websocket") &&
                m_http_parser->has("Connection") &&
-               string_list_contains(m_http_parser->get("Connection"), "Upgrade") &&
+               header_contains(m_http_parser->get("Connection"), "Upgrade") &&
+               m_http_parser->has("Sec-WebSocket-Accept")  &&
                m_http_parser->http_status_phrase() == "Switching Protocols" &&
                m_http_parser->http_status_code() == http_parser::status_code_switching_protocols)
           {

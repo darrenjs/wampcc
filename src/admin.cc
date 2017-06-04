@@ -179,7 +179,7 @@ void usage()
   HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
   HELPLN("--ssl", sp4, "connect using SSL/TLS socket");
   HELPLN("--timeout N", sp3, "wait upto N seconds during connect & logon");
-  HELPLN("--proto PROTO_OPTIONS", sp2, "comma separated list of options, see below");
+  HELPLN("--proto PROTO_OPTIONS", sp2, "comma separated list of options, default 'web,json'");
   HELPLN("-h", sp4, "display this help");
   HELPLN("-d [-d]", sp3, "verbose output, use -d -d for trace output");
   HELPLN("-v, --version", sp3, "print program version");

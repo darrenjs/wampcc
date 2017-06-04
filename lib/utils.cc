@@ -11,7 +11,6 @@
 
 #include <openssl/hmac.h> // crypto functions
 #include <string.h>
-
 #include <assert.h>
 
 namespace wampcc
@@ -175,15 +174,16 @@ void log_exception(logger& __logger, const char* callsite)
 
 std::string iso8601_utc_timestamp()
 {
-  static constexpr char full_format[]  = "2017-05-21T07:51:17.000Z"; // 24
-  static constexpr char short_format[] = "2017-05-21T07:51:17";      // 19
-  static constexpr int  short_len = 19;
+  static constexpr char full_format[] = "2017-05-21T07:51:17.000Z"; // 24
+  static constexpr char short_format[] = "2017-05-21T07:51:17";     // 19
+  static constexpr int short_len = 19;
 
-  static_assert(short_len == (sizeof short_format - 1), "short_len check failed");
+  static_assert(short_len == (sizeof short_format - 1),
+                "short_len check failed");
 
   wampcc::time_val tv = wampcc::time_now();
 
-  char buf[32] = { 0 };
+  char buf[32] = {0};
   assert(sizeof buf > (sizeof full_format));
   assert(sizeof full_format > sizeof short_format);
 
@@ -197,18 +197,18 @@ std::string iso8601_utc_timestamp()
 #endif
 
   if (0 == strftime(buf, sizeof buf - 1, "%FT%T", &parts))
-    return "";  // strftime not successful
+    return ""; // strftime not successful
 
   // append milliseconds
   int ec;
 #ifndef _WIN32
-  ec = snprintf(&buf[short_len], sizeof(buf) - short_len,
-                ".%03dZ", (int) tv.usec/1000);
+  ec = snprintf(&buf[short_len], sizeof(buf) - short_len, ".%03dZ",
+                (int)tv.usec / 1000);
 #else
-  ec = sprintf_s(&buf[short_len], sizeof(buf) - short_len,
-                 ".%03dZ", (int) tv.usec/1000);
+  ec = sprintf_s(&buf[short_len], sizeof(buf) - short_len, ".%03dZ",
+                 (int)tv.usec / 1000);
 #endif
-  if (ec<0)
+  if (ec < 0)
     return "";
 
   buf[sizeof full_format - 1] = '\0';
@@ -229,14 +229,16 @@ std::string local_timestamp()
 
 #ifndef _WIN32
   localtime_r(&now.sec, &parts);
-  ec = snprintf(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06lu",
-	  parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
-	  parts.tm_min, parts.tm_sec, now.usec);
+  ec = snprintf(timestamp, sizeof(timestamp),
+                "%02d%02d%02d-%02d:%02d:%02d.%06lu", parts.tm_year + 1900,
+                parts.tm_mon + 1, parts.tm_mday, parts.tm_hour, parts.tm_min,
+                parts.tm_sec, now.usec);
 #else
   localtime_s(&parts, &now.sec);
-  ec = sprintf_s(timestamp, sizeof(timestamp), "%02d%02d%02d-%02d:%02d:%02d.%06llu",
-	  parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
-	  parts.tm_min, parts.tm_sec, now.usec);
+  ec = sprintf_s(timestamp, sizeof(timestamp),
+                 "%02d%02d%02d-%02d:%02d:%02d.%06llu", parts.tm_year + 1900,
+                 parts.tm_mon + 1, parts.tm_mday, parts.tm_hour, parts.tm_min,
+                 parts.tm_sec, now.usec);
 #endif
 
   if (ec < 0)
@@ -302,9 +304,8 @@ std::list<std::string> tokenize(const char* src, char delim,
 bool is_valid_char(char c)
 {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-    (c >= '0' && c <= '9') || (c == '_');
+         (c >= '0' && c <= '9') || (c == '_');
 }
-
 
 /* Check URI conformance directly, rather than use regex.  This is to avoid
  * compilers with broken regex implementations (eg, some gcc 4.x). */

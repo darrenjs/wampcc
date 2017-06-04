@@ -9,13 +9,14 @@
 
 mkdir -p external
 
+##
+## msgpack-c
+##
+
 # get msgpack-c (take repo head, until the new C++11 header-only approach has
 # bugs fixed, doesn't work in version 2.1.1)
 
 
-##
-## msgpack-c
-##
 zipfile=msgpack.master.zip
 test -f $zipfile || wget https://github.com/msgpack/msgpack-c/archive/master.zip -O $zipfile
 
@@ -44,6 +45,7 @@ fi
 ##
 ## websocketpp
 ##
+
 websocketpp_ver=0.7.0
 echo '***' fetching websocketpp_ver $websocketpp_ver '***'
 echo
@@ -58,8 +60,9 @@ fi
 
 
 ##
-## get jalson
+## jalson
 ##
+
 jalson_ver=1.3
 echo '***' fetching jalson $jalson_ver '***'
 echo
