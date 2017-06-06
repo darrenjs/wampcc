@@ -11,7 +11,7 @@
 #include <iostream> // TODO: delete me
 
 #define THROW_FOR_INVALID_FN( X ) \
-if (false == m_observer. X) throw std::runtime_error("observer." #X " must be valid");
+  if (nullptr == m_observer. X) throw std::runtime_error("observer." #X " must be valid");
 
 namespace wampcc {
 

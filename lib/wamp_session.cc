@@ -907,7 +907,7 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
       json_object& opt = json_append<json_object>( msg );
 
       opt[ "roles" ] = std::move( roles );
-      opt[ "agent" ] = name_version();
+      opt[ "agent" ] = package_string();
       opt[ "authid"] = std::move(cc.authid);
 
       json_array& ja = json_insert<json_array>(opt, "authmethods");

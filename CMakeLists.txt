@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 
 set(PROJECT_NAME wampcc)
 project(${PROJECT_NAME} CXX C)
+#project(${PROJECT_NAME} VERSION 1.3.1 LANGUAGES CXX C)
 
 message(STATUS "Building ${PROJECT_NAME} on: ${CMAKE_SYSTEM_NAME}")
 
@@ -56,6 +57,7 @@ file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cc)
 
 # list of wampcc headers file to install
 set(INSTALL_HDRS
+  ${PROJECT_SOURCE_DIR}/lib/wampcc/version.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/types.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/kernel.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/wamp_session.h
@@ -77,6 +79,8 @@ if (WIN32)
   list(APPEND COMMON_LIBS libuv ssleay32 libeay32)
   # libuv library dependencies
   list(APPEND COMMON_LIBS advapi32 iphlpapi psapi shell32 user32 userenv ws2_32)
+else()
+  list(APPEND COMMON_LIBS uv crypto ssl)
 endif()
 
 ##

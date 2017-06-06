@@ -8,15 +8,12 @@
 #ifndef WAMPCC_KERNEL_H
 #define WAMPCC_KERNEL_H
 
+#include "wampcc/version.h"
+
 #include <memory>
+#include <string>
 #include <mutex>
 #include <functional>
-
-/* Compile-time name & version */
-
-#define WAMPCC_MAJOR_VERSION 1
-#define WAMPCC_MINOR_VERSION 3
-#define WAMPCC_MICRO_VERSION 1
 
 namespace wampcc
 {
@@ -27,8 +24,9 @@ class uri_regex;
 class ssl_context;
 
 /* Run-time name & version */
-const char* name();
-const char* name_version();
+const char* package_name();    // 'wampcc'
+const char* package_version(); // version, major.minor.patch
+const char* package_string();  // concat of name & version
 int major_version();
 int minor_version();
 int micro_version();

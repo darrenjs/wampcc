@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     std::unique_ptr<wampcc::kernel> the_kernel(
         new wampcc::kernel({}, std::move(logger)));
 
-    the_kernel->get_logger().write(wampcc::logger::eInfo, wampcc::name_version(),
+    the_kernel->get_logger().write(wampcc::logger::eInfo, wampcc::package_string(),
                                    __FILE__, __LINE__);
 
     /* Create an embedded wamp router. */

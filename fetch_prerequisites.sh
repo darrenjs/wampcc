@@ -58,7 +58,6 @@ else
   echo failed to download websocketpp ... please try manually
 fi
 
-
 ##
 ## jalson
 ##

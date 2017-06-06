@@ -19,8 +19,9 @@
 namespace wampcc
 {
 
-const char* name() { return PACKAGE_NAME; }
-const char* name_version() { return PACKAGE_STRING; }
+const char* package_name() { return WAMPCC_PACKAGE_NAME; }
+const char* package_version() { return WAMPCC_PACKAGE_VERSION; }
+const char* package_string() { return WAMPCC_PACKAGE_STRING; }
 int major_version() { return WAMPCC_MAJOR_VERSION; }
 int minor_version() { return WAMPCC_MINOR_VERSION; }
 int micro_version() { return WAMPCC_MICRO_VERSION; }

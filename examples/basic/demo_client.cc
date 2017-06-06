@@ -53,7 +53,7 @@ int main(int argc, char** argv)
                          std::cout << std::endl;
                        });
 
-    /* Register a procedure than can sum an array of numbers. */
+    /* Register a procedure that can sum an array of numbers. */
 
     session->provide("math.service.add", {}, [](wamp_invocation& invoke) {
       int total = 0;
