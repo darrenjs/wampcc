@@ -7,21 +7,6 @@
 
 mkdir -p external
 
-# get googletest
-googletest_ver=1.8.0
-echo '***' fetching GoogleTest $googletest_ver '***'
-echo
-test -f release-${googletest_ver}.tar.gz && rm -f release-${googletest_ver}.tar.gz
-wget https://github.com/google/googletest/archive/release-${googletest_ver}.tar.gz
-googletest_tar=release-${googletest_ver}.tar.gz
-if [ -f ${googletest_tar} ];
-then
-  tar xfz ${googletest_tar}  -C external --transform "s/googletest-release-${googletest_ver}/googletest/"
-else
-  echo failed to download googletest ${googletest_ver} into googletest directory ... please try manually
-fi
-
-
 # get jalson
 jalson_ver=1.3
 echo '***' fetching jalson $jalson_ver '***'
