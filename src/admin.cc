@@ -193,7 +193,7 @@ void usage()
 
 void version()
 {
-  std::cout << wampcc::name_version()  << std::endl;
+  std::cout << wampcc::package_version()  << std::endl;
   exit(0);
 }
 

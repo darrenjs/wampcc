@@ -57,6 +57,7 @@ file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cc)
 
 # list of wampcc headers file to install
 set(INSTALL_HDRS
+  ${PROJECT_SOURCE_DIR}/lib/wampcc/version.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/types.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/kernel.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/wamp_session.h

@@ -1,6 +1,20 @@
 unreleased
 ==========
 
+## Added
+
+- public version info placed in version.h
+
+## Removed
+
+- fetch and link of googletest, was not being used
+
+## Fixed
+
+- compile errors on Xcode 7.3.1 + 10.7 SDK (issue #2, petten)
+
+- cmake missing link libraries on Linux
+
 version 1.3.1
 =============
 

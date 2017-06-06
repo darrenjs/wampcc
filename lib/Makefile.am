@@ -23,7 +23,7 @@ lib_LTLIBRARIES = libwampcc.la
 nobase_include_HEADERS = wampcc/types.h wampcc/kernel.h wampcc/wamp_session.h	\
 wampcc/wamp_router.h wampcc/protocol.h wampcc/rawsocket_protocol.h				\
 wampcc/websocket_protocol.h wampcc/tcp_socket.h wampcc/data_model.h				\
-wampcc/error.h wampcc/wampcc.h wampcc/ssl_socket.h
+wampcc/error.h wampcc/wampcc.h wampcc/ssl_socket.h wampcc/version.h
 
 # List the sources for an individual library
 libwampcc_la_SOURCES = platform.cc ssl.cc ssl_socket.cc tcp_socket.cc			\
