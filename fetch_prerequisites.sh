@@ -34,15 +34,19 @@ fi
 ## msgpack
 ##
 
-# Download repo head of msgpack-c, since the latest version, 2.1.1, has a bug in
-# the decoding of msgpack buffers
-
-zipfile=msgpack.master.zip
-test -f $zipfile || wget https://github.com/msgpack/msgpack-c/archive/master.zip -O $zipfile
+# Need version >= 2.1.2, because for 2.1.2 and earlier, it has a bug in the
+# decoding of msgpack buffers
+ver=2.1.2
+echo '***' fetching msgpack $ver '***'
+echo
+zipfile=cpp-${ver}.tar.gz
+url=https://github.com/msgpack/msgpack-c/archive/$zipfile
+test -f $zipfile || wget $url
 
 if [ -f ${zipfile} ]; then
-    unzip -q -d external msgpack.master.zip
-    mv external/msgpack-c-master external/msgpack-c
+    test -f external || mkdir -p external
+    tar xvfz  ${zipfile} -C external
+    cd external && mv msgpack-c-cpp-${ver} msgpack-c
 else
     echo failed to download msgpack ... please try manually
     exit

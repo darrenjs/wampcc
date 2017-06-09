@@ -9,6 +9,11 @@ unreleased
 
 - fetch and link of googletest, was not being used
 
+## Changed
+
+- Using msgpack-c 2.1.2.  In this version the header-only msgpack decoder has
+  been fixed, which is used by wampcc.
+
 ## Fixed
 
 - compile errors on Xcode 7.3.1 + 10.7 SDK (issue #2, petten)
