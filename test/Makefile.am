@@ -14,12 +14,12 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib  $(libuvinc)						\
 
 AM_LDFLAGS=-lpthread -L../lib -lwampcc  $(LIBLS)  -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
-check_PROGRAMS=test_connect_timeout test_tcp_socket_connect					\
-test_evthread_wamp_session_destructor test_early_wamp_session_destructor	\
-test_late_wamp_session_destructor test_late_dealer_destructor				\
-test_dealer_disconnect_when_has_connections 		\
-test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
-test_wamp_session_fast_close test_tcp_socket test_wamp_rpc test_misc
+check_PROGRAMS=test_connect_timeout test_tcp_socket_connect						\
+test_evthread_wamp_session_destructor test_early_wamp_session_destructor		\
+test_late_wamp_session_destructor test_late_dealer_destructor					\
+test_dealer_disconnect_when_has_connections test_tcp_socket_listen				\
+test_tcp_socket_passive_disconnect test_wamp_session_fast_close test_tcp_socket	\
+test_wamp_rpc test_misc test_router_functions
 
 # Dont use noinst_PROGRAMS here, otherwise the tests will always get build for
 # each invocation of make
@@ -52,3 +52,5 @@ test_wamp_session_fast_close_SOURCES=test_wamp_session_fast_close.cc
 test_tcp_socket_SOURCES=test_tcp_socket.cc
 
 test_wamp_rpc_SOURCES=test_wamp_rpc.cc
+
+test_router_functions_SOURCES=test_router_functions.cc

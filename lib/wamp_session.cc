@@ -980,6 +980,42 @@ t_request_id wamp_session::provide(std::string uri,
   return request_id;
 }
 
+t_request_id wamp_session::provide(std::string uri,
+                                   const json_object& options,
+                                   result_cb on_result,
+                                   rpc_cb on_call,
+                                   void * data)
+{
+  json_array msg { msg_type::wamp_msg_register,
+      0,
+      std::move(options),
+      uri};
+
+  procedure p;
+  p.uri = uri;
+  p.on_result = std::move(on_result);
+  p.user_cb = std::move(on_call);
+  p.user_data = data;
+
+  t_request_id request_id;
+  {
+    std::lock_guard<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    {
+      std::lock_guard<std::mutex> guard(m_pending_lock);
+      m_pending_register[request_id] = std::move(p);
+    }
+
+    send_msg( msg );
+  }
+
+  LOG_INFO(m_log_prefix << "sending register request for '" << uri << "', request_id " << request_id);
+  return request_id;
+}
+
 
 void wamp_session::process_inbound_registered(json_array & msg)
 {
@@ -991,20 +1027,34 @@ void wamp_session::process_inbound_registered(json_array & msg)
 
   if (!msg[2].is_uint())
     throw protocol_error("registration ID must be unsigned int");
+
   uint64_t registration_id = msg[2].as_uint();
 
-  std::lock_guard<std::mutex> guard(m_pending_lock);
-  auto iter = m_pending_register.find( request_id );
+  result_cb on_result;
 
-  if (iter != m_pending_register.end())
   {
-    m_procedures[registration_id] = iter->second;
-    m_pending_register.erase(iter);
+    std::lock_guard<std::mutex> guard(m_pending_lock);
 
-    LOG_INFO(m_log_prefix << "procedure '"<< m_procedures[registration_id].uri <<"' registered"
-           << " with registration_id " << registration_id);
+    auto iter = m_pending_register.find( request_id );
+    if (iter == m_pending_register.end())
+      return;
+
+    on_result = std::move(iter->second.on_result);
+    iter->second.on_result = nullptr; /* ensure callback object is invalid*/
+
+    m_procedures[registration_id] = std::move(iter->second);
+    m_pending_register.erase(iter);
   }
 
+  if (on_result && user_cb_allowed()) {
+    try {
+      on_result(true, "");
+    }
+    catch (...) { /* ignore */ }
+  }
+
+  LOG_INFO(m_log_prefix << "procedure '"<< m_procedures[registration_id].uri <<"' registered"
+           << " with registration_id " << registration_id);
 }
 
 
@@ -1402,6 +1452,7 @@ void wamp_session::process_inbound_error(json_array & msg)
   }
   else
   {
+    /* mode() is client */
     switch (orig_request_type)
     {
       case msg_type::wamp_msg_call :
@@ -1460,6 +1511,7 @@ void wamp_session::process_inbound_error(json_array & msg)
           }
           else
           {
+            /* TODO: dont log inside the critical section. */
             LOG_WARN("no pending subscribe for error response with request_id "
                      << request_id);
             break;
@@ -1509,6 +1561,32 @@ void wamp_session::process_inbound_error(json_array & msg)
 
         break;
       };
+      case msg_type::wamp_msg_register:
+      {
+        /* attempt to register a procedure has failed, if we can, notify the
+         * application of this failure */
+
+        procedure orig;
+
+        {
+          std::lock_guard<std::mutex> guard(m_pending_lock);
+          auto iter = m_pending_register.find(request_id);
+          if (iter == m_pending_register.end())
+            return;
+          orig = std::move(iter->second);
+          m_pending_register.erase(iter);
+        }
+
+        if (orig.on_result && user_cb_allowed()) {
+          try {
+            orig.on_result(false, error_uri);
+          }
+          catch(...) {
+            log_exception(__logger, "inbound register on_result callback");
+          }
+        }
+        break;
+      }
       default:
         LOG_WARN("wamp error response has unexpected original request type " << orig_request_type);
         break;
@@ -1960,5 +2038,13 @@ void wamp_session::drop_connection_impl(std::string reason,
     initiate_close(guard);
   }
 }
+
+
+bool wamp_session::user_cb_allowed() const
+{
+  std::lock_guard<std::mutex> guard(m_state_lock);
+  return m_state != state::closed;
+}
+
 
 } // namespace wampcc

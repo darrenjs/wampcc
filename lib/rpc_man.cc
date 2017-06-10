@@ -93,6 +93,12 @@ void rpc_man::register_rpc(session_handle session, std::string realm, rpc_detail
     realm_iter = std::move(p.first);
   }
 
+  if (r.uri.empty())
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "uri has zero length");
+
+  if (!is_strict_uri(r.uri.c_str()))
+    throw wamp_error(WAMP_ERROR_INVALID_URI, "uri fails strictness check");
+
   auto result = realm_iter->second.insert(std::make_pair(r.uri,r));
   if (!result.second)
   {

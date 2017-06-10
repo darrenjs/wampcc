@@ -155,6 +155,8 @@ namespace wampcc {
 
   typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
 
+  typedef std::function<void(bool is_good, std::string error_uri)> result_cb;
+
 
   /** Aggregate passed on RPC invocation. */
   struct wamp_invocation
@@ -292,9 +294,23 @@ namespace wampcc {
      * eg, in case of a server session that receives the realm from the peer. */
     const std::string& realm() const;
 
+    /** Deprecated.  This method will be removed in later wampcc version.  It is
+     * replaced with an alternative provide() method that accepts an additiona
+     * result_cb parameter. */
     t_request_id provide(std::string uri,
                          const json_object& options,
                          rpc_cb cb,
+                         void * data = nullptr);
+
+    /** Register a remote procedure with specified URI and wamp options.  Two
+     * callbacks are used: on_result & on_call. The on_result lambda is called
+     * upon success/failure of the registration request.  The on_invoke lambda
+     * is called when a WAMP invocation request arrives to invoke the
+     * procedure. */
+    t_request_id provide(std::string uri,
+                         const json_object& options,
+                         result_cb on_result,
+                         rpc_cb on_invoke,
                          void * data = nullptr);
 
     /** Subscribe to a topic. The subscribed_cb callback is invoked upon success
@@ -481,13 +497,14 @@ namespace wampcc {
 
     void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, t_drop_event reason = t_drop_event::request);
 
-    bool user_cb_allowed() const { return m_state != state::closed; }
+    bool user_cb_allowed() const;
 
     server_msg_handler m_server_handler;
 
     struct procedure
     {
       std::string uri;
+      result_cb on_result;
       rpc_cb user_cb;
       void * user_data;
     };
