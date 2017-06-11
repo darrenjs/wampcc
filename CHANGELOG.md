@@ -5,6 +5,8 @@ unreleased
 
 - public version info placed in version.h
 
+- automatic build (via autotools) of some example programs (issue #3)
+
 ## Removed
 
 - fetch and link of googletest, was not being used
