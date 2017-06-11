@@ -17,6 +17,11 @@ unreleased
 - Using msgpack-c 2.1.2.  In this version the header-only msgpack decoder has
   been fixed, which is used by wampcc.
 
+- The stream logger (used by the logger::console logger) now takes a wrapper to
+  a ostream& and a mutex, instead of just an ostream reference.  This is so that
+  a synchronization mechanism is available to synchronize writes to the
+  stream (issue #2, petten).
+
 ## Fixed
 
 - wamp_session not handling failed registration

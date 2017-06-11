@@ -31,8 +31,8 @@ int major_version();
 int minor_version();
 int micro_version();
 
-/* Logging object. Provides two functionals, wants_level and write, which the
- * API uses for its logging requirements.
+/* Logging object. Provides two functionals, wants_level() and write(), which
+ * the API uses for its logging requirements.
  */
 struct logger
 {
@@ -49,13 +49,45 @@ struct logger
   static int levels_upto(Level l);
 
   std::function<bool(Level)> wants_level;
+
   std::function<void(Level, const std::string&, const char* file, int ln)>
       write;
 
-  /** create a logger for stdout or stderr */
-  static logger stream(std::ostream&, int level_mask, bool inc_file_line = false);
+  /** Encapsulate an output stream object with a lockable behaviour.  An object
+   * derived from lockable_stream can be passed to the stream() method to return
+   * a logger. */
+  struct lockable_stream {
+    virtual std::ostream& stream() = 0;
+    virtual void lock() = 0;
+    virtual void unlock() = 0;
+    virtual ~lockable_stream(){};
+  };
 
-  static logger console();
+  /** Provide a lockable_stream object based on std::cout and a mutex. The mutex
+   * is used to synchronize writes to the std::cout. */
+  struct lockable_console : lockable_stream {
+    static std::mutex stream_mutex;
+    std::ostream& stream() override;
+    void lock() override { stream_mutex.lock(); }
+    void unlock() override{ stream_mutex.unlock(); }
+  };
+
+  /** Static instance of lockable_console */
+  static lockable_console lockable_cout;
+
+  /** Create a logger that writes its output to a stream using a reference to a
+   * lockable_stream object.  Writing to the stream needs to be synchronised, so
+   * a synchronization mechanism must also be provided. This is done by using
+   * the lockable_stream interface, rather than taking an ostream& directly.  */
+  static logger stream(lockable_stream&, int level_mask, bool inc_file_line = false);
+
+  /** Return a logger object that uses std::cout.  This uses the static instance
+   * lockable_cout, which provides the mutex that is used to synchronize writes
+   * to std::cout. */
+  static logger console()
+  {
+    return stream(lockable_cout, levels_upto(eInfo), false);
+  }
 
   /** create a logger that does not log anything */
   static logger nolog();
