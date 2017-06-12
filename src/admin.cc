@@ -173,7 +173,7 @@ void usage()
   HELPLN("-s, --subscribe=URI",sp2,"subscribe to topic");
   HELPLN("-p, --publish=URI",sp2,"publish to topic");
   HELPLN("-c, --call=URI",sp2,"call procedure");
-  HELPLN("--arglist=ARG",sp3,"wamp argument list, ARG is a JSON arra");
+  HELPLN("--arglist=ARG",sp3,"wamp argument list, ARG is a JSON array");
   HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
   HELPLN("--timeout N", sp3, "wait upto N seconds during connect & logon");
   HELPLN("--proto PROTO_OPTIONS", sp2, "comma separated list of protocol options, default 'web,json'");
