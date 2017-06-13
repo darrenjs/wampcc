@@ -60,7 +60,7 @@ private:
 message_server::message_server()
   : m_public_realm("default_realm"),
     m_private_realm("private"),
-    m_kernel(new wampcc::kernel({}, wampcc::logger::stream(std::cout,
+    m_kernel(new wampcc::kernel({}, wampcc::logger::stream(wampcc::logger::lockable_cout,
                                                            wampcc::logger::levels_all(),
                                                            true))),
     m_dealer(new wampcc::wamp_router(m_kernel.get(), nullptr)),

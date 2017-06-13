@@ -5,6 +5,14 @@
 # it under the terms of the MIT license. See LICENSE for details.
 #
 
+
+## This is an end-user makefile, which can be used to compile the examples
+## against an installed version of wampcc.  It is not used by the autotool
+## systems to build the examples during configure & make. Rather, use this
+## makefile to build the examples once wampcc has successfully been compiled and
+## installed.
+
+
 # comment-out these two lines to link to shared libs
 STATIC_LINK_BEGIN=-Wl,-Bstatic
 STATIC_LINK_END=-Wl,-Bdynamic

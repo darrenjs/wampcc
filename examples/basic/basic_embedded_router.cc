@@ -27,14 +27,13 @@ int main(int argc, char** argv)
 
     /* Create the wampcc logger & kernel. */
 
-    auto logger = wampcc::logger::stream(
-        std::cout, wampcc::logger::levels_upto(wampcc::logger::eInfo), false);
+    auto logger = wampcc::logger::console();
 
     std::unique_ptr<wampcc::kernel> the_kernel(
-        new wampcc::kernel({}, std::move(logger)));
+        new wampcc::kernel({}, logger));
 
-    the_kernel->get_logger().write(wampcc::logger::eInfo, wampcc::package_string(),
-                                   __FILE__, __LINE__);
+    logger.write(wampcc::logger::eInfo, wampcc::package_string(),
+                 __FILE__, __LINE__);
 
     /* Create an embedded wamp router. */
 
@@ -53,9 +52,9 @@ int main(int argc, char** argv)
                                std::to_string(ec.os_value()) + ", " +
                                ec.message());
 
-    the_kernel->get_logger().write(wampcc::logger::eInfo,
-                                   "listening on " + std::to_string(port),
-                                   __FILE__, __LINE__);
+    logger.write(wampcc::logger::eInfo,
+                 "listening on " + std::to_string(port),
+                 __FILE__, __LINE__);
 
     /* Provide several RPCs */
 

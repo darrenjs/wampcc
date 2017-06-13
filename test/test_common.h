@@ -30,7 +30,7 @@ namespace wampcc
 
 logger debug_logger()
 {
-  return logger::stream(std::cout, -1, true);
+  return logger::stream(logger::lockable_cout, -1, true);
 }
 
 
@@ -60,11 +60,6 @@ struct socket_listener
 };
 
 enum test_outcome { e_expected, e_unexpected };
-
-logger trace_logger()
-{
-  return logger::stream(std::cout, logger::levels_upto(logger::eTrace));
-}
 
 class internal_server
 {

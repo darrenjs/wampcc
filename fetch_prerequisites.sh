@@ -10,39 +10,6 @@
 mkdir -p external
 
 ##
-## msgpack-c
-##
-
-# get msgpack-c (take repo head, until the new C++11 header-only approach has
-# bugs fixed, doesn't work in version 2.1.1)
-
-
-zipfile=msgpack.master.zip
-test -f $zipfile || wget https://github.com/msgpack/msgpack-c/archive/master.zip -O $zipfile
-
-if [ -f ${zipfile} ]; then
-    unzip -q -d external msgpack.master.zip
-    mv external/msgpack-c-master external/msgpack-c
-else
-    echo failed to download msgpack ... please try manually
-fi
-
-# !!! Use this section once msgpackc is released, need version > 2.1.1
-# version=2.1.1
-# tarfile=cpp-${version}.tar.gz
-# echo '***' fetching msgpack-c $version '***'
-# echo
-#
-# test -f $tarfile || wget https://github.com/msgpack/msgpack-c/archive/$tarfile
-#
-# if [ -f ${tarfile} ]; then
-#     tar xfz ${tarfile}  -C external --transform "s/msgpack-c-cpp-${version}/msgpack-c-cpp/"
-# else
-#     echo failed to download ${tarfile} ... please try manually
-# fi
-# unset version tarfile
-
-##
 ## websocketpp
 ##
 
@@ -80,4 +47,27 @@ then
   fi
 else
   echo failed to download jalson ${jalson_ver}
+fi
+
+
+##
+## msgpack
+##
+
+# Need version >= 2.1.2, because for 2.1.2 and earlier, it has a bug in the
+# decoding of msgpack buffers
+ver=2.1.2
+echo '***' fetching msgpack $ver '***'
+echo
+zipfile=cpp-${ver}.tar.gz
+url=https://github.com/msgpack/msgpack-c/archive/$zipfile
+test -f $zipfile || wget $url
+
+if [ -f ${zipfile} ]; then
+    test -f external || mkdir -p external
+    tar xfz  ${zipfile} -C external
+    cd external && mv msgpack-c-cpp-${ver} msgpack-c
+else
+    echo failed to download msgpack ... please try manually
+    exit
 fi

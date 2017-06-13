@@ -26,6 +26,10 @@ int major_version() { return WAMPCC_MAJOR_VERSION; }
 int minor_version() { return WAMPCC_MINOR_VERSION; }
 int micro_version() { return WAMPCC_MICRO_VERSION; }
 
+static const char* level_str(logger::Level l);
+
+std::mutex logger::lockable_console::stream_mutex ;
+logger::lockable_console logger::lockable_cout;
 
 config::config()
   : socket_buffer_max_size_bytes(65536), socket_max_pending_write_bytes(65536),
@@ -72,46 +76,34 @@ int logger::levels_upto(Level l)
   return r;
 }
 
-
-class stdout_logger
+logger logger::stream(lockable_stream& ostr, int level_mask, bool inc_src)
 {
-public:
-  stdout_logger(std::ostream& __os, bool __incsource)
-    : m_stream(__os), m_incsource(__incsource)
-  {
-  }
-
-  void write(logger::Level, const std::string&, const char*, int);
-
-private:
-  stdout_logger(const stdout_logger&) = delete;
-  stdout_logger& operator=(const stdout_logger&) = delete;
-
-  std::ostream& m_stream;
-  bool m_incsource;
-  std::mutex m_mutex;
-};
-
-
-logger logger::stream(std::ostream& ostr, int level_mask, bool inc_src)
-{
-  auto sp = std::make_shared<stdout_logger>(ostr, inc_src);
-
   logger my_logger;
 
   my_logger.wants_level =
     [level_mask](logger::Level l) { return (l & level_mask) != 0; };
 
-  my_logger.write = [level_mask, sp](logger::Level l, const std::string& msg,
-                                     const char* file, int ln) {
-    if ((l & level_mask) != 0)
-      sp->write(l, msg, file, ln);
+  my_logger.write = [&ostr, level_mask, inc_src](logger::Level level,
+                                                 const std::string& msg,
+                                                 const char* file, int ln) {
+    std::ostringstream oss;
+    oss << wampcc::local_timestamp()
+        << wampcc::thread_id() << " "
+        << level_str(level) << " "
+    << msg;
+    if (inc_src && file)
+      oss << " (" << file << ":" << ln << ") ";
+    oss << std::endl;
+
+    ostr.lock();
+     try {
+       ostr.stream() << oss.str();
+     } catch (...) {}
+    ostr.unlock();
   };
 
   return my_logger;
 }
-
-logger logger::console() { return stream(std::cout, levels_upto(eInfo), true); }
 
 
 static const char* level_str(logger::Level l)
@@ -133,26 +125,6 @@ static const char* level_str(logger::Level l)
 }
 
 
-void stdout_logger::stdout_logger::write(logger::Level l, const std::string& s,
-                                         const char* file, int ln)
-{
-  int tid = wampcc::thread_id();
-
-  std::string timestamp = wampcc::local_timestamp();
-
-  std::lock_guard<std::mutex> lock(m_mutex);
-  m_stream << std::move(timestamp);
-  m_stream << tid << " ";
-  m_stream << level_str(l) << " ";
-  m_stream << s;
-
-  if (m_incsource && file) {
-    m_stream << " (" << file << ":" << ln << ") ";
-  }
-  m_stream << std::endl;
-}
-
-
 logger logger::nolog()
 {
   logger my_logger;
@@ -163,5 +135,12 @@ logger logger::nolog()
 
   return my_logger;
 }
+
+
+std::ostream& logger::lockable_console::stream()
+{
+  return std::cout;
+}
+
 
 } // namespace wampcc

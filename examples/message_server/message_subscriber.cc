@@ -84,7 +84,7 @@ std::unique_ptr<wampcc::tcp_socket> get_tcp_connection(const char* address,
 
 int main_impl(int argc, char** argv)
 {
-  auto __logger = wampcc::logger::stream(std::cout,
+  auto __logger = wampcc::logger::stream(wampcc::logger::lockable_cout,
                                          wampcc::logger::levels_upto(wampcc::logger::eInfo), 1);
   wampcc::kernel the_kernel({}, __logger);
 
