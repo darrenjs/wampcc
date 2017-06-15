@@ -93,11 +93,12 @@ logger logger::stream(lockable_stream& ostr, int level_mask, bool inc_src)
     << msg;
     if (inc_src && file)
       oss << " (" << file << ":" << ln << ") ";
-    oss << std::endl;
 
     ostr.lock();
      try {
-       ostr.stream() << oss.str();
+       // std:endl should act directly on the stream object, so that stream can
+       // detect it and trigger stream sync.
+       ostr.stream() << oss.str() << std::endl;
      } catch (...) {}
     ostr.unlock();
   };
