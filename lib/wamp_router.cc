@@ -301,10 +301,11 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
       std::lock_guard<std::mutex> guard(m_sesions_lock);
       m_sessions[sp->unique_id()] = sp;
 
-      // DJS -- test code to drop a connection
-      // m_kernel->get_event_loop()->dispatch(std::chrono::milliseconds(5000),
-      //                                      [sp](){ sp->close(); return 0; }
-      //                                      );
+      // test code to drop a connection
+      //event_loop::timer_fn fn = [sp](){ sp->close(); return std::chrono::milliseconds(0); };
+      //event_loop::timer_fn fn = [sp](){ sp->fast_close(); return std::chrono::milliseconds(0); };
+      //event_loop::timer_fn fn = [sp](){ sp->proto_close(); return std::chrono::milliseconds(0); };
+      //m_kernel->get_event_loop()->dispatch(std::chrono::milliseconds(5000),fn);
     }
 
     LOG_INFO("session #" << sp->unique_id() << " created, protocol: "

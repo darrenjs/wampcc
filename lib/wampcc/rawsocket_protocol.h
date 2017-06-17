@@ -60,6 +60,12 @@ public:
       : protocol::options(),
         inbound_max_msg_size(__inbound_max_msg_size)
     {}
+
+    options(protocol::options rhs)
+      : protocol::options(rhs),
+        inbound_max_msg_size(rawsocket_protocol::default_max_rxmsg_size)
+    {}
+
   };
 
   static constexpr const char* NAME = "rawsocket";

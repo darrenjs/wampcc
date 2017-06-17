@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     /* Create the wampcc logger & kernel. */
 
     auto logger = wampcc::logger::console();
-
+    // auto logger = wampcc::logger::stream(wampcc::logger::lockable_cout, wampcc::logger::levels_upto(wampcc::logger::eDebug), true);
     std::unique_ptr<wampcc::kernel> the_kernel(
         new wampcc::kernel({}, logger));
 

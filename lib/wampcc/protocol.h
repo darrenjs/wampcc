@@ -140,15 +140,18 @@ public:
 
   struct options
   {
+    static const std::chrono::seconds default_ping_interval; /* 10 sec*/
+
     std::string connect_host;
     std::string connect_port;
 
     int serialisers; /* mask of enum serialiser_type bits */
 
-    std::chrono::milliseconds ping_interval; /* set to 0 for no pings/heartbeats */
+    std::chrono::milliseconds ping_interval; /* 0 for no heartbeats */
+
     options()
       : serialisers(wampcc::all_serialisers),
-        ping_interval(std::chrono::milliseconds(10000))
+        ping_interval(std::chrono::milliseconds(default_ping_interval))
     {
     }
   };
@@ -157,6 +160,7 @@ public:
   {
     std::function<void(std::unique_ptr<protocol>&)> upgrade_protocol;
     std::function<void(std::chrono::milliseconds)>  request_timer;
+    std::function<void()> protocol_closed;
   };
 
   typedef std::function<void(json_array msg,  json_uint_t msgtype)> t_msg_cb;
@@ -164,6 +168,9 @@ public:
 
   protocol(kernel*, tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,
            size_t buf_initial_size=1, size_t buf_max_size=1024);
+
+  /* Initiate the protocol closure handshake */
+  virtual void initiate_close() {}
 
   virtual void on_timer() {}
   virtual void io_on_read(char*, size_t) = 0;

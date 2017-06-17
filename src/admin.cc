@@ -7,6 +7,7 @@
 
 #include "wampcc/wampcc.h"
 #include "wampcc/utils.h"
+#include "wampcc/protocol.h"
 
 #include <sstream>
 #include <condition_variable>
@@ -425,10 +426,13 @@ int main_impl(int argc, char** argv)
 
   std::shared_ptr<wampcc::wamp_session> ws;
 
+  auto ping_interval = wampcc::protocol::options::default_ping_interval;
+
   switch (uopts.session_transport) {
     case user_options::transport::websocket: {
       wampcc::websocket_protocol::options proto_opts;
       proto_opts.serialisers = uopts.serialisers;
+      proto_opts.ping_interval = ping_interval;
       ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(
         g_kernel.get(),
         std::move(sock),
@@ -441,6 +445,7 @@ int main_impl(int argc, char** argv)
     case user_options::transport::rawsocket: {
       wampcc::rawsocket_protocol::options proto_opts;
       proto_opts.serialisers = uopts.serialisers;
+      proto_opts.ping_interval = ping_interval;
       ws = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
         g_kernel.get(),
         std::move(sock),

@@ -20,6 +20,8 @@
 
 namespace wampcc {
 
+  const std::chrono::seconds protocol::options::default_ping_interval { 10 };
+
   class json_codec : public codec
   {
   public:
@@ -237,8 +239,8 @@ void selector_protocol::io_on_read(char* src, size_t len)
       if ((m_opts.protocols & static_cast<int>(protocol_type::websocket)) == 0)
         throw handshake_error("websocket protocol not enabled");
 
-      websocket_protocol::options default_opts;
-      default_opts.serialisers = m_opts.serialisers;
+      websocket_protocol::options default_opts(m_opts);
+
       std::unique_ptr<protocol> up (
         new websocket_protocol(m_kernel,
                                m_socket,

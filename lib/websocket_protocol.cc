@@ -21,24 +21,6 @@
 
 #include <openssl/sha.h>
 
-
-/*
-Implementation notes.
-
-Parsing of HTTP headers is handled in this class (using apache project), while
-processing of websocket bytes is delegated to websockpp project.
-
-Things to improve:
-
-- memory usage, since we cache bytes in the rd object, but websockcpp also does
-
-- handle close events
-
-- memory management of websockcpp message object
-
-- why are we not initialting a close in here, ie, sending of a close frame?
-*/
-
 namespace wampcc
 {
 
@@ -63,11 +45,12 @@ websocket_protocol::websocket_protocol(kernel* k,
     m_http_parser(new http_parser(mode==connect_mode::passive?
                                   http_parser::e_http_request : http_parser::e_http_response)),
     m_options(std::move(opts)),
-    m_websock_impl(new websocketpp_impl(mode))
+    m_websock_impl(new websocketpp_impl(mode)),
+    m_last_pong(std::chrono::steady_clock::now())
 {
-  // register with owner to receive heartbeat thread
-  if (opts.ping_interval.count() > 0)
-    callbacks.request_timer(opts.ping_interval);
+  // register to receive heartbeat callbacks
+  if (m_options.ping_interval.count() > 0)
+    callbacks.request_timer(m_options.ping_interval);
 }
 
 
@@ -112,26 +95,22 @@ void websocket_protocol::send_msg(const json_array& ja)
 
   LOG_TRACE("fd: " << fd() << ", json_tx: " << ja);
 
-  auto bytes = encode(ja);
-
   websocketpp::frame::opcode::value op{};
   switch (m_codec->type())
   {
-    case serialiser_type::none: break;
+    case serialiser_type::none: return;
     case serialiser_type::json: op = websocketpp::frame::opcode::text; break;
     case serialiser_type::msgpack: op = websocketpp::frame::opcode::binary; break;
   }
 
-  // TODO: handle 0x00 opcode.  How to close the session?
+  auto bytes = encode(ja);
 
   auto msg_ptr = m_websock_impl->msg_manager()->get_message(op,bytes.size());
   msg_ptr->append_payload(bytes.data(), bytes.size());
   auto out_msg_ptr = m_websock_impl->msg_manager()->get_message();
 
-  // TODO: handle null outgoing_msg_ptr
-//         if (!outgoing_msg) {
-//             return error::make_error_code(error::no_outgoing_buffers);
-//         }
+  if (out_msg_ptr == nullptr)
+    throw std::runtime_error("failed to obtain msg object");
 
   auto err = m_websock_impl->processor()->prepare_data_frame(msg_ptr, out_msg_ptr);
 
@@ -180,7 +159,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         if (m_http_parser->good() == false)
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
-        if (m_http_parser->complete() )
+        if (m_http_parser->complete())
         {
           if ( m_http_parser->is_upgrade() &&
                m_http_parser->has("Upgrade") &&
@@ -225,10 +204,6 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             throw handshake_error("http header is not a websocket upgrade");
         }
       }
-      else if (m_state == state::open)
-      {
-        process_frame_bytes(rd);
-      }
       else if (m_state == state::handling_http_response)
       {
         auto consumed = m_http_parser->handle_input(rd.ptr(), rd.avail());
@@ -266,6 +241,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           else
             throw handshake_error("http header is not a websocket upgrade");
         }
+      }
+      else {
+        /* for all other websocket states, use the websocketpp parser */
+        process_frame_bytes(rd);
       }
     }
 
@@ -327,11 +306,15 @@ void websocket_protocol::send_impl(const websocketpp_msg& msg)
   LOG_TRACE("fd: " << fd() << ", frame_tx: " <<
             websocketpp_impl::frame_to_string(msg.ptr));
 
-  assert(msg.ptr->get_payload().size() == 0); /* expect no payload */
-
-  std::array< std::pair<const char*, size_t>, 1> bufs {
-    {{ msg.ptr->get_header().data(), msg.ptr->get_header().size()}} };
-  m_socket->write(bufs.data(), bufs.size());
+  if (msg.ptr->get_payload().empty()) {
+    m_socket->write(msg.ptr->get_header().data(), msg.ptr->get_header().size());
+  }
+  else {
+    std::pair<const char*, size_t> bufs[2] = {
+      { msg.ptr->get_header().data(), msg.ptr->get_header().size() },
+      { msg.ptr->get_payload().data(), msg.ptr->get_payload().size()  } };
+    m_socket->write(bufs, 2);
+  }
 }
 
 
@@ -391,6 +374,10 @@ const char* websocket_protocol::to_header(serialiser_type p)
 
 void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
 {
+  /* Feed bytes into the websocketpp stream parser. The parser will take only
+   * the bytes required to build the next websocket message; it won't slurp all
+   * the available bytes (i.e. its possible the consumed-count can be non-zero
+   * after the consume() operation). */
   websocketpp::lib::error_code ec;
   size_t consumed = m_websock_impl->processor()->consume((uint8_t*) rd.ptr(), rd.avail(), ec);
   rd.advance(consumed);
@@ -398,45 +385,65 @@ void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
   if (ec)
     throw std::runtime_error(ec.message());
 
+  if (m_websock_impl->processor()->get_error())
+    throw std::runtime_error("websocket parser fatal error");
+
   if (m_websock_impl->processor()->ready())
   {
-    // shared_ptr<message_buffer::message<message_buffer::alloc::con_msg_manager> >
+    // shared_ptr<message_buffer::message<...> >
     auto msg = m_websock_impl->processor()->get_message();
 
     if (!msg)
-      throw std::runtime_error("null message from processor");
+      throw std::runtime_error("null message from websocketpp");
+
+    LOG_TRACE("fd: " << fd() << ", frame_rx: " <<
+              websocketpp_impl::frame_to_string(msg));
+
+    if (m_state == state::closed)
+      return; // ingore bytes after protocol closed
 
     if (!is_control(msg->get_opcode())) {
       // data message, dispatch to user
-
-      // TODO: handle case of state closed/(closing?) but message arrived
-//         if (m_state != session::state::open) {
-//           //m_elog.write(log::elevel::warn, "got non-close frame while closing"
-
-      LOG_TRACE("fd: " << fd() << ", frame_rx: " <<
-                websocketpp_impl::frame_to_string(msg));
-
       if ((msg->get_opcode() == websocketpp::frame::opcode::binary) ||
           (msg->get_opcode() == websocketpp::frame::opcode::text)) {
         decode(msg->get_payload().data(), msg->get_payload().size());
       }
     } else {
+      // control message
       websocketpp::frame::opcode::value op = msg->get_opcode();
 
       if (op == websocketpp::frame::opcode::PING) {
-        // TODO: throttle pong's per second
-        send_pong();
+        const auto now = std::chrono::steady_clock::now();
+        if ((now > m_last_pong) &&
+            (now-m_last_pong >= m_options.ping_interval)) {
+          m_last_pong = now;
+          send_pong();
+          return;
+        }
       } else if (op == websocketpp::frame::opcode::PONG) {
         /* Track loss of ping, after ping expected? */
       } else if (op == websocketpp::frame::opcode::CLOSE) {
-        send_close(websocketpp::close::status::normal, "received peer close");
-        m_state = state::closing;
-
-        // TODO: should schedule a session close here
-        m_socket->close();
+        if (m_state == state::closing) {
+          // sent & received close-frame, so protocol closed
+          m_state = state::closed;
+          m_callbacks.protocol_closed();
+        }
+        if (m_state == state::open) {
+          // received & sending close-frame, so protocol closed
+          send_close(websocketpp::close::status::normal, "");
+          m_state = state::closed;
+          m_callbacks.protocol_closed();
+        }
       }
     }
   }
+}
+
+void websocket_protocol::initiate_close()
+{
+  /* Start the graceful close sequence. */
+  m_state = state::closing;
+  send_close(websocketpp::close::status::normal,"");
 }
 
 }

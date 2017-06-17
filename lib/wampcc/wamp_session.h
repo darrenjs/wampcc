@@ -368,6 +368,8 @@ namespace wampcc {
 
   private:;
 
+    void proto_close(); // for tests
+
     static std::shared_ptr<wamp_session> create_impl(kernel*,
                                                      mode,
                                                      std::unique_ptr<tcp_socket>,
@@ -492,10 +494,10 @@ namespace wampcc {
 
     void drop_connection(std::string);
 
-    enum class close_event {local_request, recv_abort, recv_goodbye, sock_eof}; //rename, local_request
+    enum class close_event {local_request, recv_abort, recv_goodbye, sock_eof, protocol_closed}; //rename, local_request
     static const char* to_string(close_event v);
 
-    void schedule_terminate_on_timeout();
+    void schedule_terminate_on_timeout(std::chrono::milliseconds, bool);
     void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, close_event);
 
     bool user_cb_allowed() const;

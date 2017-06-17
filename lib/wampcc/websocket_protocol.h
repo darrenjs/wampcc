@@ -23,7 +23,11 @@ class websocket_protocol : public protocol
 {
 public:
 
-  struct options : public protocol::options { };
+  struct options : public protocol::options {
+    options() = default;
+    options(protocol::options rhs)
+      : protocol::options(rhs) { }
+  };
 
   static constexpr const char* NAME = "websocket";
 
@@ -37,6 +41,7 @@ public:
 
   websocket_protocol(kernel*, tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connect_mode _mode, options);
 
+  void initiate_close() override;
   void on_timer() override;
   void io_on_read(char*, size_t) override;
   void initiate(t_initiate_cb) override;
@@ -59,13 +64,15 @@ private:
   void send_close(uint16_t, const std::string&);
   void send_impl(const websocketpp_msg&);
 
+  // TODO: add the mutex
   enum class state
   {
     invalid,
     handling_http_request, // server
     handling_http_response,  // client
     open,
-    closing
+    closing,
+    closed,
   } m_state = state::invalid;
 
   t_initiate_cb m_initiate_cb;
@@ -77,6 +84,8 @@ private:
   std::string m_expected_accept_key;
 
   std::unique_ptr<websocketpp_impl> m_websock_impl;
+
+  std::chrono::time_point<std::chrono::steady_clock> m_last_pong;
 };
 
 
