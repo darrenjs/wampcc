@@ -112,7 +112,9 @@ void websocket_protocol::send_msg(const json_array& ja)
   if (out_msg_ptr == nullptr)
     throw std::runtime_error("failed to obtain msg object");
 
-  auto err = m_websock_impl->processor()->prepare_data_frame(msg_ptr, out_msg_ptr);
+  auto ec = m_websock_impl->processor()->prepare_data_frame(msg_ptr, out_msg_ptr);
+  if (ec)
+    throw std::runtime_error(ec.message());
 
   LOG_TRACE("fd: " << fd() << ", frame_tx: " <<
             websocketpp_impl::frame_to_string(out_msg_ptr));
@@ -344,6 +346,7 @@ void websocket_protocol::send_close(uint16_t code, const std::string& reason)
 
 void websocket_protocol::on_timer()
 {
+  /* EV thread */
   if (m_state == state::open)
     send_ping();
 }
@@ -438,6 +441,7 @@ void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
     }
   }
 }
+
 
 void websocket_protocol::initiate_close()
 {
