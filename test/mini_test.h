@@ -156,7 +156,7 @@ public:
                 << colour_none() << std::endl;
       std::cout << "location : " << m_file << ":" << m_line << std::endl;
       this->impl();
-    } catch (const test_exception& e) {
+    } catch (const test_exception&) {
       m_has_failed = true;
     } catch (const std::exception& e) {
       exception_caught(e.what());
