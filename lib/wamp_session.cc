@@ -2073,7 +2073,11 @@ void wamp_session::drop_connection_impl(std::string reason,
     }
 
     schedule_terminate_on_timeout(close_timeout, true);
-    m_proto->initiate_close();
+
+    /* Attempt graceful shutdowm */
+    bool handshake_pending = m_proto->initiate_close();
+    if (!handshake_pending)
+      terminate(guard);
   }
 }
 

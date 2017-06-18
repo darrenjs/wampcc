@@ -75,4 +75,11 @@ Makefile.in
 /test/.deps
 /test/.libs
 /external/apache/.deps
-/external/http_parser/.depsddddddddddddddddddddddd
+/external/http_parser/.deps
+
+# Ignore folders of external code that has to be downloaded into source tree
+
+/external/msgpack-c/
+/external/websocketpp/
+/jalson/
+

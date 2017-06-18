@@ -79,6 +79,7 @@ public:
   void on_timer() override;
   void io_on_read(char*, size_t) override;
   void initiate(t_initiate_cb) override;
+  bool initiate_close() override { return false; }
   const char* name() const override { return NAME; }
   void send_msg(const json_array& j);
 

@@ -443,11 +443,12 @@ void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
 }
 
 
-void websocket_protocol::initiate_close()
+bool websocket_protocol::initiate_close()
 {
   /* Start the graceful close sequence. */
   m_state = state::closing;
   send_close(websocketpp::close::status::normal,"");
+  return true;
 }
 
 }

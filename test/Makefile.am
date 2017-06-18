@@ -15,7 +15,7 @@ AM_LDFLAGS=-L../lib -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) 
 check_PROGRAMS=test_basic_codecs test_connect_timeout test_connect_timeout	\
 test_tcp_socket_connect test_evthread_wamp_session_destructor				\
 test_early_wamp_session_destructor test_late_wamp_session_destructor		\
-test_late_dealer_destructor test_dealer_disconnect_when_has_connections		\
+test_late_dealer_destructor 			                                    \
 test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
 test_wamp_session_fast_close test_tcp_socket test_wamp_rpc test_misc		\
 test_router_functions
@@ -35,8 +35,6 @@ test_late_wamp_session_destructor_SOURCES=test_late_wamp_session_destructor.cc
 test_early_wamp_session_destructor_SOURCES=test_early_wamp_session_destructor.cc
 
 test_evthread_wamp_session_destructor_SOURCES=test_evthread_wamp_session_destructor.cc
-
-test_dealer_disconnect_when_has_connections_SOURCES=test_dealer_disconnect_when_has_connections.cc
 
 test_late_dealer_destructor_SOURCES=test_late_dealer_destructor.cc
 

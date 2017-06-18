@@ -169,8 +169,12 @@ public:
   protocol(kernel*, tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,
            size_t buf_initial_size=1, size_t buf_max_size=1024);
 
-  /* Initiate the protocol closure handshake */
-  virtual void initiate_close() {}
+  /* Initiate the protocol closure handshake.  Returns false if the protocol
+   * state doesn't support closure handshake or if already closed, so allowing
+   * the caller to proceed with wamp session closure.  Otherwise returns true,
+   * to indicate that closure handshake will commence and will be completed
+   * later.  */
+  virtual bool initiate_close() = 0;
 
   virtual void on_timer() {}
   virtual void io_on_read(char*, size_t) = 0;
@@ -236,6 +240,7 @@ public:
   {
     throw std::runtime_error("selector_protocol cannot send");
   }
+  bool initiate_close() override { return false; }
 
   static size_t buffer_size_required();
 

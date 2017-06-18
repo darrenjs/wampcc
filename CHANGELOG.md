@@ -7,6 +7,9 @@ unreleased
 
 - using websocketpp project for websocket protocol
 
+- using catch-like test framework (aim is to be compatible with catch, so that
+  catch can be used via minor change to header file inclusion).
+
 - public version info placed in version.h
 
 - automatic build (via autotools) of some example programs (issue #3)

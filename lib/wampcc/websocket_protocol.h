@@ -41,7 +41,7 @@ public:
 
   websocket_protocol(kernel*, tcp_socket*, t_msg_cb, protocol::protocol_callbacks, connect_mode _mode, options);
 
-  void initiate_close() override;
+  bool initiate_close() override;
   void on_timer() override;
   void io_on_read(char*, size_t) override;
   void initiate(t_initiate_cb) override;
