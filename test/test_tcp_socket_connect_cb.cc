@@ -15,6 +15,10 @@
 using namespace wampcc;
 using namespace std;
 
+/*
+  TODO: put this file back into compilation when the callback interface is added
+  to the tcp_socket class.
+ */
 
 void test_canonical_connect(int port)
 {

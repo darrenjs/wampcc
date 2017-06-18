@@ -10,7 +10,6 @@
 using namespace wampcc;
 using namespace std;
 
-// logging control
 #ifdef TLOG
 #undef TLOG
 #define TLOG(X)
