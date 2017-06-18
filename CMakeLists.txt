@@ -22,6 +22,9 @@ include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${INSTALL_INC_DIR})
 
+include_directories(${PROJECT_SOURCE_DIR}/external/websocketpp)
+include_directories(${PROJECT_SOURCE_DIR}/external)
+
 ##
 ## Platform checks, and generate config.h
 ##

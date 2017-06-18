@@ -17,7 +17,7 @@ namespace wampcc
 
 class http_parser;
 class websocketpp_impl;
-class websocketpp_msg;
+struct websocketpp_msg;
 
 class websocket_protocol : public protocol
 {

@@ -38,11 +38,17 @@ static bool is_in(T t, T v, Args... args) {
 
 namespace wampcc {
 
-static_assert(std::is_copy_constructible<wamp_args>::value, "is_copy_constructible<wamp_args>");
-static_assert(std::is_move_constructible<wamp_args>::value, "is_move_constructible<wamp_args>");
-static_assert(std::is_move_assignable<wamp_args>::value, "is_move_assignable<wamp_args>");
-static_assert(std::is_move_constructible<wamp_args>::value, "is_move_constructible<wamp_args>");
-static_assert(std::is_nothrow_move_constructible<wamp_args>::value, "is_nothrow_move_constructible<wamp_args>");
+/* Static checks to ensure efficient operations are supported */
+static_assert(std::is_copy_constructible<wamp_args>::value, "check failed");
+static_assert(std::is_copy_assignable<wamp_args>::value, "check failed");
+
+static_assert(std::is_move_constructible<wamp_args>::value, "check failed");
+static_assert(std::is_move_assignable<wamp_args>::value, "check failed");
+
+#ifndef _WIN32
+static_assert(std::is_nothrow_move_constructible<wamp_args>::value, "check failed");
+#endif
+
 
 /* Timeout used when a session closure sequence has begun but not completed, and
    will result in the underlying socket being forcefully close. Also the timeout

@@ -129,7 +129,7 @@ inline std::string trim(const std::string& s,
 
 inline char* skip_whitespace(char* str)
 {
-  while (std::isspace(*str))
+  while (::isspace(*str))
     ++str;
   return str;
 }

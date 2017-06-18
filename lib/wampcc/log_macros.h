@@ -25,8 +25,8 @@
   } while (0)
 
 #define LOG_FOR_LEVEL( LEVEL )                                        \
-  ( __logger.wants_level and                                          \
-    __logger.write and                                                \
+  ( __logger.wants_level &&                                           \
+    __logger.write &&                                                 \
     __logger.wants_level(LEVEL))
 
 #define LOG_INFO( X )                           \
