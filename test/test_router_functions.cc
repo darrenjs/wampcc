@@ -7,8 +7,13 @@
 
 #include "test_common.h"
 
+#include "mini_test.h"
+
 using namespace wampcc;
 using namespace std;
+
+int global_port;
+int global_loops = 50;
 
 void test_registration_failure_empty_uri(int port, internal_server& server)
 {
@@ -35,6 +40,12 @@ void test_registration_failure_empty_uri(int port, internal_server& server)
   assert(result.first == false);
 }
 
+TEST_CASE("test_registration_failure_empty_uri")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_registration_failure_empty_uri(port, iserver);
+}
 
 void test_registration_failure_bad_uri(int port, internal_server& server)
 {
@@ -59,6 +70,14 @@ void test_registration_failure_bad_uri(int port, internal_server& server)
   auto result = promised_result.get_future().get();
 
   assert(result.first == false);
+}
+
+
+TEST_CASE("test_registration_failure_bad_uri")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_registration_failure_bad_uri(port, iserver);
 }
 
 
@@ -113,43 +132,64 @@ void test_registration_duplicate_uri(int port, internal_server& server)
 }
 
 
+TEST_CASE("test_registration_duplicate_uri")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  test_registration_duplicate_uri(port, iserver);
+}
+
+
+auto all_tests = [](int port, internal_server& server)
+{
+  test_registration_failure_empty_uri(port, server);
+  test_registration_failure_bad_uri(port, server);
+  test_registration_duplicate_uri(port, server);
+};
+
+
+TEST_CASE("test_all")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+  all_tests(port, iserver);
+}
+
+
+TEST_CASE("test_all_bulk_v1")
+{
+  for (int i = 0; i < 50; i++)
+  {
+    internal_server iserver;
+    int port = iserver.start(global_port++);
+    all_tests(port, iserver);
+  }
+}
+
+
+TEST_CASE("test_all_bulk_v2")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+
+  for (int i = 0; i < 50; i++)
+    all_tests(port, iserver);
+}
+
+
 int main(int argc, char** argv)
 {
-  try
-  {
-    int starting_port_number = 25000;
+  try {
+    global_port = 25000;
 
-    if (argc>1)
-      starting_port_number = atoi(argv[1]);
+    if (argc > 1)
+      global_port = atoi(argv[1]);
 
-    auto all_tests = [](int port, internal_server& server)
-      {
-        test_registration_failure_empty_uri(port, server);
-        test_registration_failure_bad_uri(port, server);
-        test_registration_duplicate_uri(port, server);
-      };
+    int result = minitest::run(argc, argv);
 
-    // one-off test
-    {
-      internal_server iserver;
-      int port = iserver.start(starting_port_number++);
-      all_tests(port, iserver);
-    }
-
-    // share a common internal_server
-    for (int i = 0; i < 50; i++)
-    {
-      internal_server iserver;
-      int port = iserver.start(starting_port_number++);
-      all_tests(port, iserver);
-    }
-
-    return 0;
-  }
-  catch (exception& e)
-  {
+    return (result < 0xFF ? result : 0xFF);
+  } catch (exception& e) {
     cout << e.what() << endl;
     return 1;
   }
-
 }

@@ -10,10 +10,12 @@
 #include "wampcc/utils.h"
 #include "wampcc/platform.h"
 
+#include "mini_test.h"
+
 using namespace wampcc;
 using namespace std;
 
-void test_rpc()
+TEST_CASE("test_iso8601_utc_timestamp")
 {
   string value = iso8601_utc_timestamp();
 
@@ -44,6 +46,7 @@ void test_rpc()
   assert(value[23]=='Z');
 }
 
+
 void eval_is_strict_uri(const char* src, bool expect)
 {
   bool actual = is_strict_uri(src);
@@ -53,7 +56,8 @@ void eval_is_strict_uri(const char* src, bool expect)
   }
 }
 
-void test_is_strict_uri()
+
+TEST_CASE("test_is_strict_uri")
 {
   eval_is_strict_uri("a",true);
   eval_is_strict_uri("z",true);
@@ -151,7 +155,8 @@ void test_is_strict_uri()
   eval_is_strict_uri("_._.az~AZ09_",false);
 }
 
-void test_localtime()
+
+TEST_CASE("test_localtime")
 {
 	auto str = wampcc::local_timestamp();
 	assert(str.size() == 24);
@@ -161,7 +166,8 @@ void test_localtime()
 	assert(str[17] == '.');
 }
 
-void test_time_now()
+
+TEST_CASE("test_time_now")
 {
 	auto t1 = time_now();
 	auto t2 = time_now();
@@ -172,19 +178,17 @@ void test_time_now()
 	assert(t1.usec < 1000000);
 }
 
+
 int main(int argc, char** argv)
 {
-  try
-  {
-	  test_localtime();
-	  test_time_now();
-      test_is_strict_uri();
-    return 0;
-  }
-  catch (exception& e)
-  {
+  try {
+    int result = minitest::run(argc, argv);
+    return (result < 0xFF ? result : 0xFF );
+  } catch (exception& e) {
     cout << e.what() << endl;
     return 1;
   }
-
 }
+
+
+

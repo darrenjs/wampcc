@@ -7,11 +7,7 @@
 
 #include "test_common.h"
 
-#include "wampcc/tcp_socket.h"
-
 #include "mini_test.h"
-
-#include <stdexcept>
 
 using namespace wampcc;
 using namespace std;
