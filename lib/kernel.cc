@@ -87,7 +87,7 @@ logger logger::stream(lockable_stream& ostr, int level_mask, bool inc_src)
                                                  const std::string& msg,
                                                  const char* file, int ln) {
     std::ostringstream oss;
-    oss << wampcc::local_timestamp()
+    oss << wampcc::local_timestamp() << " "
         << wampcc::thread_id() << " "
         << level_str(level) << " "
     << msg;
