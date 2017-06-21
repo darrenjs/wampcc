@@ -56,7 +56,7 @@ fi
 
 # Need version >= 2.1.2, because for 2.1.2 and earlier, it has a bug in the
 # decoding of msgpack buffers
-ver=2.1.2
+ver=2.1.3
 echo '***' fetching msgpack $ver '***'
 echo
 zipfile=cpp-${ver}.tar.gz
