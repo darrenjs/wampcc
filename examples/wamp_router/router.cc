@@ -16,37 +16,15 @@
 #include <process.h>
 #endif
 
-// replace with optional<> if C++17 present
-template <typename T> struct user_optional
-{
-  user_optional& operator=(T v)
-  {
-    m_value.first = std::move(v);
-    m_value.second = true;
-    return *this;
-  }
-  constexpr T& value() const { return m_value.first; }
-  T& value() { return m_value.first; }
-  constexpr operator bool() const { return m_value.second; }
-private:
-  std::pair<T,bool> m_value;
-};
-
-
-struct user_options
-{
-  // setting for the ssl acceptor, if requested
-  user_optional<std::string> ssl_addr;
-  user_optional<std::string> ssl_port;
-} uopts;
-
-
-
 
 int main(int argc, char** argv)
 {
   try {
-    uopts.ssl_port = "55555";
+    if (argc < 4) {
+      std::cout << "required args: SSL_CERT_FILE SSL_KEY_FILE PORT" << std::endl;
+      return 1;
+    }
+    std::string ssl_port = argv[3];
 
     std::promise<void> can_exit;
 
@@ -60,8 +38,8 @@ int main(int argc, char** argv)
 
     wampcc::config conf;
     conf.ssl.enable = true;
-    conf.ssl.certificate_file = "/home/darrens/work/dev/src/c++/wampcc/examples/server.crt";
-    conf.ssl.private_key_file = "/home/darrens/work/dev/src/c++/wampcc/examples/server.key";
+    conf.ssl.certificate_file = argv[1];
+    conf.ssl.private_key_file = argv[2];
 
     std::unique_ptr<wampcc::kernel> the_kernel(
         new wampcc::kernel(conf, logger));
@@ -79,7 +57,7 @@ int main(int argc, char** argv)
     wampcc::auth_provider auth = wampcc::auth_provider::no_auth_required();
     wampcc::wamp_router::listen_options listen_opts;
     listen_opts.ssl = true;
-    listen_opts.service =uopts.ssl_port.value();
+    listen_opts.service = ssl_port;
     auto fut = router. listen(auth, listen_opts);
 
     if (fut.wait_for(std::chrono::milliseconds(250)) !=
@@ -92,7 +70,7 @@ int main(int argc, char** argv)
                                ec.message());
 
     logger.write(wampcc::logger::eInfo,
-                 "ssl socket listening on " + uopts.ssl_port.value(),
+                 "ssl socket listening on " + ssl_port,
                  __FILE__, __LINE__);
 
     /* Provide several RPCs */
