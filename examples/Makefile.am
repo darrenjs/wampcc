@@ -14,13 +14,14 @@ AM_CPPFLAGS = -I$(jalsoninc) $(libuvinc) -I$(top_srcdir)/lib  -Wall -g3 -ggdb -s
 
 AM_LDFLAGS=-L../lib -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
-noinst_PROGRAMS=basic_embedded_router basic_publisher basic_subscriber basic_caller basic_callee
+noinst_PROGRAMS=basic_embedded_router basic_publisher basic_subscriber basic_caller basic_callee router
 
 basic_embedded_router_SOURCES=basic/basic_embedded_router.cc
 basic_publisher_SOURCES=basic/basic_publisher.cc
 basic_subscriber_SOURCES=basic/basic_subscriber.cc
 basic_caller_SOURCES=basic/basic_caller.cc
 basic_callee_SOURCES=basic/basic_callee.cc
+router_SOURCES=wamp_router/router.cc
 
 
 

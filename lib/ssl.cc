@@ -73,7 +73,6 @@ void ssl_context::log_ssl_error_queue()
   unsigned long l;
   char buf[256];
 
-  // TODO: using logging
   while ((l = ERR_get_error()) != 0) {
     ERR_error_string_n(l, buf, sizeof buf);
     LOG_ERROR("ssl " << buf);

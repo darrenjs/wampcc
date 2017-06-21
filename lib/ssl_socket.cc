@@ -229,6 +229,7 @@ sslstatus ssl_socket::do_handshake()
   if (SSL_is_init_finished(m_ssl->ssl) &&
       m_handshake_state == t_handshake_state::pending) {
     m_handshake_state = t_handshake_state::success;
+    LOG_TRACE("fd: " << fd_info().second << ", ssl handshake success");
     m_prom_handshake.set_value(m_handshake_state);
   }
 
@@ -289,8 +290,10 @@ int ssl_socket::ssl_do_read(char* src, size_t len)
 
     /* Handle initial handshake or renegotiation */
     if (!SSL_is_init_finished(m_ssl->ssl)) {
-      if (do_handshake() == sslstatus::fail)
+      if (do_handshake() == sslstatus::fail) {
+        m_kernel->get_ssl()->log_ssl_error_queue();
         return -1;
+      }
 
       /* If we are still not initialised, then perhaps there is more data to
        * write into the read-bio? Check by continue-ing the loop. */
@@ -319,8 +322,10 @@ int ssl_socket::ssl_do_read(char* src, size_t len)
           return -1;
       } while (n > 0);
 
-    if (status == sslstatus::fail)
+    if (status == sslstatus::fail) {
+      m_kernel->get_ssl()->log_ssl_error_queue();
       return -1;
+    }
   }
 
   /* In the unlikely event that there are left-over bytes from an incomplete

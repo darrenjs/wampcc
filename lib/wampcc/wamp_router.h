@@ -34,7 +34,7 @@ public:
 
   struct listen_options
   {
-    bool ssl;     /* if true, use SSL/TLS socket */
+    bool ssl;     /* if true, use SSL/TLS socket (wampcc::kernel must also be configured to use SSL) */
     int protocols;  /* mask of protocol_type bits */
     int serialisers;  /* maks of serialiser_type bits */
 
