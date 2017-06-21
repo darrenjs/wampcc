@@ -3,7 +3,7 @@ unreleased
 
 ## Added
 
-- msgpack serialiser support
+- msgpack serialiser support, using msgpack-c 2.1.3
 
 - using websocketpp project for websocket protocol
 
@@ -14,6 +14,8 @@ unreleased
 
 - automatic build (via autotools) of some example programs (issue #3)
 
+- example/wamp_router, which will aim to provide an example of a router
+
 ## Removed
 
 - fetch and link of googletest, was not being used
@@ -23,7 +25,7 @@ unreleased
 - wamp_session::provide() accept callback that is invoked on success/failure of
   registration.
 
-- Using msgpack-c 2.1.2.  In this version the header-only msgpack decoder has
+- Using msgpack-c 2.1.3.  In this version the header-only msgpack decoder has
   been fixed, which is used by wampcc.
 
 - The stream logger (used by the logger::console logger) now takes a wrapper to
@@ -38,6 +40,9 @@ unreleased
 - compile errors on Xcode 7.3.1 + 10.7 SDK (issue #2, petten)
 
 - cmake missing link libraries on Linux
+
+- websocket opening assumed Sec-WebSocket-Protocol would be present, but
+  acutally its optional header
 
 version 1.3.1
 =============
