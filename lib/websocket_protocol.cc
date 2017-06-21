@@ -173,18 +173,26 @@ void websocket_protocol::io_on_read(char* src, size_t len)
           {
             auto& websock_key = header_field("Sec-WebSocket-Key");
             auto& websock_ver = header_field("Sec-WebSocket-Version");
-            auto& websock_sub = header_field("Sec-WebSocket-Protocol");
 
             if (websock_ver != RFC6455 /* 13 */)
               throw handshake_error("incorrect websocket version");
 
-            /* determine the protocols common to both client and server */
-            int common = m_options.serialisers &
-              ((has_token(websock_sub,WAMPV2_JSON_SUBPROTOCOL)?serialiser_type::json:serialiser_type::none) |
-               (has_token(websock_sub,WAMPV2_MSGPACK_SUBPROTOCOL)?serialiser_type::msgpack:serialiser_type::none));
+            bool sec_websocket_protocol_present = m_http_parser->has("Sec-WebSocket-Protocol");
+            if (sec_websocket_protocol_present)
+            {
+              auto& websock_sub = header_field("Sec-WebSocket-Protocol");
 
-            /* create the actual codec */
-            create_codec(common);
+              /* determine the protocols common to both client and server */
+              int common = m_options.serialisers &
+                ((has_token(websock_sub,WAMPV2_JSON_SUBPROTOCOL)?serialiser_type::json:serialiser_type::none) |
+                 (has_token(websock_sub,WAMPV2_MSGPACK_SUBPROTOCOL)?serialiser_type::msgpack:serialiser_type::none));
+
+              /* create the actual codec */
+              create_codec(common);
+            }
+            else
+              create_codec(static_cast<int>(serialiser_type::json));
+
             if (!m_codec)
               throw handshake_error("failed to negotiate websocket subprotocol");
 
@@ -192,9 +200,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             os << "HTTP/1.1 101 Switching Protocols\r\n"
                << "Upgrade: websocket\r\n"
                << "Connection: Upgrade\r\n"
-               << "Sec-WebSocket-Accept: " << make_accept_key(websock_key) << "\r\n"
-               << "Sec-WebSocket-Protocol: " << to_header(m_codec->type()) << "\r\n"
-               << "\r\n";
+               << "Sec-WebSocket-Accept: " << make_accept_key(websock_key) << "\r\n";
+            if (sec_websocket_protocol_present)
+              os << "Sec-WebSocket-Protocol: " << to_header(m_codec->type()) << "\r\n";
+            os<< "\r\n";
             std::string msg = os.str();
 
             LOG_TRACE("fd: " << fd() << ", http_tx: " << msg);
