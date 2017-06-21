@@ -178,7 +178,6 @@ void usage()
   HELPLN("-c, --call=URI",sp2,"call procedure");
   HELPLN("--arglist=ARG",sp3,"wamp argument list, ARG is a JSON array");
   HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
-  HELPLN("--ssl", sp4, "connect using SSL/TLS socket");
   HELPLN("--timeout N", sp3, "wait upto N seconds during connect & logon");
   HELPLN("--proto PROTO_OPTIONS", sp2, "comma separated list of options, default 'web,json'");
   HELPLN("-h", sp4, "display this help");
