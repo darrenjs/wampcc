@@ -63,7 +63,7 @@ void test_WS_destroyed_before_kernel(int port)
 TEST_CASE("test_WS_destroyed_before_kernel_shared_server")
 {
   // share a common internal_server
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 3; i++)
   {
     internal_server iserver;
     int port = iserver.start(global_port++);
