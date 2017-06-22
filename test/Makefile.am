@@ -12,7 +12,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib  $(libuvinc)						\
 
 AM_LDFLAGS=-L../lib -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
-check_PROGRAMS=test_basic_codecs test_connect_timeout test_connect_timeout	\
+check_PROGRAMS=test_basic_codecs test_connect_timeout 				     	\
 test_tcp_socket_connect test_evthread_wamp_session_destructor				\
 test_early_wamp_session_destructor test_late_wamp_session_destructor		\
 test_late_dealer_destructor 			                                    \
