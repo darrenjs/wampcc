@@ -59,15 +59,15 @@ void test_WS_destroyed_after_kernel(int port)
   REQUIRE(callback_status == callback_status_t::not_invoked);
 }
 
-TEST_CASE("test_WS_destroyed_after_kernel")
+TEST_CASE("test_WS_destroyed_after_kernel_shared")
 {
   // share a common internal_server
-  for (int i = 0; i < global_loops; i++)
+  for (int i = 0; i < 5; i++)
   {
     internal_server iserver;
     int port = iserver.start(global_port++);
 
-    for (int j=0; j < 100; j++) {
+    for (int j=0; j < global_loops; j++) {
       test_WS_destroyed_after_kernel(port);
     }
   }
