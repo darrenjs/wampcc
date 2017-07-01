@@ -45,12 +45,6 @@ struct user_options
     websocket,
   } session_transport = transport::websocket;
 
-  enum class format
-  {
-    json,
-    msgpack,
-  } wire_format = format::json;
-
   int serialisers = wampcc::all_serialisers;
 
   std::string username;
@@ -299,7 +293,7 @@ static void process_options(int argc, char** argv)
       case 'c' : uopts.call_procedure = optarg; break;
       case 'U' : uopts.username = optarg; break;
       case 'P' : uopts.password = optarg; break;
-      case 'R' : uopts.realm    = optarg; break;
+      case 'R' : uopts.realm = optarg; break;
       case '?' : exit(1); // invalid option
       default:
       {
