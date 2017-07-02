@@ -19,24 +19,6 @@
 #include <string.h>
 #include <getopt.h> /* for getopt_long; standard getopt is in unistd.h */
 
-
-// replace with optional<> if C++17 present
-template <typename T> struct user_optional
-{
-  user_optional& operator=(T v)
-  {
-    m_value.first = std::move(v);
-    m_value.second = true;
-    return *this;
-  }
-  constexpr T& value() const { return m_value.first; }
-  T& value() { return m_value.first; }
-  constexpr operator bool() const { return m_value.second; }
-private:
-  std::pair<T,bool> m_value;
-};
-
-
 struct user_options
 {
   enum class transport
@@ -49,10 +31,10 @@ struct user_options
 
   std::string username;
   std::string password;
-  user_optional<std::string> realm;
+  wampcc::user_optional<std::string> realm;
 
-  user_optional<std::string> addr;
-  user_optional<std::string> port;
+  wampcc::user_optional<std::string> addr;
+  wampcc::user_optional<std::string> port;
 
   std::list< std::string > subscribe_topics;
 

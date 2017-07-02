@@ -17,6 +17,22 @@
 namespace wampcc
 {
 
+// replace with optional<> if C++17 present
+template <typename T> struct user_optional
+{
+  user_optional& operator=(T v)
+  {
+    m_value.first = std::move(v);
+    m_value.second = true;
+    return *this;
+  }
+  constexpr T& value() const { return m_value.first; }
+  T& value() { return m_value.first; }
+  constexpr operator bool() const { return m_value.second; }
+private:
+  std::pair<T,bool> m_value;
+};
+
 struct logger;
 
 enum class HMACSHA256_Mode { HEX, BASE64 };

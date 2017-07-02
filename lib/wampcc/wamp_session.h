@@ -294,7 +294,7 @@ namespace wampcc {
      * eg, in case of a server session that receives the realm from the peer. */
     const std::string& realm() const;
 
-    /** Deprecated.  This method will be removed in later wampcc version.  It is
+    /** DEPRECATED.  This method will be removed in later wampcc version.  It is
      * replaced with an alternative provide() method that accepts an additiona
      * result_cb parameter. */
     t_request_id provide(std::string uri,
