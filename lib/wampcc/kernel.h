@@ -85,9 +85,9 @@ struct logger
   /** Return a logger object that uses std::cout.  This uses the static instance
    * lockable_cout, which provides the mutex that is used to synchronize writes
    * to std::cout. */
-  static logger console()
+  static logger console(bool include_file_line = false)
   {
-    return stream(lockable_cout, levels_upto(eInfo), false);
+    return stream(lockable_cout, levels_upto(eInfo), include_file_line);
   }
 
   /** create a logger that does not log anything */
