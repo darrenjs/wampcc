@@ -252,10 +252,16 @@ public:
 
   /* access the value */
 
+  bool& as_bool() { return m_impl.as_bool(); }
   bool as_bool() const { return m_impl.as_bool(); }
+
+  double& as_real() { return m_impl.as_real(); }
   double as_real() const { return m_impl.as_real(); }
 
+  json_int_t& as_int() { return m_impl.as_sint_repr(); }
   json_int_t as_int() const { return m_impl.as_sint_repr(); }
+
+  json_uint_t& as_uint() { return m_impl.as_uint_repr(); }
   json_uint_t as_uint() const { return m_impl.as_uint_repr(); }
 
   json_string& as_string() { return this->as<json_string>(); }

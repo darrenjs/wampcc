@@ -265,12 +265,22 @@ long long valueimpl::as_sint_repr()  const
   }
   else if (details.type == e_unsigned)
   {
-    return  (long long) details.data.uint;  // can be loss of precision
+    return (long long) details.data.uint;  // can be loss of precision
   }
   else
   {
     throw type_mismatch(this->json_type(), eINTEGER);
   }
+}
+
+long long & valueimpl::as_sint_repr()
+{
+  if (details.type == e_signed)
+    return details.data.sint;
+  else if (details.type == e_unsigned)
+    return (long long&) details.data.uint;  // can be loss of precision
+  else
+    throw type_mismatch(this->json_type(), eINTEGER);
 }
 
 unsigned long long valueimpl::as_uint_repr()  const
@@ -289,6 +299,16 @@ unsigned long long valueimpl::as_uint_repr()  const
   }
 }
 
+unsigned long long& valueimpl::as_uint_repr()
+{
+  if (details.type == e_signed)
+    return (unsigned long long&) details.data.sint; // can be loss of precision
+  else if (details.type == e_unsigned)
+    return details.data.uint;
+  else
+    throw type_mismatch(this->json_type(), eINTEGER);
+}
+
 /* return value as an unsigned integer, or throw if not possible */
 double valueimpl::as_real() const
 {
@@ -298,10 +318,27 @@ double valueimpl::as_real() const
     throw type_mismatch(this->json_type(), eREAL);
 }
 
+/* return value as an unsigned integer, or throw if not possible */
+double& valueimpl::as_real()
+{
+  if (valueimpl::e_double == details.type)
+    return details.data.real;
+  else
+    throw type_mismatch(this->json_type(), eREAL);
+}
+
 bool valueimpl::as_bool() const
 {
-  if ( valueimpl::e_bool == details.type )
-    return as_bool_unchecked();
+  if (valueimpl::e_bool == details.type)
+    return details.data.boolean;
+  else
+    throw type_mismatch(this->json_type(), eBOOL);
+}
+
+bool& valueimpl::as_bool()
+{
+  if (valueimpl::e_bool == details.type)
+    return details.data.boolean;
   else
     throw type_mismatch(this->json_type(), eBOOL);
 }

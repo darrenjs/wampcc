@@ -179,14 +179,26 @@ public:
   /* return value as an integer, or throw if not possible */
   long long  as_sint_repr()  const;
 
+  /* return value as an integer, or throw if not possible */
+  long long&  as_sint_repr();
+
   /* return value as an unsigned integer, or throw if not possible */
   unsigned long long as_uint_repr() const;
+
+  /* return value as an unsigned integer, or throw if not possible */
+  unsigned long long& as_uint_repr();
 
   /* return value as a double, or throw if not possible */
   double as_real() const;
 
+  /* return value as a double, or throw if not possible */
+  double& as_real();
+
   /* return boolean value, or throw if not possible */
   bool as_bool() const;
+
+  /* return boolean value, or throw if not possible */
+  bool& as_bool();
 
   bool as_bool_unchecked() const;
 
