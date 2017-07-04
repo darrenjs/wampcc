@@ -84,11 +84,11 @@ public:
   std::shared_ptr<wampcc::wamp_session> connect_and_logon()
   {
     std::string host = "127.0.0.1";
-    std::string port = "55555";
+
 
     std::unique_ptr<wampcc::tcp_socket> sock(
         new wampcc::tcp_socket(m_kernel.get()));
-    auto fut = sock->connect(host, port);
+    auto fut = sock->connect(host, uopts.port.value());
 
     if (fut.wait_for(std::chrono::milliseconds(250)) !=
         std::future_status::ready)
