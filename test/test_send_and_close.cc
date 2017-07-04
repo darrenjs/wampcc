@@ -32,20 +32,24 @@ std::string uri_numbers_topic = "numbers";
   } while (0)
 
 
-TEST_CASE("test_send_no_reply")
+TEST_CASE("test_send_batch_then_close")
 {
+/*
+  Test we can send a lot of messages, followed by a graceful closure, and that
+  all the messages in fact do arrive at the destination.  I.e., the receiver
+  should first see the messages, and then followed by seeing the session close
+  event.
 
-  //internal_server server(logger::console());
-  internal_server server(debug_logger());
+  To simulate this, we slow down the receiver so that it has a brief sleep
+  during the event callback.  This should allow sufficient time for the sender
+  to have sent all the messages and closed the session.
+ */
+
+  auto logger = logger::console();
+  //auto logger = debug_logger();
+
+  internal_server server(logger);
   int port = server.start(global_port++);
-
-  // /* create some unused sessions, to bump the session id higher, so can easily
-  //  * see which session is which in log output*/
-  // {
-  //   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
-  //   for (int i = 0; i < 10; i++)
-  //     auto session = establish_session(the_kernel, port);
-  // }
 
   constexpr int data_size = 20;
 
@@ -59,45 +63,39 @@ TEST_CASE("test_send_no_reply")
 
   server.router()->provide("default_realm", uri_numbers_topic, {},
                            [&data_recv](wampcc::wamp_invocation& invoc) {
-                             std::cout << "request: " << invoc.args.args_list << std::endl;
+                             this_thread::sleep_for(chrono::milliseconds(100));
                              data_recv.push_back(invoc.args.args_list);
                              //invoc.yield(invoc.args.args_list);
                            });
 
-  // TODO: create a session
-  //auto logger = logger::console();
-  auto logger = debug_logger();
+  {
+    unique_ptr<kernel> the_kernel(new kernel({}, logger));
+    auto session = establish_session(the_kernel, port, (int)protocol_type::rawsocket);
 
-  unique_ptr<kernel> the_kernel(new kernel({}, logger));
-  auto session = establish_session(the_kernel, port, (int)protocol_type::websocket);
+    INFO("sender session created with unique id #" << session->unique_id());
+    perform_realm_logon(session);
 
-  std::cout << "sender session created with unique id #" << session->unique_id() << std::endl;
-  perform_realm_logon(session);
+    wampcc::json_object options;
+    wampcc::wamp_args args;
+    args.args_list.push_back(wampcc::json_value::make_uint(0));
 
-  // TODO: on session, publish lots of messages
+    for (int i = 0; i < data_size; i++) {
+      args.args_list = data_sent[i];
+      session->call(uri_numbers_topic, {}, args, [&](wampcc::wamp_call_result r) {
+        });
+    }
 
-  wampcc::json_object options;
-  wampcc::wamp_args args;
-  args.args_list.push_back(wampcc::json_value::make_uint(0));
+    // immediately close -- test is to see if router still handles the
+    // messages sent
 
-  for (int i = 0; i < data_size; i++) {
-    args.args_list = data_sent[i];
-    session->call(uri_numbers_topic, {}, args, [&](wampcc::wamp_call_result r) {
-        std::cout << "reply: " << r.args.args_list << std::endl;
-      });
+    session->close();
+    INFO("sender session has been closed, #" << session->unique_id());
   }
 
-  //this_thread::sleep_for(chrono::milliseconds(100));
+  INFO("items sent: " << data_sent.size());
+  INFO("items recv: " << data_recv.size());
 
-  // immediately close -- test is to see if router still handles the
-  // messages sent
-
-  session->close().wait();
-
-  LOG(logger,  "*** sender session has been closed, #" << session->unique_id() );
-  std::cout << "item sent: " << data_sent.size() << std::endl;
-  std::cout << "item recv: " << data_recv.size() << std::endl;
-  assert(data_sent == data_recv);
+  REQUIRE(data_sent == data_recv);
 }
 
 int main(int argc, char** argv)
