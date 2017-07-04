@@ -300,7 +300,7 @@ void wamp_session::io_on_read(char* src, size_t len)
     }
     else  {
       std::lock_guard<std::mutex> guard(m_state_lock);
-      drop_connection_impl("peer_eof", guard, close_event::sock_eof);
+      drop_connection_impl("sock_eof", guard, close_event::sock_eof);
     }
   }
   catch (...)
@@ -313,7 +313,7 @@ void wamp_session::io_on_read(char* src, size_t len)
 void wamp_session::io_on_error(uverr ec)
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
-  drop_connection_impl("peer_eof", guard, close_event::sock_eof);
+  drop_connection_impl("sock_err", guard, close_event::sock_eof);
 }
 
 
@@ -363,7 +363,7 @@ void wamp_session::update_state_for_outbound(const json_array& msg)
 }
 
 
-const char* wamp_session::state_to_str(wamp_session::state s)
+const char* wamp_session::to_string(wamp_session::state s)
 {
   switch (s) {
     case wamp_session::state::init : return "init";
@@ -397,12 +397,12 @@ void wamp_session::change_state(state expected1, state expected2, state next)
 
   if (is_in(m_state, expected1, expected2))
   {
-    LOG_INFO(m_log_prefix << "state: from " << state_to_str(m_state) << " to " << state_to_str(next));
+    LOG_INFO(m_log_prefix << "state: from " << to_string(m_state) << " to " << to_string(next));
     m_state = next;
   }
   else
   {
-    LOG_ERROR(m_log_prefix << "state failure, cannot move from " << state_to_str(m_state) << " to " << state_to_str(next) );
+    LOG_ERROR(m_log_prefix << "state failure, cannot move from " << to_string(m_state) << " to " << to_string(next) );
     drop_connection_impl(WAMP_ERROR_UNEXPECTED_STATE, guard, close_event::local_request);
   }
 }
@@ -439,11 +439,13 @@ void wamp_session::process_inbound_goodbye(json_array &)
 }
 
 
-  void wamp_session::process_message(json_array& ja,
-                                     json_uint_t message_type)
+void wamp_session::process_message(json_array& ja,
+                                   json_uint_t message_type)
 {
   /* EV thread */
 
+  /* If session is in closed state, then we shall not allow any furthur
+   * callbacks into application code, so we can discard this message. */
   if (is_closed())
     return;
 
@@ -472,11 +474,6 @@ void wamp_session::process_inbound_goodbye(json_array &)
         change_state(state::sent_challenge, state::recv_auth);
         handle_AUTHENTICATE(ja);
         return;
-      }
-      else
-      {
-        if (!is_open())
-          throw protocol_error("received message while session not open");
       }
 
       switch (message_type)
@@ -531,11 +528,6 @@ void wamp_session::process_inbound_goodbye(json_array &)
         if (is_open())
           notify_session_open();
         return;
-      }
-      else
-      {
-        if (!is_open())
-          throw protocol_error("received message while session not open");
       }
 
       switch (message_type)
@@ -1997,6 +1989,9 @@ void wamp_session::drop_connection_impl(std::string reason,
 {
   /* ANY thread (inc. EV & IO) */
 
+
+  // Note, we don't check for closing_wait here.  Closing wait is really
+  // part of the open stage.
   if (is_in(m_state, state::closed, state::closing))
     return;
 
@@ -2074,7 +2069,7 @@ void wamp_session::drop_connection_impl(std::string reason,
 
     schedule_terminate_on_timeout(close_timeout, true);
 
-    /* Attempt graceful shutdowm */
+    /* Attempt graceful shutdown */
     bool handshake_pending = m_proto->initiate_close();
     if (!handshake_pending)
       terminate(guard);

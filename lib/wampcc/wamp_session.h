@@ -433,7 +433,7 @@ namespace wampcc {
     void send_WELCOME();
 
     void notify_session_open();
-    static const char* state_to_str(wamp_session::state);
+    static const char* to_string(wamp_session::state);
 
     logger & __logger; /* name chosen for log macros */
     kernel* m_kernel;

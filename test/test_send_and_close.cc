@@ -52,6 +52,7 @@ TEST_CASE("test_send_batch_then_close")
   int port = server.start(global_port++);
 
   constexpr int data_size = 20;
+  constexpr int delay_ms = 100;
 
   // data to send from sender to receiver; test is to check if all of the data
   // arrives
@@ -59,12 +60,23 @@ TEST_CASE("test_send_batch_then_close")
   for (int i = 0; i<data_size; i++)
     data_sent[i].push_back( wampcc::json_value::make_uint(i) );
 
+  std::mutex data_recv_mutex;
+  std::condition_variable data_recv_condvar;
+
   std::vector<json_array> data_recv;
 
+
   server.router()->provide("default_realm", uri_numbers_topic, {},
-                           [&data_recv](wampcc::wamp_invocation& invoc) {
-                             this_thread::sleep_for(chrono::milliseconds(100));
-                             data_recv.push_back(invoc.args.args_list);
+                           [&](wampcc::wamp_invocation& invoc) {
+                             this_thread::sleep_for(chrono::milliseconds(delay_ms));
+
+                             {
+                               std::lock_guard<std::mutex> guard(data_recv_mutex);
+                               data_recv.push_back(invoc.args.args_list);
+
+                               if (data_recv.size() == data_size)
+                                 data_recv_condvar.notify_one();
+                             }
                              //invoc.yield(invoc.args.args_list);
                            });
 
@@ -92,8 +104,24 @@ TEST_CASE("test_send_batch_then_close")
     INFO("sender session has been closed, #" << session->unique_id());
   }
 
+  INFO("waiting for test to complete...");
+  {
+    std::unique_lock<std::mutex> guard(data_recv_mutex);
+    auto max_interval = chrono::milliseconds(delay_ms * data_size * 5);
+    data_recv_condvar.wait_for(guard, max_interval,
+                               [&]()->bool {return data_recv.size() == data_size;});
+  }
+
   INFO("items sent: " << data_sent.size());
   INFO("items recv: " << data_recv.size());
+
+  // This sleep is needed to allow the router.provide callback to complete.
+  // Without this, when the callback raises the condition variable, the outer
+  // thread waiting on the condition can continue and possible exit the function
+  // (via exception thrown on the test case).  If it does that very quickly, the
+  // thread still in the callback will be attempting to use a mutex this is no
+  // longer on the stack.
+  this_thread::sleep_for(chrono::milliseconds(500));
 
   REQUIRE(data_sent == data_recv);
 }
