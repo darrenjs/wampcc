@@ -28,6 +28,8 @@ const std::string uri_double = "double";
 
 enum class role { invalid = 0, router, callee, caller, publisher, subscriber };
 
+wampcc::wamp_args const final_item {{"final"},{{"final",1}}};
+
 struct user_options
 {
   enum class transport {
@@ -39,6 +41,7 @@ struct user_options
 
   wampcc::user_optional<std::string> admin_port;
   wampcc::user_optional<std::string> port;
+  wampcc::user_optional<int> count;
   role program_role = role::invalid;
   std::string realm = "default_realm";
   bool debug = false;
@@ -56,7 +59,7 @@ private:
   std::shared_ptr<wampcc::wamp_router> m_admin;
   std::shared_ptr<wampcc::wamp_session> m_callee;
   std::shared_ptr<wampcc::wamp_session> m_subscriber;
-  std::list<wampcc::json_array> m_subscription_data;
+  std::vector<wampcc::wamp_args> m_subscription_data;
 
 public:
   // control when main thread can exit
@@ -242,27 +245,46 @@ public:
     });
   }
 
+
+  std::vector<wampcc::wamp_args> data_set() const
+  {
+    std::vector<wampcc::wamp_args> retval;
+    retval.reserve(uopts.count.value()+1);
+
+    for (int i = 0; i < uopts.count.value(); i++) {
+      wampcc::wamp_args args;
+      args.args_list.push_back(wampcc::json_value::make_uint(i));
+      retval.push_back(std::move(args));
+    }
+    retval.push_back(final_item);
+    return retval;
+  }
+
   void create_publisher()
   {
+    if (!uopts.count)
+      throw std::runtime_error("missing count");
+
     {
       std::shared_ptr<wampcc::wamp_session> session = connect_and_logon();
 
       std::string uri_numbers_topic = "numbers";
-      wampcc::json_object options;
-      wampcc::wamp_args args;
 
-      args.args_list.push_back(wampcc::json_value::make_uint(0));
-
-      for (int i = 0; i < 100; i++) {
-        args.args_list[0] = wampcc::json_value::make_uint(i);
-        session->publish(uri_numbers_topic, options, args);
-      }
+      auto data_to_send = data_set();
+      for (auto& item : data_to_send)
+        session->publish(uri_numbers_topic, {}, std::move(item));
     }
     can_exit.set_value(0);
   }
 
   void create_subscriber()
   {
+    if (!uopts.count)
+      throw std::runtime_error("missing count");
+
+    auto data_execpt = data_set();
+    decltype(data_execpt) data_actual;
+
     std::shared_ptr<wampcc::wamp_session> session = connect_and_logon();
 
     std::promise<wampcc::wamp_subscribed> promised_result;
@@ -272,7 +294,22 @@ public:
     };
     auto on_event = [this](wampcc::wamp_subscription_event event) {
       LOG("subscription event: " << event.args.args_list);
-      m_subscription_data.push_back(std::move(event.args.args_list));
+      bool is_final = event.args == final_item;
+      m_subscription_data.push_back(std::move(event.args));
+
+      if (is_final) {
+        auto expect = data_set();
+        if (m_subscription_data == expect) {
+          LOG("received expected data set");
+          can_exit.set_value(0);
+        }
+        else {
+          LOG("received unexpected data set");
+          can_exit.set_value(1);
+        }
+
+      }
+
     };
 
     std::string uri_numbers_topic = "numbers";
@@ -328,6 +365,7 @@ void usage()
   HELPLN("-a, --admin_port=ARG", sp1, "specify admin port");
   HELPLN("-p, --port", sp2, "wamp connection port");
   HELPLN("-d, --debug", sp2, "increased logging");
+  HELPLN("-c, --count=N", sp2, "number of messages to-send / expect-receive");
   HELPLN("--proto PROTO_OPTS", sp1,
          "comma separated list of options, default 'web,json'");
   std::cout << std::endl << "Protocol options:" << std::endl
@@ -377,8 +415,9 @@ static void process_options(int argc, char** argv)
       {"admin_port", required_argument, 0, 'a'},
       {"port", required_argument, 0, 'p'},
       {"debug", no_argument, 0, 'd'},
+      {"count", required_argument, 0, 'c'},
       {NULL, 0, NULL, 0}};
-  const char* optstr = "hp:a:d"; // short opt string
+  const char* optstr = "hp:a:dc:"; // short opt string
 
   ::opterr = 1;
 
@@ -426,6 +465,9 @@ static void process_options(int argc, char** argv)
         break;
       case 'h':
         usage();
+        break;
+      case 'c':
+        uopts.count = std::atoi(optarg);
         break;
       case '?':
         exit(1); // invalid option

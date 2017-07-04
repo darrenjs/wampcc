@@ -86,7 +86,7 @@ struct wamp_args
   json_array  args_list;
   json_object args_dict;
 
-  bool operator==(const wamp_args& rhs) {
+  bool operator==(const wamp_args& rhs) const {
     return (args_list == rhs.args_list) && (args_dict == rhs.args_dict);
   }
 };
