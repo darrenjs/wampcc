@@ -88,7 +88,6 @@ public:
   {
     std::string host = "127.0.0.1";
 
-
     std::unique_ptr<wampcc::tcp_socket> sock(
         new wampcc::tcp_socket(m_kernel.get()));
     auto fut = sock->connect(host, uopts.port.value());
@@ -156,7 +155,6 @@ public:
     };
 
     auto on_invoke = [](wampcc::wamp_invocation& invoc) {
-      LOG("rpc called");
       for (auto& item : invoc.args.args_list)
         if (item.is_string())
           item = item.as_string() + item.as_string();
@@ -181,43 +179,46 @@ public:
 
   void create_caller()
   {
+    if (!uopts.count)
+      throw std::runtime_error("missing count");
+
     std::shared_ptr<wampcc::wamp_session> session = connect_and_logon();
 
-    std::string procedure;
-    std::vector<std::string> args;
+    for (int i = 0; i < uopts.count.value(); i++) {
+      std::promise<wampcc::wamp_call_result> promised_result;
 
-    // call the procedure
-    std::promise<wampcc::wamp_call_result> promised_result;
+      wampcc::wamp_args call_args;
+      call_args.args_list = {"hello", "world", std::to_string(i)};
 
-    wampcc::wamp_args call_args;
-    call_args.args_list = {"hello", "world"};
-    session->call(uri_double, {}, call_args, [&](wampcc::wamp_call_result r) {
-      try {
-        promised_result.set_value(r);
-      } catch (...) { /* ignore promise already set error */
-      }
-    });
+      session->call(uri_double, {}, call_args, [&](wampcc::wamp_call_result r) {
+          try {
+            promised_result.set_value(r);
+          } catch (...) { /* ignore promise already set error */ }
+        });
 
-    auto fut = promised_result.get_future();
-    if (fut.wait_for(std::chrono::seconds(1)) != std::future_status::ready)
-      throw std::runtime_error("timeout during call");
 
-    auto result = fut.get();
-    if (result.was_error)
-      throw std::runtime_error("call error: " + result.error_uri);
+      auto fut = promised_result.get_future();
+      if (fut.wait_for(std::chrono::seconds(1)) != std::future_status::ready)
+        throw std::runtime_error("timeout during call");
 
-    // expected value
-    for (auto& item : call_args.args_list)
-      if (item.is_string())
-        item = item.as_string() + item.as_string();
+      auto result = fut.get();
+      if (result.was_error)
+        throw std::runtime_error("call error: " + result.error_uri);
 
-    if (call_args == result.args) {
-      LOG("rpc successful");
-      can_exit.set_value(0);
-    } else {
-      LOG("rpc failed");
-      can_exit.set_value(1);
+      // expected value
+      for (auto& item : call_args.args_list)
+        if (item.is_string())
+          item = item.as_string() + item.as_string();
+
+      if (call_args != result.args)
+        throw std::runtime_error("rpc result did not match expected");
     }
+
+    LOG("rpc result successful, closing session");
+
+    if (session->close().wait_for(std::chrono::seconds(1))
+        != std::future_status::ready)
+      throw std::runtime_error("timeout during session close");
   }
 
   void create_admin_port()

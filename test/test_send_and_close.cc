@@ -100,7 +100,9 @@ TEST_CASE("test_send_batch_then_close")
     // immediately close -- test is to see if router still handles the
     // messages sent
 
-    session->close();
+    if (session->close().wait_for(std::chrono::seconds(1)) != std::future_status::ready)
+      throw std::runtime_error("timeout during session close");
+
     INFO("sender session has been closed, #" << session->unique_id());
   }
 
