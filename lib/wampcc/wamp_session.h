@@ -210,8 +210,8 @@ namespace wampcc {
   };
 
 
-  // Needs to support needs of service providers (rpc & topics), and service
-  // consumers (rpc callers, and subscribers)
+  /** Represent a wamp session with a peer.
+   */
   class wamp_session : public std::enable_shared_from_this<wamp_session>
   {
   public:
@@ -263,7 +263,14 @@ namespace wampcc {
 
     ~wamp_session();
 
-    /** Request asynchronous graceful session close */
+    /** Request graceful session close. Graceful closure involves the
+     * coordinated exchange of logoff messages with the peer. Successfully
+     * performing a graceful session close minimises the risk of losing any
+     * final messages sent just before socket close.  The session closure will
+     * complete asynchronously, because it takes time to send and receive logoff
+     * messages with the peer.  The returned future can be used to wait for
+     * completion of session closure.  Once closed there will be no more
+     * callbacks from the session. */
     std::shared_future<void> close();
 
     /** Perform synchronous fast (ungraceful) session close */
