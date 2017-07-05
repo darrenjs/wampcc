@@ -169,6 +169,8 @@ public:
   protocol(kernel*, tcp_socket*, t_msg_cb, protocol_callbacks, connect_mode m,
            size_t buf_initial_size=1, size_t buf_max_size=1024);
 
+  virtual ~protocol() = default;
+
   /* Initiate the protocol closure handshake.  Returns false if the protocol
    * state doesn't support closure handshake or if already closed, so allowing
    * the caller to proceed with wamp session closure.  Otherwise returns true,
