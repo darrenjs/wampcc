@@ -16,6 +16,8 @@ unreleased
 
 - example/wamp_router, which will aim to provide an example of a router
 
+- example/wampcc_tester, for integration testing
+
 ## Removed
 
 - fetch and link of googletest, was not being used
@@ -43,6 +45,8 @@ unreleased
 
 - websocket opening assumed Sec-WebSocket-Protocol would be present, but
   acutally its optional header
+
+- memory leaks in jalson, and msgpack protocol
 
 version 1.3.1
 =============
