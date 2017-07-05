@@ -42,10 +42,12 @@ CXXFLAGS += -Wall -O0 -g3 -ggdb -std=c++11 -pthread   $(WAMPCC_INC) $(JALSON_INC
 
 LDLIBS += $(STATIC_LINK_BEGIN) $(WAMPCC_LIBS) $(LIBUV_LIBS) $(JANSSON_LIBS) $(STATIC_LINK_END) -lcrypto -lpthread -lssl -lrt
 
-# default: callee
 
-all_srcs := $(shell find . -name \*.cc)
-app_srcs := $(shell find . -name \*.cc)
+# Note, some programs (eg wampcc_tester.cc) cannot be built against a standalone
+# wampcc installation because they depend on internal files (eg wampcc/utils.h)
+
+all_srcs := $(shell find . -name \*.cc | \grep -v wampcc_tester.cc)
+app_srcs := $(shell find . -name \*.cc | \grep -v wampcc_tester.cc)
 
 all   : apps
 apps  : $(app_srcs:%.cc=%)
