@@ -36,6 +36,13 @@ file(TO_CMAKE_PATH ${JANSSON_LIB_DIR} JANSSON_LIB_DIR)
 include(CheckLibraryExists)
 check_library_exists(jansson json_dumps "${JANSSON_LIB_DIR}" HAVE_JANSSON)
 
+# check msgpack is available in the source tree
+set(msgpackfile "${PROJECT_SOURCE_DIR}/external/msgpack-c/include/msgpack.h")
+message(STATUS "checking for ${msgpackfile}")
+if(NOT EXISTS "${msgpackfile}")
+  message(FATAL_ERROR "msgpack header not found! Check msgpack unzipped under external/")
+endif()
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 ## Paths
