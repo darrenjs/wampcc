@@ -20,6 +20,8 @@ static void free_msgpack_bytes(region* ptr)
 {
   if (ptr)
     ::free(ptr->first);
+
+  delete ptr;
 }
 
 msgpack_encoder::msgpack_encoder() : m_packer(m_sbuf) {}
