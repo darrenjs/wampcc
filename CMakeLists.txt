@@ -45,6 +45,13 @@ check_include_files("stdlib.h;stdarg.h;string.h;float.h" STDC_HEADERS)
 include(CheckLibraryExists)
 check_library_exists(libuv uv_version ${INSTALL_LIB_DIR} HAVE_LIBUV)
 
+# check websocketpp is available in the source tree
+set(websocketpp "${PROJECT_SOURCE_DIR}/external/websocketpp/websocketpp/message_buffer/message.hpp")
+message(STATUS "checking for ${websocketpp}")
+if(NOT EXISTS "${websocketpp}")
+  message(FATAL_ERROR "websocketpp header not found! Check websocketpp unzipped under external/")
+endif()
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 if(CMAKE_HOST_UNIX)
