@@ -70,7 +70,7 @@ std::unique_ptr<wampcc::tcp_socket> get_tcp_connection(const char* address,
             throw std::runtime_error(std::to_string(ec.os_value()) + ", " + ec.message());
 
           if (sock->is_connected())
-            return std::move(sock);
+            return sock;
       }
     }
     catch (std::exception& e)
