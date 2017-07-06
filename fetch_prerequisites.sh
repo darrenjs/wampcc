@@ -29,7 +29,7 @@ fi
 ## jalson
 ##
 
-jalson_ver=1.3
+jalson_ver=1.4
 echo '***' fetching jalson $jalson_ver '***'
 echo
 tarfile=jalson-${jalson_ver}.tar.gz
