@@ -81,7 +81,7 @@ public:
   void initiate(t_initiate_cb) override;
   bool initiate_close() override { return false; }
   const char* name() const override { return NAME; }
-  void send_msg(const json_array& j);
+  void send_msg(const json_array& j) override;
 
 private:
   static const int FRAME_MSG_LEN_MASK       = 0x00FFFFFF;
