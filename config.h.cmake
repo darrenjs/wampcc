@@ -63,16 +63,16 @@
 #define PACKAGE_NAME "wampcc"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "wampcc 1.3.1"
+#define PACKAGE_STRING "wampcc 1.4"
+
+/* Define to the version of this package. */
+#define PACKAGE_VERSION "1.4"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "wampcc"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "  "
-
-/* Define to the version of this package. */
-#define PACKAGE_VERSION "1.3.1"
 
 
 #endif
