@@ -2,7 +2,7 @@
 
 # wampcc maintainer utilty script, for performing a fresh checkout and build.
 
-BASEDIR=/var/tmp/$(whoami)/wampcc
+BASEDIR=/var/tmp/$(whoami)/wampcc_build_check_autotools
 SOURCEDIR=$BASEDIR/src
 BUILDDIR=$BASEDIR/build
 INSTALLDIR=$BASEDIR/install
@@ -10,7 +10,8 @@ INSTALLDIR=$BASEDIR/install
 export LIBUV_HOME=/home/$(whoami)/opt/libuv-1.10.2
 export JANSSON_HOME=/home/$(whoami)/opt/jansson-2.10
 
-export CXX=/usr/bin/clang++-3.5
+export CXX=`which g++`
+#export CXX=`which clang++`
 
 unset LD_LIBRARY_PATH
 
@@ -40,7 +41,7 @@ mkdir ${BUILDDIR}
 cd ${BUILDDIR}
 
 $SOURCEDIR/wampcc/configure --prefix=${INSTALLDIR} --with-jansson=$JANSSON_HOME --with-libuv=$LIBUV_HOME
-#..//wampcc/configure --prefix=${INSTALLDIR} --with-jansson=$JANSSON_HOME --with-libuv=$LIBUV_HOME
+#../src/wampcc/configure --prefix=${INSTALLDIR} --with-jansson=$JANSSON_HOME --with-libuv=$LIBUV_HOME
 
 make -j || make
 make install
