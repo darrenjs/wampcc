@@ -24,6 +24,7 @@
  - [http-parser](https://github.com/nodejs/http-parser)
  - [OpenSSL](https://www.openssl.org/)
  - [websocketpp](https://www.zaphoyd.com/websocketpp) -- C++ header only
+ - [msgpack-c](https://github.com/msgpack/msgpack-c) -- C++ header only
  - Modern C++ compiler, GNU autotools (Linux build), CMake (Windows build)
 
 ## Show me some code!
