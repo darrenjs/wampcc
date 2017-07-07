@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 
 set(PROJECT_NAME wampcc)
 project(${PROJECT_NAME} CXX C)
-#project(${PROJECT_NAME} VERSION 1.3.1 LANGUAGES CXX C)
+#project(${PROJECT_NAME} VERSION 1.4 LANGUAGES CXX C)
 
 message(STATUS "Building ${PROJECT_NAME} on: ${CMAKE_SYSTEM_NAME}")
 

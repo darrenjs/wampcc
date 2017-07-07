@@ -1,9 +1,12 @@
 unreleased
 ==========
 
-## Added
+version 1.4
+===========
 
-- msgpack serialiser support, using msgpack-c 2.1.3
+Released 2017-07-07
+
+## Added
 
 - using websocketpp project for websocket protocol
 
