@@ -8,7 +8,7 @@
 
  - Builds on: Linux & Windows (Visual Studio)
  - Roles: Caller, Callee, Subscriber, Publisher, Dealer, Router
- - Message serializations: JSON
+ - Message serializations: JSON, MessagePack
  - Transports: TCP using raw-socket and web-socket
  - SSL/TLS supported for both client and server sessions
  - Uses modern C++
