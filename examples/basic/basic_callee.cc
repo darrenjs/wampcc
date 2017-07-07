@@ -16,6 +16,7 @@ using namespace wampcc;
  * wamp dealer. */
 void rpc(wamp_invocation& invoke)
 {
+  std::cout << "rpc invoked" << std::endl;
   invoke.yield( json_array({"hello", "world"}), {} );
 }
 
@@ -76,7 +77,7 @@ int main(int argc, char** argv)
 
     /* Session is now open, register an RPC. */
 
-    session->provide("greeting", json_object(), rpc);
+    session->provide("greeting2", json_object(), rpc);
 
     /* Wait until wamp session is closed. */
 

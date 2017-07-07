@@ -16,11 +16,11 @@ int main(int argc, char** argv)
 {
   try
   {
-    if (argc != 3)
-      throw std::runtime_error("arguments must be: ADDR PORT");
+    if (argc < 3)
+      throw std::runtime_error("arguments must be: ADDR PORT RPC_URI (RPC_URI defaults to 'greeting')");
     const char* host = argv[1];
     int port = std::stoi(argv[2]);
-
+    std::string rpc_uri = (argc > 3)? argv[3]:"greeting";
     /* Create the wampcc kernel, which provides event and IO threads. */
 
     std::unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
@@ -70,9 +70,10 @@ int main(int argc, char** argv)
 
     wamp_args call_args;
     call_args.args_list = json_array({"hello from basic_caller"});
-    session->call("greeting", {}, call_args,
-                  [&ready_to_exit](wamp_call_result) {
+    session->call(rpc_uri, {}, call_args,
+                  [&ready_to_exit](wamp_call_result r) {
                     try {
+                      std::cout << "rpc result: " << r.args.args_list << std::endl;
                       ready_to_exit.set_value();
                     } catch (...) { /* ignore promise already set error */}
                   });
