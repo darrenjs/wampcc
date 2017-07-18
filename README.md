@@ -8,7 +8,7 @@
 
  - Builds on: Linux & Windows (Visual Studio)
  - Roles: Caller, Callee, Subscriber, Publisher, Dealer, Router
- - Message serializations: JSON
+ - Message serializations: JSON, MessagePack
  - Transports: TCP using raw-socket and web-socket
  - SSL/TLS supported for both client and server sessions
  - Uses modern C++
@@ -24,6 +24,7 @@
  - [http-parser](https://github.com/nodejs/http-parser)
  - [OpenSSL](https://www.openssl.org/)
  - [websocketpp](https://www.zaphoyd.com/websocketpp) -- C++ header only
+ - [msgpack-c](https://github.com/msgpack/msgpack-c) -- C++ header only
  - Modern C++ compiler, GNU autotools (Linux build), CMake (Windows build)
 
 ## Show me some code!
