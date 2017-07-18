@@ -406,6 +406,8 @@ int main_impl(int argc, char** argv)
   switch (uopts.session_transport) {
     case user_options::transport::websocket: {
       wampcc::websocket_protocol::options proto_opts;
+      proto_opts.connect_host=uopts.addr.value();
+      proto_opts.connect_port=uopts.port.value();
       proto_opts.serialisers = uopts.serialisers;
       proto_opts.ping_interval = ping_interval;
       ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(

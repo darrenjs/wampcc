@@ -1,6 +1,10 @@
 unreleased
 ==========
 
+## Fixed
+
+- 'Host' http header not being populated by admin program
+
 version 1.4
 ===========
 
