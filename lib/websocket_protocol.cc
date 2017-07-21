@@ -21,6 +21,18 @@
 
 #include <openssl/sha.h>
 
+#define HTML_BODY "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"></head><body></body></html>"
+#define HTML_BODY_LEN 86
+
+static_assert(strlen(HTML_BODY)==HTML_BODY_LEN, "failed");
+
+static const std::string http_200_response =
+  "HTTP/1.1 200 OK\r\n"
+  "Connection: close\r\n"
+  "Content-Type: text/html; charset=UTF-8\r\n"
+  "Content-Length: " STRINGIFY( HTML_BODY_LEN )  "\r\n\r\n"
+  HTML_BODY;
+
 namespace wampcc
 {
 
@@ -210,6 +222,19 @@ void websocket_protocol::io_on_read(char* src, size_t len)
 
             m_socket->write(msg.c_str(), msg.size());
             m_state = state::open;
+          }
+          else if (m_http_parser->has("Connection") &&
+                   header_contains(m_http_parser->get("Connection"), "close"))
+          {
+            /* Received a http header that requests connection close.  This is
+             * straight-forward to obey (just echo the header and close the
+             * socket). This kind of request can be received when connected to a
+             * load balancer that is checking server health. */
+
+            LOG_TRACE("fd: " << fd() << ", http_tx: " << http_200_response);
+            m_socket->write(http_200_response.c_str(), http_200_response.size());
+            m_state = state::closed;
+            m_callbacks.protocol_closed();
           }
           else
             throw handshake_error("http header is not a websocket upgrade");

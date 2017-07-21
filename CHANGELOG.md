@@ -1,6 +1,10 @@
 unreleased
 ==========
 
+## Added
+
+- websocket listener replies with http 200 on receiving health check
+
 ## Fixed
 
 - 'Host' http header not being populated by admin program

@@ -14,6 +14,9 @@
 #include <memory>
 #include <mutex>
 
+#define STRINGIZE2(s) #s
+#define STRINGIFY(s) STRINGIZE2(s)
+
 namespace wampcc
 {
 
