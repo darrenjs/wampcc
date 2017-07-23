@@ -1,0 +1,70 @@
+Design Notes
+============
+
+Integer support
+---------------
+
+Summarise int support:
+
+The interface supports the int and longer ints, and their unsigned varients.
+The short integers do not need explict support, because they will be
+automatically resolved by 'integer promotion' C rule.  All the shorter types, eg
+char, short etc, will undergo integer promotion to the 'int' constructor.
+
+Support for unsignged varients was added.  This was an initial concern, because
+not all JSON implementations support unsigned ints; that the capability methods
+have been added to allow interrogation of support for unsigned.
+
+Assignment operators
+--------------------
+
+Type specialised assignment operators have been removed.  Orignally these existed
+
+  JSONValue& operator=(int);
+  JSONValue& operator=(long);
+  JSONValue& operator=(long long);
+  JSONValue& operator=(bool);
+  JSONValue& operator=(double);
+
+However, due to the availablilty of the single argument constructors, we
+actually don't need these.  So that, when we have code like:
+
+    jalson::JSONValue value;
+    value = "0";
+
+... then the compiler is able to choose one of the single argument constructors
+to convert the literal to a JSONValue typw, and then use that with the copy
+constructor.  So all these operator= are not needed.
+
+Containers
+----------
+
+Principle of the containers (Array and Object):
+
+- simple wrappers around underlying C++ containers (list/array/deque)
+
+- provide some value add methods, which are POLA, and are consistent
+
+  --> ease of access
+  --> handling missing items
+
+
+- I used to have JSONString, but really there we no need for it, because it did
+  not provide anything extra to the the underlying std::string. So instead just
+  replaces that class with a typedef.
+
+Numbers
+-------
+
+There is no JSONNumber class (ie, just like I have JSONString etc), is that it
+means can limit the need for ponters in the inernval_value object.  Ie, number
+values can be stored directly as in place // primitive values, rather than
+pointers to objects.
+
+Exception classes
+-----------------
+
+NOTE: here, I did not provide default constructors.  Often these are provided,
+to allow the class to be used in more situations; however, these classes are
+highly speicialist to a purpose -- they are not generic classes  -- so decided
+not to proivde the default constuctors.
