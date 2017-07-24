@@ -25,30 +25,6 @@ else
   echo failed to download websocketpp ... please try manually
 fi
 
-##
-## jalson
-##
-
-jalson_ver=1.4
-echo '***' fetching jalson $jalson_ver '***'
-echo
-tarfile=jalson-${jalson_ver}.tar.gz
-test -f $tarfile || wget https://github.com/darrenjs/jalson/archive/v${jalson_ver}.tar.gz -O $tarfile
-if [ -f ${tarfile} ];
-then
-  tar xfz ${tarfile}
-  if [ -d jalson-${jalson_ver} ]
-  then
-    test -d jalson && rm -fr jalson
-    mv jalson-${jalson_ver} jalson
-    (cd jalson && ln -snf ../external .)
-  else
-    echo failed to find the directory jalson-${jalson_ver}
-  fi
-else
-  echo failed to download jalson ${jalson_ver}
-fi
-
 
 ##
 ## msgpack

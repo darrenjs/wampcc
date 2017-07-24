@@ -1,9 +1,9 @@
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CPPFLAGS = -I$(top_srcdir)/src -Wall -pthread -Wall -std=c++11 -DJALSONDIR=\"${top_srcdir}\"
+AM_CPPFLAGS = -I$(top_srcdir)/json/src -Wall -pthread -Wall -std=c++11 -DJALSONDIR=\"${top_srcdir}/json\"
 
 # NOTE: -lrt added for posix clock support
-AM_LDFLAGS=-L$(top_builddir)/src -lwampcc_json -lrt -pthread
+AM_LDFLAGS=-L$(top_builddir)/json/src -lwampcc_json -lrt -pthread
 
 TESTS=test_json_pointer test_json_patch test_json_patch2 test_basic_jalson	\
 test_single_functions test_msgpack

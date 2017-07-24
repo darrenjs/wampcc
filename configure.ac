@@ -94,15 +94,47 @@ AC_MSG_NOTICE([notice prefix: ${prefix}])
 AC_MSG_NOTICE([notice ac_pwd: ${ac_pwd}])
 AC_MSG_NOTICE([notice wampcc_src_dir: ${wampcc_src_dir}])
 
-##
-## jalson - can either be included with the source code, or pulled in externally
-## (although latter not yet implemented - below assumes bundled)
-##
+
+#========== json library, for wampcc_json ==========
+
+# wampcc_json is wrapper around jansson, so detect if we have been told where to
+# find jansson.
+#
+
+have_vendor=0
+
+# Specify a location for Jansson
+AC_ARG_WITH(jansson, [ --with-jansson=PATH specify directory for the installed JANSSON library])
+
+have_jansson=0
+if test "x$with_jansson" != x; then
+   janssonlib="$with_jansson/lib/libjansson.la"
+   janssoninc="-I$with_jansson/include"
+   have_jansson=1
+   have_vendor=1
+fi
+
+# put the inc and lib into the makefiles
+AC_SUBST(janssonlib)
+AC_SUBST(janssoninc)
+
+# put variable into config.h
+AC_DEFINE_UNQUOTED([HAVE_JANSSON], [$have_jansson], [Define to 1 if Jannson library is present])
+
+
+if test "x$have_vendor" = "x0" ; then
+    AC_MSG_ERROR([You have not configured a JSON implementation. Try --help. Supported vendors: jansson])
+fi
+
+
+## Tell libwampcc where to find wampcc_json. Normally wampcc_json is under the
+## json/ dir, but historically it was possible to pull it in from another
+## location
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="$(cd "$srcdir"; pwd)/jalson/src"
-jalsonlib="../jalson/src"
+jalsoninc="$(cd "$srcdir"; pwd)/json/src"
+jalsonlib="../json/src"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
 
@@ -133,6 +165,10 @@ src/Makefile
 lib/Makefile
 test/Makefile
 examples/Makefile
+json/Makefile
+json/src/Makefile
+json/examples/manual_tests/Makefile
+json/tests/Makefile
 ])
 
 AC_CONFIG_SUBDIRS([jalson])
