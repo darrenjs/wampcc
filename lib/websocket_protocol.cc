@@ -24,7 +24,9 @@
 #define HTML_BODY "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"></head><body></body></html>"
 #define HTML_BODY_LEN 86
 
-static_assert(strlen(HTML_BODY)==HTML_BODY_LEN, "failed");
+// Would be simpler to use strlen, but fails on Visual Studio
+static const char html_body[] = HTML_BODY;
+static_assert(sizeof(html_body)==HTML_BODY_LEN + 1, "length check");
 
 static const std::string http_200_response =
   "HTTP/1.1 200 OK\r\n"

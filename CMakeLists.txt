@@ -63,9 +63,18 @@ check_include_files(sys/types.h HAVE_SYS_TYPES_H)
 check_include_files(unistd.h HAVE_UNISTD_H)
 check_include_files("stdlib.h;stdarg.h;string.h;float.h" STDC_HEADERS)
 
-# TODO: on windows, need to use 'libuv'
+## Check for libuv. Handle its name variation on different platforms.
+
+if(CMAKE_HOST_UNIX)
+    set(LIBUV_FILE "uv")
+else()
+    set(LIBUV_FILE "libuv")
+endif()
+
+message(STATUS "looking for libuv under ${LIBUV_DIR}/lib")
 include(CheckLibraryExists)
-check_library_exists(uv uv_version ${LIBUV_DIR}/lib HAVE_LIBUV)
+
+check_library_exists(${LIBUV_FILE} uv_version ${LIBUV_DIR}/lib HAVE_LIBUV)
 
 if(NOT HAVE_LIBUV)
   message(FATAL_ERROR "libuv not found")
@@ -154,7 +163,7 @@ add_library(wampcc STATIC
     ${LIB_EXTNL_APACH_SRC_FILES})
 
 target_link_libraries(wampcc wampcc_json_static)
-add_dependencies(wampcc wampcc_json_static wampcc_json_shared)
+add_dependencies(wampcc wampcc_json_static)
 list(APPEND TO_INSTALL wampcc)
 
 ##
