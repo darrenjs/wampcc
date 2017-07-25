@@ -5,9 +5,14 @@ unreleased
 
 - websocket listener replies with http 200 on receiving health check
 
+## Changed
+
+- sister project, jalson, now integrated into wampcc
+
 ## Fixed
 
 - 'Host' http header not being populated by admin program
+- cmake build supported on linux
 
 version 1.4
 ===========
