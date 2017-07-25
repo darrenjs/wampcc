@@ -1822,11 +1822,10 @@ void wamp_session::process_inbound_register(json_array & msg)
     uint64_t registration_id = m_server_handler.inbound_register(handle(),
                                                                  realm(),
                                                                  std::move(uri));
-
-    json_array resp;
-    resp.push_back(msg_type::wamp_msg_registered);
-    resp.push_back(request_id);
-    resp.push_back(registration_id);
+    json_array resp {
+      msg_type::wamp_msg_registered,
+      request_id,
+      registration_id };
     send_msg(resp);
   }
   catch(wamp_error& ex)
