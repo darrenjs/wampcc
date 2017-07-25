@@ -1667,8 +1667,16 @@ void wamp_session::process_inbound_call(json_array & msg)
       }
     };
 
-  m_server_handler.inbound_call(this, procedure_uri,
-                                std::move(my_wamp_args), std::move(reply_fn));
+  try
+  {
+    m_server_handler.inbound_call(this, procedure_uri,
+                                  std::move(my_wamp_args),
+                                  std::move(reply_fn));
+  }
+  catch(wamp_error& ex)
+  {
+    reply_with_error(msg_type::wamp_msg_call, request_id, ex.args(), ex.error_uri());
+  }
 }
 
 
@@ -1738,22 +1746,28 @@ void wamp_session::process_inbound_publish(json_array & msg)
 {
   /* EV thread */
 
-  if (m_server_handler.handle_inbound_publish)
+  check_size_at_least(msg.size(), 4);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[2].is_object())
+    throw protocol_error("options must be json object");
+
+  if (!msg[3].is_string()) throw protocol_error("topic uri must be string");
+
+  wamp_args args;
+  if ( msg.size() > 4 )
+    args.args_list = std::move(msg[4].as_array());
+  if ( msg.size() > 5 )
+    args.args_dict = std::move(msg[5].as_object());
+
+  try
   {
-    check_size_at_least(msg.size(), 4);
-
-    if (!msg[2].is_object())
-      throw protocol_error("options must be json object");
-
-    if (!msg[3].is_string()) throw protocol_error("topic uri must be string");
-
-    wamp_args args;
-    if ( msg.size() > 4 )
-      args.args_list = std::move(msg[4].as_array());
-    if ( msg.size() > 5 )
-      args.args_dict = std::move(msg[5].as_object());
-
     m_server_handler.handle_inbound_publish(this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
+  }
+  catch(wamp_error& ex)
+  {
+    reply_with_error(msg_type::wamp_msg_publish, request_id, ex.args(), ex.error_uri());
   }
 }
 
