@@ -20,7 +20,7 @@
 
 namespace wampcc {
 
-  const std::chrono::seconds protocol::options::default_ping_interval { 10 };
+  const std::chrono::seconds protocol::options::default_ping_interval { 120 };
 
   class json_codec : public codec
   {
