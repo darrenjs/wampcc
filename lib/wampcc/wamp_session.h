@@ -83,11 +83,11 @@ namespace wampcc {
 
   struct server_msg_handler
   {
-    std::function<void(wamp_session*, std::string, wamp_args, wamp_invocation_reply_fn)> inbound_call;
-    std::function<void(wamp_session*, std::string uri, json_object, wamp_args)> handle_inbound_publish;
-    std::function<uint64_t (std::weak_ptr<wamp_session>, std::string realm, std::string uri)> inbound_register;
-    std::function<uint64_t (wamp_session*, t_request_id, std::string uri, json_object&)> inbound_subscribe;
-    std::function<void (wamp_session*, t_request_id, t_subscription_id)> inbound_unsubscribe;
+    std::function<void(wamp_session*, std::string, wamp_args, wamp_invocation_reply_fn)> on_call;
+    std::function<void(wamp_session*, std::string, json_object, wamp_args)> on_publish;
+    std::function<uint64_t(wamp_session*, t_request_id, json_object&, std::string&)> on_register;
+    std::function<uint64_t(wamp_session*, t_request_id, std::string, json_object&)> on_subscribe;
+    std::function<void wamp_session*, t_request_id, t_subscription_id)> on_unsubscribe;
   };
 
   struct client_credentials
@@ -184,9 +184,18 @@ namespace wampcc {
 
   typedef std::function<void(wamp_invocation&) > rpc_cb;
 
+  /* TODO: review: now I think I should use what() for the error_uri, and add
+   * message() for any extra message.  Check to see how often we actually do
+   * pass in a message. */
   class wamp_error : public std::runtime_error
   {
   public:
+    wamp_error(const std::string& error_uri, wamp_args wa = wamp_args())
+      : std::runtime_error(error_uri),
+        m_uri(error_uri),
+        m_args(wa)
+    {  }
+
     wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
       : std::runtime_error(what),
         m_uri(error_uri),

@@ -1669,9 +1669,9 @@ void wamp_session::process_inbound_call(json_array & msg)
 
   try
   {
-    m_server_handler.inbound_call(this, procedure_uri,
-                                  std::move(my_wamp_args),
-                                  std::move(reply_fn));
+    m_server_handler.on_call(this, procedure_uri,
+                             std::move(my_wamp_args),
+                             std::move(reply_fn));
   }
   catch(wamp_error& ex)
   {
@@ -1763,7 +1763,7 @@ void wamp_session::process_inbound_publish(json_array & msg)
 
   try
   {
-    m_server_handler.handle_inbound_publish(this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
+    m_server_handler.on_publish(this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
   }
   catch(wamp_error& ex)
   {
@@ -1787,7 +1787,7 @@ void wamp_session::process_inbound_subscribe(json_array & msg)
 
   try
   {
-    m_server_handler.inbound_subscribe(this, request_id, topic_uri, msg[2].as_object());
+    m_server_handler.on_subscribe(this, request_id, topic_uri, msg[2].as_object());
   }
   catch(wamp_error& ex)
   {
@@ -1810,7 +1810,7 @@ void wamp_session::process_inbound_unsubscribe(json_array & msg)
 
   try
   {
-    m_server_handler.inbound_unsubscribe(this, request_id, sub_id);
+    m_server_handler.on_unsubscribe(this, request_id, sub_id);
   }
   catch(wamp_error& ex)
   {
@@ -1827,15 +1827,20 @@ void wamp_session::process_inbound_register(json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
+  if (!msg[2].is_object())
+      throw protocol_error("options must be json object");
+  json_object & options = msg[2].as_object();
+
   if (!msg[3].is_string())
     throw protocol_error("procedure uri must be string");
-  std::string uri = std::move(msg[3].as_string());
+  std::string & uri = msg[3].as_string();
 
   try
   {
-    uint64_t registration_id = m_server_handler.inbound_register(handle(),
-                                                                 realm(),
-                                                                 std::move(uri));
+    uint64_t registration_id = m_server_handler.on_register(this,
+                                                            request_id,
+                                                            options,
+                                                            uri);
     json_array resp {
       msg_type::wamp_msg_registered,
       request_id,

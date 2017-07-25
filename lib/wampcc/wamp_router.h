@@ -109,7 +109,7 @@ private:
   std::unique_ptr<rpc_man> m_rpcman;
   std::unique_ptr<pubsub_man> m_pubsub;
 
-  std::mutex m_sesions_lock;
+  std::mutex m_sessions_lock;
   std::map<t_sid, std::shared_ptr<wamp_session>> m_sessions;
 
   std::promise<void> m_promise_on_close;

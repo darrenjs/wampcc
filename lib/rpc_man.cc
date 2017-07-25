@@ -62,8 +62,7 @@ uint64_t rpc_man::register_internal_rpc_2(const std::string& realm,
 }
 
 
-uint64_t rpc_man::handle_inbound_register(session_handle sh,
-                                          std::string realm,
+uint64_t rpc_man::handle_inbound_register(wamp_session* session,
                                           std::string ___uri)
 {
   /* EV thread */
@@ -71,10 +70,10 @@ uint64_t rpc_man::handle_inbound_register(session_handle sh,
   rpc_details r;
   r.registration_id = 0;
   r.uri = std::move(___uri);
-  r.session = sh;
+  r.session = session->handle();
   r.type = rpc_details::eRemote;
 
-  register_rpc(sh, realm, r);
+  register_rpc(session->handle(), session->realm(), r);
 
   if (m_rpc_added_cb) m_rpc_added_cb( r );
   return r.registration_id;

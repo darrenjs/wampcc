@@ -52,7 +52,7 @@ wamp_router::~wamp_router()
   /* Next close our wamp_sessions */
   std::map<t_sid, std::shared_ptr<wamp_session>> sessions;
   {
-    std::lock_guard<std::mutex> guard(m_sesions_lock);
+    std::lock_guard<std::mutex> guard(m_sessions_lock);
     m_sessions.swap(sessions);
   }
   for (auto& item : sessions)
@@ -190,7 +190,7 @@ void wamp_router::handle_session_state_change(std::weak_ptr<wamp_session> wp,
       m_rpcman->session_closed(session);
       m_pubsub->session_closed(session);
 
-      std::lock_guard<std::mutex> guard(m_sesions_lock);
+      std::lock_guard<std::mutex> guard(m_sessions_lock);
       m_sessions.erase(session->unique_id());
     }
   }
@@ -227,7 +227,7 @@ void wamp_router::check_has_closed()
 
   size_t num_sessions;
   {
-    std::lock_guard<std::mutex> guard(m_sesions_lock);
+    std::lock_guard<std::mutex> guard(m_sessions_lock);
     num_sessions = m_sessions.size();
   }
 
@@ -248,12 +248,12 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
     server_msg_handler handlers;
 
-    handlers.inbound_call = [this](wamp_session* s, std::string u,
+    handlers.on_call = [this](wamp_session* s, std::string u,
                                    wamp_args args, wamp_invocation_reply_fn f) {
       this->handle_inbound_call(s, u, std::move(args), f);
     };
 
-    handlers.handle_inbound_publish =
+    handlers.on_publish =
         [this](wamp_session* sptr, std::string uri, json_object options,
                wamp_args args) {
       // TODO: break this out into a separte method, and handle error
@@ -261,21 +261,22 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
                                 std::move(args));
     };
 
-    handlers.inbound_subscribe =
+    handlers.on_subscribe =
         [this](wamp_session* p, t_request_id request_id, std::string uri,
                json_object& options) {
       return this->m_pubsub->subscribe(p, request_id, uri, options);
     };
 
-    handlers.inbound_unsubscribe = [this](
+    handlers.on_unsubscribe = [this](
         wamp_session* p, t_request_id request_id, t_subscription_id sub_id) {
       this->m_pubsub->unsubscribe(p, request_id, sub_id);
     };
 
-    handlers.inbound_register = [this](std::weak_ptr<wamp_session> h,
-                                       std::string realm, std::string uri) {
-      return m_rpcman->handle_inbound_register(std::move(h), std::move(realm),
-                                               std::move(uri));
+    handlers.on_register = [this](wamp_session* ses,
+                                  t_request_id request_id,
+                                  json_object& options,
+                                  std::string& uri) {
+      return m_rpcman->handle_inbound_register(ses, uri);
     };
 
     auto fd = sock->fd_info().second;
@@ -298,7 +299,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
                              },
                              builder_fn, handlers, auth);
     {
-      std::lock_guard<std::mutex> guard(m_sesions_lock);
+      std::lock_guard<std::mutex> guard(m_sessions_lock);
       m_sessions[sp->unique_id()] = sp;
 
       // test code to drop a connection
