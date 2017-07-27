@@ -8,6 +8,7 @@ unreleased
 ## Changed
 
 - sister project, jalson, now integrated into wampcc
+- api now includes: registered(), register_error()
 
 ## Fixed
 

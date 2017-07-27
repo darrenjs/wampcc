@@ -1818,6 +1818,29 @@ void wamp_session::process_inbound_unsubscribe(json_array & msg)
   }
 }
 
+void wamp_session::registered(t_request_id orig_request_id,
+                              uint64_t registration_id)
+{
+  json_array msg {
+    msg_type::wamp_msg_registered,
+    orig_request_id,
+    registration_id};
+
+  send_msg(msg);
+}
+
+void wamp_session::register_error(t_request_id orig_request_id,
+                                  json_object options,
+                                  std::string error_uri)
+{
+  json_array msg {msg_type::wamp_msg_error,
+      msg_type::wamp_msg_register,
+      orig_request_id,
+      std::move(options),
+      std::move(error_uri)};
+
+  send_msg(msg);
+}
 
 void wamp_session::process_inbound_register(json_array & msg)
 {
@@ -1837,15 +1860,10 @@ void wamp_session::process_inbound_register(json_array & msg)
 
   try
   {
-    uint64_t registration_id = m_server_handler.on_register(this,
-                                                            request_id,
-                                                            options,
-                                                            uri);
-    json_array resp {
-      msg_type::wamp_msg_registered,
-      request_id,
-      registration_id };
-    send_msg(resp);
+    m_server_handler.on_register(this,
+                                 request_id,
+                                 options,
+                                 uri);
   }
   catch(wamp_error& ex)
   {

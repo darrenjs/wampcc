@@ -85,7 +85,7 @@ namespace wampcc {
   {
     std::function<void(wamp_session*, std::string, wamp_args, wamp_invocation_reply_fn)> on_call;
     std::function<void(wamp_session*, std::string, json_object, wamp_args)> on_publish;
-    std::function<uint64_t(wamp_session*, t_request_id, json_object&, std::string&)> on_register;
+    std::function<void(wamp_session*, t_request_id, json_object&, std::string&)> on_register;
     std::function<uint64_t(wamp_session*, t_request_id, std::string, json_object&)> on_subscribe;
     std::function<void(wamp_session*, t_request_id, t_subscription_id)> on_unsubscribe;
   };
@@ -366,6 +366,21 @@ namespace wampcc {
                             const json_object& options,
                             wamp_args args,
                             wamp_invocation_reply_fn);
+
+    /* Send a Registered response to the peer to indicate a Register request has
+     * been successfully fulfilled. The response should correspond to a previous
+     * Register request (the request_id of the originating request should be
+     * provided in 'orig_request_id').  */
+    void registered(t_request_id orig_request_id,
+                    uint64_t registration_id);
+
+    /* Send an Error response to the peer to indicate a Register request could
+     * not be fulfilled.  The response should correspond to a previous Register
+     * request (the request_id of the originating request should be provided in
+     * 'orig_request_id'). */
+    void register_error(t_request_id orig_request_id,
+                        json_object options,
+                        std::string error_uri);
 
     /** Obtain the unique ID for the session. Values begin from 1. */
     t_sid unique_id() const { return m_sid; }
