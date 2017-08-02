@@ -126,7 +126,7 @@ void msgpack_encoder::pack_value(const json_value& jv)
 #ifdef WAMPCC_TRACE_MSGPACK
         std::cout << "pack_long_long" << std::endl;
 #endif
-        m_packer.pack_int(jv.as_int());  // TODO: raises warning on MSVC++
+        m_packer.pack_long_long(jv.as_int());
       } else {
 #ifdef WAMPCC_TRACE_MSGPACK
         std::cout << "pack_unsigned_long_long" << std::endl;

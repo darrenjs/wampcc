@@ -14,6 +14,8 @@ unreleased
 
 - 'Host' http header not being populated by admin program
 - cmake build supported on linux
+- msgpack encode/decode failed for values outside int range (issue #6, Green7)
+
 
 version 1.4
 ===========
