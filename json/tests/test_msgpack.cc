@@ -2,6 +2,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <list>
+#include <cstring>
 
 #include "testcase.h"
 
@@ -132,6 +133,40 @@ DEFTEST( msgpack_encode_decode )
   for (auto & item : test_inputs())
     test_json_value( item );
 
+  return 1;
+}
+
+DEFTEST( msgpack_signed_integer_limits )
+{
+  /* Check that msgpack encode & decode works with max and min signed
+   * integers (github issue #6).*/
+  uint8_t u8max = 255;
+  uint16_t u16max = 65535;
+  uint32_t u32max = 4294967295;
+  auto i64max = (std::numeric_limits<long long>::max)(); //  9223372036854775807
+  auto i64min = (std::numeric_limits<long long>::min)(); // -9223372036854775808
+
+  wampcc::json_value jin = wampcc::json_value::make_array();
+  jin.as_array().push_back(0);
+  jin.as_array().push_back(50);
+  jin.as_array().push_back(563234340645992);
+  jin.as_array().push_back(u8max);
+  jin.as_array().push_back(u16max);
+  jin.as_array().push_back(u32max);
+  jin.as_array().push_back(i64max);
+  jin.as_array().push_back(i64min);
+
+  // encode
+  auto region = wampcc::json_msgpack_encode(jin);
+  std::vector<char> retval(region->second);
+  memcpy(retval.data(), region->first, region->second);
+
+  // decode
+  wampcc::json_value jout = wampcc::json_msgpack_decode(retval.data(), retval.size());
+
+  // std::cout << "jin : " << jin << std::endl;
+  // std::cout << "jout: " << jout << std::endl;
+  ASSERT_TRUE(jin == jout);
   return 1;
 }
 
