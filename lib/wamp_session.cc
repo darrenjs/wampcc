@@ -1420,7 +1420,7 @@ void wamp_session::process_inbound_error(json_array & msg)
   json_object & details = msg[3].as_object();
   std::string& error_uri = msg[4].as_string();
 
-  if (mode() == mode::server)
+  if (session_mode() == mode::server)
   {
     switch (orig_request_type)
     {
@@ -1459,7 +1459,7 @@ void wamp_session::process_inbound_error(json_array & msg)
   }
   else
   {
-    /* mode() is client */
+    /* client session */
     switch (orig_request_type)
     {
       case msg_type::wamp_msg_call :

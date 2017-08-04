@@ -8,14 +8,18 @@ unreleased
 ## Changed
 
 - sister project, jalson, now integrated into wampcc
+
 - api now includes: registered(), register_error()
 
 ## Fixed
 
 - 'Host' http header not being populated by admin program
+
 - cmake build supported on linux
+
 - msgpack encode/decode failed for values outside int range (issue #6, Green7)
 
+- session mode incorrectly accessed during inbound error handling
 
 version 1.4
 ===========
