@@ -165,9 +165,9 @@ void log_exception(logger& __logger, const char* callsite)
   try {
     throw;
   } catch (std::exception& e) {
-    LOG_WARN("exception thrown for " << callsite << " : " << e.what());
+    LOG_WARN("exception caught for " << callsite << " : " << e.what());
   } catch (...) {
-    LOG_WARN("exception thrown for " << callsite << " : unknown");
+    LOG_WARN("exception caught for " << callsite << " : unknown");
   }
 }
 
