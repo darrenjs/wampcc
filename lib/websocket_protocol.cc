@@ -24,9 +24,10 @@
 #define HTML_BODY "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"></head><body></body></html>"
 #define HTML_BODY_LEN 86
 
-// Would be simpler to use strlen, but fails on Visual Studio
-static const char html_body[] = HTML_BODY;
-static_assert(sizeof(html_body)==HTML_BODY_LEN + 1, "length check");
+// Would be simpler to use strlen, but on Visual Studio strlen is not constexpr.
+static constexpr char html_body[] = HTML_BODY;
+static constexpr int html_body_len = sizeof(html_body) - 1;
+static_assert(html_body_len==HTML_BODY_LEN , "length check");
 
 static const std::string http_200_response =
   "HTTP/1.1 200 OK\r\n"
