@@ -73,7 +73,7 @@ This example shows a request to call a remote procedure named **math.service.add
 
 ```c++
 session->call("math.service.add", {}, {{100, 200}, {}},
-              [](wampcc::wamp_session&, wampcc::result_info result) {
+              [](wamp_session&, result_info result) {
                 if (result)
                   std::cout << "got result: " << result.args.args_list[0] << std::endl;
               });
@@ -104,12 +104,12 @@ session->provide("math.service.add", {},
 
 ```c++
 session->subscribe("random_number", {},
-                   [](wampcc::wamp_session&, subscribed_info& info) {
+                   [](wamp_session&, subscribed_info& info) {
                      std::cout << "subscribed "
                                << (info ? "ok" : "failed")
                                << std::endl;
                    },
-                   [](wampcc::wamp_session&, event_info info) {
+                   [](wamp_session&, event_info info) {
                      for (auto& x : info.args.args_list)
                        std::cout << "got update: " << x << " ";
                      std::cout << std::endl;
