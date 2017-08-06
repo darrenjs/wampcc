@@ -118,7 +118,7 @@ int main_impl(int argc, char** argv)
       credentials.authmethods = {"wampcra"};
       credentials.secret_fn = []() -> std::string { return "secret2"; };
 
-      auto session_open_fut = session->initiate_hello(credentials);
+      auto session_open_fut = session->hello(credentials);
 
       switch (session_open_fut.wait_for(std::chrono::milliseconds(5000)))
       {

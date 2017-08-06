@@ -22,11 +22,26 @@ namespace wampcc
 class kernel;
 class pubsub_man;
 class rpc_man;
+class wamp_router;
 struct rpc_details;
-
 
 /* Callback type invoked when a wamp_router has been provided with a new RPC. */
 typedef std::function<void(std::string)> on_rpc_registered;
+
+
+/** Aggregate representing the details of a CALL request that has arrived at the
+ * router and is to be handled via callback of user code. */
+struct call_info
+{
+  t_request_id request_id;
+  json_object options;
+  wamp_args args;
+  void * user;
+};
+
+typedef std::function<void(wamp_router&,
+                           wamp_session&,
+                           call_info)> on_call_fn;
 
 class wamp_router : public std::enable_shared_from_this<wamp_router>
 {
@@ -85,14 +100,18 @@ public:
   void publish(const std::string& realm, const std::string& uri,
                const json_object& options, wamp_args args);
 
-  /** Provide an internal RPC */
-  void provide(const std::string& realm, const std::string& uri,
-               const json_object& options, rpc_cb cb, void* data = nullptr);
+  /** Associate a callback function with a procedure uri.  The callback is
+   * called when a CALL request is received for the procedure.  The callback
+   * should reply to the caller with a RESULT or ERROR message. */
+  void callable(const std::string& realm,
+                const std::string& uri,
+                on_call_fn,
+                void * user = nullptr);
 
 private:
   void rpc_registered_cb(const rpc_details&);
-  void handle_inbound_call(wamp_session*, const std::string&, wamp_args args,
-                           wamp_invocation_reply_fn);
+  void handle_inbound_call(wamp_session*,t_request_id,std::string&,
+                           json_object&,wamp_args&);
 
   void handle_session_state_change(std::weak_ptr<wamp_session>, bool);
 
@@ -110,7 +129,7 @@ private:
   std::unique_ptr<pubsub_man> m_pubsub;
 
   std::mutex m_sessions_lock;
-  std::map<t_sid, std::shared_ptr<wamp_session>> m_sessions;
+  std::map<t_session_id, std::shared_ptr<wamp_session>> m_sessions;
 
   std::promise<void> m_promise_on_close;
 

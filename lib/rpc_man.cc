@@ -43,21 +43,22 @@ rpc_details rpc_man::get_rpc_details( const std::string& rpcname,
 }
 
 
-uint64_t rpc_man::register_internal_rpc_2(const std::string& realm,
-                                          const std::string& uri,
-                                          const json_object& /*options*/,
-                                          rpc_cb user_cb,
-                                          void * user_data)
+uint64_t rpc_man::register_internal_rpc(const std::string& realm,
+                                        const std::string& uri,
+                                        on_call_fn fn,
+                                        void * user)
 {
   rpc_details r;
   r.uri = uri;
-  r.user_cb = user_cb;
-  r.user_data = user_data;
+  r.user_cb = std::move(fn);
+  r.user = user;
   r.type = rpc_details::eInternal;
 
   register_rpc(session_handle(), realm, r);
 
-  if (m_rpc_added_cb) m_rpc_added_cb( r );
+  if (m_rpc_added_cb)
+    m_rpc_added_cb( r );
+
   return r.registration_id;
 }
 

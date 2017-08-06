@@ -54,7 +54,7 @@ using namespace wampcc;
 //     credentials.authmethods = {"wampcra"};
 //     credentials.secret_fn = [](){ return std::string("secret2"); };
 
-//     g_session->initiate_hello(credentials);
+//     g_session->hello(credentials);
 //   }
 //   catch (std::exception& e)
 //   {

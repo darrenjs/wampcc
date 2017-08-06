@@ -50,13 +50,15 @@ std::shared_ptr<internal_server> create_server(
   port = iserver->start(port, allowed_protocols, allowed_serialisers);
 
   if (port) {
-    iserver->router()->provide("default_realm", "math.add", {},
-                               [](wamp_invocation& invoke) {
-      int total = 0;
-      for (auto& item : invoke.args.args_list)
+    iserver->router()->callable("default_realm", "math.add",
+                                [](wamp_router&,
+                                   wamp_session& caller,
+                                   call_info info) {
+                                  int total = 0;
+      for (auto& item : info.args.args_list)
         if (item.is_int())
           total += item.as_int();
-      invoke.yield({total});
+      caller.result(info.request_id, {total});
     });
   }
 
@@ -86,8 +88,8 @@ void run_rpc_test(std::shared_ptr<internal_server>& server,
     wamp_args call_args;
     call_args.args_list = json_array({1,2,3,4,5});
 
-    wamp_call_result result = sync_rpc_all(session, "math.add", call_args,
-                                           rpc_result_expect::success);
+    result_info result = sync_rpc_all(session, "math.add", call_args,
+                                      rpc_result_expect::success);
 
     int value = result.args.args_list[0].as_int();
 

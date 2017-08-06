@@ -33,8 +33,7 @@ int main(int argc, char** argv)
     auto session = wamp_session::create<rawsocket_protocol>(&the_kernel,
                                                             std::move(socket));
 
-    session->initiate_hello({"default_realm"})
-        .wait_for(std::chrono::seconds(3));
+    session->hello({"default_realm"}).wait_for(std::chrono::seconds(3));
 
     if (!session->is_open())
       throw std::runtime_error("realm logon failed");
@@ -42,31 +41,39 @@ int main(int argc, char** argv)
     /* Subscribe to a topic. */
 
     session->subscribe("random_number", {},
-                       [](wamp_subscribed& subscribed) {
-                         std::cout << "subscribed "
-                                   << (subscribed ? "ok" : "failed")
+                       [](wampcc::wamp_session&, subscribed_info& info) {
+                         std::cout << "subscribed " << (info ? "ok" : "failed")
                                    << std::endl;
                        },
-                       [](wamp_subscription_event ev) {
-                         for (auto& x : ev.args.args_list)
+                       [](wampcc::wamp_session&, event_info info) {
+                         for (auto& x : info.args.args_list)
                            std::cout << "got update: " << x << " ";
                          std::cout << std::endl;
                        });
 
     /* Register a procedure that can sum an array of numbers. */
 
-    session->provide("math.service.add", {}, [](wamp_invocation& invoke) {
-      int total = 0;
-      for (auto& item : invoke.args.args_list)
-        if (item.is_int())
-          total += item.as_int();
-      invoke.yield({total});
-    });
+    session->provide("math.service.add", {},
+                     [](wamp_session&, registered_info info) {
+                       if (info)
+                         std::cout << "procedure registered with id "
+                                   << info.registration_id << std::endl;
+                       else
+                         std::cout << "procedure registration failed, error "
+                                   << info.error_uri << std::endl;
+                     },
+                     [](wamp_session& ws, invocation_info info) {
+                       int total = 0;
+                       for (auto& item : info.args.args_list)
+                         if (item.is_int())
+                           total += item.as_int();
+                       ws.yield(info.request_id, {total});
+                     });
 
     /* Call a remote procedure. */
 
     session->call("math.service.add", {}, {{100, 200}, {}},
-                  [](wamp_call_result result) {
+                  [](wampcc::wamp_session&, wampcc::result_info result) {
       if (result)
         std::cout << "got result: " << result.args.args_list[0] << std::endl;
     });

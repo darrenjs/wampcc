@@ -73,10 +73,11 @@ namespace wampcc
     wamp_msg_yield = 70
   };
 
+typedef uint64_t t_session_id;
 typedef uint64_t t_request_id;
-typedef uint64_t t_invoke_id;
-typedef uint64_t t_sid;
 typedef uint64_t t_subscription_id;
+typedef uint64_t t_publication_id;
+typedef uint64_t t_registration_id;
 
 class wamp_session;
 typedef std::weak_ptr<wamp_session> session_handle;

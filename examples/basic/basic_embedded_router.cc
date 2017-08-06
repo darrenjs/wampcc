@@ -58,34 +58,34 @@ int main(int argc, char** argv)
 
     /* Provide several RPCs */
 
-    router.provide("default_realm", "greeting", {},
-                   [](wampcc::wamp_invocation& invocation) {
-      invocation.yield({"hello"});
-    });
+    router.callable("default_realm", "greeting",
+                    [](wampcc::wamp_router&, wampcc::wamp_session& ws, wampcc::call_info info) {
+                      ws.result(info.request_id, {"hello"});
+                    });
 
-    router.provide("default_realm", "pid", {},
-                   [](wampcc::wamp_invocation& invocation) {
-      invocation.yield({getpid()});
-    });
+    router.callable("default_realm", "pid",
+                    [](wampcc::wamp_router&, wampcc::wamp_session& ws, wampcc::call_info info) {
+                      ws.result(info.request_id, {getpid()});
+                    });
 
-    router.provide("default_realm", "random_string", {},
-                   [](wampcc::wamp_invocation& invocation) {
-      std::mt19937 engine((int)std::random_device()());
-      std::uniform_int_distribution<> distr(0, 100);
-      invocation.yield({distr(engine)});
-    });
-
-    /* Demonstrate sending an error as the RPC result. */
-    router.provide("default_realm", "kill", {},
-                   [](wampcc::wamp_invocation& invocation) {
-      invocation.error("not implemented");
-    });
+    router.callable("default_realm", "random_string",
+                    [](wampcc::wamp_router&, wampcc::wamp_session& ws, wampcc::call_info info) {
+                      std::mt19937 engine((int)std::random_device()());
+                      std::uniform_int_distribution<> distr(0, 100);
+                      ws.result(info.request_id, {distr(engine)});
+                    });
 
     /* Demonstrate sending an error as the RPC result. */
-    router.provide("default_realm", "stop", {},
-                   [&can_exit](wampcc::wamp_invocation& invocation) {
-                     can_exit.set_value();
-    });
+    router.callable("default_realm", "kill",
+                    [](wampcc::wamp_router&,wampcc::wamp_session& ws ,wampcc::call_info info) {
+                      ws.call_error(info.request_id, "not implemented");
+                    });
+
+    /* Demonstrate sending an error as the RPC result. */
+    router.callable("default_realm", "stop",
+                    [&can_exit](wampcc::wamp_router&,wampcc::wamp_session&,wampcc::call_info) {
+                      can_exit.set_value();
+                    });
 
     /* Suspend main thread */
     can_exit.get_future().wait();

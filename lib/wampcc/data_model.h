@@ -106,11 +106,11 @@ public:
     : model_sub_base(ws, topic_uri)
   {
     auto this_derived = derived();
-    wampcc::subscribed_cb scb;  // TODO
+    wampcc::on_subscribed_fn scb;  // TODO
 
-    auto fn = [this_derived](wamp_subscription_event e)
+    auto fn = [this_derived](wamp_session&, event_info info)
       {
-        this_derived->on_update(std::move(e.details), std::move(e.args));
+        this_derived->on_update(std::move(info.details), std::move(info.args));
       };
 
     ws->subscribe(m_uri, {{KEY_PATCH, 1}}, scb, std::move(fn), nullptr);

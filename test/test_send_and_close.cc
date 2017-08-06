@@ -66,20 +66,20 @@ TEST_CASE("test_send_batch_then_close")
   std::vector<json_array> data_recv;
 
 
-  server.router()->provide("default_realm", uri_numbers_topic, {},
-                           [&](wampcc::wamp_invocation& invoc) {
-                             this_thread::sleep_for(chrono::milliseconds(delay_ms));
+  server.router()->callable("default_realm", uri_numbers_topic,
+                                [&](wampcc::wamp_router&,
+                                    wampcc::wamp_session&,
+                                    wampcc::call_info info) {
+                                  this_thread::sleep_for(chrono::milliseconds(delay_ms));
+                                  {
+                                    std::lock_guard<std::mutex> guard(data_recv_mutex);
+                                    data_recv.push_back(info.args.args_list);
 
-                             {
-                               std::lock_guard<std::mutex> guard(data_recv_mutex);
-                               data_recv.push_back(invoc.args.args_list);
-
-                               if (data_recv.size() == data_size)
-                                 data_recv_condvar.notify_one();
-                             }
-                             //invoc.yield(invoc.args.args_list);
-                           });
-
+                                    if (data_recv.size() == data_size)
+                                      data_recv_condvar.notify_one();
+                                  }
+                                  //invoc.yield(invoc.args.args_list);
+                                });
   {
     unique_ptr<kernel> the_kernel(new kernel({}, logger));
     auto session = establish_session(the_kernel, port, (int)protocol_type::rawsocket);
@@ -93,7 +93,8 @@ TEST_CASE("test_send_batch_then_close")
 
     for (int i = 0; i < data_size; i++) {
       args.args_list = data_sent[i];
-      session->call(uri_numbers_topic, {}, args, [&](wampcc::wamp_call_result r) {
+      session->call(uri_numbers_topic, {}, args, [&](wampcc::wamp_session&,
+                                                     wampcc::result_info r) {
         });
     }
 

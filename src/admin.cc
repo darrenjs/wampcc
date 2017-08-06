@@ -83,7 +83,7 @@ struct t_callback
 };
 
 
-void rpc_call_cb(wampcc::wamp_call_result r)
+void rpc_call_cb(wampcc::result_info r)
 {
   if (r.was_error)
   {
@@ -104,7 +104,7 @@ void rpc_call_cb(wampcc::wamp_call_result r)
 }
 
 /* called upon subscribed and update events */
-void subscribe_cb(wampcc::wamp_subscription_event ev)
+void subscribe_cb(wampcc::wamp_session&, wampcc::event_info ev)
 {
   std::cout << "topic update: subscription_id: " << ev.subscription_id << ", args_list: " << ev.args.args_list
             << ", args_dict:" << ev.args.args_dict << "\n";
@@ -453,7 +453,7 @@ int main_impl(int argc, char** argv)
   credentials.authmethods = {"wampcra"};
   credentials.secret_fn = [=]() -> std::string { return uopts.password; };
 
-  ws->initiate_hello(credentials);
+  ws->hello(credentials);
 
   /* Wait for the WAMP session to authenticate and become open */
   {
@@ -494,7 +494,7 @@ int main_impl(int argc, char** argv)
 
 
   // subscribe to user topics
-  wampcc::subscribed_cb scb; // TODO:
+  wampcc::on_subscribed_fn scb; // TODO:
   wampcc::json_object sub_options { {KEY_PATCH, 1} };
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
@@ -521,7 +521,7 @@ int main_impl(int argc, char** argv)
     ws->call(uopts.call_procedure,
              wampcc::json_object(),
              args,
-             [](wampcc::wamp_call_result r)
+             [](wampcc::wamp_session&, wampcc::result_info r)
              { rpc_call_cb(r);});
     wait_reply = true;
   }

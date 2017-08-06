@@ -10,6 +10,7 @@
 
 #include "wampcc/types.h"
 #include "wampcc/wamp_session.h"
+#include "wampcc/wamp_router.h"
 #include "wampcc/json.h"
 
 #include <functional>
@@ -36,9 +37,9 @@ struct rpc_details
   uint64_t registration_id; // 0 implies invalid
   std::string uri;
   session_handle session;
-  rpc_cb user_cb; // applies only for eInternal
-  void*  user_data; // applies only for eInternal
-  rpc_details() : registration_id( 0 ) {}
+  on_call_fn user_cb; // applies only for eInternal
+  void * user; // applies only for eInternal
+  rpc_details() : registration_id( 0 ), user(nullptr) {}
 };
 
 typedef std::function< void(const rpc_details&) > rpc_added_cb;
@@ -52,13 +53,10 @@ public:
   uint64_t handle_inbound_register(wamp_session*,
                                    std::string uri);
 
-  // Register and RPC that is handled by the internal session
-  uint64_t register_internal_rpc_2(const std::string& realm,
-                                   const std::string& uri,
-                                   const json_object& options,
-                                   rpc_cb cb,
-                                   void * data);
-
+  uint64_t register_internal_rpc(const std::string& realm,
+                                 const std::string& uri,
+                                 on_call_fn,
+                                 void * user);
 
 
   rpc_details get_rpc_details( const std::string& rpcname,

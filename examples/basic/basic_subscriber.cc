@@ -65,7 +65,7 @@ int main(int argc, char** argv)
     credentials.authmethods = {"wampcra"};
     credentials.secret_fn = []() -> std::string { return "secret2"; };
 
-    auto session_open_fut = session->initiate_hello(credentials);
+    auto session_open_fut = session->hello(credentials);
 
     if (session_open_fut.wait_for(std::chrono::milliseconds(5000)) == std::future_status::timeout)
       throw std::runtime_error("time-out during session logon");
@@ -73,24 +73,25 @@ int main(int argc, char** argv)
     /* Session is now open, subscribe to a topic. */
     bool have_subscription = false;
     wampcc::t_subscription_id subscription_id = 0;
-    wampcc::subscribed_cb my_subscribed_cb = [&](wampcc::wamp_subscribed& subscribed) {
-      if (subscribed)
+    std::string uri = "coin_toss";
+    wampcc::on_subscribed_fn my_on_subscribed_fn = [&](wampcc::wamp_session&, wampcc::subscribed_info& info) {
+      if (info)
       {
         have_subscription = true;
-        subscription_id = subscribed.subscription_id;
-        std::cout << "subscription successful for '"<<subscribed.uri
+        subscription_id = info.subscription_id;
+        std::cout << "subscription successful for '"<< uri
                   << "', subscription_id " << subscription_id << std::endl;
       }
       else
       {
-        std::cout << "subscription failed for '"<< subscribed.uri
-                   << "', error: " << subscribed.error_uri << std::endl;
+        std::cout << "subscription failed for '"<< uri
+                   << "', error: " << info.error_uri << std::endl;
         session->close();
       }
     };
-    session->subscribe("coin_toss", {},
-                       my_subscribed_cb,
-                       [](wampcc::wamp_subscription_event ev){
+    session->subscribe(uri, {},
+                       my_on_subscribed_fn,
+                       [](wampcc::wamp_session&, wampcc::event_info ev){
                          for (auto & x : ev.args.args_list)
                            std::cout << x << " ";
                          std::cout << std::endl;
@@ -98,9 +99,9 @@ int main(int argc, char** argv)
 
     /* Opps! This is a duplicate subscription.  This is okay; we will actually
      * only subscribe once. */
-    session->subscribe("coin_toss", {},
-                       my_subscribed_cb,
-                       [](wampcc::wamp_subscription_event ev){
+    session->subscribe(uri, {},
+                       my_on_subscribed_fn,
+                       [](wampcc::wamp_session&, wampcc::event_info ev){
                          for (auto & x : ev.args.args_list)
                            std::cout << x << " ";
                          std::cout << std::endl;
@@ -120,14 +121,12 @@ int main(int argc, char** argv)
       std::cout << "doing unsubscribe\n";
       session->unsubscribe(
         subscription_id,
-        [](wampcc::t_request_id,
-           bool success,
-           std::string error)
+        [](wampcc::wamp_session&, wampcc::unsubscribed_info info)
         {
-          if (success)
+          if (info)
             std::cout << "unsubscribed ok" << std::endl;
           else
-            std::cout << "unsubscribed failed, " << error << std::endl;
+            std::cout << "unsubscribed failed, " << info.error_uri << std::endl;
         });
     }
 
@@ -148,4 +147,3 @@ int main(int argc, char** argv)
     return 1;
   }
 }
-

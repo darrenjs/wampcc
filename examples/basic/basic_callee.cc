@@ -12,12 +12,22 @@
 
 using namespace wampcc;
 
-/* The end RPC function that gets invoked via a wamp instruction received from a
- * wamp dealer. */
-void rpc(wamp_invocation& invoke)
+/* The callback function invoked when a wamp dealer has completed the procedure registration. */
+void rpc_registered(std::promise<void>& ready_to_exit, wamp_session& ws, registered_info info)
+{
+  std::cout << "rpc registration "
+            << (info.was_error? "failed, " + info.error_uri : "success")
+            << std::endl;
+  if (info.was_error)
+    ready_to_exit.set_value();
+}
+
+/* The callback function invoked when a wamp INVOCATION message is received from a
+ * wamp dealer. A result is sent back to the dealer by calling the yield() method. */
+void rpc_called(wamp_session& ws, invocation_info invoke)
 {
   std::cout << "rpc invoked" << std::endl;
-  invoke.yield( json_array({"hello", "world"}), {} );
+  ws.yield(invoke.request_id, json_array({"hello", "world"}));
 }
 
 int main(int argc, char** argv)
@@ -26,6 +36,7 @@ int main(int argc, char** argv)
   {
     if (argc != 3)
       throw std::runtime_error("arguments must be: ADDR PORT");
+
     const char* host = argv[1];
     int port = std::stoi(argv[2]);
 
@@ -67,7 +78,7 @@ int main(int argc, char** argv)
     credentials.authmethods = {"wampcra"};
     credentials.secret_fn = []() -> std::string { return "secret2"; };
 
-    auto logon_fut = session->initiate_hello(credentials);
+    auto logon_fut = session->hello(credentials);
 
     if (logon_fut.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
       throw std::runtime_error("time-out during session logon");
@@ -77,7 +88,11 @@ int main(int argc, char** argv)
 
     /* Session is now open, register an RPC. */
 
-    session->provide("greeting2", json_object(), rpc);
+    session->provide("greeting2", json_object(),
+                     [&ready_to_exit](wamp_session& ws, registered_info info){
+                       rpc_registered(ready_to_exit, ws, info);
+                     },
+                     rpc_called);
 
     /* Wait until wamp session is closed. */
 

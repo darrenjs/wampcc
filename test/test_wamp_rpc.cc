@@ -16,17 +16,21 @@ int global_loops = 500;
 
 void test_rpc(int port, internal_server& server)
 {
-  cout << "---------- "<< __FUNCTION__ <<" ----------\n";
 
-  server.router()->provide("default_realm", "hello", {},
-                           [](wampcc::wamp_invocation& invocation) {
-                             invocation.yield({"hello"});
-                           });
-  server.router()->provide("default_realm", "echo", {},
-                           [](wampcc::wamp_invocation& invocation) {
-                             invocation.yield(invocation.args.args_list,
-                                              invocation.args.args_dict);
-                           });
+  server.router()->callable("default_realm", "hello",
+                                [](wampcc::wamp_router& rtr, 
+                                   wampcc::wamp_session& caller, 
+                                   wampcc::call_info info) {
+                                  caller.result(info.request_id, {"hello"});
+                                });
+  server.router()->callable("default_realm", "echo",
+                                [](wampcc::wamp_router& rtr, 
+                                   wampcc::wamp_session& caller, 
+                                   wampcc::call_info info) {
+                                  caller.result(info.request_id,
+                                                info.args.args_list,
+                                                info.args.args_dict);
+                                });
 
   unique_ptr<kernel> the_kernel(new kernel({}, logger::console()));
   auto session = establish_session(the_kernel, port);
@@ -35,8 +39,8 @@ void test_rpc(int port, internal_server& server)
   wamp_args call_args;
   call_args.args_list = json_array({"hello from basic_caller"}, {});
 
-  wamp_call_result result = sync_rpc_all(session, "echo", call_args,
-                                         rpc_result_expect::success);
+  result_info result = sync_rpc_all(session, "echo", call_args,
+                                    rpc_result_expect::success);
 
   if (result.args.args_list != call_args.args_list)
     throw runtime_error("call result-list does not match expected");
@@ -54,14 +58,12 @@ void test_rpc(int port, internal_server& server)
 
 void test_call_non_existing_rpc(int port, internal_server& server)
 {
-  cout << "---------- "<< __FUNCTION__ <<" ----------\n";
-
   unique_ptr<kernel> the_kernel(new kernel({}, logger::console()));
   auto session = establish_session(the_kernel, port);
   perform_realm_logon(session);
 
-  wamp_call_result result = sync_rpc_all(session, "xxNOTFOUNDxx", {},
-                                         rpc_result_expect::fail);
+  result_info result = sync_rpc_all(session, "xxNOTFOUNDxx", {},
+                                    rpc_result_expect::fail);
 
   if (result.error_uri != WAMP_ERROR_URI_NO_SUCH_PROCEDURE)
     throw runtime_error("actual error_uri doesn't match expected");

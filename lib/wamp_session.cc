@@ -38,6 +38,49 @@ static bool is_in(T t, T v, Args... args) {
 
 namespace wampcc {
 
+  struct wamp_session::procedure
+  {
+    std::string uri;
+    on_registered_fn registered_cb;
+    on_invocation_fn invocation_cb;
+    void* user;
+  };
+
+  struct wamp_session::subscribe_request
+  {
+    std::string uri;
+    on_subscribed_fn request_cb;
+    on_event_fn event_cb;
+    void* user;
+  };
+
+  struct wamp_session::unsubscribe_request
+  {
+    on_unsubscribed_fn user_cb;
+    t_subscription_id subscription_id;
+    void* user;
+  };
+
+  struct wamp_session::subscription
+  {
+    on_event_fn event_cb;
+    void* user;
+  };
+
+  struct wamp_session::wamp_call
+  {
+    std::string rpc;
+    on_result_fn user_cb;
+    void* user;
+  };
+
+  struct wamp_session::wamp_invocation
+  {
+    on_yield_fn reply_fn;
+    void* user;
+  };
+
+
 /* Static checks to ensure efficient operations are supported */
 static_assert(std::is_copy_constructible<wamp_args>::value, "check failed");
 static_assert(std::is_copy_assignable<wamp_args>::value, "check failed");
@@ -74,8 +117,8 @@ private:
 };
 
 
-static std::atomic<uint64_t> m_next_id(1); // start at 1, so that 0 implies invalid ID
-static uint64_t generate_unique_session_id()
+static std::atomic<t_session_id> m_next_id(1); // start at 1, so that 0 implies invalid ID
+static t_session_id generate_unique_session_id()
 {
   return m_next_id++;
 }
@@ -620,7 +663,7 @@ void wamp_session::handle_exception()
 }
 
 
-void wamp_session::send_msg(json_array& jv)
+void wamp_session::send_msg(const json_array& jv)
 {
   {
     std::lock_guard<std::mutex> guard(m_state_lock);
@@ -885,7 +928,7 @@ bool wamp_session::is_pending_open() const
 }
 
 
-std::future<void> wamp_session::initiate_hello(client_credentials cc)
+std::future<void> wamp_session::hello(client_credentials cc)
 {
   /* USER thread */
 
@@ -896,7 +939,7 @@ std::future<void> wamp_session::initiate_hello(client_credentials cc)
       throw std::runtime_error("realm cannot be empty");
 
     if (!m_realm.empty())
-      throw std::runtime_error("initiate_hello cannot be called more than once");
+      throw std::runtime_error("hello cannot be called more than once");
 
     if (m_realm.empty()) m_realm = cc.realm;
   }
@@ -954,19 +997,21 @@ const std::string& wamp_session::realm() const
 
 t_request_id wamp_session::provide(std::string uri,
                                    const json_object& options,
-                                   rpc_cb cb,
-                                   void * data)
+                                   on_registered_fn registered_cb,
+                                   on_invocation_fn invocation_cb,
+                                   void * user)
 {
-  json_array msg;
-  msg.push_back( msg_type::wamp_msg_register );
-  msg.push_back( 0 );
-  msg.push_back( options );
-  msg.push_back( uri );
+  json_array msg {
+    msg_type::wamp_msg_register,
+    0,
+    options,
+    uri };
 
-  procedure p;
-  p.uri = uri;
-  p.user_cb = cb;
-  p.user_data = data;
+  procedure p {
+    uri,
+    std::move(registered_cb),
+    std::move(invocation_cb),
+    user };
 
   t_request_id request_id;
   {
@@ -987,43 +1032,6 @@ t_request_id wamp_session::provide(std::string uri,
   return request_id;
 }
 
-t_request_id wamp_session::provide(std::string uri,
-                                   const json_object& options,
-                                   result_cb on_result,
-                                   rpc_cb on_call,
-                                   void * data)
-{
-  json_array msg { msg_type::wamp_msg_register,
-      0,
-      std::move(options),
-      uri};
-
-  procedure p;
-  p.uri = uri;
-  p.on_result = std::move(on_result);
-  p.user_cb = std::move(on_call);
-  p.user_data = data;
-
-  t_request_id request_id;
-  {
-    std::lock_guard<std::mutex> guard(m_request_lock);
-
-    request_id = m_next_request_id++;
-    msg[1] = request_id;
-
-    {
-      std::lock_guard<std::mutex> guard(m_pending_lock);
-      m_pending_register[request_id] = std::move(p);
-    }
-
-    send_msg( msg );
-  }
-
-  LOG_INFO(m_log_prefix << "sending register request for '" << uri << "', request_id " << request_id);
-  return request_id;
-}
-
-
 void wamp_session::process_inbound_registered(json_array & msg)
 {
   /* EV thread */
@@ -1035,10 +1043,10 @@ void wamp_session::process_inbound_registered(json_array & msg)
   if (!msg[2].is_uint())
     throw protocol_error("registration ID must be unsigned int");
 
-  uint64_t registration_id = msg[2].as_uint();
+  t_registration_id registration_id = msg[2].as_uint();
 
-  result_cb on_result;
-
+  on_registered_fn on_result;
+  registered_info info { request_id, registration_id, false, "", nullptr};
   {
     std::lock_guard<std::mutex> guard(m_pending_lock);
 
@@ -1046,8 +1054,10 @@ void wamp_session::process_inbound_registered(json_array & msg)
     if (iter == m_pending_register.end())
       return;
 
-    on_result = std::move(iter->second.on_result);
-    iter->second.on_result = nullptr; /* ensure callback object is invalid*/
+    on_result = std::move(iter->second.registered_cb);
+    iter->second.registered_cb = nullptr; /* ensure callback object is invalid*/
+
+    info.user = iter->second.user;
 
     m_procedures[registration_id] = std::move(iter->second);
     m_pending_register.erase(iter);
@@ -1055,7 +1065,7 @@ void wamp_session::process_inbound_registered(json_array & msg)
 
   if (on_result && user_cb_allowed()) {
     try {
-      on_result(true, "");
+      on_result(*this, info);
     }
     catch (...) { /* ignore */ }
   }
@@ -1075,7 +1085,11 @@ void wamp_session::process_inbound_invocation(json_array & msg)
 
   if (!msg[2].is_uint())
     throw protocol_error("registration ID must be unsigned int");
-  uint64_t registration_id = msg[2].as_uint();
+  t_registration_id registration_id = msg[2].as_uint();
+
+  if (!msg[3].is_object())
+    throw protocol_error("details must be json object");
+  json_object &  details = msg[3].as_object();
 
   // find the procedure
   try
@@ -1087,34 +1101,20 @@ void wamp_session::process_inbound_invocation(json_array & msg)
 
     std::string uri = iter->second.uri;
 
-    wampcc::wamp_invocation invoke;
-    invoke.user = iter->second.user_data;
-
+    wamp_args args;
     if ( msg.size() > 4 )
-      invoke.args.args_list = std::move(msg[4].as_array());
+      args.args_list = std::move(msg[4].as_array());
     if ( msg.size() > 5 )
-      invoke.args.args_dict = std::move(msg[5].as_object());
+      args.args_dict = std::move(msg[5].as_object());
 
-    session_handle wp = this->handle();
-    invoke.yield_fn = [wp,request_id](json_array arg_list, json_object arg_dict)
-      {
-        wamp_args args { arg_list, arg_dict };
-        if (auto sp = wp.lock())
-          sp->invocation_yield(request_id, std::move(args));
-      };
+    invocation_info info(request_id,
+                         registration_id,
+                         std::move(details),
+                         std::move(args),
+                         iter->second.user);
 
-    invoke.error_fn = [wp,request_id](std::string error_uri,json_array arg_list, json_object arg_dict)
-      {
-        wamp_args args { arg_list, arg_dict };
-        if (auto sp = wp.lock())
-          sp->reply_with_error(msg_type::wamp_msg_invocation, request_id, std::move(args), std::move(error_uri));
-      };
-
-    {
-      if (user_cb_allowed())
-        iter->second.user_cb(invoke);
-    }
-
+    if (user_cb_allowed())
+      iter->second.invocation_cb(*this, info);
   }
   catch (wampcc::wamp_error& ex)
   {
@@ -1125,8 +1125,8 @@ void wamp_session::process_inbound_invocation(json_array & msg)
 
 t_request_id wamp_session::subscribe(std::string uri,
                                      json_object options,
-                                     subscribed_cb req_cb,
-                                     subscription_event_cb event_cb,
+                                     on_subscribed_fn req_cb,
+                                     on_event_fn event_cb,
                                      void * user)
 {
   json_array msg {msg_type::wamp_msg_subscribe, 0, options, uri};
@@ -1152,12 +1152,12 @@ t_request_id wamp_session::subscribe(std::string uri,
 
 
 t_request_id wamp_session::unsubscribe(t_subscription_id subscription_id,
-                                       unsubscribed_cb request_cb,
-                                       void * user_data)
+                                       on_unsubscribed_fn user_cb,
+                                       void * user)
 {
   json_array msg {msg_type::wamp_msg_unsubscribe, 0, subscription_id};
 
-  unsubscribe_request req {std::move(request_cb), subscription_id, user_data};
+  unsubscribe_request req {std::move(user_cb), subscription_id, user};
 
   t_request_id request_id;
   {
@@ -1223,21 +1223,19 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
      * replace of the previous callback. */
     LOG_WARN("multiple subscriptions made to topic '"<< temp.uri <<"'");
     iter->second.event_cb  = std::move(temp.event_cb);
-    iter->second.user_data = temp.user_data;
+    iter->second.user = temp.user;
   }
   else
   {
-    subscription sub;
-    sub.event_cb = std::move(temp.event_cb);
-    sub.user_data = temp.user_data;
+    subscription sub { std::move(temp.event_cb), temp.user };
     m_subscriptions.insert({subscription_id, std::move(sub)});
   }
 
   // invoke user callback if permitted, and handle exception
   if (temp.request_cb && user_cb_allowed())
     try {
-      wamp_subscribed subscribed {request_id, temp.uri, subscription_id, false, {}};
-      temp.request_cb(subscribed);
+      subscribed_info info {request_id, subscription_id, false, {}, temp.user};
+      temp.request_cb(*this, info);
     }
     catch(...) {
       log_exception(__logger, "inbound subscribed user callback");
@@ -1277,9 +1275,9 @@ void wamp_session::process_inbound_unsubscribed(json_array & msg)
            << ", request_id " << request_id);
 
   // invoke user callback if permitted, and handle exception
-  if (orig_req.request_cb && user_cb_allowed())
+  if (orig_req.user_cb && user_cb_allowed())
     try {
-      orig_req.request_cb(request_id, true, {});
+      orig_req.user_cb(*this, {request_id, true, {}, orig_req.user});
     }
     catch(...) {
       log_exception(__logger, "inbound unsubscribed user callback");
@@ -1305,13 +1303,12 @@ void wamp_session::process_inbound_event(json_array & msg)
     try {
       if (user_cb_allowed())
       {
-        wamp_subscription_event ev;
-        ev.subscription_id = subscription_id;
-        ev.details = std::move( details );
-        ev.args.args_list = args_list;
-        ev.args.args_dict = args_dict;
-        ev.user = iter->second.user_data;
-        iter->second.event_cb( ev );
+        event_info ev { subscription_id,
+            std::move( details ),
+            { args_list, args_dict },
+            iter->second.user
+              };
+        iter->second.event_cb(*this, ev);
       }
     } catch (...){ log_exception(__logger, "inbound event user callback"); }
 
@@ -1328,17 +1325,14 @@ void wamp_session::process_inbound_event(json_array & msg)
 t_request_id wamp_session::call(std::string uri,
                                 const json_object& options,
                                 wamp_args args,
-                                wamp_call_result_cb user_cb,
-                                void* user_data)
+                                on_result_fn user_cb,
+                                void* user)
 {
   /* USER thread */
 
   json_array msg {msg_type::wamp_msg_call, 0, options, uri, args.args_list, args.args_dict};
 
-  wamp_call mycall;
-  mycall.user_cb = user_cb;
-  mycall.user_data = user_data;
-  mycall.rpc= uri;
+  wamp_call mycall { uri, std::move(user_cb), user };
 
   t_request_id request_id;
   {
@@ -1390,23 +1384,21 @@ void wamp_session::process_inbound_result(json_array & msg)
 
   if (orig_call.user_cb && user_cb_allowed())
   {
-    wamp_call_result r;
+    result_info r;
     r.was_error = false;
-    r.procedure = orig_call.rpc;
-    r.user = orig_call.user_data;
+    r.user = orig_call.user;
     if (msg.size()>3) r.args.args_list = std::move(msg[3].as_array());
     if (msg.size()>4) r.args.args_dict = std::move(msg[4].as_object());
-    r.details = options;
+    r.additional = options;
 
     try {
-      orig_call.user_cb(std::move(r));
+      orig_call.user_cb(*this, std::move(r));
     }
     catch(...) {
       log_exception(__logger, "inbound result user callback");
     }
   }
 }
-
 
 /* Handles errors for both active & passive sessions */
 void wamp_session::process_inbound_error(json_array & msg)
@@ -1445,7 +1437,8 @@ void wamp_session::process_inbound_error(json_array & msg)
 
         try
         {
-          orig_request.reply_fn(args, std::move(error_ptr));
+          yield_info respone {request_id, details, error_uri, args, orig_request.user };
+          orig_request.reply_fn(*this, respone);
         } catch (...) {
           log_exception(__logger, "inbound invocation error user callback");
         }
@@ -1459,7 +1452,7 @@ void wamp_session::process_inbound_error(json_array & msg)
   }
   else
   {
-    /* client session */
+    /* client-mode session */
     switch (orig_request_type)
     {
       case msg_type::wamp_msg_call :
@@ -1482,17 +1475,16 @@ void wamp_session::process_inbound_error(json_array & msg)
         {
           if (orig_call.user_cb && user_cb_allowed())
           {
-            wamp_call_result r;
+            result_info r;
             r.was_error = true;
             r.error_uri = error_uri;
-            r.procedure = orig_call.rpc;
-            r.user = orig_call.user_data;
+            r.user = orig_call.user;
             if ( msg.size() > 5 ) r.args.args_list = msg[5].as_array();
             if ( msg.size() > 6 ) r.args.args_dict = msg[6].as_object();
-            r.details = details;
+            r.additional = details;
 
             try {
-              orig_call.user_cb(std::move(r));
+              orig_call.user_cb(*this, std::move(r));
             }
             catch(...){ log_exception(__logger, "inbound call error user callback");}
           }
@@ -1528,8 +1520,8 @@ void wamp_session::process_inbound_error(json_array & msg)
         // invoke user callback if permitted, and handle exception
         if (orig_request.request_cb && user_cb_allowed())
           try {
-            wamp_subscribed subscribed {request_id, orig_request.uri, 0, true, std::move(error_uri)};
-            orig_request.request_cb(subscribed);
+            subscribed_info info {request_id, 0, true, std::move(error_uri), orig_request.user};
+            orig_request.request_cb(*this, info);
           }
           catch(...) {
             log_exception(__logger, "inbound subscribed user callback");
@@ -1558,9 +1550,9 @@ void wamp_session::process_inbound_error(json_array & msg)
         }
 
         // invoke user callback if permitted, and handle exception
-        if (orig_request.request_cb && user_cb_allowed())
+        if (orig_request.user_cb && user_cb_allowed())
           try {
-            orig_request.request_cb(request_id, false, std::move(error_uri));
+            orig_request.user_cb(*this, {request_id, false, std::move(error_uri), orig_request.user});
           }
           catch(...) {
             log_exception(__logger, "inbound unsubscribed user callback");
@@ -1584,9 +1576,15 @@ void wamp_session::process_inbound_error(json_array & msg)
           m_pending_register.erase(iter);
         }
 
-        if (orig.on_result && user_cb_allowed()) {
+        if (orig.registered_cb && user_cb_allowed()) {
           try {
-            orig.on_result(false, error_uri);
+            registered_info info;
+            info.request_id = request_id;
+            info.registration_id = 0;
+            info.was_error = true;
+            info.error_uri = error_uri;
+            info.user = orig.user;
+            orig.registered_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound register on_result callback");
@@ -1669,9 +1667,12 @@ void wamp_session::process_inbound_call(json_array & msg)
 
   try
   {
-    m_server_handler.on_call(this, procedure_uri,
-                             std::move(my_wamp_args),
-                             std::move(reply_fn));
+    json_object options;
+    m_server_handler.on_call(*this,
+                             request_id,
+                             procedure_uri,
+                             options,
+                             my_wamp_args);
   }
   catch(wamp_error& ex)
   {
@@ -1681,10 +1682,11 @@ void wamp_session::process_inbound_call(json_array & msg)
 
 
 /* perform outbound invocation request */
-t_request_id wamp_session::invocation(uint64_t registration_id,
+t_request_id wamp_session::invocation(t_registration_id registration_id,
                                       const json_object& options,
                                       wamp_args args,
-                                      wamp_invocation_reply_fn fn)
+                                      on_yield_fn fn,
+                                      void * user)
 {
   /* EV & USER thread */
 
@@ -1692,8 +1694,7 @@ t_request_id wamp_session::invocation(uint64_t registration_id,
       args.args_list, args.args_dict};
 
   t_request_id request_id;
-  wamp_invocation my_invocation;
-  my_invocation.reply_fn = fn;
+  wamp_invocation my_invocation {std::move(fn), user};
 
   {
     std::lock_guard<std::mutex> guard(m_request_lock);
@@ -1721,6 +1722,8 @@ void wamp_session::process_inbound_yield(json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
+  json_object & options = msg[2].as_object();
+
   wamp_args args;
   if ( msg.size() > 3 )
     args.args_list = msg[3].as_array();
@@ -1733,7 +1736,8 @@ void wamp_session::process_inbound_yield(json_array & msg)
     if (iter->second.reply_fn)
     {
       try {
-        iter->second.reply_fn(args, nullptr);
+        yield_info info (request_id, options, args, iter->second.user);
+        iter->second.reply_fn(*this, info);
       } catch (...){}
     }
     m_pending_invocation.erase(iter);
@@ -1763,7 +1767,7 @@ void wamp_session::process_inbound_publish(json_array & msg)
 
   try
   {
-    m_server_handler.on_publish(this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
+    m_server_handler.on_publish(*this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
   }
   catch(wamp_error& ex)
   {
@@ -1787,15 +1791,13 @@ void wamp_session::process_inbound_subscribe(json_array & msg)
 
   try
   {
-    m_server_handler.on_subscribe(this, request_id, topic_uri, msg[2].as_object());
+    m_server_handler.on_subscribe(*this, request_id, topic_uri, msg[2].as_object());
   }
   catch(wamp_error& ex)
   {
     reply_with_error(msg_type::wamp_msg_subscribe, request_id, ex.args(), ex.error_uri());
   }
 }
-
-
 
 void wamp_session::process_inbound_unsubscribe(json_array & msg)
 {
@@ -1810,36 +1812,12 @@ void wamp_session::process_inbound_unsubscribe(json_array & msg)
 
   try
   {
-    m_server_handler.on_unsubscribe(this, request_id, sub_id);
+    m_server_handler.on_unsubscribe(*this, request_id, sub_id);
   }
   catch(wamp_error& ex)
   {
     reply_with_error(msg_type::wamp_msg_unsubscribe, request_id, ex.args(), ex.error_uri());
   }
-}
-
-void wamp_session::registered(t_request_id orig_request_id,
-                              uint64_t registration_id)
-{
-  json_array msg {
-    msg_type::wamp_msg_registered,
-    orig_request_id,
-    registration_id};
-
-  send_msg(msg);
-}
-
-void wamp_session::register_error(t_request_id orig_request_id,
-                                  json_object options,
-                                  std::string error_uri)
-{
-  json_array msg {msg_type::wamp_msg_error,
-      msg_type::wamp_msg_register,
-      orig_request_id,
-      std::move(options),
-      std::move(error_uri)};
-
-  send_msg(msg);
 }
 
 void wamp_session::process_inbound_register(json_array & msg)
@@ -1860,7 +1838,7 @@ void wamp_session::process_inbound_register(json_array & msg)
 
   try
   {
-    m_server_handler.on_register(this,
+    m_server_handler.on_register(*this,
                                  request_id,
                                  options,
                                  uri);
@@ -1870,16 +1848,6 @@ void wamp_session::process_inbound_register(json_array & msg)
     reply_with_error(msg_type::wamp_msg_register, request_id, ex.args(), ex.error_uri());
   }
 }
-
-
-/* reply to an invocation with a yield message */
-void wamp_session::invocation_yield(t_request_id request_id,
-                                    wamp_args args)
-{
-  json_array msg {msg_type::wamp_msg_yield, request_id, json_object(), args.args_list, args.args_dict};
-  send_msg(msg);
-}
-
 
 void wamp_session::reply_with_error(
   msg_type request_type,
@@ -2146,6 +2114,207 @@ bool wamp_session::user_cb_allowed() const
 void wamp_session::proto_close()
 {
   m_proto->initiate_close();
+}
+
+void wamp_session::result(t_request_id id)
+{
+  send_msg({msg_type::wamp_msg_result, id, json_object()});
+}
+
+void wamp_session::result(t_request_id id, json_array ja)
+{
+  send_msg({msg_type::wamp_msg_result, id, json_object(), std::move(ja)});
+}
+
+void wamp_session::result(t_request_id id, json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_result, id, json_object(), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::result(t_request_id id, json_object dt)
+{
+  send_msg({msg_type::wamp_msg_result, id, std::move(dt)});
+}
+
+void wamp_session::result(t_request_id id, json_object dt, json_array ja)
+{
+  send_msg({msg_type::wamp_msg_result, id, std::move(dt), std::move(ja)});
+}
+
+void wamp_session::result(t_request_id id, json_object dt, json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_result, id, std::move(dt), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::call_error(t_request_id id, std::string uri)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_call, id, json_value::make_object(), std::move(uri)});
+}
+
+void wamp_session::call_error(t_request_id id, std::string uri, json_array ja)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_call, id, json_value::make_object(), std::move(uri), std::move(ja)});
+}
+
+void wamp_session::call_error(t_request_id id, std::string uri, json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_call, id, json_value::make_object(), std::move(uri), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::call_error(t_request_id id, std::string uri, json_object details)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_call, id, std::move(details), std::move(uri)});
+}
+
+void wamp_session::call_error(t_request_id id, std::string uri, json_object details, json_array ja)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_call, id, std::move(details), std::move(uri), std::move(ja)});
+}
+
+void wamp_session::call_error(t_request_id id, std::string uri, json_object details, json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_call, id, std::move(details), std::move(uri), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::yield(t_request_id id)
+{
+  send_msg({msg_type::wamp_msg_yield, id, json_value::make_object()});
+}
+
+void wamp_session::yield(t_request_id id, json_array ja)
+{
+  send_msg({msg_type::wamp_msg_yield, id, json_value::make_object(), std::move(ja)});
+}
+
+void wamp_session::yield(t_request_id id, json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_yield, id, json_value::make_object(), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::yield(t_request_id id, json_object opts)
+{
+  send_msg({msg_type::wamp_msg_yield, id, std::move(opts)});
+}
+
+void wamp_session::yield(t_request_id id, json_object opts, json_array ja)
+{
+  send_msg({msg_type::wamp_msg_yield, id, std::move(opts), std::move(ja)});
+}
+
+void wamp_session::yield(t_request_id id, json_object opts, json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_yield, id, std::move(opts), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::invocation_error(t_request_id id, std::string uri)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_invocation, id,
+        json_value::make_object(), std::move(uri)});
+}
+
+void wamp_session::invocation_error(t_request_id id,
+                                    std::string uri, json_array ja)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_invocation, id,
+        json_value::make_object(), std::move(uri), std::move(ja)});
+}
+
+void wamp_session::invocation_error(t_request_id id,
+                                    std::string uri, json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_invocation, id,
+        json_value::make_object(), std::move(uri), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::invocation_error(t_request_id id, std::string uri, json_object details)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_invocation, id,
+        std::move(details), std::move(uri)});
+}
+
+void wamp_session::invocation_error(t_request_id id, std::string uri, json_object details,
+                                    json_array ja)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_invocation, id,
+        std::move(details), std::move(uri), std::move(ja)});
+}
+
+void wamp_session::invocation_error(t_request_id id, std::string uri, json_object details,
+                                    json_array ja, json_object jo)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_invocation, id,
+        std::move(details), std::move(uri), std::move(ja), std::move(jo)});
+}
+
+void wamp_session::subscribed(t_request_id id, t_subscription_id subscription_id)
+{
+  send_msg({msg_type::wamp_msg_subscribed, id, subscription_id});
+}
+
+void wamp_session::subscribe_error(t_request_id id, std::string uri)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_subscribe,
+        id, json_value::make_object(), std::move(uri)});
+}
+
+void wamp_session::subscribe_error(t_request_id id, std::string uri, json_object details)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_subscribe,
+        id, std::move(details), std::move(uri)});
+}
+
+void wamp_session::registered(t_request_id id, t_registration_id reg_id)
+{
+  send_msg({ msg_type::wamp_msg_registered, id, reg_id});
+}
+
+void wamp_session::register_error(t_request_id id, std::string uri)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_register,
+        id, json_value::make_object(), std::move(uri)});
+}
+
+void wamp_session::register_error(t_request_id id, std::string uri, json_object details)
+{
+  send_msg({msg_type::wamp_msg_error,
+        msg_type::wamp_msg_register,
+        id,
+        std::move(details),
+        std::move(uri)});
+}
+
+void wamp_session::unsubscribed(t_request_id id)
+{
+  send_msg({msg_type::wamp_msg_unsubscribed, id});
+}
+
+void wamp_session::unsubscribe_error(t_request_id id, std::string uri)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_unsubscribe,
+        id, json_value::make_object(), std::move(uri)});
+}
+
+void wamp_session::unsubscribe_error(t_request_id id, std::string uri, json_object details)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_unsubscribe,
+        id, std::move(details), std::move(uri)});
+}
+
+void wamp_session::published(t_request_id id, t_publication_id pub_id)
+{
+  send_msg({msg_type::wamp_msg_published, id, pub_id});
+}
+
+void wamp_session::publish_error(t_request_id id, std::string uri)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_publish,
+        id, json_value::make_object(), std::move(uri)});
+}
+
+void wamp_session::publish_error(t_request_id id, std::string uri, json_object details)
+{
+  send_msg({msg_type::wamp_msg_error, msg_type::wamp_msg_publish,
+        id, std::move(details), std::move(uri)});
 }
 
 

@@ -129,7 +129,7 @@ public:
 
     wampcc::client_credentials credentials;
     credentials.realm = uopts.realm;
-    auto logon_fut = session->initiate_hello(credentials);
+    auto logon_fut = session->hello(credentials);
 
     if (logon_fut.wait_for(std::chrono::seconds(5)) !=
         std::future_status::ready)
@@ -149,17 +149,20 @@ public:
 
     std::promise<std::tuple<bool, std::string>> promise;
 
-    auto on_result = [&](bool is_good, std::string error_uri) {
+    auto on_result = [&](wampcc::wamp_session&, wampcc::registered_info info) {
+      bool is_good = !info.was_error;
+      std::string error_uri = info.error_uri;
       std::tuple<bool, std::string> result{is_good, error_uri};
       promise.set_value(result);
     };
 
-    auto on_invoke = [](wampcc::wamp_invocation& invoc) {
+    auto on_invoke = [](wampcc::wamp_session& ws,
+                        wampcc::invocation_info invoc) {
       for (auto& item : invoc.args.args_list)
         if (item.is_string())
           item = item.as_string() + item.as_string();
 
-      invoc.yield(std::move(invoc.args.args_list));
+      ws.yield(invoc.request_id, std::move(invoc.args.args_list));
     };
 
     session->provide(uri_double, options, std::move(on_result),
@@ -185,12 +188,12 @@ public:
     std::shared_ptr<wampcc::wamp_session> session = connect_and_logon();
 
     for (int i = 0; i < uopts.count.value(); i++) {
-      std::promise<wampcc::wamp_call_result> promised_result;
+      std::promise<wampcc::result_info> promised_result;
 
       wampcc::wamp_args call_args;
       call_args.args_list = {"hello", "world", std::to_string(i)};
 
-      session->call(uri_double, {}, call_args, [&](wampcc::wamp_call_result r) {
+      session->call(uri_double, {}, call_args, [&](wampcc::wamp_session&, wampcc::result_info r) {
           try {
             promised_result.set_value(r);
           } catch (...) { /* ignore promise already set error */ }
@@ -240,10 +243,10 @@ public:
                                std::to_string(ec.os_value()) + ", " +
                                ec.message());
 
-    m_admin->provide("default_realm", "stop", {},
-                     [this](wampcc::wamp_invocation& invocation) {
-      this->can_exit.set_value(0);
-    });
+    m_admin->callable("default_realm", "stop",
+                      [this](wampcc::wamp_router&, wampcc::wamp_session&, wampcc::call_info) {
+                        this->can_exit.set_value(0);
+                      });
   }
 
 
@@ -288,15 +291,15 @@ public:
 
     std::shared_ptr<wampcc::wamp_session> session = connect_and_logon();
 
-    std::promise<wampcc::wamp_subscribed> promised_result;
+    std::promise<wampcc::subscribed_info> promised_result;
 
-    auto on_subscribed = [&](wampcc::wamp_subscribed& r) {
+    auto on_subscribed = [&](wampcc::wamp_session&, wampcc::subscribed_info& r) {
       promised_result.set_value(std::move(r));
     };
-    auto on_event = [this](wampcc::wamp_subscription_event event) {
-      LOG("subscription event: " << event.args.args_list);
-      bool is_final = event.args == final_item;
-      m_subscription_data.push_back(std::move(event.args));
+    auto on_event = [this](wampcc::wamp_session&, wampcc::event_info info) {
+      LOG("subscription event: " << info.args.args_list);
+      bool is_final = info.args == final_item;
+      m_subscription_data.push_back(std::move(info.args));
 
       if (is_final) {
         auto expect = data_set();

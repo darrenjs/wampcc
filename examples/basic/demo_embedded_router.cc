@@ -32,9 +32,10 @@ int main(int, char**)
 
     /* Provide an RPC named 'greeting' on realm 'default_realm'. */
 
-    router.provide(
-        "default_realm", "greeting", {},
-        [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
+    router.callable("default_realm", "greeting",
+                    [](wamp_router&, wamp_session& caller, call_info info) {
+      caller.result(info.request_id, {"hello"});
+    });
 
     /* Suspend main thread */
     std::promise<void> forever;

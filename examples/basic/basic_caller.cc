@@ -58,7 +58,7 @@ int main(int argc, char** argv)
     credentials.authmethods = {"wampcra"};
     credentials.secret_fn = []() -> std::string { return "secret2"; };
 
-    auto logon_fut = session->initiate_hello(credentials);
+    auto logon_fut = session->hello(credentials);
 
     if (logon_fut.wait_for(std::chrono::seconds(5)) != std::future_status::ready)
       throw std::runtime_error("time-out during session logon");
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
     wamp_args call_args;
     call_args.args_list = json_array({"hello from basic_caller"});
     session->call(rpc_uri, {}, call_args,
-                  [&ready_to_exit](wamp_call_result r) {
+                  [&ready_to_exit](wampcc::wamp_session&, result_info r) {
                     try {
                       std::cout << "rpc result: " << r.args.args_list << std::endl;
                       ready_to_exit.set_value();
@@ -89,4 +89,3 @@ int main(int argc, char** argv)
     return 1;
   }
 }
-

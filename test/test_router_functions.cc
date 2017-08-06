@@ -22,16 +22,17 @@ void test_registration_failure_empty_uri(int port, internal_server& server)
   perform_realm_logon(session);
 
   std::promise<std::pair<bool, std::string>> promised_result;
-  wampcc::result_cb on_result = [&promised_result](bool is_good,
-                                                  std::string error_uri) {
-    promised_result.set_value({is_good,std::move(error_uri)});
+
+  wampcc::on_registered_fn on_result =
+    [&promised_result](wamp_session&, registered_info info) {
+    promised_result.set_value({!info.was_error,std::move(info.error_uri)});
   };
 
   session->provide(
     "", {},   // Empty name
     on_result,
-    [](wamp_invocation& invoke){
-      invoke.yield();
+    [](wamp_session& ws, invocation_info info){
+      ws.yield(info.request_id);
     }
     );
 
@@ -54,16 +55,17 @@ void test_registration_failure_bad_uri(int port, internal_server& server)
   perform_realm_logon(session);
 
   std::promise<std::pair<bool, std::string>> promised_result;
-  wampcc::result_cb on_result = [&promised_result](bool is_good,
-                                                  std::string error_uri) {
-    promised_result.set_value({is_good,std::move(error_uri)});
+
+  wampcc::on_registered_fn on_result =
+    [&promised_result](wamp_session&, registered_info info) {
+    promised_result.set_value({!info.was_error,std::move(info.error_uri)});
   };
 
   session->provide(
     " . . . . .", {},   // Bad name
     on_result,
-    [](wamp_invocation& invoke){
-      invoke.yield();
+    [](wamp_session& ws, invocation_info info){
+      ws.yield(info.request_id);
     }
     );
 
@@ -91,16 +93,17 @@ void test_registration_duplicate_uri(int port, internal_server& server)
   // register the procedure
   {
     std::promise<std::pair<bool, std::string>> promised_result;
-    wampcc::result_cb on_result = [&promised_result](bool is_good,
-                                                     std::string error_uri) {
-      promised_result.set_value({is_good,std::move(error_uri)});
+
+    wampcc::on_registered_fn on_result =
+      [&promised_result](wamp_session&, registered_info info) {
+      promised_result.set_value({!info.was_error,std::move(info.error_uri)});
     };
 
     session->provide(
       "api.test", {},
       on_result,
-      [](wamp_invocation& invoke){
-        invoke.yield();
+      [](wamp_session& ws, invocation_info info){
+        ws.yield(info.request_id);
       }
       );
 
@@ -112,16 +115,17 @@ void test_registration_duplicate_uri(int port, internal_server& server)
   // attempt to register a second time ... should fail
   {
     std::promise<std::pair<bool, std::string>> promised_result;
-    wampcc::result_cb on_result = [&promised_result](bool is_good,
-                                                     std::string error_uri) {
-      promised_result.set_value({is_good,std::move(error_uri)});
+
+    wampcc::on_registered_fn on_result =
+      [&promised_result](wamp_session&, registered_info info) {
+      promised_result.set_value({!info.was_error,std::move(info.error_uri)});
     };
 
     session->provide(
       "api.test", {},
       on_result,
-      [](wamp_invocation& invoke){
-        invoke.yield();
+      [](wamp_session& ws, invocation_info info){
+        ws.yield(info.request_id);
       }
       );
 

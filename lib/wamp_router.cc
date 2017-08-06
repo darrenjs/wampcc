@@ -50,7 +50,7 @@ wamp_router::~wamp_router()
   server_socks.clear();
 
   /* Next close our wamp_sessions */
-  std::map<t_sid, std::shared_ptr<wamp_session>> sessions;
+  std::map<t_session_id, std::shared_ptr<wamp_session>> sessions;
   {
     std::lock_guard<std::mutex> guard(m_sessions_lock);
     m_sessions.swap(sessions);
@@ -86,12 +86,12 @@ std::future<uverr> wamp_router::listen(auth_provider auth, int p)
 }
 
 
-void wamp_router::provide(const std::string& realm, const std::string& uri,
-                          const json_object& options, rpc_cb user_cb,
-                          void* user_data)
+void wamp_router::callable(const std::string& realm,
+                           const std::string& uri,
+                           on_call_fn fn,
+                           void * user)
 {
-  // TODO: dispatch this on the event thread?
-  m_rpcman->register_internal_rpc_2(realm, uri, options, user_cb, user_data);
+  m_rpcman->register_internal_rpc(realm, uri, std::move(fn), user);
 }
 
 
@@ -119,47 +119,58 @@ void wamp_router::rpc_registered_cb(const rpc_details& r)
 
 
 void wamp_router::handle_inbound_call(
-    wamp_session* sptr, // TODO: possibly change this to a shared_ptr
-    const std::string& uri, wamp_args args, wamp_invocation_reply_fn fn)
+  wamp_session* ws,
+  t_request_id request_id,
+  std::string& uri,
+  json_object& options,
+  wamp_args& args
+  )
 {
   /* EV thread */
 
   // TODO: use direct lookup here, instead of that call to public function,
   // wheich can then be deprecated
   try {
-    rpc_details rpc = m_rpcman->get_rpc_details(uri, sptr->realm());
+    rpc_details rpc = m_rpcman->get_rpc_details(uri, ws->realm());
     if (rpc.registration_id) {
       if (rpc.type == rpc_details::eInternal) {
         /* CALL request is for an internal procedure */
 
         if (rpc.user_cb) {
-          wamp_invocation invoke;
-          invoke.user = rpc.user_data;
-          invoke.args = std::move(args);
 
-          invoke.yield_fn = [fn](json_array arg_list, json_object arg_dict) {
-            wamp_args args{std::move(arg_list), std::move(arg_dict)};
-            if (fn)
-              fn(args, std::unique_ptr<std::string>());
-          };
+          call_info info { request_id,
+              options,
+              std::move(args),
+              rpc.user };
 
-          invoke.error_fn = [fn](std::string error_uri, json_array arg_list,
-                                 json_object arg_dict) {
-            wamp_args args{std::move(arg_list), std::move(arg_dict)};
-            if (fn)
-              fn(args,
-                 std::unique_ptr<std::string>(new std::string(error_uri)));
-          };
-
-          rpc.user_cb(invoke);
+          rpc.user_cb(*this, *ws, std::move(info));
 
         } else
           throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
 
       } else {
-        /* CALL request is for an external RPC */
-        if (auto sp = rpc.session.lock())
-          sp->invocation(rpc.registration_id, json_object(), args, fn);
+        /* CALL request is for an external procedure.  So find the wamp session
+         * that registered the procedure, and send it an INVOCATION request.*/
+        if (auto callee = rpc.session.lock())
+        {
+          std::weak_ptr<wamp_session> caller_wp = ws->handle();
+          auto caller_request_id = request_id;
+          on_yield_fn fn =
+            [caller_wp, caller_request_id](wamp_session&, yield_info info)
+            {
+              /* EV thread */
+
+              if (auto caller = caller_wp.lock())
+              {
+                if (info)
+                  caller->result(caller_request_id, info.args.args_list, info.args.args_dict);
+                else
+                  caller->call_error(caller_request_id, info.error_uri);
+              }
+            };
+
+          callee->invocation(rpc.registration_id, json_object(), args, fn);
+        }
         else
           throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
       }
@@ -168,15 +179,11 @@ void wamp_router::handle_inbound_call(
       throw wamp_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
     }
   } catch (wampcc::wamp_error& ex) {
-    if (fn)
-      fn(ex.args(), std::unique_ptr<std::string>(new std::string(ex.what())));
+    ws->call_error(request_id, ex.what(), ex.args().args_list, ex.args().args_dict);
   } catch (std::exception& ex) {
-    if (fn)
-      fn(wamp_args(), std::unique_ptr<std::string>(new std::string(ex.what())));
+    ws->call_error(request_id, ex.what());
   } catch (...) {
-    if (fn)
-      fn(wamp_args(),
-         std::unique_ptr<std::string>(new std::string(WAMP_RUNTIME_ERROR)));
+    ws->call_error(request_id, std::string(WAMP_RUNTIME_ERROR));
   }
 }
 
@@ -248,36 +255,40 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
     server_msg_handler handlers;
 
-    handlers.on_call = [this](wamp_session* s, std::string u,
-                                   wamp_args args, wamp_invocation_reply_fn f) {
-      this->handle_inbound_call(s, u, std::move(args), f);
+    handlers.on_call = [this](wamp_session& ws,
+                              t_request_id reqid,
+                              std::string& uri,
+                              json_object& details,
+                              wamp_args& args)
+    {
+      this->handle_inbound_call(&ws, reqid, uri, details, args);
     };
 
     handlers.on_publish =
-        [this](wamp_session* sptr, std::string uri, json_object options,
+        [this](wamp_session& ws, std::string uri, json_object options,
                wamp_args args) {
       // TODO: break this out into a separte method, and handle error
-      m_pubsub->inbound_publish(sptr->realm(), uri, std::move(options),
+      m_pubsub->inbound_publish(ws.realm(), uri, std::move(options),
                                 std::move(args));
     };
 
     handlers.on_subscribe =
-        [this](wamp_session* p, t_request_id request_id, std::string uri,
+        [this](wamp_session& ws, t_request_id request_id, std::string uri,
                json_object& options) {
-      return this->m_pubsub->subscribe(p, request_id, uri, options);
+      return this->m_pubsub->subscribe(&ws, request_id, uri, options);
     };
 
     handlers.on_unsubscribe = [this](
-        wamp_session* p, t_request_id request_id, t_subscription_id sub_id) {
-      this->m_pubsub->unsubscribe(p, request_id, sub_id);
+        wamp_session& ws, t_request_id request_id, t_subscription_id sub_id) {
+      this->m_pubsub->unsubscribe(&ws, request_id, sub_id);
     };
 
-    handlers.on_register = [this](wamp_session* ses,
+    handlers.on_register = [this](wamp_session& ses,
                                   t_request_id request_id,
                                   json_object& options,
                                   std::string& uri) -> void {
-      auto registration_id = m_rpcman->handle_inbound_register(ses, uri);
-      ses->registered(request_id, registration_id);
+      auto registration_id = m_rpcman->handle_inbound_register(&ses, uri);
+      ses.registered(request_id, registration_id);
     };
 
     auto fd = sock->fd_info().second;
@@ -345,6 +356,5 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
   return fut;
 }
-
 
 } // namespace

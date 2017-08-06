@@ -28,7 +28,6 @@ namespace wampcc {
   class tcp_socket;
   struct logger;
 
-  typedef std::function< void(wamp_args, std::unique_ptr<std::string> ) > wamp_invocation_reply_fn;
   typedef std::function< void(std::weak_ptr<wamp_session>, bool) > state_fn;
 
   /** Handler interface for server-side authentication.  An instance of
@@ -81,13 +80,16 @@ namespace wampcc {
     }
   };
 
+  /** Collection of callbacks that a server application (i.e. one that
+   * implements dealer and/or router role) will provide to handle unsolicited
+   * client requests. */
   struct server_msg_handler
   {
-    std::function<void(wamp_session*, std::string, wamp_args, wamp_invocation_reply_fn)> on_call;
-    std::function<void(wamp_session*, std::string, json_object, wamp_args)> on_publish;
-    std::function<void(wamp_session*, t_request_id, json_object&, std::string&)> on_register;
-    std::function<uint64_t(wamp_session*, t_request_id, std::string, json_object&)> on_subscribe;
-    std::function<void(wamp_session*, t_request_id, t_subscription_id)> on_unsubscribe;
+    std::function<void(wamp_session&, t_request_id, std::string&, json_object&, wamp_args&)> on_call;
+    std::function<void(wamp_session&, std::string, json_object, wamp_args)> on_publish;
+    std::function<void(wamp_session&, t_request_id, json_object&, std::string&)> on_register;
+    std::function<void(wamp_session&, t_request_id, std::string, json_object&)> on_subscribe;
+    std::function<void(wamp_session&, t_request_id, t_subscription_id)> on_unsubscribe;
   };
 
   struct client_credentials
@@ -101,92 +103,161 @@ namespace wampcc {
     client_credentials(std::string realm_) : realm(std::move(realm_)) {}
   };
 
-  struct wamp_subscription_event
+  struct event_info
   {
     t_subscription_id subscription_id;
     json_object details;
     wamp_args args;
     void* user;
   };
-  typedef std::function< void (wamp_subscription_event) > subscription_event_cb;
+  typedef std::function<void(wamp_session&, event_info)> on_event_fn;
 
-  struct wamp_subscribed
+  struct subscribed_info
   {
     t_request_id request_id;
-    std::string uri;
     t_subscription_id subscription_id;
     bool was_error;
     std::string error_uri;
+    void* user;
 
-    /** Check if this result indicates a success, i.e. not an error */
+    /** Returns whether this message indicates the request was successful. */
     explicit operator bool() const noexcept { return was_error == false; }
   };
 
   /** Callback invoked when a subscribe request is successful or fails. Error
       contains the error code when the subscription is not successful.
   */
-  typedef std::function<void (wamp_subscribed&) > subscribed_cb;
+  typedef std::function<void(wamp_session&, subscribed_info&)> on_subscribed_fn;
+
+  struct unsubscribed_info
+  {
+    t_request_id request_id;
+    bool was_error;
+    std::string error_uri;
+    void* user;
+
+    /** Returns whether this message indicates the request was successful. */
+    explicit operator bool() const noexcept { return !was_error; }
+  };
 
   /** Callback invoked when an unsubscription request completes. Error contains
       the error code when the subscription is not successful.
   */
-  typedef std::function< void (t_request_id,
-                               bool success,
-                               std::string error) > unsubscribed_cb;
+  typedef std::function<void(wamp_session&, unsubscribed_info)> on_unsubscribed_fn;
 
-  struct wamp_call_result
+  /** Represent a dealer response caused by a previous CALL request. The
+   * originating CALL request would have been initiated via a call of method
+   * wamp_session::call(). The response could indicate success (if dealer sent
+   * RESULT) or failure (if dealer sent ERROR). */
+  struct result_info
   {
-    t_request_id reqid;    /* protocol ID that was used */
-    std::string procedure;
+    t_request_id request_id;
+    json_object additional; // holds the WAMP 'details' or 'options'
     bool was_error;
     std::string error_uri; // if was_error == true
+    wamp_args args;
+    void * user;
+
+    result_info() : request_id(0), was_error(false), user(0){}
+
+    result_info(t_request_id r, json_object op, wamp_args a, void * u) :
+      request_id(r),
+      additional(op),
+      was_error(false),
+      args(std::move(a)),
+      user(u) {}
+
+    /** Returns whether this message indicates the request was successful. */
+    operator bool() const noexcept { return !was_error; }
+  };
+
+  typedef std::function<void(wamp_session&, result_info)> on_result_fn;
+
+  /** Represent the callee response elicited by a previous INVOCATION request,
+   * made via an earlier call of method invocation().  The response could either
+   * indicate success (if callee sent YIELD) or failure (if callee sent
+   * ERROR). */
+  struct yield_info
+  {
+    t_request_id request_id;
+    json_object additional; // holds the WAMP 'details' or 'options'
+    bool was_error;
+    std::string error_uri; // if was_error == true
+    wamp_args args;
+    void * user;
+
+    yield_info() : request_id(0), was_error(false), user(0){}
+
+    yield_info(t_request_id r, json_object op, std::string eu, wamp_args a, void * u)
+      : request_id(r),
+        additional(std::move(op)),
+        was_error(true),
+        error_uri(std::move(eu)),
+        args(std::move(a)),
+        user(u)
+    {}
+    yield_info(t_request_id r, json_object op, wamp_args a, void * u)
+      : request_id(r),
+        additional(std::move(op)),
+        was_error(false),
+        args(std::move(a)),
+        user(u)
+    {}
+
+    /** Returns whether this message indicates the request was successful. */
+    operator bool() const noexcept { return !was_error; }
+  };
+
+  typedef std::function<void(wamp_session&, yield_info)> on_yield_fn;
+
+  /** Callback data associated with arrival of a REGISTERED wamp message. */
+  struct registered_info
+  {
+    t_request_id request_id;
+    t_registration_id registration_id;
+    bool was_error;
+    std::string error_uri;
+    void * user;
+
+    /** Returns whether this message indicates the request was successful. */
+    operator bool() const noexcept { return !was_error; }
+  };
+  typedef std::function<void(wamp_session&, registered_info)> on_registered_fn;
+
+
+  /** Callback data associated with arrival of an INVOCATION wamp message.  The
+   * registration_id identifies a previously registered procedure that should
+   * now be invoked, using the peer provide details and arguments. */
+  struct invocation_info
+  {
+    t_request_id request_id;
+    t_registration_id registration_id;
     json_object details;
     wamp_args args;
     void * user;
 
-    wamp_call_result()
-      : reqid(0),
-        was_error(false),
-        user(0){}
+    invocation_info()
+      : request_id(0),
+        registration_id(0),
+        user(nullptr) {}
 
-    /** Check if this result indicates a success, i.e. not an error */
-    explicit operator bool() const noexcept { return  was_error == false; }
+    invocation_info(t_request_id __request_id,
+                    t_registration_id __registration_id,
+                    json_object __details,
+                    wamp_args __args,
+                    void * __user)
+      : request_id(__request_id),
+        registration_id(__registration_id),
+        details(std::move(__details)),
+        args(std::move(__args)),
+        user(__user)
+    {}
   };
-
-  typedef std::function< void (wamp_call_result) > wamp_call_result_cb;
-
-  typedef std::function<void(bool is_good, std::string error_uri)> result_cb;
+  typedef std::function<void(wamp_session&,
+                             invocation_info)> on_invocation_fn;
 
 
-  /** Aggregate passed on RPC invocation. */
-  struct wamp_invocation
-  {
-    wamp_args   args;
-    json_object details;
-    void *      user = nullptr;
-    std::function<void(json_array, json_object)> yield_fn;
-    std::function<void(std::string, json_array, json_object)> error_fn;
-
-    /* Wrappers to yield_fn */
-    void yield() { yield_fn({}, {}); }
-    void yield(json_array arr) { yield_fn(std::move(arr), {}); }
-    void yield(json_object obj) { yield_fn({}, std::move(obj)); }
-    void yield(json_array arr, json_object obj) { yield_fn(std::move(arr), std::move(obj)); }
-
-    /* Wrapper to error_fn */
-    void error(std::string txt) { error_fn(std::move(txt), {}, {}); }
-    void error(std::string txt, json_array arr) { error_fn(std::move(txt), std::move(arr), {}); }
-    void error(std::string txt, json_object obj) { error_fn(std::move(txt), {}, std::move(obj)); }
-    void error(std::string txt, json_array arr, json_object obj) { error_fn(std::move(txt), std::move(arr), std::move(obj)); }
-
-    wamp_invocation() : user(nullptr) {}
-  };
-
-  typedef std::function<void(wamp_invocation&) > rpc_cb;
-
-  /* TODO: review: now I think I should use what() for the error_uri, and add
-   * message() for any extra message.  Check to see how often we actually do
-   * pass in a message. */
+  /* TODO: refactor */
   class wamp_error : public std::runtime_error
   {
   public:
@@ -219,7 +290,7 @@ namespace wampcc {
   };
 
 
-  /** Represent a wamp session with a peer.
+  /** Represent a wamp session.
    */
   class wamp_session : public std::enable_shared_from_this<wamp_session>
   {
@@ -232,7 +303,7 @@ namespace wampcc {
 
     enum class mode {client, server};
 
-    /** Create a server side session (i.e., the socket was accepted from a
+    /** Create a server-mode session (i.e., the socket was accepted from a
      * remote client). */
     static std::shared_ptr<wamp_session> create(kernel*,
                                                 std::unique_ptr<tcp_socket>,
@@ -241,7 +312,7 @@ namespace wampcc {
                                                 server_msg_handler,
                                                 auth_provider);
 
-    /** Create a client side session (i.e., the socket was actively connected to
+    /** Create a client-mode session (i.e., the socket was actively connected to
      * a remote server) using a protocol class as specified via the template
      * parameter. */
     template<typename T>
@@ -266,9 +337,10 @@ namespace wampcc {
                                        state_cb, factory_fn, server_msg_handler(), auth_provider());
     }
 
-    /** Should be called client session once the session has been created, to
-     * begin the HELLO sequence. */
-    std::future<void> initiate_hello(client_credentials);
+    /** Should be called for client-mode instances immediately following
+     * wamp_session construction.  It will initiate the HELLO sequence, to
+     * establish the logical wamp session. */
+    std::future<void> hello(client_credentials);
 
     ~wamp_session();
 
@@ -310,28 +382,20 @@ namespace wampcc {
      * eg, in case of a server session that receives the realm from the peer. */
     const std::string& realm() const;
 
-    /** DEPRECATED.  This method will be removed in later wampcc version.  It is
-     * replaced with an alternative provide() method that accepts an additiona
-     * result_cb parameter. */
+    /** Allow a callee application to register a procedure with a dealer. A
+     * REGISTER message is sent to the connected dealer to request registration
+     * of the procedure `uri`.  The success or failure of the registration
+     * attempt, and requests for procedure invocation, are delivered via the
+     * callback function arguments. */
     t_request_id provide(std::string uri,
                          const json_object& options,
-                         rpc_cb cb,
-                         void * data = nullptr);
+                         on_registered_fn,
+                         on_invocation_fn,
+                         void * user = nullptr);
 
-    /** Register a remote procedure with specified URI and wamp options.  Two
-     * callbacks are used: on_result & on_call. The on_result lambda is called
-     * upon success/failure of the registration request.  The on_invoke lambda
-     * is called when a WAMP invocation request arrives to invoke the
-     * procedure. */
-    t_request_id provide(std::string uri,
-                         const json_object& options,
-                         result_cb on_result,
-                         rpc_cb on_invoke,
-                         void * data = nullptr);
-
-    /** Subscribe to a topic. The subscribed_cb callback is invoked upon success
+    /** Subscribe to a topic. The on_subscribed_fn callback is invoked upon success
      * or failure of the request. Subsequent topic updates which can follow a
-     * successful subscription are delivered via the subscription_event_cb
+     * successful subscription are delivered via the on_event_fn
      * callback.
      *
      * Note that while unadvised, a topic can be subscribed to more than once.
@@ -341,49 +405,45 @@ namespace wampcc {
      */
     t_request_id subscribe(std::string uri,
                            json_object options,
-                           subscribed_cb,
-                           subscription_event_cb cb,
+                           on_subscribed_fn,
+                           on_event_fn,
                            void * user = nullptr);
 
     /** Unsubscribe a subscription. The subscription is identified via its WAMP
      * subscription ID.  The unsubscribed_cb callback is invoked upon success or
      * failure of the request. */
     t_request_id unsubscribe(t_subscription_id,
-                             unsubscribed_cb,
+                             on_unsubscribed_fn,
                              void * user = nullptr);
 
+    /** Allow a caller application to request that a dealer should attempt to
+     * fulfill execution of a remote procedure.  A CALL message will be sent
+     * to the connected dealer.  The response of the request will be delivered
+     * via the callback function argument. */
     t_request_id call(std::string uri,
                       const json_object& options,
                       wamp_args args,
-                      wamp_call_result_cb user_cb,
+                      on_result_fn,
                       void* user_data = nullptr);
 
     t_request_id publish(std::string uri,
                          const json_object& options,
                          wamp_args args);
 
-    t_request_id invocation(uint64_t registration_id,
+    /** Allow a dealer application to request invocation of a callee
+     * procedure. An INVOCATION message will be send to the connected callee, to
+     * request execution of a procedure identified with the
+     * `registration_id`. The response from the request will be delivered via
+     * the callback function argument. */
+    t_request_id invocation(t_registration_id registration_id,
                             const json_object& options,
                             wamp_args args,
-                            wamp_invocation_reply_fn);
+                            on_yield_fn,
+                            void * user = nullptr);
 
-    /* Send a Registered response to the peer to indicate a Register request has
-     * been successfully fulfilled. The response should correspond to a previous
-     * Register request (the request_id of the originating request should be
-     * provided in 'orig_request_id').  */
-    void registered(t_request_id orig_request_id,
-                    uint64_t registration_id);
 
-    /* Send an Error response to the peer to indicate a Register request could
-     * not be fulfilled.  The response should correspond to a previous Register
-     * request (the request_id of the originating request should be provided in
-     * 'orig_request_id'). */
-    void register_error(t_request_id orig_request_id,
-                        json_object options,
-                        std::string error_uri);
-
-    /** Obtain the unique ID for the session. Values begin from 1. */
-    t_sid unique_id() const { return m_sid; }
+    /** Obtain the session's the unique ID. Values begin from 1. */
+    t_session_id unique_id() const { return m_sid; }
 
     /** Return the session mode, which indicates whether this session was
      * created and operates as a client or a server. */
@@ -397,7 +457,94 @@ namespace wampcc {
      * session has been closed. */
     std::shared_future<void> closed_future() const { return m_shfut_has_closed; }
 
-  private:;
+    /** Reply to a REGISTER request with a REGISTERED mesage to indicate the
+     * request is successful. The associated REGISTER request is provided via
+     * the request_id parameter. */
+    void registered(t_request_id request_id, t_registration_id);
+
+    //@{
+    /** Reply to a REGISTER request with an ERROR message to indicate the
+     * corresponding registration request could not be fulfilled. */
+    void register_error(t_request_id, std::string error);
+    void register_error(t_request_id, std::string error, json_object details);
+    //@}
+
+    /** Reply to a CALL request with a RESULT message to indicate success. */
+    void result(t_request_id);
+    void result(t_request_id, json_array);
+    void result(t_request_id, json_array, json_object);
+    void result(t_request_id, json_object details);
+    void result(t_request_id, json_object details, json_array);
+    void result(t_request_id, json_object details, json_array, json_object);
+
+    //@{
+    /** Reply to a CALL request with an ERROR message to indicate failure. */
+    void call_error(t_request_id, std::string error);
+    void call_error(t_request_id, std::string error, json_array);
+    void call_error(t_request_id, std::string error, json_array, json_object);
+    void call_error(t_request_id, std::string error, json_object details);
+    void call_error(t_request_id, std::string error, json_object details, json_array);
+    void call_error(t_request_id, std::string error, json_object details, json_array, json_object);
+    //@}
+
+    //@{
+    /** Reply to an INVOCATION request with a YIELD message to indicate the
+     * invocation has been successful. The request_id of the corresponding
+     * INVOCATION request must be provided. */
+    void yield(t_request_id);
+    void yield(t_request_id, json_array);
+    void yield(t_request_id, json_array, json_object);
+    void yield(t_request_id, json_object options);
+    void yield(t_request_id, json_object options, json_array);
+    void yield(t_request_id, json_object options, json_array, json_object);
+    //@}
+
+    //@{
+    /** Reply to an INVOCATION request with an ERROR message to indicate the
+     * invocation has failed. The request_id of the corresponding INVOCATION
+     * request must be provided. */
+    void invocation_error(t_request_id, std::string error);
+    void invocation_error(t_request_id, std::string error, json_array);
+    void invocation_error(t_request_id, std::string error, json_array, json_object);
+    void invocation_error(t_request_id, std::string error, json_object details);
+    void invocation_error(t_request_id, std::string error, json_object details, json_array);
+    void invocation_error(t_request_id, std::string error, json_object details, json_array, json_object);
+    //@}
+
+    /** Reply to a SUBSCRIBE request with a SUBSCRIBED message to indicate the
+     * subscription request has been successful. */
+    void subscribed(t_request_id, t_subscription_id);
+
+    //@{
+    /** Reply to a SUBSCRIBE request with an ERROR message to indicate the
+     * subscription request could not be fulfilled. */
+    void subscribe_error(t_request_id, std::string error);
+    void subscribe_error(t_request_id, std::string error, json_object details);
+    //@}
+
+    /** Reply to an UNSUBSCRIBE request with an UNSUBSCRIBED message to
+     * indicate the subscription request has been successful. */
+    void unsubscribed(t_request_id);
+
+    //@{
+    /** Reply to an UNSUBSCRIBE request with an ERROR message to indicate the
+     * unsubscription request could not be fulfilled. */
+    void unsubscribe_error(t_request_id, std::string error);
+    void unsubscribe_error(t_request_id, std::string error, json_object details);
+    //@}
+
+    /** Reply to a PUBLISH request with a PUBLISHED message to indicate the
+     * publication request has been successful. */
+    void published(t_request_id, t_publication_id);
+
+    //@{
+    /** Reply to a PUBLISH request with an ERROR message to indicate the
+     * publication request could not be fulfilled. */
+    void publish_error(t_request_id, std::string error);
+    void publish_error(t_request_id, std::string error, json_object details);
+    //@}
+
+  private:
 
     void proto_close(); // for tests
 
@@ -427,7 +574,7 @@ namespace wampcc {
 
     void update_state_for_outbound(const json_array& msg);
 
-    void send_msg(json_array&);
+    void send_msg(const json_array&);
 
     void upgrade_protocol(std::unique_ptr<protocol>&);
 
@@ -469,7 +616,7 @@ namespace wampcc {
     logger & __logger; /* name chosen for log macros */
     kernel* m_kernel;
 
-    uint64_t m_sid;
+    t_session_id m_sid;
     std::string m_log_prefix;
     std::unique_ptr< tcp_socket> m_socket;
 
@@ -512,9 +659,6 @@ namespace wampcc {
     void process_inbound_goodbye(json_array &);
     void process_inbound_abort(json_array &);
 
-    void invocation_yield(t_request_id request_id,
-                          wamp_args args);
-
     void reply_with_error(msg_type request_type,
                           t_request_id request_id,
                           wamp_args args,
@@ -535,47 +679,12 @@ namespace wampcc {
 
     server_msg_handler m_server_handler;
 
-    struct procedure
-    {
-      std::string uri;
-      result_cb on_result;
-      rpc_cb user_cb;
-      void * user_data;
-    };
-
-    struct subscribe_request
-    {
-      std::string uri;
-      subscribed_cb request_cb;
-      subscription_event_cb event_cb;
-      void * user_data;
-    };
-
-    struct unsubscribe_request
-    {
-      unsubscribed_cb request_cb;
-      t_subscription_id subscription_id;
-      void * user_datax;
-    };
-
-    struct subscription
-    {
-      subscription_event_cb event_cb;
-      void * user_data;
-    };
-
-    struct wamp_call
-    {
-      std::string rpc;
-      wamp_call_result_cb user_cb;
-      void* user_data;
-      wamp_call() : user_data( nullptr ) { }
-    };
-
-    struct wamp_invocation
-    {
-      wamp_invocation_reply_fn reply_fn;
-    };
+    struct procedure;
+    struct subscribe_request;
+    struct unsubscribe_request;
+    struct subscription;
+    struct wamp_call;
+    struct wamp_invocation;
 
     mutable std::mutex m_pending_lock;
     std::map<t_request_id, subscribe_request>   m_pending_subscribe;
@@ -586,7 +695,7 @@ namespace wampcc {
 
     // No locking required, since procedure and subscriptions managed only on EV
     // thread
-    std::map<t_request_id, procedure> m_procedures;
+    std::map<t_registration_id, procedure> m_procedures;
     std::map<t_subscription_id, subscription> m_subscriptions;
 
     std::unique_ptr<protocol> m_proto;

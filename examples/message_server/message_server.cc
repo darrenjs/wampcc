@@ -48,9 +48,9 @@ private:
   std::map<std::string, message_topic> m_topics;
   std::mutex m_topics_mutex;
 
-  void rpc_message_set(wampcc::wamp_invocation&);
-  void rpc_message_list(wampcc::wamp_invocation&);
-  void rpc_shutdown(wampcc::wamp_invocation&);
+  void rpc_message_set(wampcc::wamp_session&, wampcc::call_info&);
+  void rpc_message_list(wampcc::wamp_session&, wampcc::call_info&);
+  void rpc_shutdown();
 
   std::promise<void> m_shutdown_pomise;
   std::future<void>  m_shutdown_future;
@@ -80,10 +80,10 @@ message_server::message_server()
   };
   server_auth.user_secret = [](const std::string& /*user*/, const std::string& /*realm*/){ return "secret2"; };
 
-  // TODO: would be preferable to obtain an internal_session object, and use that to register the RPC's etc.
-  m_dealer->provide(m_public_realm,  "message_set",  {}, [this](wampcc::wamp_invocation& wi){rpc_message_set(wi); });
-  m_dealer->provide(m_public_realm,  "message_list", {}, [this](wampcc::wamp_invocation& wi){rpc_message_list(wi);});
-  m_dealer->provide(m_private_realm, "shutdown",     {}, [this](wampcc::wamp_invocation& wi){rpc_shutdown(wi);});
+
+  m_dealer->callable(m_public_realm,  "message_set", [this](wampcc::wamp_router&, wampcc::wamp_session& ws, wampcc::call_info info){ rpc_message_set(ws, info);  });
+  m_dealer->callable(m_public_realm,  "message_list", [this](wampcc::wamp_router&, wampcc::wamp_session& ws, wampcc::call_info info){ rpc_message_list(ws, info); });
+  m_dealer->callable(m_private_realm, "shutdown", [this](wampcc::wamp_router&, wampcc::wamp_session& ws, wampcc::call_info){ rpc_shutdown(); });
 
   int port = 55555;
   auto fut = m_dealer->listen("", std::to_string(port),
@@ -123,35 +123,35 @@ message_server::~message_server()
 }
 
 
-void message_server::rpc_shutdown(wampcc::wamp_invocation&)
+void message_server::rpc_shutdown()
 {
   m_shutdown_pomise.set_value();
 }
 
 
-void message_server::rpc_message_set(wampcc::wamp_invocation& invocation)
+void message_server::rpc_message_set(wampcc::wamp_session& caller,
+                                     wampcc::call_info& info)
 {
   /* Invoked on the wampcc EV thread */
 
   // Perform type checking of the received request
-  if (invocation.args.args_list.size() < 1)
+  if (info.args.args_list.size() < 1)
     throw std::runtime_error("missing message_key");
 
-  if (invocation.args.args_list[0].is_string() == false)
+  if (info.args.args_list[0].is_string() == false)
     throw std::runtime_error("message_key must be a string");
 
-  if (invocation.args.args_list.size() < 2)
+  if (info.args.args_list.size() < 2)
     throw std::runtime_error("missing value");
 
-  if (invocation.args.args_list[1].is_string() == false)
+  if (info.args.args_list[1].is_string() == false)
     throw std::runtime_error("value must be a string");
 
-  std::string key = invocation.args.args_list[0].as_string();
+  std::string key = info.args.args_list[0].as_string();
 
   wampcc::json_value topic_value;
-  if (invocation.args.args_list.size() > 1)
-    topic_value = invocation.args.args_list[1];
-
+  if (info.args.args_list.size() > 1)
+    topic_value = info.args.args_list[1];
 
   {
     std::lock_guard<std::mutex> guard(m_topics_mutex);
@@ -169,11 +169,12 @@ void message_server::rpc_message_set(wampcc::wamp_invocation& invocation)
       iter->second.data.assign(topic_value.as_string());
   }
 
-  invocation.yield({}, {});
+  caller.result(info.request_id);
 }
 
 
-void message_server::rpc_message_list(wampcc::wamp_invocation& invocation)
+void message_server::rpc_message_list(wampcc::wamp_session& caller, 
+                                      wampcc::call_info& info)
 {
   std::lock_guard<std::mutex> guard(m_topics_mutex);
 
@@ -183,7 +184,7 @@ void message_server::rpc_message_list(wampcc::wamp_invocation& invocation)
   for (auto const & item : m_topics)
     ja.push_back(item.first);
 
-  invocation.yield(ja, {});
+  caller.result(info.request_id);
 }
 
 

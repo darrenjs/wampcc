@@ -292,7 +292,7 @@ void perform_realm_logon(std::shared_ptr<wamp_session>&session,
   credentials.authmethods = {"wampcra"};
   credentials.secret_fn =  [=]() -> std::string { return "secret2"; };
 
-  session->initiate_hello(credentials);
+  session->hello(credentials);
 
   auto long_time = std::chrono::milliseconds(200);
 
@@ -305,7 +305,7 @@ void perform_realm_logon(std::shared_ptr<wamp_session>&session,
 
 
 enum class rpc_result_expect {nocheck, success, fail };
-wamp_call_result sync_rpc_all(std::shared_ptr<wamp_session>&session,
+result_info sync_rpc_all(std::shared_ptr<wamp_session>&session,
                               const char* rpc_name,
                               wamp_args call_args,
                               rpc_result_expect expect)
@@ -313,10 +313,10 @@ wamp_call_result sync_rpc_all(std::shared_ptr<wamp_session>&session,
   if (!session)
     throw std::runtime_error("sync_rpc_all: null session");
 
-  std::promise<wamp_call_result> result_prom;
-  std::future<wamp_call_result> result_fut = result_prom.get_future();
+  std::promise<result_info> result_prom;
+  std::future<result_info> result_fut = result_prom.get_future();
   session->call(rpc_name, {}, call_args,
-                [&result_prom](wamp_call_result r) {
+                [&result_prom](wamp_session&, result_info r) {
                   result_prom.set_value(r);
                 });
 
@@ -325,7 +325,7 @@ wamp_call_result sync_rpc_all(std::shared_ptr<wamp_session>&session,
   if (result_fut.wait_for(long_time) != std::future_status::ready)
     throw std::runtime_error("timeout waiting for RPC reply");
 
-  wamp_call_result result = result_fut.get();
+  result_info result = result_fut.get();
 
   if (expect==rpc_result_expect::success && result.was_error==true)
     throw std::runtime_error("expected call to succeed");

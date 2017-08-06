@@ -36,7 +36,7 @@ Here is what programming with *wampcc* looks like.
 
 Before a WAMP session can be established, a `tcp_socket` has to be created and connected to a WAMP router / dealer server.
 
-After the socket is successfully connected it is used to construct a `wamp_session`. Next the login sequence is initiated to establish the logical WAMP session.
+After the socket is successfully connected it is used to construct a `wamp_session`. Next the HELLO sequence is initiated to establish the logical WAMP session.
 
 All *wampcc* objects make use of a shared `kernel` object, which provides threads for event handling and socket IO.
 
@@ -59,7 +59,7 @@ if (!socket->is_connected())
 auto session = wamp_session::create<rawsocket_protocol>(
   &the_kernel, std::move(socket));
 
-session->initiate_hello({"default_realm"}).wait_for(std::chrono::seconds(3));
+session->hello({"default_realm"}).wait_for(std::chrono::seconds(3));
 
 if (!session->is_open())
   throw std::runtime_error("realm logon failed");
@@ -72,46 +72,54 @@ C++ lambda functions are used to handle the asynchronous result of a call reques
 This example shows a request to call a remote procedure named **math.service.add** with arguments **100** & **200**.
 
 ```c++
-session->call(
-  "math.service.add", {}, {{100,200},{}},
-  [](wamp_call_result result) {
-    if (result)
-      std::cout << "got result: " << result.args.args_list[0] << std::endl;
-  });
+session->call("math.service.add", {}, {{100, 200}, {}},
+              [](wampcc::wamp_session&, wampcc::result_info result) {
+                if (result)
+                  std::cout << "got result: " << result.args.args_list[0] << std::endl;
+              });
 ```
 
 **Registering a remote procedure**
+
 ```c++
-session->provide(
-  "math.service.add", {},
-  [](wamp_invocation& invoke){
-    int total = 0;
-    for (auto & item : invoke.args.args_list)
-      if (item.is_int())
-        total += item.as_int();
-    invoke.yield({total});
-  });
+session->provide("math.service.add", {},
+                 [](wamp_session&, registered_info info) {
+                   if (info)
+                     std::cout << "procedure registered with id "
+                               << info.registration_id << std::endl;
+                   else
+                     std::cout << "procedure registration failed, error "
+                               << info.error_uri << std::endl;
+                 },
+                 [](wamp_session& ws, invocation_info info) {
+                   int total = 0;
+                   for (auto& item : info.args.args_list)
+                     if (item.is_int())
+                       total += item.as_int();
+                   ws.yield(info.request_id, {total});
+                 });
 ```
 
 **Subscribing to a topic**
+
 ```c++
-session->subscribe(
-  "random_number", {},
-  [](wamp_subscribed& subscribed) {
-    std::cout << "subscribed " << (subscribed?"ok":"failed") << std::endl;
-  },
-  [](wamp_subscription_event ev) {
-    for (auto & x : ev.args.args_list)
-      std::cout << x << " ";
-    std::cout << std::endl;
-  });
+session->subscribe("random_number", {},
+                   [](wampcc::wamp_session&, subscribed_info& info) {
+                     std::cout << "subscribed "
+                               << (info ? "ok" : "failed")
+                               << std::endl;
+                   },
+                   [](wampcc::wamp_session&, event_info info) {
+                     for (auto& x : info.args.args_list)
+                       std::cout << "got update: " << x << " ";
+                     std::cout << std::endl;
+                   });
 ```
 
 **Publishing to a topic**
 ```c++
-std::srand(std::time(0)); //use current time as seed for random generator
 int random_variable = std::rand();
-session->publish("random_number", {}, {{random_variable},{}});
+session->publish("random_number", {}, {{random_variable}, {}});
 ```
 
 **Terminating a session**
@@ -142,12 +150,16 @@ if (auto ec = fut.get())
   throw runtime_error(ec.message());
 ```
 
-An individual RPC is provided by defining the realm & name through which it can be called by a WAMP session, together with the lambda function which does the actual work of yielding a response.
+An individual RPC is provided by defining the realm & name through which it can
+be called by a WAMP session, together with the lambda function which does the
+actual work of generating a call result.
 
 ```c++
-router.provide(
-    "default_realm", "greeting", {},
-    [](wamp_invocation& invocation) { invocation.yield({"hello"}); });
+router.callable(
+  "default_realm", "greeting",
+  [](wamp_router&, wamp_session& caller, call_info info) {
+    caller.result(info.request_id, {"hello"});
+  });
 ```
 
 The complete listing for these examples can be found at:

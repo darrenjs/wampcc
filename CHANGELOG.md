@@ -9,7 +9,9 @@ unreleased
 
 - sister project, jalson, now integrated into wampcc
 
-- api now includes: registered(), register_error()
+- large scale api refactor of wamp_session, to adopt a uniform approach
+  for interaction with user code, and to make the link clearer between api
+  calls and the underlying WAMP interaction
 
 ## Fixed
 
