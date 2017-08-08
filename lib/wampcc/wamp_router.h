@@ -113,7 +113,7 @@ private:
   void handle_inbound_call(wamp_session*,t_request_id,std::string&,
                            json_object&,wamp_args&);
 
-  void handle_session_state_change(std::weak_ptr<wamp_session>, bool);
+  void handle_session_state_change(wamp_session&, bool);
 
   void check_has_closed();
 

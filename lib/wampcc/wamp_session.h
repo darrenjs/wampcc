@@ -28,7 +28,7 @@ namespace wampcc {
   class tcp_socket;
   struct logger;
 
-  typedef std::function< void(std::weak_ptr<wamp_session>, bool) > state_fn;
+  typedef std::function<void(wamp_session&, bool)> state_fn;
 
   /** Handler interface for server-side authentication.  An instance of
    * auth_provider must be provided to each server-side wamp_session, which
@@ -429,6 +429,9 @@ namespace wampcc {
     t_request_id publish(std::string uri,
                          const json_object& options,
                          wamp_args args);
+
+    /** Allow a broker application to send an EVENT message. */
+    void event(t_subscription_id, t_publication_id, json_object details, wamp_args args);
 
     /** Allow a dealer application to request invocation of a callee
      * procedure. An INVOCATION message will be send to the connected callee, to

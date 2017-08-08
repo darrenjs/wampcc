@@ -188,18 +188,17 @@ void wamp_router::handle_inbound_call(
 }
 
 
-void wamp_router::handle_session_state_change(std::weak_ptr<wamp_session> wp,
+void wamp_router::handle_session_state_change(wamp_session& session,
                                               bool is_open)
 {
   /* EV thread */
-  if (auto session = wp.lock()) {
-    if (!is_open) {
-      m_rpcman->session_closed(session);
-      m_pubsub->session_closed(session);
+  if (!is_open) {
+    auto sp = session.shared_from_this();
+    m_rpcman->session_closed(sp);
+    m_pubsub->session_closed(sp);
 
-      std::lock_guard<std::mutex> guard(m_sessions_lock);
-      m_sessions.erase(session->unique_id());
-    }
+    std::lock_guard<std::mutex> guard(m_sessions_lock);
+    m_sessions.erase(session.unique_id());
   }
 }
 
@@ -306,7 +305,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
     std::shared_ptr<wamp_session> sp =
         wamp_session::create(m_kernel, std::move(sock),
-                             [this](std::weak_ptr<wamp_session> s, bool b) {
+                             [this](wamp_session&s, bool b) {
                                this->handle_session_state_change(s, b);
                              },
                              builder_fn, handlers, auth);

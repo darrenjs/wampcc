@@ -165,7 +165,7 @@ wamp_session::wamp_session(kernel* __kernel,
     m_next_request_id(1),
     m_auth_proivder(std::move(auth)),
     m_server_requires_auth(true), /* assume server requires auth by default */
-    m_notify_state_change_fn(state_cb),
+    m_notify_state_change_fn(std::move(state_cb)),
     m_server_handler(handler)
 {
   static_assert(sizeof(m_state)>1, "m_state not large enough");
@@ -900,7 +900,7 @@ void wamp_session::notify_session_open()
   /* EV thread */
 
   if (m_notify_state_change_fn)
-    m_notify_state_change_fn(shared_from_this(), true /* session is open */);
+    m_notify_state_change_fn(*this, true /* session is open */);
 
   m_promise_on_open.set_value();
 }
@@ -1944,14 +1944,14 @@ void wamp_session::transition_to_closed()
   }
 
   // The order of invoking the user callback and setting the has-closed promise
-  // is deliberately chosen here.  The promise assignment must be last, so that
-  // user can rely on it to indicate when all wamp_session callbacks into user
-  // code have been complete. But it also implies that during the user callback,
-  // the has-closed future cannot be waited on; that would be a programming
-  // error.
+  // is deliberately chosen here.  The promise 'set_value' must be the later
+  // action, so that user can rely on it to indicate when all wamp_session
+  // callbacks into user code have been complete. But it also implies that
+  // during the user callback, the has-closed future cannot be waited on; that
+  // would be a programming error.
 
   try {
-    m_notify_state_change_fn(shared_from_this(), false);
+    m_notify_state_change_fn(*this, false);
   }
   catch (...) {
     /* ignore */
@@ -2317,5 +2317,14 @@ void wamp_session::publish_error(t_request_id id, std::string uri, json_object d
         id, std::move(details), std::move(uri)});
 }
 
+void wamp_session::event(t_subscription_id sub_id, t_publication_id pub_id, json_object details, wamp_args args)
+{
+  json_array msg {msg_type::wamp_msg_event, sub_id, pub_id,
+      std::move(details),
+      std::move(args.args_list),
+      std::move(args.args_dict)};
+
+  send_msg( std::move(msg) );
+}
 
 } // namespace wampcc

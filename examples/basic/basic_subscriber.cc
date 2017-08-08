@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     std::shared_ptr<wampcc::wamp_session> session = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
       the_kernel.get(),
       std::move(sock),
-      [&](wampcc::session_handle, bool is_open){
+      [&](wampcc::wamp_session&, bool is_open){
         if (!is_open)
           try {
             std::lock_guard<std::mutex> guard(session_closed_mutex);

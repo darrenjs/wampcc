@@ -101,7 +101,7 @@ public:
                                std::to_string(ec.os_value()) + ", " +
                                ec.message());
 
-    auto on_session_state = [this](wampcc::session_handle, bool is_open) {
+    auto on_session_state = [this](wampcc::wamp_session&, bool is_open) {
       if (!is_open)
         try {
           this->can_exit.set_value(0);

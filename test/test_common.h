@@ -164,9 +164,7 @@ private:
 enum class callback_status_t {
   not_invoked,
   close_with_sp,
-  close_without_sp,
   open_with_sp,
-  open_without_sp
 } callback_status;
 
 
@@ -180,20 +178,14 @@ std::future<callback_status_t> reset_callback_result()
 
 
 
-void session_cb(std::weak_ptr<wamp_session> wp, bool is_open)
+void session_cb(wamp_session& ws, bool is_open)
 {
   if (is_open == false) {
-    if (auto sp = wp.lock())
-      callback_status = callback_status_t::close_with_sp;
-    else
-      callback_status = callback_status_t::close_without_sp;
+    callback_status = callback_status_t::close_with_sp;
   }
   else
   {
-    if (auto sp = wp.lock())
-      callback_status = callback_status_t::open_with_sp;
-    else
-      callback_status = callback_status_t::open_without_sp;
+    callback_status = callback_status_t::open_with_sp;
   }
 
   if (sessioncb_promise)

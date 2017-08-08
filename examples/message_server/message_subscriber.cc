@@ -104,7 +104,7 @@ int main_impl(int argc, char** argv)
       session = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
         &the_kernel,
         std::move(sock),
-        [&promise_on_close](wampcc::session_handle, bool is_open)
+        [&promise_on_close](wampcc::wamp_session&, bool is_open)
         {
           if (!is_open)
             promise_on_close.set_value();

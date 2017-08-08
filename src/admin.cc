@@ -413,9 +413,8 @@ int main_impl(int argc, char** argv)
       ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(
         g_kernel.get(),
         std::move(sock),
-        [](wampcc::session_handle wp, bool is_open) {
-          if (auto sp = wp.lock())
-            session_state_cb(is_open);
+        [](wampcc::wamp_session&, bool is_open) {
+          session_state_cb(is_open);
         }, proto_opts);
       break;
     }
@@ -426,8 +425,7 @@ int main_impl(int argc, char** argv)
       ws = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
         g_kernel.get(),
         std::move(sock),
-        [](wampcc::session_handle wp, bool is_open) {
-          if (auto sp = wp.lock())
+        [](wampcc::wamp_session&, bool is_open) {
             session_state_cb(is_open);
         }, proto_opts);
       break;
