@@ -290,8 +290,66 @@ namespace wampcc {
   };
 
 
-  /** Represent a wamp session.
-   */
+  /**
+  Provides a WAMP session that supports both client and server roles.
+
+  This class provides an API for sending both client-side and server-side WAMP
+  message requests and handling peer responses and requests. Communication with
+  the peer uses an internal transport object and messages are serialised using a
+  protcol that is selected at object creation.
+
+  State-management
+  ----------------
+
+  A wamp_session is initially constructed using a transport object
+  (e.g. tcp_socket or ssl_socket) that has recently established connection to
+  the peer.  Initially the session is not logically open; it needs to progress
+  though the WAMP session establishment sequence, optionally including
+  authentication, before is deemed open and ready to send and receive messages.
+  A client initiates the establishment sequence by calling `hello()`; when the
+  sequence completes, successfully or unsuccessfully, the owner is notified via
+  the state_fn callback.
+
+  The `is_open()` method indicates if the logical session is open, allowing WAMP
+  message requests to be made.
+
+  Callbacks & threading
+  ---------------------
+
+  A wamp_session is a source of solicited and unsolicited callbacks,
+  corresponding to state changes, asynchronous replies and peer requests.
+  Callbacks must be specified at wamp_session creation and when making requests.
+
+  Such callbacks are always delivered on the event thread owned by the wampcc
+  kernel. The owner must assume a callback can be made at any time, up until the
+  session has closed.
+
+  Disposal
+  --------
+
+  A wamp_session instance is managed by std::shared_ptr. In addition to the
+  shared_ptr instances held by the owner, the wampcc event thead will
+  temporarily acquire a shared_ptr for the duration of a callback.
+
+  A wamp_session that is no longer needed can be disposed of by releasing all
+  managing shared_ptr objects. At this time other resources associated with the
+  instance may also be released, typically these are the objects captured by the
+  callback lambda functions.
+
+  Prior to disposal of the wamp_session and associated resources, the owner
+  _must_ ensure that no callbacks are either underway or imminent. Callbacks
+  that occur after resources have been released results in undefined behaviour.
+
+  To ensure callbacks are complete before commencing disposal, the owner should
+  wait on the std::future returned by `closed_future()`.  This wait _must not_
+  be performed during an event callback, doing so would cause self-deadlock (the
+  event thread cannot wait for itself). The closed-future is also returned by
+  `close()`, which additionally initiates closure of the session if not already
+  closed.
+
+  The `is_closed()` method indicates if the session is logically closed and
+  callbacks are complete.
+  */
   class wamp_session : public std::enable_shared_from_this<wamp_session>
   {
   public:
@@ -364,10 +422,13 @@ namespace wampcc {
      * publishing to topics. */
     bool is_open() const;
 
-    /** Determine if session is completey closed.  Note that intermediate states
-     * (such as closing, closing_wait etc) will return false.  Only use
-     * is_closed() to determine final session closure.  This function is not
-     * equivalent to is_open() == false. */
+    /** Determine if this session is in the closed state.  The closed state
+     * implies the underlying network transport has closed, the logical-session
+     * has ended, and that this instance will make no further callbacks into
+     * owner code (via the callbacks earlier registered).  Only when a session
+     * has reached the closed state should its owner attempt to reset or delete
+     * the managing shared_ptr, and dispose of any resources associated with the
+     * callbacks.  This function is not equivalent to is_open() == false. */
     bool is_closed() const;
 
     bool is_pending_open() const;
