@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     /* Logon to a WAMP realm, and wait for session to be deemed open. */
 
     client_credentials credentials;
-    credentials.realm="com.bam.prod";
+    credentials.realm="default_realm";
     credentials.authid="peter";
     credentials.authmethods = {"wampcra"};
     credentials.secret_fn = []() -> std::string { return "secret2"; };

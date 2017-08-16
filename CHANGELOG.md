@@ -5,6 +5,8 @@ unreleased
 
 - websocket listener replies with http 200 on receiving health check
 
+- basic example of using SSL to connect to WSS
+
 ## Changed
 
 - sister project, jalson, now integrated into wampcc

@@ -49,7 +49,7 @@ public:
   /** Post a timer function which is invoked after the elapsed time. */
   void dispatch(std::chrono::milliseconds, timer_fn fn);
 
-  /** Determine whether the callee thread is the EV thread. */
+  /** Determine whether the current thread is the EV thread. */
   bool this_thread_is_ev() const;
 
 private:
