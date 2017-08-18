@@ -171,7 +171,5 @@ json/examples/manual_tests/Makefile
 json/tests/Makefile
 ])
 
-AC_CONFIG_SUBDIRS([jalson])
-
 # Trigger the generation of our makefiles
 AC_OUTPUT
