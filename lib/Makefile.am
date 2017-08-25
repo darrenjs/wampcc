@@ -6,7 +6,7 @@
 #
 
 AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)						\
--I$(top_srcdir)/external/websocketpp -I$(top_srcdir)/external -I$(jalsoninc)	\
+-I$(top_srcdir)/3rdparty/websocketpp  -I$(jalsoninc)	\
 $(libuvinc)
 
 AM_LDFLAGS=-lpthread
@@ -31,8 +31,8 @@ wampcc/error.h wampcc/wampcc.h wampcc/ssl_socket.h wampcc/version.h
 libwampcc_la_SOURCES = platform.cc websocketpp_impl.cc websocket_protocol.cc	\
 ssl.cc ssl_socket.cc tcp_socket.cc wamp_session.cc wamp_router.cc event_loop.cc	\
 io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc protocol.cc				\
-rawsocket_protocol.cc ../external/http_parser/http_parser.c http_parser.cc		\
-data_model.cc error.cc ../external/apache/base64.c
+rawsocket_protocol.cc ../3rdparty/http_parser/http_parser.c http_parser.cc		\
+data_model.cc error.cc ../3rdparty/apache/base64.c
 
 # Include compile and link flags for an individual library.
 #

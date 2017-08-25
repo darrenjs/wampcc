@@ -14,7 +14,7 @@
 #include "wampcc/log_macros.h"
 #include "wampcc/websocketpp_impl.h"
 
-#include "apache/base64.h"
+#include "3rdparty/apache/base64.h"
 
 #include <string.h>
 #include <assert.h>
@@ -238,7 +238,7 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             m_socket->write(http_200_response.c_str(), http_200_response.size());
             m_state = state::closed;
 
-            // request session closure after delay, gives time of peer to close, and 
+            // request session closure after delay, gives time of peer to close, and
             // for message to be fully written
             m_callbacks.protocol_closed(std::chrono::milliseconds(3000));
           }

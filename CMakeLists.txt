@@ -43,8 +43,8 @@ include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${LIBUV_DIR}/include)
 
-include_directories(${PROJECT_SOURCE_DIR}/external/websocketpp)
-include_directories(${PROJECT_SOURCE_DIR}/external)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty/websocketpp)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
 
 ##
 ## Platform checks, and generate config.h
@@ -81,10 +81,10 @@ if(NOT HAVE_LIBUV)
 endif()
 
 # check websocketpp is available in the source tree
-set(websocketpp "${PROJECT_SOURCE_DIR}/external/websocketpp/websocketpp/message_buffer/message.hpp")
+set(websocketpp "${PROJECT_SOURCE_DIR}/3rdparty/websocketpp/websocketpp/message_buffer/message.hpp")
 message(STATUS "checking for ${websocketpp}")
 if(NOT EXISTS "${websocketpp}")
-  message(FATAL_ERROR "websocketpp header not found! Check websocketpp unzipped under external/")
+  message(FATAL_ERROR "websocketpp header not found! Check websocketpp unzipped under 3rdparty/")
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
@@ -96,8 +96,8 @@ endif()
 set(LIB_EXTNL_SLRE_SRC_FILES)
 file(GLOB HDR_FILES ${PROJECT_SOURCE_DIR}/lib/wampcc/*.h)
 file(GLOB LIB_MAIN_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/*.cc)
-file(GLOB LIB_EXTNL_HTTPPARSER_SRC_FILES ${PROJECT_SOURCE_DIR}/external/http_parser/*.c)
-file(GLOB LIB_EXTNL_APACH_SRC_FILES ${PROJECT_SOURCE_DIR}/external/apache/*.c)
+file(GLOB LIB_EXTNL_HTTPPARSER_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/http_parser/*.c)
+file(GLOB LIB_EXTNL_APACH_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/apache/*.c)
 file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cc)
 
 # list of wampcc & wampcc_json headers file to install
@@ -126,10 +126,10 @@ link_directories(${INSTALL_LIB_DIR} ${LIBUV_DIR}/lib ${JANSSON_DIR}/lib)
 ##
 
 # check msgpack is available in the source tree
-set(msgpackfile "${PROJECT_SOURCE_DIR}/external/msgpack-c/include/msgpack.h")
+set(msgpackfile "${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include/msgpack.h")
 message(STATUS "checking for ${msgpackfile}")
 if(NOT EXISTS "${msgpackfile}")
-  message(FATAL_ERROR "msgpack header not found! Check msgpack unzipped under external/")
+  message(FATAL_ERROR "msgpack header not found! Check msgpack unzipped under 3rdparty/")
 endif()
 
 # source files
@@ -138,7 +138,7 @@ file(GLOB WAMPCC_JSON_SRC_FILES ${PROJECT_SOURCE_DIR}/json/src/*.cc)
 add_library(wampcc_json_static STATIC ${WAMPCC_JSON_SRC_FILES})
 set_target_properties(wampcc_json_static PROPERTIES OUTPUT_NAME wampcc_json)
 target_include_directories(wampcc_json_static
-                           PRIVATE ${PROJECT_SOURCE_DIR}/external/msgpack-c/include
+                           PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
                            ${JANSSON_DIR}/include )
 
 list(APPEND TO_INSTALL wampcc_json_static)
@@ -147,7 +147,7 @@ if(CMAKE_HOST_UNIX)
   add_library(wampcc_json_shared SHARED ${WAMPCC_JSON_SRC_FILES})
   set_target_properties(wampcc_json_shared PROPERTIES OUTPUT_NAME wampcc_json)
   target_include_directories(wampcc_json_shared
-                             PRIVATE ${PROJECT_SOURCE_DIR}/external/msgpack-c/include
+                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
                              ${JANSSON_DIR}/include )
   list(APPEND TO_INSTALL wampcc_json_shared)
 endif()

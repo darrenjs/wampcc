@@ -73,7 +73,7 @@ This example shows a request to call a remote procedure named **math.service.add
 
 ```c++
 session->call("math.service.add", {}, {{100, 200}, {}},
-              [](wamp_session&, result_info result) {
+              [](wampcc::wamp_session&, wampcc::result_info result) {
                 if (result)
                   std::cout << "got result: " << result.args.args_list[0] << std::endl;
               });
@@ -104,12 +104,12 @@ session->provide("math.service.add", {},
 
 ```c++
 session->subscribe("random_number", {},
-                   [](wamp_session&, subscribed_info& info) {
+                   [](wampcc::wamp_session&, subscribed_info& info) {
                      std::cout << "subscribed "
                                << (info ? "ok" : "failed")
                                << std::endl;
                    },
-                   [](wamp_session&, event_info info) {
+                   [](wampcc::wamp_session&, event_info info) {
                      for (auto& x : info.args.args_list)
                        std::cout << "got update: " << x << " ";
                      std::cout << std::endl;
@@ -204,14 +204,8 @@ git clone https://github.com/darrenjs/wampcc.git
 
 This will fetch the source files directly from github and place them in a directory named `wampcc/`.
 
-Additional source files are contained in a separate project named **jalson**, which provides the *wampcc* json types.  To obtain these sources run the `fetch_prerequisites.sh` script:
 
-```bash
-cd wampcc/
-./fetch_prerequisites.sh
-```
-
-Assuming no download problems the additional files can be found in the `jalson/` sub-directory.
+Some third party code is directly integrated into `wampcc`, and are compiled alongside   `wampcc` source code.  For convenience these are stored in the `3rdparty` directory; no additional download step is required to obtain them.
 
 **Source configuration**
 
