@@ -651,6 +651,12 @@ std::future<uverr> tcp_socket::listen_impl(const std::string& node,
   assert(m_accept_fn == nullptr);
   m_accept_fn = std::move(accept_fn);
 
+  {
+    std::lock_guard<std::mutex> guard(m_details_lock);
+    m_node = node;
+    m_service = service;
+  }
+
   auto completion_promise = std::make_shared<std::promise<uverr>>();
 
   m_kernel->get_io()->push_fn([this, node, service, af, completion_promise]() {
@@ -794,6 +800,12 @@ std::future<uverr> tcp_socket::connect(const std::string& node,
       throw tcp_socket::error("tcp_socket::connect() when already initialised");
 
     m_state = socket_state::connecting;
+  }
+
+  {
+    std::lock_guard<std::mutex> guard(m_details_lock);
+    m_node = node;
+    m_service = service;
   }
 
   auto completion_promise = std::make_shared<std::promise<uverr>>();
@@ -952,5 +964,19 @@ tcp_socket* tcp_socket::create(kernel* k, uv_tcp_t* h, socket_state s)
 {
   return new tcp_socket(k, h, s);
 }
+
+const std::string& tcp_socket::node() const
+{
+  std::lock_guard<std::mutex> guard(m_details_lock);
+  return m_node;
+}
+
+const std::string& tcp_socket::service() const
+{
+  std::lock_guard<std::mutex> guard(m_details_lock);
+  return m_service;
+}
+
+
 
 } // namespace wampcc

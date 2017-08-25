@@ -318,8 +318,19 @@ void websocket_protocol::initiate(t_initiate_cb cb)
     "Pragma: no-cache\r\n"
     "Cache-Control: no-cache\r\n"
     "Upgrade: websocket\r\n"
-    "Connection: Upgrade\r\n"
-    "Host: " << m_options.connect_host << ":" << m_options.connect_port <<  "\r\n"
+    "Connection: Upgrade\r\n";
+  switch (m_options.host_header) {
+    case options::host_header_mode::automatic : {
+      oss << "Host: " << m_socket->node() << ":" << m_socket->service() << "\r\n";
+      break;
+    }
+    case options::host_header_mode::custom : {
+      oss << "Host: " << m_options.custom_host_header << "\r\n";
+      break;
+    }
+    case options::host_header_mode::omit : /* nothing to add to header */ break;
+  }
+  oss <<
     "Origin: " << hostname() << "\r\n"
     "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
     "Sec-WebSocket-Protocol: ";

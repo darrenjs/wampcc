@@ -15,9 +15,10 @@ unreleased
   for interaction with user code, and to make the link clearer between api
   calls and the underlying WAMP interaction
 
-## Fixed
+- websocket protocol automatically adds http Host: header -- often
+  required by other wamp providers or gateways
 
-- 'Host' http header not being populated by admin program
+## Fixed
 
 - cmake build supported on linux
 

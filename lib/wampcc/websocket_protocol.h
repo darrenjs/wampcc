@@ -24,9 +24,16 @@ class websocket_protocol : public protocol
 public:
 
   struct options : public protocol::options {
-    options() = default;
-    options(protocol::options rhs)
-      : protocol::options(rhs) { }
+    options()
+      : host_header(host_header_mode::automatic){ }
+
+    /** Construct from a base class instance */
+    options(const protocol::options& rhs)
+      : protocol::options(rhs),
+        host_header(host_header_mode::automatic){ }
+
+    enum class host_header_mode {automatic = 0, custom, omit} host_header;
+    std::string custom_host_header;
   };
 
   static constexpr const char* NAME = "websocket";

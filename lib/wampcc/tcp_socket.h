@@ -124,6 +124,12 @@ public:
   size_t bytes_read() const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }
 
+  /** Return endpoint address associated with socket */
+  const std::string& node() const;
+
+  /** Return endpoint port or service associated with socket */
+  const std::string& service() const;
+
 protected:
 
   enum class socket_state {
@@ -161,6 +167,10 @@ protected:
 
   socket_state m_state;
   mutable std::mutex m_state_lock;
+
+  mutable std::mutex m_details_lock;
+  std::string m_node;
+  std::string m_service;
 
 private:
   void close_impl();

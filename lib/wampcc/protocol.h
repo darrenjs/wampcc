@@ -142,9 +142,6 @@ public:
   {
     static const std::chrono::seconds default_ping_interval;
 
-    std::string connect_host;
-    std::string connect_port;
-
     int serialisers; /* mask of enum serialiser_type bits */
 
     std::chrono::milliseconds ping_interval; /* 0 for no heartbeats */
