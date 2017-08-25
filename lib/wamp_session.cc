@@ -241,10 +241,25 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
     }
   };
 
-  auto protocol_closed_fn = [rawptr](){
+  auto protocol_closed_fn = [rawptr](std::chrono::milliseconds delay){
     /* IO thread */
-    std::lock_guard<std::mutex> guard(rawptr->m_state_lock);
-    rawptr->drop_connection_impl("protocol_closed", guard, close_event::protocol_closed);
+    if (delay.count() == 0) {
+      std::lock_guard<std::mutex> guard(rawptr->m_state_lock);
+      rawptr->drop_connection_impl("protocol_closed", guard, close_event::protocol_closed);
+    }
+    else {
+      std::weak_ptr<wamp_session> wp = rawptr->handle();
+      /* implement delay before requesting session closure */
+      auto fn = [wp]() mutable -> std::chrono::milliseconds
+      {
+        if (auto sp = wp.lock()) {
+          std::lock_guard<std::mutex> guard(sp->m_state_lock);
+          sp->drop_connection_impl("protocol_closed", guard, close_event::protocol_closed);
+        }
+        return std::chrono::milliseconds(0);
+      };
+      rawptr->m_kernel->get_event_loop()->dispatch(delay, std::move(fn));
+    }
   };
 
   // Create the protocol, using the builder function passed in. Here we use only

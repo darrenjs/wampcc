@@ -140,7 +140,7 @@ public:
 
   struct options
   {
-    static const std::chrono::seconds default_ping_interval; /* 10 sec*/
+    static const std::chrono::seconds default_ping_interval;
 
     std::string connect_host;
     std::string connect_port;
@@ -160,7 +160,7 @@ public:
   {
     std::function<void(std::unique_ptr<protocol>&)> upgrade_protocol;
     std::function<void(std::chrono::milliseconds)>  request_timer;
-    std::function<void()> protocol_closed;
+    std::function<void(std::chrono::milliseconds)> protocol_closed;
   };
 
   typedef std::function<void(json_array msg,  json_uint_t msgtype)> t_msg_cb;

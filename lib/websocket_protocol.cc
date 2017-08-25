@@ -237,7 +237,10 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             LOG_TRACE("fd: " << fd() << ", http_tx: " << http_200_response);
             m_socket->write(http_200_response.c_str(), http_200_response.size());
             m_state = state::closed;
-            m_callbacks.protocol_closed();
+
+            // request session closure after delay, gives time of peer to close, and 
+            // for message to be fully written
+            m_callbacks.protocol_closed(std::chrono::milliseconds(3000));
           }
           else
             throw handshake_error("http header is not a websocket upgrade");
@@ -466,13 +469,13 @@ void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
         if (m_state == state::closing) {
           // sent & received close-frame, so protocol closed
           m_state = state::closed;
-          m_callbacks.protocol_closed();
+          m_callbacks.protocol_closed(std::chrono::milliseconds(0));
         }
         if (m_state == state::open) {
           // received & sending close-frame, so protocol closed
           send_close(websocketpp::close::status::normal, "");
           m_state = state::closed;
-          m_callbacks.protocol_closed();
+          m_callbacks.protocol_closed(std::chrono::milliseconds(0));
         }
       }
     }
