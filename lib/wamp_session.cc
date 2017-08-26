@@ -151,7 +151,8 @@ wamp_session::wamp_session(kernel* __kernel,
                            std::unique_ptr<tcp_socket> h,
                            state_fn state_cb,
                            server_msg_handler handler,
-                           auth_provider auth)
+                           auth_provider auth,
+                           wamp_session::options opts)
   : m_state( state::init ),
     __logger(__kernel->get_logger()),
     m_kernel(__kernel),
@@ -166,7 +167,8 @@ wamp_session::wamp_session(kernel* __kernel,
     m_auth_proivder(std::move(auth)),
     m_server_requires_auth(true), /* assume server requires auth by default */
     m_notify_state_change_fn(std::move(state_cb)),
-    m_server_handler(handler)
+    m_server_handler(handler),
+    m_options(std::move(opts))
 {
   static_assert(sizeof(m_state)>1, "m_state not large enough");
 }
@@ -178,10 +180,11 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    state_fn state_cb,
                                                    protocol_builder_fn protocol_builder,
                                                    server_msg_handler handler,
-                                                   auth_provider auth)
+                                                   auth_provider auth,
+                                                   wamp_session::options session_opts)
 {
   return create_impl(k, mode::server, std::move(sock),
-                     state_cb, protocol_builder, handler, auth);
+                     state_cb, protocol_builder, handler, auth, std::move(session_opts));
 }
 
 
@@ -191,14 +194,15 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
                                                         state_fn state_cb,
                                                         protocol_builder_fn protocol_builder,
                                                         server_msg_handler handler,
-                                                        auth_provider auth)
+                                                        auth_provider auth,
+                                                        wamp_session::options session_opts)
 {
   // Create the new wamp_session, and also, create the first shared_ptr to the
   // wamp_session.  Creating the shared_ptr is particularly important, since
   // this initialised the internal shared_ptr inside the wamp_session object
   // (since it inherits from enable_shared_from_this).
   std::shared_ptr<wamp_session> sp(
-    new wamp_session(k, conn_mode, std::move(sock), state_cb, handler, auth)
+    new wamp_session(k, conn_mode, std::move(sock), state_cb, handler, auth, std::move(session_opts))
       );
 
   wamp_session* rawptr = sp.get(); // rawptr, for capture in lambdas
@@ -284,18 +288,20 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
 
   // set up a timer to expire this session if it has not been successfully
   // opened within a maximum time duration
-  std::weak_ptr<wamp_session> wp = sp;
-  k->get_event_loop()->dispatch(
-    sp->m_options.max_pending_open,
-    [wp]()
-    {
-      if (auto sp = wp.lock())
+  if (sp->m_options.max_pending_open.count()) {
+    std::weak_ptr<wamp_session> wp = sp;
+    k->get_event_loop()->dispatch(
+      sp->m_options.max_pending_open,
+      [wp]()
       {
-        if (sp->is_pending_open())
-          sp->drop_connection("wamp.error.logon_timeout");
-      }
-      return std::chrono::milliseconds(0);
-    });
+        if (auto sp = wp.lock())
+        {
+          if (sp->is_pending_open())
+            sp->drop_connection("wamp.error.logon_timeout");
+        }
+        return std::chrono::milliseconds(0);
+      });
+  }
 
   return sp;
 }

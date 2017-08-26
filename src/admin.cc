@@ -403,6 +403,9 @@ int main_impl(int argc, char** argv)
 
   auto ping_interval = wampcc::protocol::options::default_ping_interval;
 
+  wampcc::wamp_session::options session_opts;
+  session_opts.max_pending_open = uopts.timeout;
+
   switch (uopts.session_transport) {
     case user_options::transport::websocket: {
       wampcc::websocket_protocol::options proto_opts;
@@ -413,7 +416,7 @@ int main_impl(int argc, char** argv)
         std::move(sock),
         [](wampcc::wamp_session&, bool is_open) {
           session_state_cb(is_open);
-        }, proto_opts);
+        }, proto_opts, session_opts);
       break;
     }
     case user_options::transport::rawsocket: {
@@ -425,7 +428,7 @@ int main_impl(int argc, char** argv)
         std::move(sock),
         [](wampcc::wamp_session&, bool is_open) {
             session_state_cb(is_open);
-        }, proto_opts);
+        }, proto_opts,session_opts);
       break;
     }
   }

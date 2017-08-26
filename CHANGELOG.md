@@ -18,6 +18,8 @@ unreleased
 - websocket protocol automatically adds http Host: header -- often
   required by other wamp providers or gateways
 
+- timeout duration for logon increased from 10 to 30, also now configurable
+
 ## Fixed
 
 - cmake build supported on linux

@@ -356,7 +356,14 @@ namespace wampcc {
 
     struct options
     {
-      std::chrono::milliseconds max_pending_open { 10000 };
+      /* Duration to wait for succesful session logon. If logon is not achieved
+       * before duration expires, session will be automatically closed. Default
+       * value is high, due to often slow nature of websocket gateways. Zero
+       * suppresses this check. */
+      std::chrono::milliseconds max_pending_open;
+
+      options()
+        : max_pending_open(30000) {}
     };
 
     enum class mode {client, server};
@@ -368,7 +375,8 @@ namespace wampcc {
                                                 state_fn,
                                                 protocol_builder_fn,
                                                 server_msg_handler,
-                                                auth_provider);
+                                                auth_provider,
+                                                options = options());
 
     /** Create a client-mode session (i.e., the socket was actively connected to
      * a remote server) using a protocol class as specified via the template
@@ -377,7 +385,8 @@ namespace wampcc {
     static std::shared_ptr<wamp_session> create(kernel* k,
                                                 std::unique_ptr<tcp_socket> socket,
                                                 state_fn state_cb = nullptr,
-                                                typename T::options protocol_options = {})
+                                                typename T::options protocol_options = {},
+                                                wamp_session::options session_opts = {})
     {
       protocol_builder_fn factory_fn;
       factory_fn = [protocol_options, k](tcp_socket* socket,
@@ -392,7 +401,8 @@ namespace wampcc {
         };
 
       return wamp_session::create_impl(k, mode::client, std::move(socket),
-                                       state_cb, factory_fn, server_msg_handler(), auth_provider());
+                                       state_cb, factory_fn, server_msg_handler(), auth_provider(),
+                                       session_opts);
     }
 
     /** Should be called for client-mode instances immediately following
@@ -618,14 +628,16 @@ namespace wampcc {
                                                      state_fn,
                                                      protocol_builder_fn ,
                                                      server_msg_handler,
-                                                     auth_provider);
+                                                     auth_provider,
+                                                     wamp_session::options);
 
     wamp_session(kernel*,
                  mode,
                  std::unique_ptr<tcp_socket>,
                  state_fn,
                  server_msg_handler,
-                 auth_provider);
+                 auth_provider,
+                 wamp_session::options);
 
     wamp_session(const wamp_session&) = delete;
     wamp_session& operator=(const wamp_session&) = delete;
