@@ -98,7 +98,7 @@ file(GLOB HDR_FILES ${PROJECT_SOURCE_DIR}/lib/wampcc/*.h)
 file(GLOB LIB_MAIN_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/*.cc)
 file(GLOB LIB_EXTNL_HTTPPARSER_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/http_parser/*.c)
 file(GLOB LIB_EXTNL_APACH_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/apache/*.c)
-file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/src/*.cc)
+file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/utils/*.cc)
 
 # list of wampcc & wampcc_json headers file to install
 set(INSTALL_HDRS

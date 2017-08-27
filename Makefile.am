@@ -6,4 +6,4 @@
 # defined in Makefile.am.
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = json lib src test examples
+SUBDIRS = json lib utils test examples

@@ -161,7 +161,7 @@ AM_CONDITIONAL([USE_ADMINSTATIC], [test x"$enable_adminstatic" = x"yes" ])
 # automake will generate from the corresponding Makefile.am
 AC_CONFIG_FILES([
 Makefile
-src/Makefile
+utils/Makefile
 lib/Makefile
 test/Makefile
 examples/Makefile
