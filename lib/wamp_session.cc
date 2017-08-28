@@ -762,7 +762,7 @@ void wamp_session::handle_HELLO(json_array& ja)
                      "no auth methods available");
 
   /* For now the only supported method is 'wampcra'. */
-  if (intersect.find("wampcra") == intersect.end())
+  if (intersect.find(WAMP_WAMPCRA) == intersect.end())
     throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
                      "wampcra not available for both client and server");
 
@@ -774,7 +774,7 @@ void wamp_session::handle_HELLO(json_array& ja)
   challenge["authid"] = authid;
   challenge["timestamp"] = iso8601_utc_timestamp();
   challenge["authrole"] = "user";
-  challenge["authmethod"] = "wampcra";
+  challenge["authmethod"] = WAMP_WAMPCRA;
   challenge["session"] = std::to_string( unique_id() );
   std::string challengestr = json_encode( challenge );
 
@@ -789,7 +789,7 @@ void wamp_session::handle_HELLO(json_array& ja)
 
   json_array msg({
     msg_type::wamp_msg_challenge,
-    "wampcra",
+    WAMP_WAMPCRA,
     json_object({{"challenge", std::move(challengestr)}})});
   send_msg( msg );
 }
@@ -808,7 +808,7 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
     throw protocol_error("Extra must be dict");
 
   const std::string& authmethod = ja[1].as_string();
-  if (authmethod != "wampcra")
+  if (authmethod != WAMP_WAMPCRA)
     throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
                      "unknown AuthMethod (only wampcra supported)");
 

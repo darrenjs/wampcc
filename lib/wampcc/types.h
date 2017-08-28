@@ -43,6 +43,9 @@ namespace wampcc
 #define WAMP_ERROR_BAD_PROTOCOL "wamp.error.bad_protocol"
 #define WAMP_ERROR_UNEXPECTED_STATE "wamp.error.unexpected_state"
 
+// WAMP string constants
+#define WAMP_WAMPCRA "wampcra"
+
   enum msg_type
   {
     wamp_msg_undef = 0,
