@@ -8,7 +8,7 @@
 #include "wampcc/kernel.h"
 #include "wampcc/tcp_socket.h"
 #include "wampcc/wamp_session.h"
-#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/websocket_protocol.h"
 
 #include <memory>
 #include <random>
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
     std::condition_variable session_closed_convar;
     bool session_has_closed = false;
 
-    std::shared_ptr<wampcc::wamp_session> session = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
+    std::shared_ptr<wampcc::wamp_session> session = wampcc::wamp_session::create<wampcc::websocket_protocol>(
       the_kernel.get(),
       std::move(sock),
       [&](wampcc::wamp_session&, bool is_open){

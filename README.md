@@ -56,7 +56,7 @@ if (!socket->is_connected())
 /* With the connected socket, create a wamp session & logon to the realm
  * called 'default_realm'. */
 
-auto session = wamp_session::create<rawsocket_protocol>(
+auto session = wamp_session::create<websocket_protocol>(
   &the_kernel, std::move(socket));
 
 session->hello({"default_realm"}).wait_for(std::chrono::seconds(3));

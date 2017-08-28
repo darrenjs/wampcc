@@ -13,7 +13,7 @@ Commented-out, until tcp_socket supports async callback for on_connect.
 
 
 #include "wampcc/kernel.h"
-#include "wampcc/rawsocket_protocol.h"
+#include "wampcc/websocket_protocol.h"
 #include "wampcc/wamp_session.h"
 #include "wampcc/websocket_protocol.h"
 
@@ -46,7 +46,7 @@ using namespace wampcc;
 // {
 //   try
 //   {
-//     g_session = wconn->create_session<rawsocket_protocol>( on_wamp_session_status );
+//     g_session = wconn->create_session<websocket_protocol>( on_wamp_session_status );
 
 //     client_credentials credentials;
 //     credentials.realm="default_realm";

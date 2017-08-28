@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 
     std::promise<void> ready_to_exit;
 
-    std::shared_ptr<wamp_session> session = wamp_session::create<rawsocket_protocol>(
+    std::shared_ptr<wamp_session> session = wamp_session::create<websocket_protocol>(
       the_kernel.get(),
       std::move(sock),
       [&ready_to_exit](wampcc::wamp_session&, bool is_open){
