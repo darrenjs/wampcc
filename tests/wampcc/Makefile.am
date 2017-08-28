@@ -10,7 +10,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/lib  $(libuvinc)						\
 -I$(jalsoninc) -I$(top_srcdir)/external/googletest/googletest/include			\
 -I$(top_srcdir)/external/googletest/googletest -Wall -g3 -ggdb -std=c++11 -O0 -pthread
 
-AM_LDFLAGS=-L../lib -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
+AM_LDFLAGS=-L../../lib -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
 check_PROGRAMS=test_basic_codecs test_connect_timeout 				     	\
 test_tcp_socket_connect test_evthread_wamp_session_destructor				\
@@ -56,4 +56,3 @@ test_basic_codecs_SOURCES=test_basic_codecs.cc
 test_router_functions_SOURCES=test_router_functions.cc
 
 test_send_and_close_SOURCES=test_send_and_close.cc
-

@@ -87,8 +87,10 @@ AC_C_INLINE
 # on how the configure script was invoked. Here we obtain the absolute path to
 # the srcdir.
 wampcc_src_dir=`(cd "$srcdir"; pwd)`
+build_dir=`(pwd)`
 
 # log some directories known to configure
+AC_MSG_NOTICE([notice build_dir: ${build_dir}])
 AC_MSG_NOTICE([notice srcdir: ${srcdir}])
 AC_MSG_NOTICE([notice prefix: ${prefix}])
 AC_MSG_NOTICE([notice ac_pwd: ${ac_pwd}])
@@ -134,7 +136,7 @@ fi
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
 jalsoninc="$(cd "$srcdir"; pwd)/json/src"
-jalsonlib="../json/src"
+jalsonlib="${build_dir}/json/src"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
 
@@ -163,11 +165,11 @@ AC_CONFIG_FILES([
 Makefile
 utils/Makefile
 lib/Makefile
-test/Makefile
+tests/Makefile
+tests/wampcc/Makefile
 examples/Makefile
 json/Makefile
 json/src/Makefile
-json/examples/manual_tests/Makefile
 json/tests/Makefile
 ])
 
