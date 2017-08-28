@@ -12,7 +12,6 @@ using namespace wampcc;
 #error JALSONDIR must be defined during compilation
 #endif
 
-
 std::string slurp(const std::string &filename)
 {
   std::cout << "reading '" << filename << "'\n";
@@ -169,9 +168,9 @@ int main(int argc, char * argv [])
   int usertest = (argc>1)? atoi(argv[1]) : -1;
 
   json_array json_tests;
-  load_tests(json_tests, JALSONDIR "/tests/spec_tests.json");
-  load_tests(json_tests, JALSONDIR "/tests/tests.json");
-  load_tests(json_tests, JALSONDIR "/tests/extra.json");
+  load_tests(json_tests, JALSONDIR "/spec_tests.json");
+  load_tests(json_tests, JALSONDIR "/tests.json");
+  load_tests(json_tests, JALSONDIR "/extra.json");
 
   // std::string tests = slurp( JALSONDIR "/tests/tests.json" );
 

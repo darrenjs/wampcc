@@ -166,11 +166,11 @@ Makefile
 utils/Makefile
 lib/Makefile
 tests/Makefile
+tests/json/Makefile
 tests/wampcc/Makefile
 examples/Makefile
 json/Makefile
 json/src/Makefile
-json/tests/Makefile
 ])
 
 # Trigger the generation of our makefiles
