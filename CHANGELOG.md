@@ -28,6 +28,8 @@ unreleased
 
 - session mode incorrectly accessed during inbound error handling
 
+- token searching failure for Sec-WebSocket-Protocol field
+
 version 1.4
 ===========
 

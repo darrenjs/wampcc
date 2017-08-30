@@ -343,12 +343,23 @@ bool is_strict_uri(const char* p) noexcept
 }
 
 
-bool has_token(const std::string& src, const std::string tok, char delim)
+bool has_token(const std::string& src, const std::string& tok, char delim)
 {
-  size_t i = src.find(tok);
+  size_t i = 0;
+  while (i != std::string::npos && i < src.size())
+  {
+    i = src.find(tok, i);
 
-  return (i != std::string::npos) && (i == 0 || src[i - 1] == delim) &&
-         (src[i + tok.size()] == delim || src[i + tok.size()] == 0);
+    if (i != std::string::npos) {
+      if ((i == 0 || src[i - 1] == delim) &&
+          (src[i + tok.size()] == delim || src[i + tok.size()] == 0))
+        return true;
+      else
+        i++;
+    }
+  }
+
+  return false;
 }
 
 

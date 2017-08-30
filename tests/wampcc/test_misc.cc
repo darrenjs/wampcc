@@ -178,6 +178,41 @@ TEST_CASE("test_time_now")
 	assert(t1.usec < 1000000);
 }
 
+TEST_CASE("test_has_token")
+{
+  std::vector<std::string> positive_cases = {
+    "wamp.2.json.batched,wamp.2.json",
+    "wamp.2.json",
+    "wamp.2.json,",
+    ",wamp.2.json,",
+    ",wamp.2.json",
+    "wamp.2.msgpack,wamp.2.json"
+    "wamp.2.msgpack,wamp.2.json,junk"
+  };
+
+  std::vector<std::string> negative_cases = {
+    "wamp.2.nosj.batched,wamp.2.nosj",
+    "",
+    "",
+    ", ,",
+    "wamp.2.nosj",
+    "wamp.2.nosj,",
+    ",wamp.2.nosj,",
+    ",wamp.2.nosj",
+    "wamp.2.msgpack,wamp.2.nosj"
+    "wamp.2.msgpack,wamp.2.nosj,junk"
+  };
+
+  for (auto & item : positive_cases) {
+    bool found = has_token(item, "wamp.2.json");
+    REQUIRE(found == true);
+  }
+
+  for (auto & item : negative_cases) {
+    bool found = has_token(item, "wamp.2.json");
+    REQUIRE(found == false);
+  }
+}
 
 int main(int argc, char** argv)
 {
@@ -189,6 +224,3 @@ int main(int argc, char** argv)
     return 1;
   }
 }
-
-
-

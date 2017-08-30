@@ -155,7 +155,7 @@ inline char* skip_whitespace(char* str)
 
 /* Return whether token exists in src, where token must be bounded on each side
  * by either a string boundary or delim character. */
-bool has_token(const std::string& src, const std::string token,
+bool has_token(const std::string& src, const std::string& token,
                char delim = ',');
 
 /** Return local hostname, or throw upon failure. */
