@@ -30,6 +30,8 @@ unreleased
 
 - token searching failure for Sec-WebSocket-Protocol field
 
+- nonce generator was returning empty string
+
 version 1.4
 ===========
 

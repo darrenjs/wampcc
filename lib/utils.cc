@@ -251,8 +251,7 @@ std::string local_timestamp()
 
 std::string random_ascii_string(const size_t len, unsigned int seed)
 {
-  std::string temp;
-  temp.reserve(len);
+  std::string temp(len, 'x'); //  gets overwritten below
 
   std::mt19937 engine(seed);
   std::uniform_int_distribution<> distr('!', '~'); // asci printables
@@ -260,7 +259,6 @@ std::string random_ascii_string(const size_t len, unsigned int seed)
   for (auto& x : temp)
     x = distr(engine);
 
-  temp[len] = '\0';
   return temp;
 }
 

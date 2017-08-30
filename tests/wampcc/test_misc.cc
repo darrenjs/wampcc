@@ -214,6 +214,19 @@ TEST_CASE("test_has_token")
   }
 }
 
+TEST_CASE("test_random_ascii_string")
+{
+  auto s0 = random_ascii_string(30, 0);
+  REQUIRE(s0.size() == 30);
+  auto s1 = random_ascii_string(30, 0);
+  REQUIRE(s1.size() == 30);
+  auto s2 = random_ascii_string(30, 99);
+  REQUIRE(s2.size() == 30);
+
+  REQUIRE(s0 == s1);
+  REQUIRE(s0 != s2);
+}
+
 int main(int argc, char** argv)
 {
   try {
