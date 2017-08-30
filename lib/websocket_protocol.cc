@@ -379,10 +379,10 @@ void websocket_protocol::send_ping()
 }
 
 
-void websocket_protocol::send_pong()
+void websocket_protocol::send_pong(const std::string& payload)
 {
   websocketpp_msg msg { m_websock_impl->msg_manager()->get_message() };
-  m_websock_impl->processor()->prepare_pong("", msg.ptr);
+  m_websock_impl->processor()->prepare_pong(payload, msg.ptr);
   send_impl(msg);
 }
 
@@ -469,9 +469,9 @@ void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
       if (op == websocketpp::frame::opcode::PING) {
         const auto now = std::chrono::steady_clock::now();
         if ((now > m_last_pong) &&
-            (now-m_last_pong >= m_options.ping_interval)) {
+            (now-m_last_pong >= m_options.pong_min_interval)) {
           m_last_pong = now;
-          send_pong();
+          send_pong(msg->get_payload());
           return;
         }
       } else if (op == websocketpp::frame::opcode::PONG) {

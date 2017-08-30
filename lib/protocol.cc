@@ -20,10 +20,6 @@
 
 namespace wampcc {
 
-  /* Keep default interval under 1 minute, which is a typical timeout period
-     chosen by load balancers etc. */
-  const std::chrono::seconds protocol::options::default_ping_interval { 30 };
-
   class json_codec : public codec
   {
   public:

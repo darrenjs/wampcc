@@ -67,7 +67,7 @@ private:
   static int to_opcode(serialiser_type);
 
   void send_ping();
-  void send_pong();
+  void send_pong(const std::string& payload = {});
   void send_close(uint16_t, const std::string&);
   void send_impl(const websocketpp_msg&);
 

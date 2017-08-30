@@ -132,6 +132,13 @@ public:
   virtual const char* name() const = 0;
 };
 
+namespace protocol_constants {
+  /* Keep default interval under 1 minute, which is a typical timeout period
+     chosen by load balancers etc. */
+  static const int default_ping_interval_ms = 30000;
+
+  static const int default_pong_min_interval_ms = 1000;
+}
 
 /* Base class for encoding & decoding of bytes on the wire. */
 class protocol
@@ -140,15 +147,17 @@ public:
 
   struct options
   {
-    static const std::chrono::seconds default_ping_interval;
-
     int serialisers; /* mask of enum serialiser_type bits */
 
     std::chrono::milliseconds ping_interval; /* 0 for no heartbeats */
 
+    /* minimum allowed interval between replies to ping */
+    std::chrono::milliseconds pong_min_interval;
+
     options()
       : serialisers(wampcc::all_serialisers),
-        ping_interval(std::chrono::milliseconds(default_ping_interval))
+        ping_interval(protocol_constants::default_ping_interval_ms),
+        pong_min_interval(protocol_constants::default_pong_min_interval_ms)
     {
     }
   };

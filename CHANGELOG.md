@@ -20,6 +20,9 @@ unreleased
 
 - timeout duration for logon increased from 10 to 30, also now configurable
 
+- websocket pongs contain ping payload, and use different config for
+  minimum interval between successive messages
+
 ## Fixed
 
 - cmake build supported on linux
