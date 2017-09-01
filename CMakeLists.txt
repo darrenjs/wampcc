@@ -37,8 +37,8 @@ set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH
 set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH
     "Installation directory for headers")
 
-include_directories(${PROJECT_SOURCE_DIR}/lib)
-include_directories(${PROJECT_SOURCE_DIR}/json)
+include_directories(${PROJECT_SOURCE_DIR}/libs/wampcc)
+include_directories(${PROJECT_SOURCE_DIR}/libs/json)
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${LIBUV_DIR}/include)
@@ -95,7 +95,7 @@ endif()
 
 set(LIB_EXTNL_SLRE_SRC_FILES)
 file(GLOB HDR_FILES ${PROJECT_SOURCE_DIR}/lib/wampcc/*.h)
-file(GLOB LIB_MAIN_SRC_FILES ${PROJECT_SOURCE_DIR}/lib/*.cc)
+file(GLOB LIB_MAIN_SRC_FILES ${PROJECT_SOURCE_DIR}/libs/wampcc/*.cc)
 file(GLOB LIB_EXTNL_HTTPPARSER_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/http_parser/*.c)
 file(GLOB LIB_EXTNL_APACH_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/apache/*.c)
 file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/utils/*.cc)
@@ -133,7 +133,7 @@ if(NOT EXISTS "${msgpackfile}")
 endif()
 
 # source files
-file(GLOB WAMPCC_JSON_SRC_FILES ${PROJECT_SOURCE_DIR}/json/*.cc)
+file(GLOB WAMPCC_JSON_SRC_FILES ${PROJECT_SOURCE_DIR}/libs/json/*.cc)
 
 add_library(wampcc_json_static STATIC ${WAMPCC_JSON_SRC_FILES})
 set_target_properties(wampcc_json_static PROPERTIES OUTPUT_NAME wampcc_json)
@@ -185,8 +185,8 @@ list(APPEND COMMON_LIBS jansson)
 
 # executable
 add_executable(test_misc
-  ${PROJECT_SOURCE_DIR}/test/test_misc.cc
-  ${PROJECT_SOURCE_DIR}/test/test_common.h )
+  ${PROJECT_SOURCE_DIR}/tests/wampcc/test_misc.cc
+  ${PROJECT_SOURCE_DIR}/tests/wampcc/test_common.h )
 add_dependencies(test_misc ${COMMON_DEPS})
 target_link_libraries(test_misc ${COMMON_LIBS})
 
