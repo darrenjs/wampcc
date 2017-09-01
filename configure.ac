@@ -135,8 +135,8 @@ fi
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="$(cd "$srcdir"; pwd)/json"
-jalsonlib="${build_dir}/json"
+jalsoninc="$(cd "$srcdir"; pwd)/libs/json"
+jalsonlib="${build_dir}/libs/json"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
 
@@ -164,12 +164,13 @@ AM_CONDITIONAL([USE_ADMINSTATIC], [test x"$enable_adminstatic" = x"yes" ])
 AC_CONFIG_FILES([
 Makefile
 utils/Makefile
-lib/Makefile
+libs/Makefile
+libs/wampcc/Makefile
+libs/json/Makefile
 tests/Makefile
 tests/json/Makefile
 tests/wampcc/Makefile
 examples/Makefile
-json/Makefile
 ])
 
 # Trigger the generation of our makefiles

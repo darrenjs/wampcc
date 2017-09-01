@@ -6,4 +6,5 @@
 # defined in Makefile.am.
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libs utils tests examples
+#~ SUBDIRS = library utility tests examples
+SUBDIRS = json wampcc

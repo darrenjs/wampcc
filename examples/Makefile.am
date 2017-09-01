@@ -10,9 +10,9 @@
 #
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CPPFLAGS = -I$(jalsoninc) $(libuvinc) -I$(top_srcdir)/lib  -Wall -g3 -ggdb -std=c++11
+AM_CPPFLAGS = -I$(jalsoninc) $(libuvinc) -I$(top_srcdir)/libs/wampcc  -Wall -g3 -ggdb -std=c++11
 
-AM_LDFLAGS=-L../lib -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
+AM_LDFLAGS=-L../libs/wampcc -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
 noinst_PROGRAMS=basic_embedded_router basic_publisher basic_subscriber	\
 basic_caller basic_callee router wampcc_tester ssl_client ssl_server	\
