@@ -135,8 +135,8 @@ fi
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="$(cd "$srcdir"; pwd)/json/src"
-jalsonlib="${build_dir}/json/src"
+jalsoninc="$(cd "$srcdir"; pwd)/json"
+jalsonlib="${build_dir}/json"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
 
@@ -170,7 +170,6 @@ tests/json/Makefile
 tests/wampcc/Makefile
 examples/Makefile
 json/Makefile
-json/src/Makefile
 ])
 
 # Trigger the generation of our makefiles

@@ -38,7 +38,7 @@ set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH
     "Installation directory for headers")
 
 include_directories(${PROJECT_SOURCE_DIR}/lib)
-include_directories(${PROJECT_SOURCE_DIR}/json/src)
+include_directories(${PROJECT_SOURCE_DIR}/json)
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${LIBUV_DIR}/include)
@@ -102,8 +102,8 @@ file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/utils/*.cc)
 
 # list of wampcc & wampcc_json headers file to install
 set(INSTALL_HDRS
-  ${PROJECT_SOURCE_DIR}/json/src/wampcc/json.h
-  ${PROJECT_SOURCE_DIR}/json/src/wampcc/json_internals.h
+  ${PROJECT_SOURCE_DIR}/json/wampcc/json.h
+  ${PROJECT_SOURCE_DIR}/json/wampcc/json_internals.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/version.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/types.h
   ${PROJECT_SOURCE_DIR}/lib/wampcc/kernel.h
@@ -133,7 +133,7 @@ if(NOT EXISTS "${msgpackfile}")
 endif()
 
 # source files
-file(GLOB WAMPCC_JSON_SRC_FILES ${PROJECT_SOURCE_DIR}/json/src/*.cc)
+file(GLOB WAMPCC_JSON_SRC_FILES ${PROJECT_SOURCE_DIR}/json/*.cc)
 
 add_library(wampcc_json_static STATIC ${WAMPCC_JSON_SRC_FILES})
 set_target_properties(wampcc_json_static PROPERTIES OUTPUT_NAME wampcc_json)
