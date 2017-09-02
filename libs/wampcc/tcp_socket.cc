@@ -11,6 +11,8 @@
 #include "wampcc/log_macros.h"
 #include "wampcc/utils.h"
 
+#include <uv.h>
+
 #include <iostream>
 
 #include <assert.h>

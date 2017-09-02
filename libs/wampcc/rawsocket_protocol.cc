@@ -10,6 +10,8 @@
 #include "wampcc/tcp_socket.h"
 #include "wampcc/log_macros.h"
 
+#include <uv.h>
+
 #include <sstream>
 
 namespace wampcc {

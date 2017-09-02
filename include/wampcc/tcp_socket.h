@@ -11,14 +11,21 @@
 #include "wampcc/kernel.h"
 #include "wampcc/error.h"
 
-#include <uv.h>
-
 #include <string>
 #include <future>
 #include <iostream>
 #include <vector>
 
 #include <string.h>
+
+/* Types defined as part of the libuv.  We don't want to include any libuv
+ * headers in a wampcc public header, so instead use declarations to our
+ * dependencies. */
+struct uv_buf_t;
+struct uv_tcp_s;
+struct uv_write_s;
+typedef struct uv_tcp_s uv_tcp_t;
+typedef struct uv_write_s uv_write_t;
 
 namespace wampcc
 {
@@ -32,9 +39,9 @@ class tcp_socket
 {
 public:
   enum class addr_family {
-    unspec = AF_UNSPEC,
-    inet4 = AF_INET,
-    inet6 = AF_INET6,
+    unspec,
+    inet4,
+    inet6,
   };
 
   /** Type thrown by tcp_socket when actions are attempted when the socket is

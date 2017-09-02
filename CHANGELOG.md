@@ -9,6 +9,8 @@ unreleased
 
 ## Changed
 
+- project directory structure fully reorganised (suggested by Daniel Kesler)
+
 - sister project, jalson, now integrated into wampcc
 
 - large scale api refactor of wamp_session, to adopt a uniform approach
