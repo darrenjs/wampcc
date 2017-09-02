@@ -212,7 +212,7 @@ Some third party code is directly integrated into `wampcc`, and are compiled alo
 If building from the git sources the `configure` script must be first generated.  An included helped script can do this:
 
 ```bash
-./autotools_setup.sh
+./scripts/autotools_setup.sh
 ```
 
 The source code is now ready to be configured.  This is done by running the `configure` script, and passing it the locations of *libuv* and *jansson*, and also the location where *wampcc* should finally be installed.
