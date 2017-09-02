@@ -19,6 +19,13 @@
   #define vsnprintf _vsnprintf
   #define strcasecmp _stricmp
   #define strncasecmp _strnicmp
+
+  // VC++ doesn't define ssize_t, so follow definition used by libuv
+  #if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
+    typedef intptr_t ssize_t;
+    #define _SSIZE_T_
+    #define _SSIZE_T_DEFINED
+  #endif
 #endif
 
 namespace wampcc

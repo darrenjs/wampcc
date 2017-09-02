@@ -10,6 +10,7 @@
 
 #include "wampcc/kernel.h"
 #include "wampcc/error.h"
+#include "wampcc/platform.h"
 
 #include <string>
 #include <future>
