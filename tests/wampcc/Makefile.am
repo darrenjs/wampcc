@@ -6,9 +6,8 @@
 #
 
 # Define compile & link flags for each target
-AM_CPPFLAGS = -I$(top_srcdir)/libs/wampcc  $(libuvinc)						\
--I$(jalsoninc) -I$(top_srcdir)/external/googletest/googletest/include			\
--I$(top_srcdir)/external/googletest/googletest -Wall -g3 -ggdb -std=c++11 -O0 -pthread
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/libs/wampcc $(libuvinc) -Wall -g3	\
+-ggdb -std=c++11 -O0 -pthread
 
 AM_LDFLAGS=-L../../libs/wampcc -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 

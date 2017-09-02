@@ -95,6 +95,7 @@ AC_MSG_NOTICE([notice srcdir: ${srcdir}])
 AC_MSG_NOTICE([notice prefix: ${prefix}])
 AC_MSG_NOTICE([notice ac_pwd: ${ac_pwd}])
 AC_MSG_NOTICE([notice wampcc_src_dir: ${wampcc_src_dir}])
+AC_MSG_NOTICE([notice includedir: ${includedir}])
 
 
 #========== json library, for wampcc_json ==========
@@ -135,7 +136,7 @@ fi
 
 AC_MSG_NOTICE([Using bundled jalson])
 internal_jalson=1
-jalsoninc="$(cd "$srcdir"; pwd)/libs/json"
+jalsoninc="$(cd "$srcdir"; pwd)/include"
 jalsonlib="${build_dir}/libs/json"
 AC_SUBST(jalsoninc)
 AC_SUBST(jalsonlib)
@@ -171,6 +172,7 @@ tests/Makefile
 tests/json/Makefile
 tests/wampcc/Makefile
 examples/Makefile
+include/Makefile
 ])
 
 # Trigger the generation of our makefiles

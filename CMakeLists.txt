@@ -37,6 +37,7 @@ set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH
 set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH
     "Installation directory for headers")
 
+include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_SOURCE_DIR}/libs/wampcc)
 include_directories(${PROJECT_SOURCE_DIR}/libs/json)
 include_directories(${PROJECT_SOURCE_DIR})
@@ -102,21 +103,21 @@ file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/utils/*.cc)
 
 # list of wampcc & wampcc_json headers file to install
 set(INSTALL_HDRS
-  ${PROJECT_SOURCE_DIR}/json/wampcc/json.h
-  ${PROJECT_SOURCE_DIR}/json/wampcc/json_internals.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/version.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/types.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/kernel.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/wamp_session.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/wamp_router.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/protocol.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/rawsocket_protocol.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/websocket_protocol.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/tcp_socket.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/data_model.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/error.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/wampcc.h
-  ${PROJECT_SOURCE_DIR}/lib/wampcc/ssl_socket.h)
+  ${PROJECT_SOURCE_DIR}/include/wampcc/json.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/json_internals.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/version.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/types.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/kernel.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/wamp_session.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/wamp_router.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/protocol.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/rawsocket_protocol.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/websocket_protocol.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/tcp_socket.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/data_model.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/error.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/wampcc.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/ssl_socket.h)
 
 # TODO: probably don't need INSTALL_LIB_DIR in list of link dirs.
 link_directories(${INSTALL_LIB_DIR} ${LIBUV_DIR}/lib ${JANSSON_DIR}/lib)

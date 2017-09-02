@@ -19,8 +19,7 @@
 #
 # NOTE: it is not good practice to add "-Wall" and "-03" etc here.  Those
 # choices should be made by the user when they invoke the configure script.
-AM_CXXFLAGS =  -I$(top_srcdir)/3rdparty/msgpack-c/include -std=c++11 -Wall $(janssoninc)
-
+AM_CXXFLAGS =  -I$(top_srcdir)/include -I$(top_srcdir)/3rdparty/msgpack-c/include $(janssoninc) -std=c++11 -Wall
 
 AM_LDFLAGS=-pthread
 
@@ -35,11 +34,11 @@ lib_LTLIBRARIES = libwampcc_json.la
 
 # The "include_" prefix includes a list of headers to be installed.  The
 # "nobase_" additional prefix means the directory names are copied too.
-nobase_include_HEADERS = wampcc/json.h wampcc/json_internals.h
+#nobase_include_HEADERS = wampcc/json.h wampcc/json_internals.h
 
 
 # List the sources for an individual library
-libwampcc_json_la_SOURCES=json_pointer.cc jalson.cc vendors.cc msgpack_serialiser.cc
+libwampcc_json_la_SOURCES=json_pointer.cc json.cc vendors.cc msgpack_serialiser.cc
 libwampcc_json_la_LIBADD=$(janssonlib)
 
 # Include compile and link flags for an individual library.

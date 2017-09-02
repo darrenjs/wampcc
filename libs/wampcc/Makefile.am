@@ -5,9 +5,8 @@
 # it under the terms of the MIT license. See LICENSE for details.
 #
 
-AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)						\
--I$(top_srcdir)/3rdparty/websocketpp  -I$(jalsoninc)	\
-$(libuvinc)
+AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)/include \
+-I$(top_srcdir)/3rdparty/websocketpp -I$(top_srcdir) $(libuvinc)
 
 AM_LDFLAGS=-lpthread
 
@@ -22,10 +21,10 @@ lib_LTLIBRARIES = libwampcc.la
 
 # The "include_" prefix includes a list of headers to be installed.  The
 # "nobase_" additional prefix means the directory names are copied too.
-nobase_include_HEADERS = wampcc/types.h wampcc/kernel.h wampcc/wamp_session.h	\
-wampcc/wamp_router.h wampcc/protocol.h wampcc/rawsocket_protocol.h				\
-wampcc/websocket_protocol.h wampcc/tcp_socket.h wampcc/data_model.h				\
-wampcc/error.h wampcc/wampcc.h wampcc/ssl_socket.h wampcc/version.h
+# nobase_include_HEADERS = wampcc/types.h wampcc/kernel.h wampcc/wamp_session.h	\
+# wampcc/wamp_router.h wampcc/protocol.h wampcc/rawsocket_protocol.h				\
+# wampcc/websocket_protocol.h wampcc/tcp_socket.h wampcc/data_model.h				\
+# wampcc/error.h wampcc/wampcc.h wampcc/ssl_socket.h wampcc/version.h
 
 # List the sources for an individual library
 libwampcc_la_SOURCES = platform.cc websocketpp_impl.cc websocket_protocol.cc	\

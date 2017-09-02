@@ -6,4 +6,4 @@
 # defined in Makefile.am.
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libs utils tests examples
+SUBDIRS = libs utils tests examples include
