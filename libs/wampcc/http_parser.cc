@@ -9,7 +9,7 @@
 
 #include "wampcc/utils.h"
 #include "wampcc/websocket_protocol.h"
-#include "3rdparty/http_parser/http_parser.h" /* nodejs http parser */
+#include "http_parser/http_parser.h" /* nodejs http parser, from 3rdparty */
 
 #include <iostream>
 #include <string.h>

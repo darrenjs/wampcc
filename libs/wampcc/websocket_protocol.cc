@@ -14,7 +14,7 @@
 #include "wampcc/log_macros.h"
 #include "wampcc/websocketpp_impl.h"
 
-#include "3rdparty/apache/base64.h"
+#include "apache/base64.h" // from 3rdparty
 
 #include <string.h>
 #include <assert.h>

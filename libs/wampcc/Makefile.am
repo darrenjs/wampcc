@@ -6,7 +6,7 @@
 #
 
 AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)/include \
--I$(top_srcdir)/3rdparty/websocketpp -I$(top_srcdir) $(libuvinc)
+-I$(top_srcdir)/3rdparty/websocketpp -I$(top_srcdir)/3rdparty $(libuvinc)
 
 AM_LDFLAGS=-lpthread
 
