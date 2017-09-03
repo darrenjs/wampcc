@@ -33,6 +33,7 @@ if(BUILD_EXAMPLES)
   Compile_Example(basic_embedded_router basic)
   Compile_Example(basic_caller basic)
   Compile_Example(basic_callee basic)
+  Compile_Example(basic_callee_ssl basic)
   Compile_Example(demo_embedded_router_ssl basic)
   Compile_Example(demo_embedded_router basic)
 # Message server
