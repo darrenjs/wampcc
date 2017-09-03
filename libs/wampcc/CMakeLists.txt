@@ -1,0 +1,84 @@
+# source files
+file(GLOB LIB_WAMPCC_SRC_FILES ${PROJECT_SOURCE_DIR}/libs/wampcc/*.cc)
+file(GLOB LIB_3RDPTY_HTTPPARSER_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/http_parser/*.c)
+file(GLOB LIB_3RDPTY_APACH_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/apache/*.c)
+
+# list of headers file to install
+set(INSTALL_HDRS
+  ${PROJECT_SOURCE_DIR}/include/wampcc/version.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/types.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/kernel.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/wamp_session.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/wamp_router.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/protocol.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/rawsocket_protocol.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/websocket_protocol.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/tcp_socket.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/data_model.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/error.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/wampcc.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/ssl_socket.h)
+
+##
+## Static library
+##
+if(BUILD_STATIC_LIBS)
+  add_library(wampcc_static STATIC
+      ${LIB_WAMPCC_SRC_FILES}
+      ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
+      ${LIB_3RDPTY_APACH_SRC_FILES})
+
+  # Use C++11 standard
+  set_property(TARGET wampcc_static PROPERTY CXX_STANDARD 11)
+  set_property(TARGET wampcc_static PROPERTY CXX_STANDARD_REQUIRED ON)
+
+  set_target_properties(wampcc_static PROPERTIES OUTPUT_NAME wampcc)
+
+  target_include_directories(wampcc_static PRIVATE
+                             ${LIBUV_INCLUDE_DIRS} )
+							 
+  target_link_libraries(wampcc_static wampcc_json_static)
+  add_dependencies(wampcc_static wampcc_json_static)
+
+  list(APPEND TO_INSTALL wampcc_static)
+endif()
+
+##
+## Shared library
+##
+if(BUILD_SHARED_LIBS)
+  add_library(wampcc_shared SHARED
+      ${LIB_WAMPCC_SRC_FILES}
+      ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
+      ${LIB_3RDPTY_APACH_SRC_FILES})
+
+  # Use C++11 standard
+  set_property(TARGET wampcc_shared PROPERTY CXX_STANDARD 11)
+  set_property(TARGET wampcc_shared PROPERTY CXX_STANDARD_REQUIRED ON)
+
+  # Set library output name
+  set_target_properties(wampcc_shared PROPERTIES OUTPUT_NAME wampcc)
+
+  # Set library API version
+  set_property(TARGET wampcc_shared PROPERTY VERSION "4.0.0")
+  set_property(TARGET wampcc_shared PROPERTY SOVERSION 4 )
+
+  target_include_directories(wampcc_shared PRIVATE
+                             ${LIBUV_INCLUDE_DIRS} )
+  target_link_libraries(wampcc_shared wampcc_json_shared)
+  add_dependencies(wampcc_shared wampcc_json_shared)
+
+  list(APPEND TO_INSTALL wampcc_shared)
+endif()
+
+##
+## Install targets
+##
+install(TARGETS ${TO_INSTALL}
+    RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
+    BUNDLE  DESTINATION "${INSTALL_BIN_DIR}"
+    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
+    LIBRARY DESTINATION "${INSTALL_LIB_DIR}")
+
+install(FILES ${INSTALL_HDRS}
+    DESTINATION "${INSTALL_INC_DIR}/wampcc")

@@ -1,0 +1,13 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@
+libdir=@INSTALL_LIB_DIR@
+sharedlibdir=@INSTALL_LIB_DIR@
+includedir=@INSTALL_INC_DIR@
+
+Name: wampcc
+Description: WAMPCC json abstraction library
+Version: @WAMPCC_VERSION@
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -luv -lcrypto -lssl -lpthread -ljansson
+Cflags: -I${includedir}

@@ -11,6 +11,8 @@ unreleased
 
 - project directory structure fully reorganised (suggested by Daniel Kesler)
 
+- new cmake approach (added by Daniel Kesler)
+
 - sister project, jalson, now integrated into wampcc
 
 - large scale api refactor of wamp_session, to adopt a uniform approach

@@ -1,230 +1,165 @@
-##+----------------------------------------------------------------------------+
-##| wampcc
-##+----------------------------------------------------------------------------+
-
 cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 
-set(PROJECT_NAME wampcc)
-project(${PROJECT_NAME} CXX C)
-#project(${PROJECT_NAME} VERSION 1.4 LANGUAGES CXX C)
+project(wampcc)
+
+# Version number
+set (WAMPCC_VERSION_MAJOR 1)
+set (WAMPCC_VERSION_MINOR 4)
+set (WAMPCC_VERSION "${WAMPCC_VERSION_MAJOR}.${WAMPCC_VERSION_MINOR}")
+# Include extra cmake modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
 
 ##
-## Check that user has provided location to libuv
+## Platform based options defaults
 ##
-if (NOT DEFINED LIBUV_DIR)
-  message(FATAL_ERROR "Please define: LIBUV_DIR")
+if(CMAKE_HOST_UNIX)
+set(DEFAULT_BUILD_SHARED_LIBS "ON")
+set(DEFAULT_BUILD_UTILS "ON")
+else()
+set(DEFAULT_BUILD_SHARED_LIBS "OFF")
+set(DEFAULT_BUILD_UTILS "OFF")
 endif()
 
 ##
-## Check that user has provided location to jansson
+## Build options
 ##
-if (NOT DEFINED JANSSON_DIR)
-  message(FATAL_ERROR "Please define: JANSSON_DIR")
-endif()
+option (BUILD_SHARED_LIBS "Use shared libraries" ${DEFAULT_BUILD_SHARED_LIBS})
+option (BUILD_STATIC_LIBS "Use static libraries" ON)
+option (BUILD_EXAMPLES    "Build example apps"   ON)
+option (BUILD_UTILS       "Build utility apps"   ${DEFAULT_BUILD_UTILS})
+option (BUILD_TESTS       "Build test apps"      OFF)
+set(LIBUV_DIR   "" CACHE STRING "libuv installation directory")
+set(JANSSON_DIR "" CACHE STRING "Jansson installation directory")
 
-
-# normalise user paths that we use for searching
-file(TO_CMAKE_PATH ${LIBUV_DIR} LIBUV_DIR)
-file(TO_CMAKE_PATH ${JANSSON_DIR} JANSSON_DIR)
-
-message(STATUS "Building ${PROJECT_NAME} on: ${CMAKE_SYSTEM_NAME}")
-
-set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH
-    "Installation directory for executables")
-set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH
-    "Installation directory for libraries")
-set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH
-    "Installation directory for headers")
-
-include_directories(${PROJECT_SOURCE_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/libs/wampcc)
-include_directories(${PROJECT_SOURCE_DIR}/libs/json)
-include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${LIBUV_DIR}/include)
-
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/websocketpp)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
+set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Installation directory for executables")
+set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH  "Installation directory for libraries")
+set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
+set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
 
 ##
 ## Platform checks, and generate config.h
 ##
-include(CheckIncludeFiles)
-check_include_files(dlfcn.h HAVE_DLFCN_H)
-check_include_files(getopt.h HAVE_GETOPT_H)
-check_include_files(inttypes.h HAVE_INTTYPES_H)
-check_include_files(stdbool.h HAVE_STDBOOL_H)
-check_include_files(memory.h HAVE_MEMORY_H)
-check_include_files(stdint.h HAVE_STDINT_H)
-check_include_files(stdlib.h HAVE_STDLIB_H)
-check_include_files(strings.h HAVE_STRINGS_H)
-check_include_files(sys/stat.h HAVE_SYS_STAT_H)
-check_include_files(sys/types.h HAVE_SYS_TYPES_H)
-check_include_files(unistd.h HAVE_UNISTD_H)
-check_include_files("stdlib.h;stdarg.h;string.h;float.h" STDC_HEADERS)
-
-## Check for libuv. Handle its name variation on different platforms.
-
-if(CMAKE_HOST_UNIX)
-    set(LIBUV_FILE "uv")
-else()
-    set(LIBUV_FILE "libuv")
-endif()
-
-message(STATUS "looking for libuv under ${LIBUV_DIR}/lib")
+include(PlatformCheck)
 include(CheckLibraryExists)
+find_package(PkgConfig)
 
-check_library_exists(${LIBUV_FILE} uv_version ${LIBUV_DIR}/lib HAVE_LIBUV)
-
-if(NOT HAVE_LIBUV)
-  message(FATAL_ERROR "libuv not found")
+##
+## Try to find libssl
+##
+if(CMAKE_HOST_UNIX)
+pkg_check_modules(SSL openssl REQUIRED)
+if(SSL_FOUND)
+  set(HAVE_SSL ON)
 endif()
+endif()
+
+##
+## Try to find libuv
+##
+
+if("${LIBUV_DIR}" STREQUAL "")
+  pkg_check_modules(LIBUV libuv>=1.8.0 REQUIRED)
+  if(LIBUV_FOUND)
+    set(HAVE_LIBUV ON)
+  endif()
+else() # LIBUV_DIR
+  # normalise user paths that we use for searching
+  file(TO_CMAKE_PATH ${LIBUV_DIR} LIBUV_DIR)
+  message(STATUS "Using user provided libuv")
+  
+  if(CMAKE_HOST_UNIX)
+      set(LIBUV_FILE "uv")
+  else()
+      set(LIBUV_FILE "libuv")
+  endif()
+  set(LIBUV_INCLUDE_DIRS ${LIBUV_DIR}/include)
+
+  check_library_exists(${LIBUV_FILE} uv_version ${LIBUV_DIR}/lib HAVE_LIBUV)
+
+  if(NOT HAVE_LIBUV)
+    message(FATAL_ERROR "libuv not found")
+  endif()
+
+  link_directories(${INSTALL_LIB_DIR} ${LIBUV_DIR}/lib)
+endif() # LIBUV_DIR
+
+##
+## Try to find jansson
+##
+
+if("${JANSSON_DIR}" STREQUAL "")
+  message(STATUS "Using cmake package module to locate jansson")
+  pkg_check_modules(JANSSON jansson>=2.7 REQUIRED)
+  if(JANSSON_FOUND)
+    set(HAVE_JANSSON ON)
+  endif()
+else() # JANSSON_DIR
+  # normalise user paths that we use for searching
+  file(TO_CMAKE_PATH ${JANSSON_DIR} JANSSON_DIR)
+  message(STATUS "Using user provided jansson")
+
+  # jansson has same name on linux & windows
+  set(JANSSON_FILE "jansson")
+  set(JANSSON_INCLUDE_DIRS ${JANSSON_DIR}/include)
+
+  check_library_exists(${JANSSON_FILE} json_object ${JANSSON_DIR}/lib HAVE_JANSSON)
+
+  if(NOT HAVE_JANSSON)
+    message(FATAL_ERROR "jansson not found")
+  endif()
+
+  if(NOT "${LIBUV_DIR}" STREQUAL "")
+    link_directories(${INSTALL_LIB_DIR} ${LIBUV_DIR}/lib ${JANSSON_DIR}/lib)
+  else()
+    link_directories(${INSTALL_LIB_DIR} ${JANSSON_DIR}/lib)
+  endif()
+endif() # JANSSON_DIR
+
+# configure a header file to pass some of the CMake settings
+# to the source code
+configure_file (
+  "${PROJECT_SOURCE_DIR}/cmake/config.h.incmake"
+  "${PROJECT_BINARY_DIR}/config.h"
+  )
+
+# pkg-config
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/wampcc.pc.incmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/wampcc.pc" @ONLY)
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/wampcc_json.pc.incmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/wampcc_json.pc" @ONLY)
+
 
 # check websocketpp is available in the source tree
 set(websocketpp "${PROJECT_SOURCE_DIR}/3rdparty/websocketpp/websocketpp/message_buffer/message.hpp")
 message(STATUS "checking for ${websocketpp}")
 if(NOT EXISTS "${websocketpp}")
-  message(FATAL_ERROR "websocketpp header not found! Check websocketpp unzipped under 3rdparty/")
+  message(FATAL_ERROR "websocketpp header not found! Check that websocketpp is unzipped under 3rdparty/")
 endif()
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
-
-if(CMAKE_HOST_UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-endif()
-
-set(LIB_EXTNL_SLRE_SRC_FILES)
-file(GLOB HDR_FILES ${PROJECT_SOURCE_DIR}/lib/wampcc/*.h)
-file(GLOB LIB_MAIN_SRC_FILES ${PROJECT_SOURCE_DIR}/libs/wampcc/*.cc)
-file(GLOB LIB_EXTNL_HTTPPARSER_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/http_parser/*.c)
-file(GLOB LIB_EXTNL_APACH_SRC_FILES ${PROJECT_SOURCE_DIR}/3rdparty/apache/*.c)
-file(GLOB EXE_SRC_FILES ${PROJECT_SOURCE_DIR}/utils/*.cc)
-
-# list of wampcc & wampcc_json headers file to install
-set(INSTALL_HDRS
-  ${PROJECT_SOURCE_DIR}/include/wampcc/json.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/json_internals.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/version.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/types.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/kernel.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/wamp_session.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/wamp_router.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/protocol.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/rawsocket_protocol.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/websocket_protocol.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/tcp_socket.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/data_model.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/error.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/wampcc.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/ssl_socket.h)
-
-# TODO: probably don't need INSTALL_LIB_DIR in list of link dirs.
-link_directories(${INSTALL_LIB_DIR} ${LIBUV_DIR}/lib ${JANSSON_DIR}/lib)
-
-##
-## wampcc-json library
-##
 
 # check msgpack is available in the source tree
 set(msgpackfile "${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include/msgpack.h")
 message(STATUS "checking for ${msgpackfile}")
 if(NOT EXISTS "${msgpackfile}")
-  message(FATAL_ERROR "msgpack header not found! Check msgpack unzipped under 3rdparty/")
-endif()
-
-# source files
-file(GLOB WAMPCC_JSON_SRC_FILES ${PROJECT_SOURCE_DIR}/libs/json/*.cc)
-
-add_library(wampcc_json_static STATIC ${WAMPCC_JSON_SRC_FILES})
-set_target_properties(wampcc_json_static PROPERTIES OUTPUT_NAME wampcc_json)
-target_include_directories(wampcc_json_static
-                           PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
-                           ${JANSSON_DIR}/include )
-
-list(APPEND TO_INSTALL wampcc_json_static)
-
-if(CMAKE_HOST_UNIX)
-  add_library(wampcc_json_shared SHARED ${WAMPCC_JSON_SRC_FILES})
-  set_target_properties(wampcc_json_shared PROPERTIES OUTPUT_NAME wampcc_json)
-  target_include_directories(wampcc_json_shared
-                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
-                             ${JANSSON_DIR}/include )
-  list(APPEND TO_INSTALL wampcc_json_shared)
-endif()
-
-##
-## wampcc library
-##
-
-add_library(wampcc STATIC
-    ${HDR_FILES}
-    ${LIB_MAIN_SRC_FILES}
-    ${LIB_EXTNL_HTTPPARSER_SRC_FILES}
-    ${LIB_EXTNL_APACH_SRC_FILES})
-
-target_link_libraries(wampcc wampcc_json_static)
-add_dependencies(wampcc wampcc_json_static)
-list(APPEND TO_INSTALL wampcc)
-
-##
-## test & example programs
-##
-
-set(COMMON_LIBS wampcc wampcc_json_static)
-set(COMMON_DEPS wampcc wampcc_json_static)
-
-if (WIN32)
-  list(APPEND COMMON_LIBS libuv ssleay32 libeay32)
-  # libuv library dependencies
-  list(APPEND COMMON_LIBS advapi32 iphlpapi psapi shell32 user32 userenv ws2_32)
-else()
-  list(APPEND COMMON_LIBS uv crypto ssl pthread)
-endif()
-
-list(APPEND COMMON_LIBS jansson)
-
-# executable
-add_executable(test_misc
-  ${PROJECT_SOURCE_DIR}/tests/wampcc/test_misc.cc
-  ${PROJECT_SOURCE_DIR}/tests/wampcc/test_common.h )
-add_dependencies(test_misc ${COMMON_DEPS})
-target_link_libraries(test_misc ${COMMON_LIBS})
-
-if (WIN32)
-  set_target_properties(test_misc PROPERTIES LINK_FLAGS "/NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib")
+  message(FATAL_ERROR "msgpack header not found! Check that msgpack is unzipped under 3rdparty/")
 endif()
 
 
-# executable
-add_executable(example_basic_embedded_router
-  ${PROJECT_SOURCE_DIR}/examples/basic/basic_embedded_router.cc )
-add_dependencies(example_basic_embedded_router ${COMMON_DEPS})
-target_link_libraries(example_basic_embedded_router ${COMMON_LIBS})
+# add the binary tree to the search path for include files
+# so that we will find config.h
+include_directories("${PROJECT_BINARY_DIR}")
+include_directories("${PROJECT_SOURCE_DIR}/include")
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/websocketpp")
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty")
 
-if (WIN32)
-  set_target_properties(example_basic_embedded_router PROPERTIES LINK_FLAGS "/NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:libcmtd.lib")
-endif()
+# include sub directories
+add_subdirectory(libs/json)
+add_subdirectory(libs/wampcc)
+add_subdirectory(utils)
+add_subdirectory(tests)
+add_subdirectory(examples)
 
-##
-## utility programs
-##
-
-if (NOT WIN32)
-  add_executable(admin ${EXE_SRC_FILES})
-  add_dependencies(admin ${COMMON_DEPS})
-  target_link_libraries(admin ${COMMON_LIBS})
-  list(APPEND TO_INSTALL admin)
-endif()
-
-##
-## install
-##
-
-install(TARGETS ${TO_INSTALL}
-    RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
-    BUNDLE  DESTINATION "${INSTALL_BIN_DIR}"
-    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
-    LIBRARY DESTINATION "${INSTALL_LIB_DIR}")
-install(FILES ${INSTALL_HDRS}
-    DESTINATION "${INSTALL_INC_DIR}/wampcc")
+install(FILES ${PROJECT_BINARY_DIR}/wampcc.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}")
+install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}")
