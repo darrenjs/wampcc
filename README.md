@@ -25,7 +25,7 @@
  - [OpenSSL](https://www.openssl.org/)
  - [websocketpp](https://www.zaphoyd.com/websocketpp) -- C++ header only
  - [msgpack-c](https://github.com/msgpack/msgpack-c) -- C++ header only
- - Modern C++ compiler, GNU autotools (Linux build), CMake (Windows build)
+ - Modern C++ compiler, GNU autotools (Linux), CMake (Linux & Windows)
 
 ## Show me some code!
 
@@ -168,16 +168,19 @@ The complete listing for these examples can be found at:
  - [demo_client.cc](https://github.com/darrenjs/wampcc/blob/master/examples/basic/demo_client.cc)
 
 
-## Building wampcc
+## Building wampcc -- Linux
 
 Building *wampcc* involves several steps, including: installation of build tools; building the dependent libraries; obtaining the source; and source configuration.
 
 **Setting up build tools**
 
+*wampcc* can be built on Linux using either autotools, or cmake.  The latter is particularly useful for integration with IDE's, such as clion.
+
 Building on Linux presumes that some essential programs are available, including:
 
 - git
-- autoconf
+- autoconf (if using autotools approach)
+- cmake (if using cmake approach)
 - g++
 - make
 - wget
@@ -187,7 +190,7 @@ Building on Linux presumes that some essential programs are available, including
 *wampcc* was developed on *xubuntu* and on this system these tools can be installed using the command:
 
 ```bash
-apt-get install git autoconf gcc g++ make wget libtool libssl-dev
+sudo apt-get install cmake git autoconf gcc g++ make wget libtool libssl-dev
 ```
 
 **Building dependent libraries**
@@ -202,14 +205,17 @@ The latest version of *wampcc* can be downloaded from github using:
 git clone https://github.com/darrenjs/wampcc.git
 ```
 
-This will fetch the source files directly from github and place them in a directory named `wampcc/`.
+This will fetch the source files directly from github and place them in a folder
+named `wampcc/`.
 
 
-Some third party code is directly integrated into `wampcc`, and are compiled alongside   `wampcc` source code.  For convenience these are stored in the `3rdparty` directory; no additional download step is required to obtain them.
+Some third party code is directly integrated into `wampcc`, and are compiled
+alongside `wampcc` source code.  For convenience these are stored in the
+`3rdparty` folder; no additional download step is required to obtain them.
 
-**Source configuration**
+**Autotools approach**
 
-If building from the git sources the `configure` script must be first generated.  An included helped script can do this:
+Taking the autotools approach, if building from the git sources the `configure` script must be first generated.  An included helper script can do this:
 
 ```bash
 ./scripts/autotools_setup.sh
@@ -230,3 +236,46 @@ make install
 ```
 
 If all goes well *wampcc* will be installed into the `prefix` location.
+
+**CMake approach**
+
+*wampcc* can also be built using cmake.  The following instructions show how to
+ use cmake to set up a command line build.
+
+The preferred approach is to create a separate build folder outside of the
+source tree.  In this example the build folder is
+`/var/tmp/wmampcc_cmake_build`.
+
+```bash
+mkdir -p /var/tmp/wmampcc_cmake_build
+cd /var/tmp/wmampcc_cmake_build
+```
+
+Next is the invocation of the `cmake` program to generate the makefiles.  This
+tells cmake where to find the *libuv* and *jansson* libraries, where to install
+the built targets, and where to find the *wampcc* source. The paths in this
+example need to be replaced with paths specific to your system. This command
+should be invoked from within the build folder.
+
+```bash
+cmake --verbose  -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+-DLIBUV_DIR=/opt/libuv-1.10.2 \
+-DJANSSON_DIR=/opt/jansson-2.10 \
+-DCMAKE_INSTALL_PREFIX=/var/tmp/wampcc_install \
+/var/tmp/wampcc_src
+```
+
+If *libuv* and *jansson* are already installed on your system, rather than being
+separately built and provided, cmake can instead be configured to find and use
+them, simply by omitting the corresponding variables:
+
+```bash
+cmake -DCMAKE_INSTALL_PREFIX=/var/tmp/wampcc_install /var/tmp/wampcc_src
+```
+
+Following successful generation of the make files, *wampcc* can be built using
+make:
+
+```bash
+make
+```
