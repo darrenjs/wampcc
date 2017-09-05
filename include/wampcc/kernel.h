@@ -111,7 +111,6 @@ struct ssl_config
 
 struct config
 {
-  size_t socket_buffer_max_size_bytes;
   size_t socket_max_pending_write_bytes;
 
   /** User function which gets invoked on the callback thread as soon as it

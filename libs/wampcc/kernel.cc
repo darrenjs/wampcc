@@ -31,8 +31,10 @@ static const char* level_str(logger::Level l);
 std::mutex logger::lockable_console::stream_mutex ;
 logger::lockable_console logger::lockable_cout;
 
+static long default_socket_max_pending_write_bytes = 0x100000; // 1mb
+
 config::config()
-  : socket_buffer_max_size_bytes(65536), socket_max_pending_write_bytes(65536),
+  : socket_max_pending_write_bytes(default_socket_max_pending_write_bytes),
     ssl(false)
 {
 }
