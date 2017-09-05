@@ -10,7 +10,6 @@
 
 #include "wampcc/kernel.h"
 #include "wampcc/error.h"
-#include "wampcc/platform.h"
 
 #include <string>
 #include <future>
@@ -18,6 +17,15 @@
 #include <vector>
 
 #include <string.h>
+
+// VC++ doesn't define ssize_t, so follow definition used by libuv
+#ifdef _WIN32
+  #if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
+    typedef intptr_t ssize_t;
+    #define _SSIZE_T_
+    #define _SSIZE_T_DEFINED
+  #endif
+#endif
 
 /* Types defined as part of the libuv.  We don't want to include any libuv
  * headers in a wampcc public header, so instead use declarations to our
