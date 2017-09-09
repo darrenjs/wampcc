@@ -29,6 +29,8 @@ unreleased
 
 ## Fixed
 
+- on_publish server callback was missing t_request_id parameter
+
 - cmake build supported on linux
 
 - msgpack encode/decode failed for values outside int range (issue #6, Green7)

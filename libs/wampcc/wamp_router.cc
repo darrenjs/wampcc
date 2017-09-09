@@ -264,8 +264,8 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
     };
 
     handlers.on_publish =
-        [this](wamp_session& ws, std::string uri, json_object options,
-               wamp_args args) {
+    [this](wamp_session& ws, t_request_id, std::string uri, json_object options,
+           wamp_args args) {
       // TODO: break this out into a separte method, and handle error
       m_pubsub->inbound_publish(ws.realm(), uri, std::move(options),
                                 std::move(args));

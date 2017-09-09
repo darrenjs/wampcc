@@ -86,7 +86,7 @@ namespace wampcc {
   struct server_msg_handler
   {
     std::function<void(wamp_session&, t_request_id, std::string&, json_object&, wamp_args&)> on_call;
-    std::function<void(wamp_session&, std::string, json_object, wamp_args)> on_publish;
+    std::function<void(wamp_session&, t_request_id, std::string, json_object, wamp_args)> on_publish;
     std::function<void(wamp_session&, t_request_id, json_object&, std::string&)> on_register;
     std::function<void(wamp_session&, t_request_id, std::string, json_object&)> on_subscribe;
     std::function<void(wamp_session&, t_request_id, t_subscription_id)> on_unsubscribe;

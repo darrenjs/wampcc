@@ -1788,7 +1788,7 @@ void wamp_session::process_inbound_publish(json_array & msg)
 
   try
   {
-    m_server_handler.on_publish(*this, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
+    m_server_handler.on_publish(*this, request_id, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
   }
   catch(wamp_error& ex)
   {
