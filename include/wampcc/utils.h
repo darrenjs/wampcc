@@ -13,6 +13,7 @@
 #include <random>
 #include <memory>
 #include <mutex>
+#include <functional>
 
 #define STRINGIZE2(s) #s
 #define STRINGIFY(s) STRINGIZE2(s)
