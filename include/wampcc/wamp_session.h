@@ -145,6 +145,23 @@ namespace wampcc {
   */
   typedef std::function<void(wamp_session&, unsubscribed_info)> on_unsubscribed_fn;
 
+  struct published_info
+  {
+    t_request_id request_id;
+    t_publication_id publication_id;
+    bool was_error;
+    std::string error_uri;
+    void* user;
+
+    /** Returns whether this message indicates the request was successful. */
+    explicit operator bool() const noexcept { return was_error == false; }
+  };
+
+  /** Callback invoked when a publish request is successful or fails. The
+      error_uri member contains the error code when unsuccessful.
+  */
+  typedef std::function<void(wamp_session&, published_info&)> on_published_fn;
+
   /** Represent a dealer response caused by a previous CALL request. The
    * originating CALL request would have been initiated via a call of method
    * wamp_session::call(). The response could indicate success (if dealer sent
@@ -458,8 +475,8 @@ namespace wampcc {
      * of the procedure `uri`.  The success or failure of the registration
      * attempt, and requests for procedure invocation, are delivered via the
      * callback function arguments. */
-    t_request_id provide(std::string uri,
-                         const json_object& options,
+    t_request_id provide(const std::string& uri,
+                         json_object options,
                          on_registered_fn,
                          on_invocation_fn,
                          void * user = nullptr);
@@ -474,7 +491,7 @@ namespace wampcc {
      * the event-callback associated with the most recent subscription that is
      * used to deliver topic events.
      */
-    t_request_id subscribe(std::string uri,
+    t_request_id subscribe(const std::string& uri,
                            json_object options,
                            on_subscribed_fn,
                            on_event_fn,
@@ -491,15 +508,21 @@ namespace wampcc {
      * fulfill execution of a remote procedure.  A CALL message will be sent
      * to the connected dealer.  The response of the request will be delivered
      * via the callback function argument. */
-    t_request_id call(std::string uri,
-                      const json_object& options,
+    t_request_id call(const std::string& uri,
+                      json_object options,
                       wamp_args args,
                       on_result_fn,
                       void* user_data = nullptr);
 
-    t_request_id publish(std::string uri,
-                         const json_object& options,
-                         wamp_args args);
+    /** Allow a publisher application to publish to a topic. A PUBLISH message
+     * will be sent to the connected router.  The response of the request will
+     * be delivered via the on_published_fn function, if that argument is
+     * not empty. */
+    t_request_id publish(const std::string& uri,
+                         json_object options,
+                         wamp_args args,
+                         on_published_fn = nullptr,
+                         void * user = nullptr);
 
     /** Allow a broker application to send an EVENT message. */
     void event(t_subscription_id, t_publication_id, json_object details, wamp_args args);
@@ -543,6 +566,7 @@ namespace wampcc {
     void register_error(t_request_id, std::string error, json_object details);
     //@}
 
+    //@{
     /** Reply to a CALL request with a RESULT message to indicate success. */
     void result(t_request_id);
     void result(t_request_id, json_array);
@@ -550,6 +574,7 @@ namespace wampcc {
     void result(t_request_id, json_object details);
     void result(t_request_id, json_object details, json_array);
     void result(t_request_id, json_object details, json_array, json_object);
+    //@}
 
     //@{
     /** Reply to a CALL request with an ERROR message to indicate failure. */
@@ -723,6 +748,7 @@ namespace wampcc {
     void process_inbound_invocation(json_array &);
     void process_inbound_subscribed(json_array &);
     void process_inbound_unsubscribed(json_array &);
+    void process_inbound_published(json_array &);
     void process_inbound_event(json_array &);
     void process_inbound_result(json_array &);
     void process_inbound_error(json_array &);
@@ -758,6 +784,7 @@ namespace wampcc {
     struct procedure;
     struct subscribe_request;
     struct unsubscribe_request;
+    struct publish_request;
     struct subscription;
     struct wamp_call;
     struct wamp_invocation;
@@ -765,6 +792,7 @@ namespace wampcc {
     mutable std::mutex m_pending_lock;
     std::map<t_request_id, subscribe_request>   m_pending_subscribe;
     std::map<t_request_id, unsubscribe_request> m_pending_unsubscribe;
+    std::map<t_request_id, publish_request>     m_pending_publish;
     std::map<t_request_id, procedure>           m_pending_register;
     std::map<t_request_id, wamp_call>           m_pending_call;
     std::map<t_request_id, wamp_invocation>     m_pending_invocation;

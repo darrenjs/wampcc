@@ -470,30 +470,19 @@ int main_impl(int argc, char** argv)
   bool long_wait = false;
   bool wait_reply = false;
 
-  // wampcc::basic_list my_list;
-  // wampcc::basic_list::list_events obs;
-  // auto displayer = [&my_list]()
-  //   {
-  //     json_array value = my_list.copy_value();
-  //     std::cout << "list: ";
-  //     for (auto & item : value)
-  //       std::cout << item << ",";
-  //     std::cout << std::endl;
-  //   };
-  // obs.on_insert = [&my_list, displayer](size_t, const json_value&) {displayer();};
-  // obs.on_replace = [&my_list, displayer](size_t, const json_value&) {displayer();};
-  // obs.on_erase = [&my_list, displayer](size_t) {displayer();};
-  // obs.on_reset = [&my_list, displayer](const wampcc::basic_list::internal_impl&) {displayer();};
-  // my_list.add_observer(obs);
-
-
-
   // subscribe to user topics
-  wampcc::on_subscribed_fn scb; // TODO:
   wampcc::json_object sub_options { {KEY_PATCH, 1} };
   if (! uopts.subscribe_topics.empty()) long_wait = true;
   for (auto & topic : uopts.subscribe_topics)
-    ws->subscribe(topic, sub_options, scb, subscribe_cb, nullptr);
+    ws->subscribe(
+      topic, sub_options,
+      [topic](wampcc::wamp_session&, wampcc::subscribed_info& info){
+        if (info.was_error)
+          std::cout << "subscribe failed for '"<< topic << "' : " << info.error_uri << std::endl;
+        else
+          std::cout << "subscribe successful for '"<< topic << "', subscription_id : " << info.subscription_id << std::endl;
+      },
+      subscribe_cb, nullptr);
 
 
   // publish
@@ -501,13 +490,23 @@ int main_impl(int argc, char** argv)
   {
     ws->publish(uopts.publish_topic,
                 wampcc::json_object(),
-                args);
-
-    // wampcc::basic_text_model tm;
-    // wampcc::topic publisher(uopts.publish_topic, &tm);
-    // publisher.add_wamp_session(ws);
-
-    // tm.set_value("hello world");
+                args,
+                [](wampcc::wamp_session&, wampcc::published_info& info){
+                  if (info) {
+                    std::cout << "publish successful to topic '"<<uopts.publish_topic
+                              <<"' with publication_id " << info.publication_id
+                              << std::endl;
+                  }
+                  else {
+                    std::cout << "publish failed to topic '"<<uopts.publish_topic
+                              <<"' with error " << info.error_uri
+                              << std::endl;
+                  }
+                  std::lock_guard< std::mutex > guard(event_queue_mutex);
+                  event_queue.push(eReplyReceived);
+                  event_queue_condition.notify_one();
+                });
+    wait_reply = true;
   }
 
   // call a remote procedure

@@ -61,6 +61,12 @@ namespace wampcc {
     void* user;
   };
 
+  struct wamp_session::publish_request
+  {
+    on_published_fn request_cb;
+    void* user;
+  };
+
   struct wamp_session::subscription
   {
     on_event_fn event_cb;
@@ -612,6 +618,10 @@ void wamp_session::process_message(json_array& ja,
           process_inbound_unsubscribed(ja);
           return;
 
+        case msg_type::wamp_msg_published :
+          process_inbound_published(ja);
+          return;
+
         case msg_type::wamp_msg_event :
           process_inbound_event(ja);
           return;
@@ -1016,8 +1026,8 @@ const std::string& wamp_session::realm() const
 }
 
 
-t_request_id wamp_session::provide(std::string uri,
-                                   const json_object& options,
+t_request_id wamp_session::provide(const std::string& uri,
+                                   json_object options,
                                    on_registered_fn registered_cb,
                                    on_invocation_fn invocation_cb,
                                    void * user)
@@ -1025,7 +1035,7 @@ t_request_id wamp_session::provide(std::string uri,
   json_array msg {
     msg_type::wamp_msg_register,
     0,
-    options,
+    std::move(options),
     uri };
 
   procedure p {
@@ -1144,13 +1154,13 @@ void wamp_session::process_inbound_invocation(json_array & msg)
 }
 
 
-t_request_id wamp_session::subscribe(std::string uri,
+t_request_id wamp_session::subscribe(const std::string& uri,
                                      json_object options,
                                      on_subscribed_fn req_cb,
                                      on_event_fn event_cb,
                                      void * user)
 {
-  json_array msg {msg_type::wamp_msg_subscribe, 0, options, uri};
+  json_array msg {msg_type::wamp_msg_subscribe, 0, std::move(options), uri};
   subscribe_request sub {uri, std::move(req_cb), std::move(event_cb), user};
 
   t_request_id request_id;
@@ -1306,6 +1316,42 @@ void wamp_session::process_inbound_unsubscribed(json_array & msg)
 }
 
 
+void wamp_session::process_inbound_published(json_array & msg)
+{
+  /* EV thread */
+
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[2].is_uint())
+      throw protocol_error("publication ID must be unsigned int");
+  t_publication_id publication_id = msg[2].as_uint();
+
+  publish_request request;
+  {
+    std::lock_guard<std::mutex> guard(m_pending_lock);
+    auto iter = m_pending_publish.find(request_id);
+
+    if (iter != end(m_pending_publish))
+    {
+      request = std::move(iter->second);
+      m_pending_publish.erase(iter);
+    }
+  }
+
+  // invoke user callback if permitted, and handle exception
+  if (request.request_cb && user_cb_allowed())
+    try {
+      published_info info {request_id, publication_id, false, {}, request.user};
+      request.request_cb(*this, info);
+    }
+    catch(...) {
+      log_exception(__logger, "inbound published user callback");
+    }
+}
+
+
 void wamp_session::process_inbound_event(json_array & msg)
 {
   /* EV thread */
@@ -1343,15 +1389,15 @@ void wamp_session::process_inbound_event(json_array & msg)
 
 
 /* Initiate an outbound call sequence */
-t_request_id wamp_session::call(std::string uri,
-                                const json_object& options,
+t_request_id wamp_session::call(const std::string& uri,
+                                json_object options,
                                 wamp_args args,
                                 on_result_fn user_cb,
                                 void* user)
 {
   /* USER thread */
 
-  json_array msg {msg_type::wamp_msg_call, 0, options, uri, args.args_list, args.args_dict};
+  json_array msg {msg_type::wamp_msg_call, 0, std::move(options), uri, args.args_list, args.args_dict};
 
   wamp_call mycall { uri, std::move(user_cb), user };
 
@@ -1531,7 +1577,6 @@ void wamp_session::process_inbound_error(json_array & msg)
           }
           else
           {
-            /* TODO: dont log inside the critical section. */
             LOG_WARN("no pending subscribe for error response with request_id "
                      << request_id);
             break;
@@ -1581,6 +1626,32 @@ void wamp_session::process_inbound_error(json_array & msg)
 
         break;
       };
+      case msg_type::wamp_msg_publish:
+      {
+        /* dont hold any locks when calling the user */
+        publish_request request;
+        {
+          std::lock_guard<std::mutex> guard(m_pending_lock);
+          auto iter = m_pending_publish.find(request_id);
+          if (iter != m_pending_publish.end())
+          {
+            request = std::move(iter->second);
+            m_pending_publish.erase(iter);
+          }
+        }
+
+        // invoke user callback if permitted, and handle exception
+        if (request.request_cb && user_cb_allowed())
+          try {
+            published_info info {request_id, 0, true, std::move(error_uri), request.user};
+            request.request_cb(*this, info);
+          }
+          catch(...) {
+            log_exception(__logger, "inbound published user callback");
+          }
+
+        break;
+      }
       case msg_type::wamp_msg_register:
       {
         /* attempt to register a procedure has failed, if we can, notify the
@@ -1621,24 +1692,34 @@ void wamp_session::process_inbound_error(json_array & msg)
 }
 
 
-t_request_id wamp_session::publish(std::string uri,
-                                   const json_object& options,
-                                   wamp_args args)
+t_request_id wamp_session::publish(const std::string& uri,
+                                   json_object options,
+                                   wamp_args args,
+                                   on_published_fn req_cb,
+                                   void * user)
 {
   /* USER thread */
 
-  json_array msg {msg_type::wamp_msg_publish, 0, options, uri, args.args_list, args.args_dict};
+  json_array msg {msg_type::wamp_msg_publish, 0, options, uri, 
+                  args.args_list, args.args_dict};
 
   t_request_id request_id;
-
   {
     std::lock_guard<std::mutex> guard(m_request_lock);
 
     request_id = m_next_request_id++;
     msg[1] = request_id;
 
+    if (req_cb)
+    {
+      publish_request request{std::move(req_cb), user};
+      std::lock_guard<std::mutex> guard(m_pending_lock);
+      m_pending_publish[request_id] = std::move(request);
+    }
     send_msg( msg );
   }
+
+  LOG_INFO(m_log_prefix << "sending publish for '" << uri << "', request_id " << request_id);
 
   return request_id;
 }

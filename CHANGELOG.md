@@ -27,6 +27,8 @@ unreleased
 - websocket pongs contain ping payload, and use different config for
   minimum interval between successive messages
 
+- publish request supports callback to notify of result
+
 ## Fixed
 
 - compile error on gcc7 (issue #8, gustavvanputten)
