@@ -9,6 +9,10 @@ unreleased
 
 ## Changed
 
+- websocket request-uri now user configurable
+
+- removed the http Origin: from request headers
+
 - project directory structure fully reorganised (suggested by Daniel Kesler)
 
 - new cmake approach (added by Daniel Kesler)

@@ -972,7 +972,8 @@ std::future<void> wamp_session::hello(client_credentials cc)
     if (!m_realm.empty())
       throw std::runtime_error("hello cannot be called more than once");
 
-    if (m_realm.empty()) m_realm = cc.realm;
+    if (m_realm.empty())
+      m_realm = cc.realm;
   }
 
   m_client_secret_fn = std::move( cc.secret_fn );

@@ -314,7 +314,7 @@ void websocket_protocol::initiate(t_initiate_cb cb)
 
   std::ostringstream oss;
   oss <<
-    "GET / HTTP/1.1\r\n"
+    "GET "<< m_options.request_uri <<" HTTP/1.1\r\n"
     "Pragma: no-cache\r\n"
     "Cache-Control: no-cache\r\n"
     "Upgrade: websocket\r\n"
@@ -330,8 +330,8 @@ void websocket_protocol::initiate(t_initiate_cb cb)
     }
     case options::host_header_mode::omit : /* nothing to add to header */ break;
   }
+
   oss <<
-    "Origin: " << hostname() << "\r\n"
     "Sec-WebSocket-Key: " << sec_websocket_key  << "\r\n"
     "Sec-WebSocket-Protocol: ";
 
@@ -344,7 +344,12 @@ void websocket_protocol::initiate(t_initiate_cb cb)
     oss << WAMPV2_MSGPACK_SUBPROTOCOL;
   oss << "\r\n";
 
-  oss << "Sec-WebSocket-Version: " << RFC6455 << "\r\n\r\n";
+  oss << "Sec-WebSocket-Version: " << RFC6455 << "\r\n";
+
+  for (auto& item : m_options.extra_headers)
+    oss << item.first << ": " << item.second << "\r\n";
+
+  oss << "\r\n";
   std::string http_request = oss.str();
 
   m_expected_accept_key = make_accept_key(sec_websocket_key);

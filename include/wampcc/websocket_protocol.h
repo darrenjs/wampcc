@@ -24,8 +24,9 @@ class websocket_protocol : public protocol
 public:
 
   struct options : public protocol::options {
-    options()
-      : host_header(host_header_mode::automatic){ }
+    options(std::string __request_uri = "/")
+      : host_header(host_header_mode::automatic),
+        request_uri(std::move(__request_uri)) { }
 
     /** Construct from a base class instance */
     options(const protocol::options& rhs)
@@ -34,6 +35,12 @@ public:
 
     enum class host_header_mode {automatic = 0, custom, omit} host_header;
     std::string custom_host_header;
+
+    /** Value of the Request-URI to use in HTTP GET request */
+    std::string request_uri;
+
+    /** Additional HTTP headers to place in the GET request */
+    std::vector< std::pair<std::string, std::string> > extra_headers;
   };
 
   static constexpr const char* NAME = "websocket";
