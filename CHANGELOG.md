@@ -9,6 +9,8 @@ unreleased
 
 ## Changed
 
+- admin accepts URI argument to identify peer address
+
 - websocket request-uri now user configurable
 
 - removed the http Origin: from request headers

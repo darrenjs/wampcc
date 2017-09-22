@@ -19,6 +19,7 @@
 #include "wampcc/data_model.h"
 #include "wampcc/error.h"
 #include "wampcc/json.h"
+#include "wampcc/helper.h"
 #include "wampcc/kernel.h"
 #include "wampcc/protocol.h"
 #include "wampcc/rawsocket_protocol.h"

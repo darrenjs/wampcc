@@ -51,6 +51,8 @@ struct user_options
   std::chrono::seconds timeout { 3 };
 
   bool use_ssl = false;
+
+  std::string request_uri_path = "/";
 } uopts;
 
 
@@ -285,12 +287,45 @@ static void process_options(int argc, char** argv)
     }
   } //while
 
-  if (optind < argc) uopts.addr = argv[optind++];
-  if (optind < argc) uopts.port = argv[optind++];
+  // number of left over args tells us the format of server details, either
+  // address & port, or, URI
+  const int remain_args = argc - optind;
+  if (remain_args == 2) {
+    uopts.addr = argv[optind++];
+    uopts.port = argv[optind++];
+  }
+  else if (remain_args == 1) {
+    wampcc::uri_parts parts = wampcc::uri_parts::parse(argv[optind++]);
 
+    if (parts.protocol == "ws") {
+      uopts.port = "80";
+      uopts.use_ssl = false;
+    }
+    else if (parts.protocol == "wss") {
+      uopts.port = "443";
+      uopts.use_ssl = true;
+    }
+    else
+      die("unknown protocol (please provide either ws:// or wss://)");
 
-  if (!uopts.addr) die("missing address");
-  if (!uopts.port) die("missing port");
+    // common ws: & wss: actions
+    uopts.addr = parts.domain;
+    uopts.session_transport = user_options::transport::websocket;
+
+    if (!parts.port.empty())
+      uopts.port = parts.port;
+
+    if (!parts.path.empty())
+      uopts.request_uri_path = parts.path;
+  }
+  else
+    die("unexpected arguments");
+
+  if (!uopts.addr)
+    die("missing address");
+
+  if (!uopts.port)
+    die("missing port");
 
   // check topics
   if (uopts.no_uri_check == false)
@@ -311,6 +346,7 @@ wampcc::config make_config()
 
   return cfg;
 }
+
 
 int main_impl(int argc, char** argv)
 {
@@ -406,7 +442,7 @@ int main_impl(int argc, char** argv)
 
   switch (uopts.session_transport) {
     case user_options::transport::websocket: {
-      wampcc::websocket_protocol::options proto_opts;
+      wampcc::websocket_protocol::options proto_opts(uopts.request_uri_path);
       proto_opts.serialisers = uopts.serialisers;
       ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(
         g_kernel.get(),
