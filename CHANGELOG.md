@@ -9,6 +9,8 @@ unreleased
 
 ## Changed
 
+- admin supports unauthenticated session HELLO
+
 - admin accepts URI argument to identify peer address
 
 - websocket request-uri now user configurable

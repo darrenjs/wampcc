@@ -963,18 +963,7 @@ std::future<void> wamp_session::hello(client_credentials cc)
 {
   /* USER thread */
 
-  {
-    std::lock_guard<std::mutex> guard(m_realm_lock);
-
-    if (cc.realm.empty())
-      throw std::runtime_error("realm cannot be empty");
-
-    if (!m_realm.empty())
-      throw std::runtime_error("hello cannot be called more than once");
-
-    if (m_realm.empty())
-      m_realm = cc.realm;
-  }
+  check_hello(cc.realm);
 
   m_client_secret_fn = std::move( cc.secret_fn );
 
@@ -1004,6 +993,66 @@ std::future<void> wamp_session::hello(client_credentials cc)
   m_proto->initiate(std::move(initiate_cb));
 
   return m_promise_on_open.get_future();
+}
+
+
+void wamp_session::check_hello(const std::string& realm)
+{
+  std::lock_guard<std::mutex> guard(m_realm_lock);
+
+  if (realm.empty())
+    throw std::runtime_error("realm cannot be empty");
+
+  if (!m_realm.empty())
+    throw std::runtime_error("hello cannot be called more than once");
+
+  m_realm = realm;
+}
+
+
+std::future<void> wamp_session::hello_common(const std::string& realm,
+                                             std::pair<bool, std::string> user)
+{
+  /* USER thread */
+
+  check_hello(realm);
+
+  auto initiate_cb = [=]()
+    {
+      json_object roles ({
+          {"publisher",  json_object()},
+          {"subscriber", json_object()},
+          {"caller",     json_object()},
+          {"callee",     json_object()}
+        });
+
+      json_array msg { json_value(msg_type::wamp_msg_hello), json_value(realm) };
+      json_object& opt = json_append<json_object>( msg );
+
+      opt[ "roles" ] = std::move( roles );
+      opt[ "agent" ] = package_string();
+      if (user.first)
+        opt[ "authid"] = std::move(user.second);
+
+      this->send_msg( msg );
+    };
+
+  m_proto->initiate(std::move(initiate_cb));
+
+  return m_promise_on_open.get_future();
+}
+
+
+std::future<void> wamp_session::hello(const std::string& realm)
+{
+  return hello_common(realm, {false, ""});
+}
+
+
+std::future<void> wamp_session::hello(const std::string& realm, 
+                                      const std::string& authid)
+{
+  return hello_common(realm, {true, authid});
 }
 
 
@@ -1701,7 +1750,7 @@ t_request_id wamp_session::publish(const std::string& uri,
 {
   /* USER thread */
 
-  json_array msg {msg_type::wamp_msg_publish, 0, options, uri, 
+  json_array msg {msg_type::wamp_msg_publish, 0, options, uri,
                   args.args_list, args.args_dict};
 
   t_request_id request_id;

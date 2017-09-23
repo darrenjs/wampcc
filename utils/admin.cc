@@ -29,8 +29,8 @@ struct user_options
 
   int serialisers = wampcc::all_serialisers;
 
-  std::string username;
-  std::string password;
+  wampcc::user_optional<std::string> username;
+  wampcc::user_optional<std::string> password;
   wampcc::user_optional<std::string> realm;
 
   wampcc::user_optional<std::string> addr;
@@ -147,7 +147,8 @@ void usage()
   const char *sp4="\t\t\t\t";
 
   std::cout << "usage: admin [OPTIONS] ADDRESS PORT" << std::endl;
-  std::cout << "Options:" << std::endl;
+  std::cout << "       admin [OPTIONS] URI" << std::endl;
+  std::cout << std::endl << "Options:" << std::endl;
   HELPLN("-U, --username=ARG",sp2,"specify a session username");
   HELPLN("-P, --password=ARG",sp2,"specify a session password");
   HELPLN("-R, --realm=ARG",sp2,"specify a session realm");
@@ -168,9 +169,10 @@ void usage()
             << "  msgpack - support only msgpack serialiser" << std::endl
             << "  ssl - use SSL/TLS transport" << std::endl;
   std::cout << std::endl << "Examples:" <<std::endl;
-  std::cout << std::endl << "Call a procedure with JSON argument as array and object" << std::endl;
-  std::cout << "  admin -U peter -P secret2 -R public -c set_color --arglist '[\"green\", \"light\"]'"   << std::endl;
-  std::cout << "  admin -U peter -P secret2 -R public -c set_color --argdict '{\"foreground\" : \"red\"}'" << std::endl;
+  std::cout << std::endl << "Call a procedure with JSON argument as array" << std::endl;
+  std::cout << "  admin -U peter -P secret2 -R public -c set_color --arglist '[\"green\", \"light\"]' 127.0.0.1 55555"<< std::endl;
+  std::cout << std::endl << "Call a procedure with JSON argument as object, no authentication" << std::endl;
+  std::cout << "  admin -R public -c set_color --argdict '{\"foreground\" : \"red\"}' ws://127.0.0.1:55555/path" << std::endl;
 
   exit(0);
 }
@@ -389,9 +391,9 @@ int main_impl(int argc, char** argv)
   wampcc::logger console_logger {
     [verbose](wampcc::logger::Level l){
       switch (verbose) {
-        case 2 : return l <= wampcc::logger::eTrace;
+        case 0 : return l <= wampcc::logger::eWarn;
         case 1 : return l <= wampcc::logger::eInfo;
-        default: return l <= wampcc::logger::eWarn;
+        default: return l <= wampcc::logger::eTrace;
       }
     },
     [verbose](wampcc::logger::Level, const std::string& msg, const char*, int){
@@ -478,13 +480,23 @@ int main_impl(int argc, char** argv)
       throw std::runtime_error("ssl handshake failed");
   }
 
-  wampcc::client_credentials credentials;
-  credentials.realm  = uopts.realm? uopts.realm.value() : "default_realm";
-  credentials.authid = uopts.username;
-  credentials.authmethods = {"wampcra"};
-  credentials.secret_fn = [=]() -> std::string { return uopts.password; };
+  /* Ensure we have a realm to use. */
+  std::string realm = uopts.realm? uopts.realm.value() : "default_realm";
 
-  ws->hello(credentials);
+  /* Perform the session hello, using an approach that depends on what
+   * authentication options have been provided. */
+  if (uopts.username && uopts.password) {
+    wampcc::client_credentials credentials;
+    credentials.realm = realm;
+    credentials.authid = uopts.username.value();
+    credentials.authmethods = {"wampcra"};
+    credentials.secret_fn = [=]() -> std::string { return uopts.password.value(); };
+    ws->hello(credentials);
+  }
+  else if (uopts.username)
+    ws->hello(realm, uopts.username.value()); // no auth
+  else
+    ws->hello(realm); // no auth
 
   /* Wait for the WAMP session to authenticate and become open */
   {
@@ -495,7 +507,7 @@ int main_impl(int argc, char** argv)
                                                         [](){ return g_active_session_notifed; });
 
     if (!hasevent)
-      throw std::runtime_error("timeout when establishing wamp session");
+      throw std::runtime_error("timeout establishing wamp session");
   }
 
   if (!g_handshake_success)

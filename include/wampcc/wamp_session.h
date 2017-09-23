@@ -422,10 +422,18 @@ namespace wampcc {
                                        session_opts);
     }
 
-    /** Should be called for client-mode instances immediately following
-     * wamp_session construction.  It will initiate the HELLO sequence, to
-     * establish the logical wamp session. */
+    /** Perform WAMP HELLO for a client-mode instance. Should be invoked
+     * immediately following wamp_session construction. The credentials are used
+     * with wampcra authentication. */
     std::future<void> hello(client_credentials);
+
+    //@{
+    /** Perform WAMP HELLO for a client-mode instance. Should be invoked
+     * immediately following wamp_session construction. Does not offer to
+     * authenticate with peer. */
+    std::future<void> hello(const std::string& realm);
+    std::future<void> hello(const std::string& realm, const std::string& userid);
+    //@}
 
     ~wamp_session();
 
@@ -778,6 +786,10 @@ namespace wampcc {
     void drop_connection_impl(std::string, std::lock_guard<std::mutex>&, close_event);
 
     bool user_cb_allowed() const;
+
+    std::future<void> hello_common(const std::string& realm,
+                                   std::pair<bool, std::string> user);
+    void check_hello(const std::string&);
 
     server_msg_handler m_server_handler;
 
