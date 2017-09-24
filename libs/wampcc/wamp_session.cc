@@ -1049,7 +1049,7 @@ std::future<void> wamp_session::hello(const std::string& realm)
 }
 
 
-std::future<void> wamp_session::hello(const std::string& realm, 
+std::future<void> wamp_session::hello(const std::string& realm,
                                       const std::string& authid)
 {
   return hello_common(realm, {true, authid});
@@ -1783,6 +1783,9 @@ void wamp_session::process_inbound_call(json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
+  if (!msg[2].is_object())
+    throw protocol_error("options must be json object");
+
   if (!msg[3].is_string()) throw protocol_error("procedure uri must be string");
   std::string procedure_uri = std::move(msg[3].as_string());
 
@@ -1819,11 +1822,10 @@ void wamp_session::process_inbound_call(json_array & msg)
 
   try
   {
-    json_object options;
     m_server_handler.on_call(*this,
                              request_id,
                              procedure_uri,
-                             options,
+                             msg[2].as_object(),
                              my_wamp_args);
   }
   catch(wamp_error& ex)
@@ -1919,7 +1921,7 @@ void wamp_session::process_inbound_publish(json_array & msg)
 
   try
   {
-    m_server_handler.on_publish(*this, request_id, std::move(msg[3].as_string()), std::move(msg[2].as_object()), args);
+    m_server_handler.on_publish(*this, request_id, msg[3].as_string(), msg[2].as_object(), args);
   }
   catch(wamp_error& ex)
   {
@@ -1936,8 +1938,11 @@ void wamp_session::process_inbound_subscribe(json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
-  if (!msg[2].is_object()) throw protocol_error("options must be json object");
-  if (!msg[3].is_string()) throw protocol_error("topic uri must be string");
+  if (!msg[2].is_object())
+    throw protocol_error("options must be json object");
+
+  if (!msg[3].is_string())
+    throw protocol_error("topic uri must be string");
 
   std::string topic_uri = std::move(msg[3].as_string());
 
@@ -1959,7 +1964,9 @@ void wamp_session::process_inbound_unsubscribe(json_array & msg)
 
   t_request_id request_id = extract_request_id(msg, 1);
 
-  if (!msg[2].is_uint()) throw protocol_error("subscription id must be uint");
+  if (!msg[2].is_uint())
+    throw protocol_error("subscription id must be uint");
+
   t_subscription_id sub_id = msg[2].as_uint();
 
   try
@@ -1982,7 +1989,6 @@ void wamp_session::process_inbound_register(json_array & msg)
 
   if (!msg[2].is_object())
       throw protocol_error("options must be json object");
-  json_object & options = msg[2].as_object();
 
   if (!msg[3].is_string())
     throw protocol_error("procedure uri must be string");
@@ -1992,8 +1998,8 @@ void wamp_session::process_inbound_register(json_array & msg)
   {
     m_server_handler.on_register(*this,
                                  request_id,
-                                 options,
-                                 uri);
+                                 uri,
+                                 msg[2].as_object());
   }
   catch(wamp_error& ex)
   {

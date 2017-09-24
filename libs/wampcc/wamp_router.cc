@@ -284,8 +284,8 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
     handlers.on_register = [this](wamp_session& ses,
                                   t_request_id request_id,
-                                  json_object& options,
-                                  std::string& uri) -> void {
+                                  std::string& uri,
+                                  json_object& options) -> void {
       auto registration_id = m_rpcman->handle_inbound_register(&ses, uri);
       ses.registered(request_id, registration_id);
     };
