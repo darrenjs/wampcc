@@ -1146,7 +1146,7 @@ void wamp_session::process_inbound_registered(json_array & msg)
 
   if (on_result && user_cb_allowed()) {
     try {
-      on_result(*this, info);
+      on_result(*this, std::move(info));
     }
     catch (...) { /* ignore */ }
   }
@@ -1195,7 +1195,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
                          iter->second.user);
 
     if (user_cb_allowed())
-      iter->second.invocation_cb(*this, info);
+      iter->second.invocation_cb(*this, std::move(info));
   }
   catch (wampcc::wamp_error& ex)
   {
@@ -1316,7 +1316,7 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
   if (temp.request_cb && user_cb_allowed())
     try {
       subscribed_info info {request_id, subscription_id, false, {}, temp.user};
-      temp.request_cb(*this, info);
+      temp.request_cb(*this, std::move(info));
     }
     catch(...) {
       log_exception(__logger, "inbound subscribed user callback");
@@ -1394,7 +1394,7 @@ void wamp_session::process_inbound_published(json_array & msg)
   if (request.request_cb && user_cb_allowed())
     try {
       published_info info {request_id, publication_id, false, {}, request.user};
-      request.request_cb(*this, info);
+      request.request_cb(*this, std::move(info));
     }
     catch(...) {
       log_exception(__logger, "inbound published user callback");
@@ -1425,7 +1425,7 @@ void wamp_session::process_inbound_event(json_array & msg)
             { args_list, args_dict },
             iter->second.user
               };
-        iter->second.event_cb(*this, ev);
+        iter->second.event_cb(*this, std::move(ev));
       }
     } catch (...){ log_exception(__logger, "inbound event user callback"); }
 
@@ -1504,8 +1504,10 @@ void wamp_session::process_inbound_result(json_array & msg)
     result_info r;
     r.was_error = false;
     r.user = orig_call.user;
-    if (msg.size()>3) r.args.args_list = std::move(msg[3].as_array());
-    if (msg.size()>4) r.args.args_dict = std::move(msg[4].as_object());
+    if (msg.size()>3)
+      r.args.args_list = std::move(msg[3].as_array());
+    if (msg.size()>4)
+      r.args.args_dict = std::move(msg[4].as_object());
     r.additional = options;
 
     try {
@@ -1548,14 +1550,17 @@ void wamp_session::process_inbound_error(json_array & msg)
         }
 
         wamp_args args;
-        if ( msg.size() > 5 ) args.args_list = std::move(msg[5].as_array());
-        if ( msg.size() > 6 ) args.args_dict = std::move(msg[6].as_object());
-        std::unique_ptr<std::string> error_ptr( new std::string(error_uri) );
+        if ( msg.size() > 5 )
+          args.args_list = std::move(msg[5].as_array());
+        if ( msg.size() > 6 )
+          args.args_dict = std::move(msg[6].as_object());
 
         try
         {
-          yield_info respone {request_id, details, error_uri, args, orig_request.user };
-          orig_request.reply_fn(*this, respone);
+          yield_info info(
+            request_id, std::move(details), std::move(error_uri),
+            std::move(args), orig_request.user);
+          orig_request.reply_fn(*this, std::move(info));
         } catch (...) {
           log_exception(__logger, "inbound invocation error user callback");
         }
@@ -1596,8 +1601,10 @@ void wamp_session::process_inbound_error(json_array & msg)
             r.was_error = true;
             r.error_uri = error_uri;
             r.user = orig_call.user;
-            if ( msg.size() > 5 ) r.args.args_list = msg[5].as_array();
-            if ( msg.size() > 6 ) r.args.args_dict = msg[6].as_object();
+            if ( msg.size() > 5 )
+              r.args.args_list = std::move(msg[5].as_array());
+            if ( msg.size() > 6 )
+              r.args.args_dict = std::move(msg[6].as_object());
             r.additional = details;
 
             try {
@@ -1637,7 +1644,7 @@ void wamp_session::process_inbound_error(json_array & msg)
         if (orig_request.request_cb && user_cb_allowed())
           try {
             subscribed_info info {request_id, 0, true, std::move(error_uri), orig_request.user};
-            orig_request.request_cb(*this, info);
+            orig_request.request_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound subscribed user callback");
@@ -1694,7 +1701,7 @@ void wamp_session::process_inbound_error(json_array & msg)
         if (request.request_cb && user_cb_allowed())
           try {
             published_info info {request_id, 0, true, std::move(error_uri), request.user};
-            request.request_cb(*this, info);
+            request.request_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound published user callback");
@@ -1880,9 +1887,9 @@ void wamp_session::process_inbound_yield(json_array & msg)
 
   wamp_args args;
   if ( msg.size() > 3 )
-    args.args_list = msg[3].as_array();
+    args.args_list = std::move(msg[3].as_array());
   if ( msg.size() > 4 )
-    args.args_dict = msg[4].as_object();
+    args.args_dict = std::move(msg[4].as_object());
 
   auto iter = m_pending_invocation.find(request_id);
   if (iter != m_pending_invocation.end())
@@ -1890,8 +1897,8 @@ void wamp_session::process_inbound_yield(json_array & msg)
     if (iter->second.reply_fn)
     {
       try {
-        yield_info info (request_id, options, args, iter->second.user);
-        iter->second.reply_fn(*this, info);
+        yield_info info (request_id, std::move(options), std::move(args), iter->second.user);
+        iter->second.reply_fn(*this, std::move(info));
       } catch (...){}
     }
     m_pending_invocation.erase(iter);

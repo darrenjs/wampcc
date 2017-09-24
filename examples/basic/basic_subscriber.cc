@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     bool have_subscription = false;
     wampcc::t_subscription_id subscription_id = 0;
     std::string uri = "coin_toss";
-    wampcc::on_subscribed_fn my_on_subscribed_fn = [&](wampcc::wamp_session&, wampcc::subscribed_info& info) {
+    wampcc::on_subscribed_fn my_on_subscribed_fn = [&](wampcc::wamp_session&, wampcc::subscribed_info info) {
       if (info)
       {
         have_subscription = true;

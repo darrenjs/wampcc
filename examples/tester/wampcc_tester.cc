@@ -293,7 +293,7 @@ public:
 
     std::promise<wampcc::subscribed_info> promised_result;
 
-    auto on_subscribed = [&](wampcc::wamp_session&, wampcc::subscribed_info& r) {
+    auto on_subscribed = [&](wampcc::wamp_session&, wampcc::subscribed_info r) {
       promised_result.set_value(std::move(r));
     };
     auto on_event = [this](wampcc::wamp_session&, wampcc::event_info info) {

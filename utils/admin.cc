@@ -524,7 +524,7 @@ int main_impl(int argc, char** argv)
   for (auto & topic : uopts.subscribe_topics)
     ws->subscribe(
       topic, sub_options,
-      [topic](wampcc::wamp_session&, wampcc::subscribed_info& info){
+      [topic](wampcc::wamp_session&, wampcc::subscribed_info info){
         if (info.was_error)
           std::cout << "subscribe failed for '"<< topic << "' : " << info.error_uri << std::endl;
         else
@@ -539,7 +539,7 @@ int main_impl(int argc, char** argv)
     ws->publish(uopts.publish_topic,
                 wampcc::json_object(),
                 args,
-                [](wampcc::wamp_session&, wampcc::published_info& info){
+                [](wampcc::wamp_session&, wampcc::published_info info){
                   if (info) {
                     std::cout << "publish successful to topic '"<<uopts.publish_topic
                               <<"' with publication_id " << info.publication_id

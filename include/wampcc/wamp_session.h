@@ -127,7 +127,7 @@ struct subscribed_info
 /** Callback invoked when a subscribe request is successful or fails. Error
     contains the error code when the subscription is not successful.
 */
-typedef std::function<void(wamp_session&, subscribed_info&)> on_subscribed_fn;
+typedef std::function<void(wamp_session&, subscribed_info)> on_subscribed_fn;
 
 struct unsubscribed_info
 {
@@ -160,7 +160,7 @@ struct published_info
 /** Callback invoked when a publish request is successful or fails. The
     error_uri member contains the error code when unsuccessful.
 */
-typedef std::function<void(wamp_session&, published_info&)> on_published_fn;
+typedef std::function<void(wamp_session&, published_info)> on_published_fn;
 
 /** Represent a dealer response caused by a previous CALL request. The
  * originating CALL request would have been initiated via a call of method
@@ -240,7 +240,6 @@ struct registered_info
   operator bool() const noexcept { return !was_error; }
 };
 typedef std::function<void(wamp_session&, registered_info)> on_registered_fn;
-
 
 /** Callback data associated with arrival of an INVOCATION wamp message.  The
  * registration_id identifies a previously registered procedure that should
