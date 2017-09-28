@@ -714,7 +714,10 @@ void wamp_session::handle_HELLO(json_array& ja)
 
   std::string realm = ja.at(1).as_string();
   const json_object & authopts = ja.at(2).as_object();
-  std::string authid = json_get_copy(authopts, "authid", "").as_string();
+
+  auto iter = authopts.find("authid");
+  const bool found_authid = (iter != authopts.end());
+  std::string authid = found_authid? iter->second.as_string() : "";
 
   if (realm.empty())
     throw auth_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed");
@@ -723,10 +726,14 @@ void wamp_session::handle_HELLO(json_array& ja)
     // update the realm & authid, and protect from multiple assignments to the
     // value, so that it cannot be changed once set
     std::lock_guard<std::mutex> guard(m_realm_lock);
+
     if (m_realm.empty())
       m_realm  = realm;
-    if (m_authid.empty())
-      m_authid = authid;
+
+    if (!m_authid.first && found_authid) {
+      m_authid.first = true;
+      m_authid.second = authid;
+    }
   }
 
   auth_provider::mode auth_required;
@@ -871,14 +878,14 @@ void wamp_session::handle_AUTHENTICATE(json_array& ja)
 
   if (m_auth_proivder.check_cra) {
     /* Client program has provided the CRA check function, so use that */
-    cra_ok = m_auth_proivder.check_cra(m_authid, m_realm, orig_challenge,
+    cra_ok = m_auth_proivder.check_cra(m_authid.second, m_realm, orig_challenge,
                                        peer_digest);
   }
   else
   {
     /* Client program has not provided the CRA check function, so perform the
      * sha/hash ourself */
-    std::string key = m_auth_proivder.user_secret(m_authid, m_realm);
+    std::string key = m_auth_proivder.user_secret(m_authid.second, m_realm);
 
     char digest[256];
     unsigned int digestlen = sizeof(digest)-1;
@@ -963,7 +970,7 @@ std::future<void> wamp_session::hello(client_credentials cc)
 {
   /* USER thread */
 
-  check_hello(cc.realm);
+  check_hello(cc.realm, {true, cc.authid});
 
   m_client_secret_fn = std::move( cc.secret_fn );
 
@@ -996,7 +1003,8 @@ std::future<void> wamp_session::hello(client_credentials cc)
 }
 
 
-void wamp_session::check_hello(const std::string& realm)
+void wamp_session::check_hello(const std::string& realm,
+                               std::pair<bool, std::string> auth)
 {
   std::lock_guard<std::mutex> guard(m_realm_lock);
 
@@ -1007,6 +1015,7 @@ void wamp_session::check_hello(const std::string& realm)
     throw std::runtime_error("hello cannot be called more than once");
 
   m_realm = realm;
+  m_authid = std::move(auth);
 }
 
 
@@ -1015,7 +1024,7 @@ std::future<void> wamp_session::hello_common(const std::string& realm,
 {
   /* USER thread */
 
-  check_hello(realm);
+  check_hello(realm, std::move(user));
 
   auto initiate_cb = [=]()
     {
@@ -2491,5 +2500,20 @@ void wamp_session::event(t_subscription_id sub_id, t_publication_id pub_id, json
 
   send_msg( std::move(msg) );
 }
+
+std::string wamp_session::authid() const
+{
+  /* Note that returning a reference here would be unsafe, because access to the
+   * underlying m_authid is protected by a mutex. */
+  std::lock_guard<std::mutex> guard(m_realm_lock);
+  return m_authid.second;
+}
+
+bool wamp_session::has_authid() const
+{
+  std::lock_guard<std::mutex> guard(m_realm_lock);
+  return m_authid.first;
+}
+
 
 } // namespace wampcc

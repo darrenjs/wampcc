@@ -51,6 +51,8 @@ struct auth_provider
   /* Handle request for user access to realm. Must return the authentication
    * mode and a set of supported authentication methods (which are then
    * applicable if mode==authenticate). */
+
+  // TODO: add a boolean to indicate whether the user_id was provided
   std::function<
     auth_plan
     (const std::string& user, const std::string& realm) > policy;
@@ -566,6 +568,13 @@ public:
    * the request_id parameter. */
   void registered(t_request_id request_id, t_registration_id);
 
+  /** Return the authid associated with this session, if one has been
+   * provided (use has_authid() to determine if provided). */
+  std::string authid() const;
+
+  /** Return whether an authid is associated with this session. */
+  bool has_authid() const;
+
   //@{
   /** Reply to a REGISTER request with an ERROR message to indicate the
    * corresponding registration request could not be fulfilled. */
@@ -742,7 +751,7 @@ private:
   std::function< std::string() > m_client_secret_fn;
 
   std::string m_realm;
-  std::string m_authid;
+  std::pair<bool, std::string> m_authid; // .first ==> tells if present
   std::string m_challenge;
   mutable std::mutex m_realm_lock;
 
@@ -788,7 +797,9 @@ private:
 
   std::future<void> hello_common(const std::string& realm,
                                  std::pair<bool, std::string> user);
-  void check_hello(const std::string&);
+
+  void check_hello(const std::string& realm,
+                   std::pair<bool, std::string> auth);
 
   server_msg_handler m_server_handler;
 
