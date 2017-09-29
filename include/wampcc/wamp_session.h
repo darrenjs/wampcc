@@ -28,7 +28,8 @@ class pubsub_man;
 class tcp_socket;
 struct logger;
 
-typedef std::function<void(wamp_session&, bool)> state_fn;
+/** Callback type used to signal wamp session becomes open or closed.*/
+typedef std::function<void(wamp_session&, bool is_open)> on_state_fn;
 
 /** Handler interface for server-side authentication.  An instance of
  * auth_provider must be provided to each server-side wamp_session, which
@@ -326,7 +327,7 @@ private:
    authentication, before is deemed open and ready to send and receive messages.
    A client initiates the establishment sequence by calling `hello()`; when the
    sequence completes, successfully or unsuccessfully, the owner is notified via
-   the state_fn callback.
+   the on_state_fn callback.
 
    The `is_open()` method indicates if the logical session is open, allowing WAMP
    message requests to be made.
@@ -390,7 +391,7 @@ public:
    * remote client). */
   static std::shared_ptr<wamp_session> create(kernel*,
                                               std::unique_ptr<tcp_socket>,
-                                              state_fn,
+                                              on_state_fn,
                                               protocol_builder_fn,
                                               server_msg_handler,
                                               auth_provider,
@@ -402,7 +403,7 @@ public:
   template<typename T>
   static std::shared_ptr<wamp_session> create(kernel* k,
                                               std::unique_ptr<tcp_socket> socket,
-                                              state_fn state_cb = nullptr,
+                                              on_state_fn state_cb = nullptr,
                                               typename T::options protocol_options = {},
                                               wamp_session::options session_opts = {})
   {
@@ -666,7 +667,7 @@ private:
   static std::shared_ptr<wamp_session> create_impl(kernel*,
                                                    mode,
                                                    std::unique_ptr<tcp_socket>,
-                                                   state_fn,
+                                                   on_state_fn,
                                                    protocol_builder_fn ,
                                                    server_msg_handler,
                                                    auth_provider,
@@ -675,7 +676,7 @@ private:
   wamp_session(kernel*,
                mode,
                std::unique_ptr<tcp_socket>,
-               state_fn,
+               on_state_fn,
                server_msg_handler,
                auth_provider,
                wamp_session::options);
@@ -758,7 +759,7 @@ private:
   auth_provider m_auth_proivder;
   bool m_server_requires_auth;
 
-  state_fn m_notify_state_change_fn;
+  on_state_fn m_notify_state_change_fn;
 
   void process_inbound_registered(json_array &);
   void process_inbound_invocation(json_array &);

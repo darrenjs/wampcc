@@ -199,18 +199,23 @@ void pubsub_man::update_topic(const std::string& topic,
     //std::cout << "-------\n";
   }
 
-  // broadcast event to subscribers
-
+  /*
+    Broadcast to multiple subscribers.  Instead of using the event() method on
+    each wamp_session, we preform that the message and same the same to each
+    subscriber.
+   */
   json_array msg;
   msg.reserve(6);
   msg.push_back( msg_type::wamp_msg_event );
   msg.push_back( mt->subscription_id() );
   msg.push_back( mt->next_publication_id() );
   msg.push_back( std::move(options) );
-  if (!args.args_list.empty())
+
+  if (!args.args_list.empty() || !args.args_dict.empty())
   {
-    msg.push_back( args.args_list );
-    if (!args.args_dict.empty()) msg.push_back( args.args_dict );
+    msg.push_back(args.args_list);
+    if (!args.args_dict.empty())
+      msg.push_back(args.args_dict);
   }
 
   size_t num_active = 0;
