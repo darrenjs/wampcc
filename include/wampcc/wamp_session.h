@@ -58,6 +58,18 @@ struct auth_provider
     auth_plan
     (const std::string& user, const std::string& realm) > policy;
 
+  /** For CRA, provide optional password salting parameters. If these are
+      available they will be added to the challenge sent to the peer. The
+      same parameters must later be used during either check_cra() or
+      user_secret(). Note that WAMP implementatins typically use SHA256, 
+      so keylen is normally 32. */
+  struct cra_salt_params {
+    std::string salt;
+    int keylen;
+    int iterations;
+  };
+  std::function<cra_salt_params(const std::string& realm, const std::string& user)> cra_salt;
+
   /* Optionally handle the wamp CRA check. This function must fetch the secret
    * associated with the user & realm, apply it to the challenge, and
    * determine if the challenge matches the response. If this is not

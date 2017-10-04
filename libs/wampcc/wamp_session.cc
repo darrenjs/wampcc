@@ -804,10 +804,22 @@ void wamp_session::handle_HELLO(json_array& ja)
                        "challenge already issued");
   }
 
-  json_array msg({
+
+  json_object extra;
+  extra["challenge"] = std::move(challengestr);
+
+  // attach salting parameters if available
+  if (m_auth_proivder.cra_salt) {
+    auto salt = m_auth_proivder.cra_salt(realm, authid);
+    extra.insert({"salt",salt.salt});
+    extra.insert({"keylen",salt.keylen});
+    extra.insert({"iterations",salt.iterations});
+  }
+
+  json_array msg{
     msg_type::wamp_msg_challenge,
     WAMP_WAMPCRA,
-    json_object({{"challenge", std::move(challengestr)}})});
+    std::move(extra)};
   send_msg( msg );
 }
 
