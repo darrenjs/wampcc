@@ -22,7 +22,7 @@
       __xx_oss <<  X ;                                                  \
       __logger.write(LEVEL, __xx_oss.str(), __FILE__,__LINE__  ) ;      \
     }                                                                   \
-  } while (0)
+  } while (false)
 
 #define LOG_FOR_LEVEL( LEVEL )                                        \
   ( __logger.wants_level &&                                           \

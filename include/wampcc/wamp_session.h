@@ -407,7 +407,8 @@ public:
                                               protocol_builder_fn,
                                               server_msg_handler,
                                               auth_provider,
-                                              options = options());
+                                              options = options(),
+                                              void * = nullptr);
 
   /** Create a client-mode session (i.e., the socket was actively connected to
    * a remote server) using a protocol class as specified via the template
@@ -417,7 +418,8 @@ public:
                                               std::unique_ptr<tcp_socket> socket,
                                               on_state_fn state_cb = nullptr,
                                               typename T::options protocol_options = {},
-                                              wamp_session::options session_opts = {})
+                                              wamp_session::options session_opts = {},
+                                              void* user = nullptr)
   {
     protocol_builder_fn factory_fn;
     factory_fn = [protocol_options, k](tcp_socket* socket,
@@ -433,7 +435,7 @@ public:
 
     return wamp_session::create_impl(k, mode::client, std::move(socket),
                                      state_cb, factory_fn, server_msg_handler(), auth_provider(),
-                                     session_opts);
+                                     session_opts, user);
   }
 
   /** Perform WAMP HELLO for a client-mode instance. Should be invoked
@@ -672,6 +674,12 @@ public:
   void publish_error(t_request_id, std::string error, json_object details);
   //@}
 
+  /** Access user data */
+  void * user() const { return m_user; }
+
+  /** Modify user data **/
+  void * & user() { return m_user; }
+
 private:
 
   void proto_close(); // for tests
@@ -683,7 +691,8 @@ private:
                                                    protocol_builder_fn ,
                                                    server_msg_handler,
                                                    auth_provider,
-                                                   wamp_session::options);
+                                                   wamp_session::options,
+                                                   void*);
 
   wamp_session(kernel*,
                mode,
@@ -691,7 +700,8 @@ private:
                on_state_fn,
                server_msg_handler,
                auth_provider,
-               wamp_session::options);
+               wamp_session::options,
+               void* user);
 
   wamp_session(const wamp_session&) = delete;
   wamp_session& operator=(const wamp_session&) = delete;
@@ -842,6 +852,9 @@ private:
   std::promise< void > m_promise_on_open;
 
   options m_options;
+
+  // arbitrary user data
+  void* m_user;
 };
 
 } // namespace wampcc
