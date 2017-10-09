@@ -16,6 +16,7 @@
 #include "wampcc/kernel.h"
 #include "wampcc/rawsocket_protocol.h"
 #include "wampcc/io_loop.h"
+#include "apache/base64.h" // from 3rdparty
 
 #include <algorithm>
 #include <memory>
@@ -25,6 +26,8 @@
 
 #include <string.h>
 #include <assert.h>
+
+#include <openssl/evp.h>
 
 template<typename T>
 static bool is_in(T t, T v) {
@@ -181,7 +184,6 @@ wamp_session::wamp_session(kernel* __kernel,
 }
 
 
-
 std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    std::unique_ptr<tcp_socket> sock,
                                                    on_state_fn state_cb,
@@ -191,7 +193,18 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    wamp_session::options session_opts,
                                                    void* user)
 {
-  // TODO: check the server functions are defined
+  // check handlers once, instead of on each use
+  if (!handler.on_call)
+    throw std::runtime_error("undefined function: on_call");
+  if (!handler.on_publish)
+    throw std::runtime_error("undefined function: on_publish");
+  if (!handler.on_register)
+    throw std::runtime_error("undefined function: on_register");
+  if (!handler.on_subscribe)
+    throw std::runtime_error("undefined function: on_subscribe");
+  if (!handler.on_unsubscribe)
+    throw std::runtime_error("undefined function: on_unsubscribe");
+
   return create_impl(k, mode::server, std::move(sock),
                      state_cb, protocol_builder, handler, auth, std::move(session_opts), user);
 }
@@ -854,13 +867,33 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
 
   /* generate the authentication digest */
 
-  std::string key;
-  if (m_client_secret_fn)
-    key = m_client_secret_fn();
+  std::string key = m_client_secret_fn();
 
-  char digest[256];
+  auto iter_salt = extra.find("salt");
+  if (iter_salt != end(extra)) {
+    int keylen = (int) json_get_ref(extra, "keylen").as_int();
+    int iterations = (int) json_get_ref(extra, "iterations").as_int();
+    const std::string& salt = iter_salt->second.as_string();
+
+    std::vector<unsigned char> derived_key(keylen, {});
+
+    // compute derived key
+    if (PKCS5_PBKDF2_HMAC(key.c_str(),  key.size(),
+                          (const unsigned char *)salt.c_str(), salt.size(),
+                          iterations,
+                          EVP_sha256(), /* sha256 is used by Autobahn */
+                          keylen, derived_key.data()) == 0)
+      throw std::runtime_error("PKCS5_PBKDF2_HMAC failed");
+
+    // derived key to base64
+    char b64[50] = {}; // 256 bits / 6 bits
+    ap_base64encode(b64, (char*)derived_key.data(), derived_key.size());
+
+    key = b64;
+  }
+
+  char digest[256] = {};
   unsigned int digestlen = sizeof(digest)-1;
-  memset(digest, 0, sizeof(digest));
 
   int err = compute_HMACSHA256(key.c_str(), key.size(),
                                challmsg.c_str(), challmsg.size(),
