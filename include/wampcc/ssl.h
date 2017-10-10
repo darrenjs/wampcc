@@ -57,15 +57,15 @@ private:
 
 
 /* Represent the objects & state associated with an SSL session. */
-class ssl_session
+struct ssl_session
 {
-public:
   SSL *ssl;
 
   BIO *rbio; /* SSL reads from, we write to. */
   BIO *wbio; /* SSL writes to, we read from. */
 
   ssl_session(ssl_context* ctx, wampcc::connect_mode);
+  ~ssl_session();
 };
 
 /* Obtain the return value of an SSL operation and convert into a simplified

@@ -39,6 +39,8 @@ unreleased
 
 ## Fixed
 
+- ssl_socket memleak
+
 - compile error on gcc7 (issue #8, gustavvanputten)
 
 - on_publish server callback was missing t_request_id parameter
