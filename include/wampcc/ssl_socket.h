@@ -13,7 +13,7 @@
 namespace wampcc
 {
 
-class ssl_session;
+struct ssl_session;
 enum class sslstatus;
 
 /**

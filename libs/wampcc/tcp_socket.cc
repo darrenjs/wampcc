@@ -114,13 +114,13 @@ tcp_socket::~tcp_socket()
   {
     /* detect & caution undefined behaviour */
     if (io_loop_ended) {
-      LOG_ERROR("undefined behaviour calling ~tcp_socket when IO loop closed");
+      LOG_ERROR("undefined behaviour calling ~tcp_socket for unclosed socket when IO loop closed");
     }
     else if (m_kernel->get_io() == nullptr) {
-      LOG_ERROR("undefined behaviour calling ~tcp_socket when IO loop deleted");
+      LOG_ERROR("undefined behaviour calling ~tcp_socket for unclosed socket when IO loop deleted");
     }
     else if (m_kernel->get_io()->this_thread_is_io()) {
-      LOG_ERROR("undefined behaviour calling ~tcp_socket on IO thread");
+      LOG_ERROR("undefined behaviour calling ~tcp_socket for unclosed socket on IO thread");
     }
     else
       m_io_closed_future.wait();
@@ -690,7 +690,19 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
     std::unique_ptr<tcp_socket> up(
       h? create(m_kernel, h, socket_state::connected):0);
 
-    user_accept_fn(up, ec);
+    /* Catch user function exceptions, to prevent stack unwind and destruction
+     * of the open tcp_socket object.  The tcp_socket cannot be closed & deleted
+     * on the IO thread. */
+    try {
+      user_accept_fn(up, ec);
+    }
+    catch (std::exception& e) {
+      LOG_ERROR("exception during socket on_accept_cb : " << e.what());
+    }
+    catch (...) {
+      LOG_ERROR("exception during socket on_accept_cb : unknown");
+    }
+
     return up;
   };
 
