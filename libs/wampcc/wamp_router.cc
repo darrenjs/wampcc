@@ -174,7 +174,11 @@ void wamp_router::handle_inbound_call(
         else
           throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
       }
-    } else {
+    }
+    else if (uri == WAMP_REFLECTION_TOPIC_LIST)
+      ws->result(request_id, m_pubsub->get_topics(ws->realm()));
+    else
+    {
       /* RPC uri lookup failed */
       throw wamp_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
     }

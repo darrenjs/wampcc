@@ -39,6 +39,8 @@ public:
 
   void session_closed(session_handle sh);
 
+  json_array get_topics(const std::string& realm) const;
+
 private:
   pubsub_man(const pubsub_man&);            // no copy
   pubsub_man& operator=(const pubsub_man&); // no assignment

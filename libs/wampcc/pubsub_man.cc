@@ -269,6 +269,23 @@ void pubsub_man::inbound_publish(std::string realm,
   update_topic(topic, realm, std::move(options), args);
 }
 
+json_array pubsub_man::get_topics(const std::string& realm) const
+{
+  /* EV thread */
+
+  auto realm_iter = m_topics.find(realm);
+  if (realm_iter == m_topics.end())
+    throw std::runtime_error("realm not found");
+
+  wampcc::json_array topics;
+
+  const topic_registry& topic_reg = realm_iter->second;
+
+  for (auto & item : topic_reg)
+    topics.push_back(item.first);
+
+  return topics;
+}
 
 /* Add a subscription to a managed topic.  Need to sync the addition of the
   subscriber, with the series of images and updates it sees. This is done via

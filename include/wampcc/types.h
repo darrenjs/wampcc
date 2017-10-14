@@ -46,6 +46,11 @@ namespace wampcc
 // WAMP string constants
 #define WAMP_WAMPCRA "wampcra"
 
+// Protocol defined services
+#define WAMP_REFLECTION_TOPIC_LIST "wamp.reflection.topic.list"
+#define WAMP_REFLECTION_PROCEDURE_LIST "wamp.reflection.procedure.list"
+#define WAMP_REFLECTION_ERROR_LIST "wamp.reflection.error.list"
+
   enum msg_type
   {
     wamp_msg_undef = 0,
