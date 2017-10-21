@@ -45,6 +45,15 @@ include(CheckLibraryExists)
 find_package(PkgConfig)
 
 ##
+## Compiler checks
+##
+include(CheckCXXCompilerFlag)
+check_cxx_compiler_flag(-Wall temp)
+if(temp)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+endif()
+
+##
 ## Try to find libssl
 ##
 if(CMAKE_HOST_UNIX)
@@ -67,7 +76,7 @@ else() # LIBUV_DIR
   # normalise user paths that we use for searching
   file(TO_CMAKE_PATH ${LIBUV_DIR} LIBUV_DIR)
   message(STATUS "Using user provided libuv")
-  
+
   if(CMAKE_HOST_UNIX)
       set(LIBUV_FILE "uv")
   else()
