@@ -31,7 +31,7 @@ libwampcc_la_SOURCES = platform.cc websocketpp_impl.cc websocket_protocol.cc	\
 ssl.cc ssl_socket.cc tcp_socket.cc wamp_session.cc wamp_router.cc event_loop.cc	\
 io_loop.cc kernel.cc pubsub_man.cc rpc_man.cc utils.cc protocol.cc helper.cc	\
 rawsocket_protocol.cc ../../3rdparty/http_parser/http_parser.c http_parser.cc	\
-data_model.cc error.cc ../../3rdparty/apache/base64.c
+data_model.cc error.cc ../../3rdparty/apache/base64.c socket_address.cc
 
 # Include compile and link flags for an individual library.
 #

@@ -9,6 +9,9 @@
 
 #include "wampcc/utils.h"
 #include "wampcc/platform.h"
+#include "wampcc/wampcc.h"
+
+#include <sys/socket.h>
 
 #include "mini_test.h"
 
@@ -225,6 +228,46 @@ TEST_CASE("test_random_ascii_string")
 
   REQUIRE(s0 == s1);
   REQUIRE(s0 != s2);
+}
+
+TEST_CASE("socket_address")
+{
+  sockaddr_storage ss0 = {};
+  sockaddr_storage ss1 = {};
+
+  memset(&ss1, 1, sizeof ss1); // make s0 != s1
+
+  // test constructor
+  socket_address sa0(ss0);
+  socket_address sa1(ss1);
+  REQUIRE(sa0 == sa0);
+  REQUIRE(sa1 == sa1);
+  REQUIRE((sa1 != sa1) == false);
+  REQUIRE(sa0 != sa1);
+
+  // test constructor
+  socket_address sa2;
+  REQUIRE(sa0 == sa2);
+  REQUIRE(sa2.is_ipv4() == false);
+  REQUIRE(sa2.is_ipv6() == false);
+  REQUIRE(sa2.to_string() == "");
+
+  // test copy constructor
+  socket_address sa10{ss0};
+  socket_address sa11{ss1};
+  REQUIRE(sa10 != sa11);
+
+  // test assignment
+  sa10 = sa2;
+  sa11 = sa2;
+  REQUIRE(sa10 == sa11);
+
+  // test move-assignment
+  socket_address sa20{ss0};
+  socket_address sa21{ss1};
+  sa10 = std::move(sa20);
+  sa11 = std::move(sa21);
+  REQUIRE(sa10 != sa11);
 }
 
 int main(int argc, char** argv)

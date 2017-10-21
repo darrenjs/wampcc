@@ -40,6 +40,7 @@ namespace wampcc
 {
 
 class io_loop;
+class socket_address;
 
 /**
  * Represent a TCP socket, in both server mode and client mode.
@@ -140,11 +141,26 @@ public:
   size_t bytes_read() const { return m_bytes_read; }
   size_t bytes_written() const { return m_bytes_written; }
 
-  /** Return endpoint address associated with socket */
+  /** Return the node name, as provided during the connect / listen call. */
   const std::string& node() const;
 
-  /** Return endpoint port or service associated with socket */
+  /** Return the service name, as provided during the connect / listen call. */
   const std::string& service() const;
+
+  /** Return the socket local address. */
+  socket_address get_local_address();
+
+  /** Return the socket local port. */
+  int get_local_port();
+
+  /** Return the socket peer address. */
+  socket_address get_peer_address();
+
+  /** Return the socket peer port. */
+  int get_peer_port();
+
+  const kernel* get_kernel() const { return m_kernel; }
+  kernel* get_kernel() { return m_kernel; }
 
 protected:
 

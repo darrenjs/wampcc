@@ -5,15 +5,14 @@
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
-#include "wampcc/tcp_socket.h"
-#include "wampcc/kernel.h"
 #include "wampcc/io_loop.h"
+#include "wampcc/kernel.h"
 #include "wampcc/log_macros.h"
+#include "wampcc/socket_address.h"
+#include "wampcc/tcp_socket.h"
 #include "wampcc/utils.h"
 
 #include <uv.h>
-
-#include <iostream>
 
 #include <assert.h>
 
@@ -945,9 +944,10 @@ void tcp_socket::do_connect(const std::string& node, const std::string& service,
 
 
 void tcp_socket::connect_completed(
-    uverr ec, std::shared_ptr<std::promise<uverr>> completion, uv_tcp_t* h)
+  uverr ec, std::shared_ptr<std::promise<uverr>> completion, uv_tcp_t* h)
 {
   /* IO thread */
+
   std::lock_guard<std::mutex> guard(m_state_lock);
 
   /* State might be closed/closing, which can happen if a tcp_socket is deleted
@@ -991,6 +991,88 @@ const std::string& tcp_socket::service() const
   return m_service;
 }
 
+
+socket_address tcp_socket::get_peer_address()
+{
+  if (!m_uv_tcp)
+    return socket_address();
+
+  socket_address sa;
+  int ss_len = sizeof (::sockaddr_storage);
+
+  static_assert(std::is_same<socket_address::impl_type::element_type, ::sockaddr_storage>(), "types are not the same");
+  static_assert(std::is_same<decltype(sa.m_impl.get()), ::sockaddr_storage*>(), "types are not the same");
+
+  uv_tcp_getpeername(m_uv_tcp, (sockaddr*) sa.m_impl.get(), &ss_len);
+
+  return sa;
+}
+
+
+int tcp_socket::get_peer_port()
+{
+  if (!m_uv_tcp)
+    return 0;
+
+  ::sockaddr_storage ss;
+  int ss_len = sizeof ss;
+
+  uv_tcp_getpeername(m_uv_tcp, (sockaddr*) &ss, &ss_len);
+
+  if (ss.ss_family == AF_INET) {
+    ::sockaddr_in * addrin = (::sockaddr_in *) &ss;
+    return ntohs(addrin->sin_port);
+  }
+
+  if (ss.ss_family == AF_INET6) {
+    ::sockaddr_in6 * addrin6 = (::sockaddr_in6 *) &ss;
+    return ntohs(addrin6->sin6_port);
+  }
+
+  return 0;
+}
+
+
+
+socket_address tcp_socket::get_local_address()
+{
+  if (!m_uv_tcp)
+    return socket_address();
+
+  socket_address sa;
+  int ss_len = sizeof (::sockaddr_storage);
+
+  static_assert(std::is_same<socket_address::impl_type::element_type, ::sockaddr_storage>(), "types are not the same");
+  static_assert(std::is_same<decltype(sa.m_impl.get()), ::sockaddr_storage*>(), "types are not the same");
+
+  uv_tcp_getsockname(m_uv_tcp, (sockaddr*) sa.m_impl.get(), &ss_len);
+
+  return sa;
+}
+
+
+int tcp_socket::get_local_port()
+{
+  if (!m_uv_tcp)
+    return 0;
+
+  ::sockaddr_storage ss;
+  int ss_len = sizeof ss;
+
+  uv_tcp_getsockname(m_uv_tcp, (sockaddr*) &ss, &ss_len);
+
+  if (ss.ss_family == AF_INET) {
+    ::sockaddr_in * addrin = (::sockaddr_in *) &ss;
+    return ntohs(addrin->sin_port);
+  }
+
+  if (ss.ss_family == AF_INET6) {
+    ::sockaddr_in6 * addrin6 = (::sockaddr_in6 *) &ss;
+    return ntohs(addrin6->sin6_port);
+  }
+
+  return 0;
+}
 
 
 } // namespace wampcc

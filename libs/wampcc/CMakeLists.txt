@@ -14,6 +14,7 @@ set(INSTALL_HDRS
   ${PROJECT_SOURCE_DIR}/include/wampcc/rawsocket_protocol.h
   ${PROJECT_SOURCE_DIR}/include/wampcc/websocket_protocol.h
   ${PROJECT_SOURCE_DIR}/include/wampcc/tcp_socket.h
+  ${PROJECT_SOURCE_DIR}/include/wampcc/socket_address.h
   ${PROJECT_SOURCE_DIR}/include/wampcc/data_model.h
   ${PROJECT_SOURCE_DIR}/include/wampcc/error.h
   ${PROJECT_SOURCE_DIR}/include/wampcc/helper.h
@@ -37,7 +38,7 @@ if(BUILD_STATIC_LIBS)
 
   target_include_directories(wampcc_static PRIVATE
                              ${LIBUV_INCLUDE_DIRS} )
-							 
+
   target_link_libraries(wampcc_static wampcc_json_static)
   add_dependencies(wampcc_static wampcc_json_static)
 
