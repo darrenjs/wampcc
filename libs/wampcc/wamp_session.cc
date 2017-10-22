@@ -155,6 +155,10 @@ static void check_size_at_least(size_t msg_len, size_t s)
 }
 
 /* Constructor */
+
+// TODO: check: if exception thrown during construction, but after socket
+// ownership has been transfered, is the socket closed & deleted correctly?
+
 wamp_session::wamp_session(kernel* __kernel,
                            mode conn_mode,
                            std::unique_ptr<tcp_socket> h,
@@ -193,26 +197,18 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    wamp_session::options session_opts,
                                                    void* user)
 {
-  // check handlers once, instead of on each use
-  if (!handler.on_call)
-    throw std::runtime_error("undefined function: on_call");
-  if (!handler.on_publish)
-    throw std::runtime_error("undefined function: on_publish");
-  if (!handler.on_register)
-    throw std::runtime_error("undefined function: on_register");
-  if (!handler.on_subscribe)
-    throw std::runtime_error("undefined function: on_subscribe");
-  if (!handler.on_unsubscribe)
-    throw std::runtime_error("undefined function: on_unsubscribe");
+  // This method has taken ownership of the tcp_socket, so use a guard to ensure
+  // proper close and deletion.
+  tcp_socket_guard sock_guard(sock);
 
-  return create_impl(k, mode::server, std::move(sock),
+  return create_impl(k, mode::server, sock,
                      state_cb, protocol_builder, handler, auth, std::move(session_opts), user);
 }
 
 
 std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
                                                         mode conn_mode,
-                                                        std::unique_ptr<tcp_socket> sock,
+                                                        std::unique_ptr<tcp_socket> & sock,
                                                         on_state_fn state_cb,
                                                         protocol_builder_fn protocol_builder,
                                                         server_msg_handler handler,

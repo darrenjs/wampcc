@@ -12,6 +12,7 @@
 #include "wampcc/protocol.h"
 #include "wampcc/error.h"
 #include "wampcc/json.h"
+#include "wampcc/tcp_socket.h"
 
 #include <map>
 #include <mutex>
@@ -25,7 +26,6 @@ class protocol;
 class wamp_session;
 class kernel;
 class pubsub_man;
-class tcp_socket;
 struct logger;
 
 /** Callback type used to signal wamp session becomes open or closed.*/
@@ -415,25 +415,29 @@ public:
    * parameter. */
   template<typename T>
   static std::shared_ptr<wamp_session> create(kernel* k,
-                                              std::unique_ptr<tcp_socket> socket,
+                                              std::unique_ptr<tcp_socket> sock,
                                               on_state_fn state_cb = nullptr,
                                               typename T::options protocol_options = {},
                                               wamp_session::options session_opts = {},
                                               void* user = nullptr)
   {
+    /* This method has taken ownership of the tcp_socket, so use a guard to
+     * ensure proper close and deletion. */
+    tcp_socket_guard sock_guard(sock);
+
     protocol_builder_fn factory_fn;
-    factory_fn = [protocol_options, k](tcp_socket* socket,
+    factory_fn = [protocol_options, k](tcp_socket* sock,
                                        protocol::t_msg_cb _msg_cb,
                                        protocol::protocol_callbacks callbacks)
       {
         std::unique_ptr<protocol> up (
-          new T(k, socket, _msg_cb, callbacks,
+          new T(k, sock, _msg_cb, callbacks,
                 connect_mode::active, protocol_options)
           );
         return up;
       };
 
-    return wamp_session::create_impl(k, mode::client, std::move(socket),
+    return wamp_session::create_impl(k, mode::client, sock,
                                      state_cb, factory_fn, server_msg_handler(), auth_provider(),
                                      session_opts, user);
   }
@@ -686,7 +690,7 @@ private:
 
   static std::shared_ptr<wamp_session> create_impl(kernel*,
                                                    mode,
-                                                   std::unique_ptr<tcp_socket>,
+                                                   std::unique_ptr<tcp_socket>&,
                                                    on_state_fn,
                                                    protocol_builder_fn ,
                                                    server_msg_handler,
@@ -758,7 +762,7 @@ private:
 
   t_session_id m_sid;
   std::string m_log_prefix;
-  std::unique_ptr< tcp_socket> m_socket;
+  std::unique_ptr<tcp_socket> m_socket;
 
   mode m_session_mode;
 

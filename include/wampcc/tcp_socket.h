@@ -41,10 +41,65 @@ namespace wampcc
 
 class io_loop;
 class socket_address;
+class tcp_socket;
+
+/** A RAII utility class to manage the lifetime of a block-scope tcp_socket
+ * resource.  The guard will ensure that, at scope termination, the tcp_socket
+ * is correctly disposed of, either via normal destruction at scope end, or, via
+ * later destruction on the wampcc IO thread. This guard implements the
+ * tcp_socket ownership rule, i.e., an unclosed socket should not be deleted on
+ * the IO thread. */
+class tcp_socket_guard
+{
+public:
+  tcp_socket_guard(std::unique_ptr<tcp_socket>& __sock);
+  ~tcp_socket_guard();
+  std::unique_ptr<tcp_socket>& sock;
+};
 
 /**
- * Represent a TCP socket, in both server mode and client mode.
- */
+Represent a TCP socket in both server and client mode.
+
+A socket is created and operated in either server mode or in client mode. Using
+it in server mode involves use of the listen() method; using it in client mode
+involves use of connect().
+
+The owner of a tcp_socket must take special care during its deletion.  It is
+undefined behaviour to invoke the tcp_socket destructor via the internal wampcc
+IO thread for an instance not in the closed state.
+
+There are three approaches to acheive safe deletion of a tcp_socket:
+
+1. Invoke the destructor on a thread other than the wamp IO thread. It is always
+   safe to delete a tcp_socket this way, no matter what the current state of the
+   instance.  The destructor will, if necessary, advance the state to closed and
+   perform any wait required for closed to be reached.
+
+2. Manually ensure the instance has reached the closed state before calling the
+   destructor.  The close of a tcp_socket is initiated by calling close().  Once
+   initiated the socket will transition to the closed state asynchronously.  The
+   caller can wait for closed to be reached by waiting on the future returned by
+   close() or closed_future(). Such a wait should not be performed on the wampcc
+   IO thread, since it is the IO thread that performs the internal work required
+   to advance the state to closed. The method is_closed() tells if the closed
+   state has been reached.
+
+3. Delete the socket asynchronously using a callback associated with the close
+   operation.  The close(on_close_cb) method initiates close of a tcp_socket;
+   once the closed state has been achieved the user callback is invoked (via the
+   wampcc IO thread).  Now that the close state has been reached the instance
+   can be safely deleted during the callback.
+
+In addition to these strategies a tcp_socket_guard can be used to ensure the
+correct disposal of a tcp_socket that has a scoped lifetime. The guard will
+detect if an unclosed tcp_socket is about to be deleted on the wampcc IO thread,
+and in such situations will intervene to delete the instance via asynchronous
+callback.
+
+Using a tcp_socket_guard with a scoped tcp_socket prevents accidental unsafe
+deletion.  Unintended deletion typically occurs when an exception is thrown that
+leads to scope exit, and with it the deletion of associated local objects.
+*/
 class tcp_socket
 {
 public:
@@ -127,6 +182,8 @@ public:
   bool is_connect_failed() const;
   bool is_listening() const;
   bool is_closing() const;
+
+  /** Return whether the instance has reached the closed state. */
   bool is_closed() const;
 
   /** Return whether this tcp_socket has been initialised, which means it is

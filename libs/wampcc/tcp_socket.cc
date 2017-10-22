@@ -19,6 +19,26 @@
 namespace wampcc
 {
 
+
+tcp_socket_guard::tcp_socket_guard(std::unique_ptr<tcp_socket>& __sock)
+  : sock(__sock)
+{
+}
+
+tcp_socket_guard::~tcp_socket_guard()
+{
+  /* If the tcp_socket object still exists (and so it headed for deletion), is
+   * not closed, and current thread is the IO thread, then takeaway ownerhip
+   * from the reference-target and request close & deletion via the IO
+   * thread. This has to be done because it is not safe to delete an un-closed
+   * tcp_socket via the IO thread. */
+  if (sock && !sock->is_closed() &&
+      sock->get_kernel()->get_io()->this_thread_is_io()) {
+    tcp_socket* ptr = sock.release();
+    ptr->close([ptr]() { delete ptr; });
+  }
+}
+
 const char * tcp_socket::to_string(socket_state s)
  {
    switch (s)
