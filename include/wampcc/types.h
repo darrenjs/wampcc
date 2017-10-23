@@ -42,6 +42,7 @@ namespace wampcc
 #define WAMP_RUNTIME_ERROR "wamp.error.runtime_error"
 #define WAMP_ERROR_BAD_PROTOCOL "wamp.error.bad_protocol"
 #define WAMP_ERROR_UNEXPECTED_STATE "wamp.error.unexpected_state"
+#define WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE "wamp.error.unsupported_request_type"
 
 // WAMP string constants
 #define WAMP_WAMPCRA "wampcra"

@@ -154,6 +154,32 @@ static void check_size_at_least(size_t msg_len, size_t s)
     throw protocol_error("json message not enough elements");
 }
 
+
+server_msg_handler::server_msg_handler()
+  : on_call([](wamp_session& ws, t_request_id id, std::string&, json_object&, wamp_args&){
+      ws.call_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
+    }),
+    on_publish([](wamp_session& ws, t_request_id id, std::string&, json_object&, wamp_args&){
+        ws.publish_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
+      }),
+    on_register([](wamp_session& ws, t_request_id id, std::string&, json_object&){
+        ws.register_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
+      }),
+    on_subscribe([](wamp_session& ws, t_request_id id, std::string&, json_object&){
+        ws.subscribe_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
+      }),
+    on_unsubscribe([](wamp_session& ws, t_request_id id, t_subscription_id){
+        ws.unsubscribe_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
+      })
+{
+}
+
+static_assert(std::is_copy_constructible<server_msg_handler>::value, "check failed");
+static_assert(std::is_copy_assignable<server_msg_handler>::value, "check failed");
+static_assert(std::is_move_constructible<server_msg_handler>::value, "check failed");
+static_assert(std::is_move_assignable<server_msg_handler>::value, "check failed");
+
+
 /* Constructor */
 
 // TODO: check: if exception thrown during construction, but after socket
