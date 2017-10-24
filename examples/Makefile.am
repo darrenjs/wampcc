@@ -16,8 +16,9 @@ AM_LDFLAGS=-L../libs/wampcc -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(li
 
 noinst_PROGRAMS=basic_embedded_router basic_publisher basic_subscriber	\
 basic_caller basic_callee router wampcc_tester ssl_client ssl_server	\
-basic_callee_ssl basic_json
+basic_callee_ssl basic_json basic_server
 
+basic_server_SOURCES=basic/basic_server.cc
 basic_embedded_router_SOURCES=basic/basic_embedded_router.cc
 basic_publisher_SOURCES=basic/basic_publisher.cc
 basic_subscriber_SOURCES=basic/basic_subscriber.cc

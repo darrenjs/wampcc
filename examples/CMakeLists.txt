@@ -36,6 +36,7 @@ if(BUILD_EXAMPLES)
   Compile_Example(basic_callee_ssl basic)
   Compile_Example(demo_embedded_router_ssl basic)
   Compile_Example(demo_embedded_router basic)
+  Compile_Example(basic_server basic)
 # Message server
   Compile_Example(message_server message_server)
   Compile_Example(message_subscriber message_server)
