@@ -97,8 +97,9 @@ int main(int argc, char** argv)
                          std::cout << std::endl;
                        });
 
-    /* Opps! This is a duplicate subscription.  This is okay; we will actually
-     * only subscribe once. */
+    /* Opps! This is a duplicate subscription.  This is okay; according to WAMP
+     * protocol, the router/dealer we are connected to to should only allow us
+     * to subscribe once. */
     session->subscribe(uri, {},
                        my_on_subscribed_fn,
                        [](wampcc::wamp_session&, wampcc::event_info ev){

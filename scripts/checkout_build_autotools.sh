@@ -28,11 +28,10 @@ git clone https://github.com/darrenjs/wampcc.git
 
 ## clean
 cd $SOURCEDIR/wampcc
-./autotools_clean.sh ; rm -rf jalson; rm -rf external/msgpack-c external/googletest *.gz
+./scripts/autotools_clean.sh z
 
 # obtain source code & generate configure script
-./fetch_prerequisites.sh
-./autotools_setup.sh
+./scripts/autotools_setup.sh
 
 ## build
 
@@ -40,10 +39,15 @@ rm -rf ${BUILDDIR} ${INSTALLDIR}
 mkdir ${BUILDDIR}
 cd ${BUILDDIR}
 
-$SOURCEDIR/wampcc/configure --prefix=${INSTALLDIR} --with-jansson=$JANSSON_HOME --with-libuv=$LIBUV_HOME
-#../src/wampcc/configure --prefix=${INSTALLDIR} --with-jansson=$JANSSON_HOME --with-libuv=$LIBUV_HOME
+## NOTE: there are two ways to invoke configure; either using an absolute path
+## to configure, or, using a relative path to configure. Each way behaviour
+## differently, because it affects how configure might try to find
+## dependencies. Need to check that both approaches work.
 
-make -j || make
+#$SOURCEDIR/wampcc/configure --prefix=${INSTALLDIR} --with-jansson=$JANSSON_HOME --with-libuv=$LIBUV_HOME
+../src/wampcc/configure --prefix=${INSTALLDIR} --with-jansson=$JANSSON_HOME --with-libuv=$LIBUV_HOME
+
+make -j 4 || make
 make install
 
 # Now build examples against the installed version

@@ -29,10 +29,6 @@ git clone https://github.com/darrenjs/wampcc.git
 
 ## clean
 cd $SOURCEDIR/wampcc
-rm -rf jalson; rm -rf external/msgpack-c external/googletest *.gz
-
-# obtain source code & generate configure script
-./fetch_prerequisites.sh
 
 # cmake source configuration
 
@@ -41,7 +37,7 @@ mkdir ${BUILDDIR}
 cd ${BUILDDIR}
 
 
-cmake $SOURCEDIR/wampcc
-make -j
+cmake   -DLIBUV_DIR=$LIBUV_HOME -DJANSSON_DIR=$JANSSON_HOME -DCMAKE_INSTALL_PREFIX=$INSTALLDIR --verbose -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=$CXX  $SOURCEDIR/wampcc
 
-## FAILURE AT THIS POINT -- JALSON PROJECT NEEDS TO BE BUILT
+make -j 4
+make install
