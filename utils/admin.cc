@@ -37,10 +37,9 @@ struct user_options
   wampcc::user_optional<std::string> port;
 
   std::list< std::string > subscribe_topics;
-
   std::string publish_topic;
-
   std::string call_procedure;
+  std::string register_procedure;
 
   int verbose = 0;
   bool no_uri_check = false;
@@ -154,6 +153,7 @@ void usage()
   HELPLN("-R, --realm=ARG",sp2,"specify a session realm");
   HELPLN("-s, --subscribe=URI",sp2,"subscribe to topic");
   HELPLN("-p, --publish=URI",sp2,"publish to topic");
+  HELPLN("-r, --register=URI",sp2,"register a procedure");
   HELPLN("-c, --call=URI",sp2,"call procedure");
   HELPLN("--arglist=ARG",sp3,"wamp argument list, ARG is a JSON array");
   HELPLN("--argdict=ARG",sp3,"wamp argument dictionary, ARG is a JSON object");
@@ -231,6 +231,7 @@ static void process_options(int argc, char** argv)
     {"publish",   required_argument, 0, 'p'},
     {"register",  required_argument, 0, 'r'},
     {"call",      required_argument, 0, 'c'},
+    {"register",  required_argument, 0, 'r'},
     {"msg",       required_argument, 0, 'm'},
     {"username",  required_argument, 0, 'U'},
     {"password",  required_argument, 0, 'P'},
@@ -277,6 +278,7 @@ static void process_options(int argc, char** argv)
       case 's' : uopts.subscribe_topics.push_back(optarg); break;
       case 'p' : uopts.publish_topic = optarg; break;
       case 'c' : uopts.call_procedure = optarg; break;
+      case 'r' : uopts.register_procedure = optarg; break;
       case 'U' : uopts.username = optarg; break;
       case 'P' : uopts.password = optarg; break;
       case 'R' : uopts.realm = optarg; break;
@@ -555,6 +557,25 @@ int main_impl(int argc, char** argv)
                   event_queue_condition.notify_one();
                 });
     wait_reply = true;
+  }
+
+  // register a procedure, all it does is echo the request
+  if (!uopts.register_procedure.empty())
+  {
+    ws->provide(uopts.register_procedure,
+                wampcc::json_object(),
+                [](wampcc::wamp_session&, wampcc::registered_info info){
+                  if (!info)
+                    std::cout << "register failed" << std::endl;
+                  else
+                    std::cout << "register success, with registration_id "
+                              << info.registration_id << std::endl;
+                },
+                [](wampcc::wamp_session& ws, wampcc::invocation_info i){
+                  std::cout << "procedure invoked" << std::endl;
+                  ws.yield(i.request_id, i.args.args_list, i.args.args_dict);
+                });
+    long_wait = true;
   }
 
   // call a remote procedure
