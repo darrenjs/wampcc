@@ -29,8 +29,8 @@ public:
   pubsub_man(kernel*);
   ~pubsub_man();
 
-  void inbound_publish(std::string realm, std::string uri, json_object options,
-                       wamp_args);
+  t_publication_id inbound_publish(std::string realm, std::string uri,
+                                   json_object options, wamp_args);
 
   uint64_t subscribe(wamp_session* ptr, t_request_id, std::string uri,
                      json_object& options);
@@ -49,8 +49,8 @@ private:
                             bool allow_create);
 
 
-  void update_topic(const std::string& topic, const std::string& realm,
-                    json_object options, wamp_args args);
+  t_publication_id update_topic(const std::string& topic, const std::string& realm,
+                                json_object options, wamp_args args);
 
   logger& __logger; /* name chosen for log macros */
 

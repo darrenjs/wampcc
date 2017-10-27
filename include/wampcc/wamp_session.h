@@ -315,7 +315,7 @@ public:
   wamp_args& args() { return m_args; }
   const wamp_args& args() const { return m_args; }
 
-  const std::string & error_uri() { return m_uri; }
+  const std::string & error_uri() const { return m_uri; }
 
 private:
   std::string m_uri;

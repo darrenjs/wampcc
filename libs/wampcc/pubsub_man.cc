@@ -173,10 +173,10 @@ managed_topic* pubsub_man::find_topic(const std::string& topic,
 }
 
 
-void pubsub_man::update_topic(const std::string& topic,
-                              const std::string& realm,
-                              json_object options,
-                              wamp_args args)
+t_publication_id pubsub_man::update_topic(const std::string& topic,
+                                          const std::string& realm,
+                                          json_object options,
+                                          wamp_args args)
 {
   /* EVENT thread */
 
@@ -185,7 +185,7 @@ void pubsub_man::update_topic(const std::string& topic,
   if (!mt)
   {
     LOG_WARN("Discarding update to non existing topic '" << topic << "'");
-    return;
+    throw wamp_error(WAMP_RUNTIME_ERROR);
   }
 
   if (options.find(KEY_PATCH) != options.end())
@@ -204,11 +204,12 @@ void pubsub_man::update_topic(const std::string& topic,
     each wamp_session, we preform that the message and same the same to each
     subscriber.
    */
+  auto publication_id = mt->next_publication_id();
   json_array msg;
   msg.reserve(6);
   msg.push_back( msg_type::wamp_msg_event );
   msg.push_back( mt->subscription_id() );
-  msg.push_back( mt->next_publication_id() );
+  msg.push_back( publication_id );
   msg.push_back( std::move(options) );
 
   if (!args.args_list.empty() || !args.args_dict.empty())
@@ -242,15 +243,16 @@ void pubsub_man::update_topic(const std::string& topic,
     mt->subscribers().swap( temp );
   }
 
+  return publication_id;
 }
 
 
 /* Handle arrival of the a PUBLISH event, targeted at a topic. This will write
  * to a managed topic. */
-void pubsub_man::inbound_publish(std::string realm,
-                                 std::string topic,
-                                 json_object options,
-                                 wamp_args args)
+t_publication_id pubsub_man::inbound_publish(std::string realm,
+                                             std::string topic,
+                                             json_object options,
+                                             wamp_args args)
 {
   /* EV thread */
 
@@ -266,7 +268,7 @@ void pubsub_man::inbound_publish(std::string realm,
   if (is_strict_uri(topic.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
 
-  update_topic(topic, realm, std::move(options), args);
+  return update_topic(topic, realm, std::move(options), args);
 }
 
 json_array pubsub_man::get_topics(const std::string& realm) const
