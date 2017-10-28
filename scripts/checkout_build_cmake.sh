@@ -11,7 +11,7 @@ INSTALLDIR=$BASEDIR/install
 export LIBUV_HOME=/home/$(whoami)/opt/libuv-1.10.2
 export JANSSON_HOME=/home/$(whoami)/opt/jansson-2.10
 
-export CXX=/usr/bin/clang++-3.5
+export CXX=clang++
 export CXXFLAGS="-O0 -g3"
 
 unset LD_LIBRARY_PATH
