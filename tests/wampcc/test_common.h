@@ -8,10 +8,13 @@
 #include "wampcc/rawsocket_protocol.h"
 #include "wampcc/wamp_router.h"
 #include "wampcc/event_loop.h"
+#include "3rdparty/apache/base64.h"
 
 #include <iostream>
 #include <chrono>
 #include <string.h>
+
+#include <openssl/evp.h>
 
 #undef NDEBUG
 
@@ -67,14 +70,41 @@ public:
   internal_server(logger log = logger::nolog())
     : m_kernel(new kernel({}, log)),
       m_router(new wamp_router(m_kernel.get(), nullptr)),
-      m_port(0)
+      m_port(0),
+      m_user_password("secret2"),
+      m_salt{"saltxx",32, 1500}
   {
+    std::random_device rd;  // used for seed
+    std::mt19937 gen(rd()); 
+    std::uniform_int_distribution<> dis(-1000, 1000);
+
+    m_salt.iterations += dis(gen);
   }
 
   ~internal_server()
   {
     m_router.reset();
     m_kernel.reset();
+  }
+
+  /** Call to setup salting on the authentication.  Should be called before
+   * start(). */
+  void enable_salting()
+  {
+    std::vector<unsigned char> derived_key_bytes(m_salt.keylen, {});
+
+    // generate the derived key
+    if (PKCS5_PBKDF2_HMAC(m_user_password.c_str(), m_user_password.size(),
+                          (const unsigned char *) m_salt.salt.c_str(), m_salt.salt.size(),
+                          m_salt.iterations,
+                          EVP_sha256(), /* sha256 is used by Autobahn */
+                          m_salt.keylen, derived_key_bytes.data()) == 0)
+      throw std::runtime_error("PKCS5_PBKDF2_HMAC failed");
+
+    // convert derived key to base64
+    char b64[50] = {}; // 256 bits / 6 bits
+    ap_base64encode(b64, (char*)derived_key_bytes.data(), derived_key_bytes.size());
+    m_derived_key = b64;
   }
 
   int start(int starting_port_number)
@@ -87,9 +117,22 @@ public:
       return std::make_tuple(auth_provider::mode::authenticate,
                              std::move(methods));
     };
-    server_auth.user_secret =
-        [](const std::string& /*user*/,
-           const std::string& /*realm*/) { return "secret2"; };
+
+    if (m_derived_key.empty()) {
+      server_auth.user_secret =
+        [this](const std::string& /*user*/,
+               const std::string& /*realm*/) { return m_user_password; };
+    }
+    else {
+      server_auth.user_secret =
+        [this](const std::string& /*user*/,
+               const std::string& /*realm*/) { return m_derived_key; };
+
+      server_auth.cra_salt = [this](const std::string& /*realm*/,
+                                    const std::string& /*user*/) {
+        return m_salt;
+      };
+    }
 
     for (int port = starting_port_number; port < 65535; port++) {
       std::future<uverr> fut_listen_err = m_router->listen(std::string("127.0.0.1"), std::to_string(port), server_auth);
@@ -119,9 +162,22 @@ public:
       return std::make_tuple(auth_provider::mode::authenticate,
                              std::move(methods));
     };
-    server_auth.user_secret =
-        [](const std::string& /*user*/,
-           const std::string& /*realm*/) { return "secret2"; };
+
+    if (m_derived_key.empty()) {
+      server_auth.user_secret =
+        [this](const std::string& /*user*/,
+               const std::string& /*realm*/) { return m_user_password; };
+    }
+    else {
+      server_auth.user_secret =
+        [this](const std::string& /*user*/,
+               const std::string& /*realm*/) { return m_derived_key; };
+
+      server_auth.cra_salt = [this](const std::string& /*realm*/,
+                                    const std::string& /*user*/) {
+        return m_salt;
+      };
+    }
 
     wamp_router::listen_options opts;
     opts.protocols = allowed_protocols;
@@ -158,6 +214,10 @@ private:
   std::unique_ptr<kernel> m_kernel;
   std::shared_ptr<wamp_router> m_router;
   int m_port;
+
+  std::string m_user_password;
+  auth_provider::cra_salt_params m_salt;
+  std::string m_derived_key;
 };
 
 
