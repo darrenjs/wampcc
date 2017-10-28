@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2017 Darren Smith
  *
@@ -33,7 +34,7 @@ int main(int argc, char** argv)
     auto session = wamp_session::create<websocket_protocol>(&the_kernel,
                                                             std::move(socket));
 
-    session->hello({"default_realm"}).wait_for(std::chrono::seconds(3));
+    session->hello("default_realm").wait_for(std::chrono::seconds(3));
 
     if (!session->is_open())
       throw std::runtime_error("realm logon failed");
@@ -41,7 +42,7 @@ int main(int argc, char** argv)
     /* Subscribe to a topic. */
 
     session->subscribe("random_number", {},
-                       [](wamp_session&, subscribed_info& info) {
+                       [](wamp_session&, subscribed_info info) {
                          std::cout << "subscribed " << (info ? "ok" : "failed")
                                    << std::endl;
                        },

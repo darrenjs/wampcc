@@ -59,7 +59,7 @@ if (!socket->is_connected())
 auto session = wamp_session::create<websocket_protocol>(
   &the_kernel, std::move(socket));
 
-session->hello({"default_realm"}).wait_for(std::chrono::seconds(3));
+session->hello("default_realm").wait_for(std::chrono::seconds(3));
 
 if (!session->is_open())
   throw std::runtime_error("realm logon failed");
@@ -104,7 +104,7 @@ session->provide("math.service.add", {},
 
 ```c++
 session->subscribe("random_number", {},
-                   [](wampcc::wamp_session&, subscribed_info& info) {
+                   [](wampcc::wamp_session&, subscribed_info info) {
                      std::cout << "subscribed "
                                << (info ? "ok" : "failed")
                                << std::endl;
