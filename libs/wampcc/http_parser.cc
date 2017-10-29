@@ -107,10 +107,10 @@ int http_parser::on_url(const char* s, size_t n) { return 0; }
 int http_parser::on_header_field(const char* s, size_t n)
 {
   if (m_state == eParsingField) {
-    m_current_field += {s, n};
+    m_current_field += std::string(s, n);
   } else {
     store_current_header_field();
-    m_current_field = {s, n};
+    m_current_field = std::string(s, n);
     m_state = eParsingField;
   }
 
@@ -121,10 +121,10 @@ int http_parser::on_header_field(const char* s, size_t n)
 int http_parser::on_header_value(const char* s, size_t n)
 {
   if (m_state == eParsingField) {
-    m_current_value = {s, n};
+    m_current_value = std::string(s, n);
     m_state = eParsingValue;
   } else
-    m_current_value += {s, n};
+    m_current_value += std::string(s, n);
 
 
   return 0;
@@ -151,7 +151,7 @@ int http_parser::on_headers_complete()
 
 int http_parser::on_status(const char* s, size_t n)
 {
-  m_http_status += {s, n};
+  m_http_status += std::string(s, n);
   return 0;
 }
 
