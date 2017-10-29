@@ -38,8 +38,8 @@ if(BUILD_SHARED_LIBS)
   set_target_properties(wampcc_json_shared PROPERTIES OUTPUT_NAME wampcc_json)
 
   # Set library API version
-  set_property(TARGET wampcc_json_shared PROPERTY VERSION "4.0.0")
-  set_property(TARGET wampcc_json_shared PROPERTY SOVERSION 4 )
+  set_property(TARGET wampcc_json_shared PROPERTY VERSION "5.0.0")
+  set_property(TARGET wampcc_json_shared PROPERTY SOVERSION 5 )
 
   target_include_directories(wampcc_json_shared
                              PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include

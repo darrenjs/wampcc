@@ -62,8 +62,8 @@ if(BUILD_SHARED_LIBS)
   set_target_properties(wampcc_shared PROPERTIES OUTPUT_NAME wampcc)
 
   # Set library API version
-  set_property(TARGET wampcc_shared PROPERTY VERSION "4.0.0")
-  set_property(TARGET wampcc_shared PROPERTY SOVERSION 4 )
+  set_property(TARGET wampcc_shared PROPERTY VERSION "5.0.0")
+  set_property(TARGET wampcc_shared PROPERTY SOVERSION 5 )
 
   target_include_directories(wampcc_shared PRIVATE
                              ${LIBUV_INCLUDE_DIRS} )

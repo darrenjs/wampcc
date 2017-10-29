@@ -4,7 +4,7 @@ project(wampcc)
 
 # Version number
 set (WAMPCC_VERSION_MAJOR 1)
-set (WAMPCC_VERSION_MINOR 4)
+set (WAMPCC_VERSION_MINOR 5)
 set (WAMPCC_VERSION "${WAMPCC_VERSION_MAJOR}.${WAMPCC_VERSION_MINOR}")
 # Include extra cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")

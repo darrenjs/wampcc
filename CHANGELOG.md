@@ -1,6 +1,11 @@
 unreleased
 ==========
 
+version 1.5
+===========
+
+Released 2017-10-29
+
 ## Added
 
 - websocket listener replies with http 200 on receiving health check

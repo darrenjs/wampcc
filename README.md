@@ -6,7 +6,7 @@
 
 **Features**
 
- - Builds on: Linux & Windows (Visual Studio)
+ - Builds on: Linux, Windows (Visual Studio) & Mac OS 10
  - Roles: Caller, Callee, Subscriber, Publisher, Dealer, Router
  - Message serializations: JSON, MessagePack
  - Transports: TCP using raw-socket and web-socket
