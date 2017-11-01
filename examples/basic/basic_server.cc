@@ -192,8 +192,24 @@ void server_application::on_call(wampcc::wamp_session& session,
   if (procedure=="time") {
     std::time_t t = std::time(nullptr);
     std::ostringstream utc, loc;
+
+#if defined __GNUC__ && __GNUC__ < 5
+    // gcc 4.8 doesn't support std::put_time
+    struct tm tmutc;
+    struct tm tmloc;
+    gmtime_r(&t, &tmutc);
+    localtime_r(&t, &tmloc);
+    char buf[64];
+    asctime_r(&tmutc, buf);
+    buf[strlen(buf)-1] = '\0'; // remove newline
+    utc << buf;
+    asctime_r(&tmloc, buf);
+    buf[strlen(buf)-1] = '\0'; // remove newline
+    loc << buf; 
+#else
     utc << std::put_time(std::gmtime(&t), "%c %Z");
     loc << std::put_time(std::localtime(&t), "%c %Z");
+#endif
 
     wampcc::json_object reply;
     reply.insert({"UTC", utc.str()});
