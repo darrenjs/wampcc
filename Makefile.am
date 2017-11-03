@@ -6,4 +6,9 @@
 # defined in Makefile.am.
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = libs utils tests examples include
+SUBDIRS = libs utils tests examples include 
+
+# for make dist 
+EXTRA_DIST=3rdparty/msgpack-c 3rdparty/websocketpp 3rdparty/apache/base64.h	\
+3rdparty/http_parser/http_parser.h include CHANGELOG.md scripts LICENSE		\
+CMakeLists.txt cmake

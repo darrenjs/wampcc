@@ -11,7 +11,9 @@ AC_CONFIG_AUX_DIR([.])
 AC_CANONICAL_SYSTEM
 
 # Note: the -Wall here is for automake errors; is unrelated to gcc errors
-AM_INIT_AUTOMAKE([1.10 no-define -Wall foreign subdir-objects] )
+# Note: need tar-ustar to avoid using old tar format that has limit
+#       on file path length of 99 chars
+AM_INIT_AUTOMAKE([1.10 no-define -Wall foreign subdir-objects tar-ustar] )
 
 AC_CONFIG_HEADERS([config.h])
 

@@ -36,6 +36,8 @@ lib_LTLIBRARIES = libwampcc_json.la
 # "nobase_" additional prefix means the directory names are copied too.
 #nobase_include_HEADERS = wampcc/json.h wampcc/json_internals.h
 
+# for make dist
+EXTRA_DIST=json_pointer.h vendor_jansson.h msgpack_serialiser.h CMakeLists.txt
 
 # List the sources for an individual library
 libwampcc_json_la_SOURCES=json_pointer.cc json.cc vendors.cc msgpack_serialiser.cc

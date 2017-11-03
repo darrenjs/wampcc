@@ -18,6 +18,9 @@ test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
 test_wamp_session_fast_close test_tcp_socket test_wamp_rpc test_misc		\
 test_router_functions test_send_and_close
 
+# for make dist
+EXTRA_DIST=test_common.h mini_test.h
+
 #test_late_dealer_destructor
 
 # Dont use noinst_PROGRAMS here, otherwise the tests will always get build for

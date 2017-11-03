@@ -12,6 +12,8 @@ noinst_PROGRAMS=test_json_pointer test_json_patch test_json_patch2	\
 test_basic_jalson test_single_functions test_msgpack
 #noinst_PROGRAMS=server_demo
 
+# for make dist
+EXTRA_DIST=testcase.h tests.json spec_tests.json extra.json
 
 test_json_pointer_SOURCES=test_json_pointer.cc
 test_json_pointer_LDADD=$(janssonlib)

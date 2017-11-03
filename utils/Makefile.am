@@ -14,6 +14,9 @@ AM_CPPFLAGS =   -I$(jalsoninc) $(libuvinc) -I$(top_srcdir)/libs/wampcc  -Wall -g
 
 AM_LDFLAGS=-lpthread
 
+# for make dist
+EXTRA_DIST=CMakeLists.txt
+
 bin_PROGRAMS = admin
 
 admin_SOURCES=admin.cc

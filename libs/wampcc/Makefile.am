@@ -10,6 +10,9 @@ AM_CXXFLAGS = -Wall -g3 -ggdb -std=c++11 -I$(top_srcdir)/include \
 
 AM_LDFLAGS=-lpthread
 
+# for make dist
+EXTRA_DIST=CMakeLists.txt
+
 # Primary defination of our shared library to be created.  Notice the
 # _LTLIBRARIES key: automake is looking specifically for this pattern and then
 # generating make rules which will invoke libtool.
