@@ -11,15 +11,18 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/libs/wampcc $(libuvinc) -W
 
 AM_LDFLAGS=-L../../libs/wampcc -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
-check_PROGRAMS=test_basic_codecs test_connect_timeout 				     	\
-test_tcp_socket_connect test_evthread_wamp_session_destructor				\
-test_early_wamp_session_destructor test_late_wamp_session_destructor		\
-test_tcp_socket_listen test_tcp_socket_passive_disconnect					\
-test_wamp_session_fast_close test_tcp_socket test_wamp_rpc test_misc		\
-test_router_functions test_send_and_close
+check_PROGRAMS=test_basic_codecs test_connect_timeout test_tcp_socket_connect	\
+test_evthread_wamp_session_destructor test_early_wamp_session_destructor		\
+test_late_wamp_session_destructor test_tcp_socket_listen						\
+test_tcp_socket_passive_disconnect test_wamp_session_fast_close test_tcp_socket	\
+test_wamp_rpc test_misc test_router_functions test_send_and_close
 
 # for make dist
-EXTRA_DIST=test_common.h mini_test.h
+EXTRA_DIST=test_common.h mini_test.h auth.py client_bad_logon_empty_realm.py	\
+client_sends_bad_message.py basic_client.py										\
+client_does_not_complete_handshake.py server_reject.py							\
+client_abort_during_handshake.py client_immediate_disconnect.py wamplite.py
+
 
 #test_late_dealer_destructor
 

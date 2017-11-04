@@ -10,5 +10,8 @@ SUBDIRS = libs utils tests examples include
 
 # for make dist 
 EXTRA_DIST=3rdparty/msgpack-c 3rdparty/websocketpp 3rdparty/apache/base64.h	\
-3rdparty/http_parser/http_parser.h include CHANGELOG.md scripts LICENSE		\
-CMakeLists.txt cmake
+3rdparty/http_parser/AUTHORS 3rdparty/http_parser/http_parser.c				\
+3rdparty/http_parser/http_parser.h 3rdparty/http_parser/LICENSE-MIT			\
+3rdparty/http_parser/README.md include CHANGELOG.md scripts LICENSE			\
+CMakeLists.txt cmake javascript
+
