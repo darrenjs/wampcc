@@ -4,7 +4,7 @@ unreleased
 version 1.5
 ===========
 
-Released 2017-10-29
+Released 2017-11-04
 
 ## Added
 
