@@ -4,7 +4,7 @@
 #include <list>
 #include <cstring>
 
-#include "testcase.h"
+#include "mini_test.h"
 
 wampcc::json_value create_input_object()
 {
@@ -123,20 +123,18 @@ void test_json_value(const wampcc::json_value& src)
 
   auto dest = wampcc::json_msgpack_decode(bytes->first, bytes->second);
 
-  ASSERT_TRUE(src == dest);
+  REQUIRE(src == dest);
 }
 
-DEFTEST( msgpack_encode_decode )
+TEST_CASE( "msgpack_encode_decode" )
 {
   auto tests = test_inputs();
 
   for (auto & item : test_inputs())
     test_json_value( item );
-
-  return 1;
 }
 
-DEFTEST( msgpack_signed_integer_limits )
+TEST_CASE( "msgpack_signed_integer_limits" )
 {
   /* Check that msgpack encode & decode works with max and min signed
    * integers (github issue #6).*/
@@ -166,11 +164,16 @@ DEFTEST( msgpack_signed_integer_limits )
 
   // std::cout << "jin : " << jin << std::endl;
   // std::cout << "jout: " << jout << std::endl;
-  ASSERT_TRUE(jin == jout);
-  return 1;
+  REQUIRE(jin == jout);
 }
 
-int main(int /*argc*/, char * /*argv*/ [])
+int main(int argc, char** argv)
 {
-  return autotest_runall();
+  try {
+    int result = minitest::run(argc, argv);
+    return (result < 0xFF ? result : 0xFF );
+  } catch (std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
 }

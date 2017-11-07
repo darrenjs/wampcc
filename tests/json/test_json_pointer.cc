@@ -7,7 +7,7 @@
 
 #include "json_pointer.cc"
 
-#include "testcase.h"
+#include "mini_test.h"
 
 using namespace wampcc;
 
@@ -18,23 +18,21 @@ bool test_has_escape_seq(const char* p)
   return has_escape_seq(p, p+strlen(p));
 }
 
-DEFTEST( has_escape_seq )
+TEST_CASE( "has_escape_seq" )
 {
-  ASSERT_TRUE( test_has_escape_seq("") == 0);
-  ASSERT_TRUE( test_has_escape_seq("xxx") == 0);
-  ASSERT_TRUE( test_has_escape_seq("~") == 0);
-  ASSERT_TRUE( test_has_escape_seq(" ~ 1 ") == 0);
-  ASSERT_TRUE( test_has_escape_seq("~/") == 0);
-  ASSERT_TRUE( test_has_escape_seq("   ~ 0") == 0);
+  REQUIRE( test_has_escape_seq("") == 0);
+  REQUIRE( test_has_escape_seq("xxx") == 0);
+  REQUIRE( test_has_escape_seq("~") == 0);
+  REQUIRE( test_has_escape_seq(" ~ 1 ") == 0);
+  REQUIRE( test_has_escape_seq("~/") == 0);
+  REQUIRE( test_has_escape_seq("   ~ 0") == 0);
 
-  ASSERT_TRUE( test_has_escape_seq("~0") != 0);
-  ASSERT_TRUE( test_has_escape_seq(" ~0") != 0);
-  ASSERT_TRUE( test_has_escape_seq("   ~0") != 0);
-  ASSERT_TRUE( test_has_escape_seq("~1") != 0);
-  ASSERT_TRUE( test_has_escape_seq("~1 ") != 0);
-  ASSERT_TRUE( test_has_escape_seq(" ~~1 ") != 0);
-
-  return 1;
+  REQUIRE( test_has_escape_seq("~0") != 0);
+  REQUIRE( test_has_escape_seq(" ~0") != 0);
+  REQUIRE( test_has_escape_seq("   ~0") != 0);
+  REQUIRE( test_has_escape_seq("~1") != 0);
+  REQUIRE( test_has_escape_seq("~1 ") != 0);
+  REQUIRE( test_has_escape_seq(" ~~1 ") != 0);
 }
 
 //----------------------------------------------------------------------
@@ -82,7 +80,7 @@ bool test_bad_pointer(json_value doc, std::string path)
 
 
 
-DEFTEST( test_example )
+TEST_CASE( "test_example" )
 {
   const char* jsonstr="\
    {                                            \
@@ -100,25 +98,23 @@ DEFTEST( test_example )
   json_value doc=json_decode(jsonstr);
 
 
-  ASSERT_TRUE( test_pointer_success(doc, "",       doc) ); // full doc match
-  ASSERT_TRUE( test_pointer_success(doc, "/foo",   json_decode("[\"bar\", \"baz\",[10,20,30]]")));
-  ASSERT_TRUE( test_pointer_success(doc, "/foo/0", json_value::make_string("bar")));
-  ASSERT_TRUE( test_pointer_success(doc, "/",      json_value::make_int(0)));
-  ASSERT_TRUE( test_pointer_success(doc, "/a~1b",  json_value::make_int(1)));
-  ASSERT_TRUE( test_pointer_success(doc, "/c%d",   json_value::make_int(2)));
-  ASSERT_TRUE( test_pointer_success(doc, "/e^f",   json_value::make_int(3)));
-  ASSERT_TRUE( test_pointer_success(doc, "/g|h",   json_value::make_int(4)));
-  ASSERT_TRUE( test_pointer_success(doc, "/i\\j",  json_value::make_int(5)));
-  ASSERT_TRUE( test_pointer_success(doc, "/k\"l",  json_value::make_int(6)));
-  ASSERT_TRUE( test_pointer_success(doc, "/ ",     json_value::make_int(7)));
-  ASSERT_TRUE( test_pointer_success(doc, "/m~0n",  json_value::make_int(8)));
+  REQUIRE( test_pointer_success(doc, "",       doc) ); // full doc match
+  REQUIRE( test_pointer_success(doc, "/foo",   json_decode("[\"bar\", \"baz\",[10,20,30]]")));
+  REQUIRE( test_pointer_success(doc, "/foo/0", json_value::make_string("bar")));
+  REQUIRE( test_pointer_success(doc, "/",      json_value::make_int(0)));
+  REQUIRE( test_pointer_success(doc, "/a~1b",  json_value::make_int(1)));
+  REQUIRE( test_pointer_success(doc, "/c%d",   json_value::make_int(2)));
+  REQUIRE( test_pointer_success(doc, "/e^f",   json_value::make_int(3)));
+  REQUIRE( test_pointer_success(doc, "/g|h",   json_value::make_int(4)));
+  REQUIRE( test_pointer_success(doc, "/i\\j",  json_value::make_int(5)));
+  REQUIRE( test_pointer_success(doc, "/k\"l",  json_value::make_int(6)));
+  REQUIRE( test_pointer_success(doc, "/ ",     json_value::make_int(7)));
+  REQUIRE( test_pointer_success(doc, "/m~0n",  json_value::make_int(8)));
 
-  ASSERT_TRUE( test_bad_pointer(doc, "/foo//" ));
-  ASSERT_TRUE( test_bad_pointer(doc, "/foo/01" ));
-  ASSERT_TRUE( test_bad_pointer(doc, "/foo/01/0" ));
-  ASSERT_TRUE( test_bad_pointer(doc, "/foo/00" ));
-
-  return 1;
+  REQUIRE( test_bad_pointer(doc, "/foo//" ));
+  REQUIRE( test_bad_pointer(doc, "/foo/01" ));
+  REQUIRE( test_bad_pointer(doc, "/foo/01/0" ));
+  REQUIRE( test_bad_pointer(doc, "/foo/00" ));
 }
 
 //----------------------------------------------------------------------
@@ -136,23 +132,21 @@ bool test_expand_escaped_chars(const char* src, const char* expected)
   return are_same;
 }
 
-DEFTEST( expand_escaped_chars )
+TEST_CASE( "expand_escaped_chars" )
 {
-  ASSERT_TRUE( test_expand_escaped_chars("","") );
+  REQUIRE( test_expand_escaped_chars("","") );
 
-  ASSERT_TRUE( test_expand_escaped_chars("",""));
-  ASSERT_TRUE( test_expand_escaped_chars("~~~~","~~~~"));
-  ASSERT_TRUE( test_expand_escaped_chars("~","~"));
-  ASSERT_TRUE( test_expand_escaped_chars("~0","~"));
-  ASSERT_TRUE( test_expand_escaped_chars("~1","/"));
-  ASSERT_TRUE( test_expand_escaped_chars("abc","abc"));
-  ASSERT_TRUE( test_expand_escaped_chars("abc~0~","abc~~"));
-  ASSERT_TRUE( test_expand_escaped_chars("abc~0~1","abc~/"));
-  ASSERT_TRUE( test_expand_escaped_chars("abc~0x~1","abc~x/"));
-  ASSERT_TRUE( test_expand_escaped_chars("~~~0~1~0~1~~","~~~/~/~~"));
-  ASSERT_TRUE( test_expand_escaped_chars("~00~01","~0~1"));
-
-  return 1;
+  REQUIRE( test_expand_escaped_chars("",""));
+  REQUIRE( test_expand_escaped_chars("~~~~","~~~~"));
+  REQUIRE( test_expand_escaped_chars("~","~"));
+  REQUIRE( test_expand_escaped_chars("~0","~"));
+  REQUIRE( test_expand_escaped_chars("~1","/"));
+  REQUIRE( test_expand_escaped_chars("abc","abc"));
+  REQUIRE( test_expand_escaped_chars("abc~0~","abc~~"));
+  REQUIRE( test_expand_escaped_chars("abc~0~1","abc~/"));
+  REQUIRE( test_expand_escaped_chars("abc~0x~1","abc~x/"));
+  REQUIRE( test_expand_escaped_chars("~~~0~1~0~1~~","~~~/~/~~"));
+  REQUIRE( test_expand_escaped_chars("~00~01","~0~1"));
 }
 
 //----------------------------------------------------------------------
@@ -198,74 +192,64 @@ bool patch_test_fail(const char* docstr, const char* patchstr)
 
 
 
-DEFTEST( json_patch_rfc_examples_a1)
+TEST_CASE( "json_patch_rfc_examples_a1" )
 {
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "{ \"foo\": \"bar\"}",
       "[{ \"op\": \"add\", \"path\": \"/baz\", \"value\": \"qux\" } ]",
       "{ \"baz\": \"qux\", \"foo\": \"bar\"}")
     );
-
-  return 1;
 }
-DEFTEST( json_patch_rfc_examples_a2)
+TEST_CASE( "json_patch_rfc_examples_a2" )
 {
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  { \"foo\": [ \"bar\", \"baz\" ] } ",
       "  [  { \"op\": \"add\", \"path\": \"/foo/1\", \"value\": \"qux\" } ] ",
       "  { \"foo\": [ \"bar\", \"qux\", \"baz\" ] }   ")
     );
-
-  return 1;
 }
-DEFTEST( json_patch_rfc_examples_a3)
+TEST_CASE( "json_patch_rfc_examples_a3" )
 {
   // Removing an Object Member
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "   { \"baz\": \"qux\", \"foo\": \"bar\" } ",
       "   [ { \"op\": \"remove\", \"path\": \"/baz\" } ] " ,
       "   { \"foo\": \"bar\" } ")
     );
-
-  return 1;
 }
-DEFTEST( json_patch_rfc_examples_a4)
+TEST_CASE( "json_patch_rfc_examples_a4" )
 {
   // Removing an Array Element
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       " { \"foo\": [ \"bar\", \"qux\", \"baz\" ] }  ",
       "  [ { \"op\": \"remove\", \"path\": \"/foo/1\" } ]   " ,
       "  { \"foo\": [ \"bar\", \"baz\" ] } ")
     );
-
-  return 1;
 }
-DEFTEST( json_patch_rfc_examples_a5)
+TEST_CASE( "json_patch_rfc_examples_a5" )
 {
   // Replacing a Value
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  {  \"baz\": \"qux\", \"foo\": \"bar\" }  ",
       "  [ { \"op\": \"replace\", \"path\": \"/baz\", \"value\": \"boo\" } ]   " ,
       "  { \"baz\": \"boo\", \"foo\": \"bar\" }  ")
     );
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  { \"foo\": [ \"bar\", \"qux\", \"baz\" ] } ",
       "  [ { \"op\": \"replace\", \"path\": \"/foo/1\", \"value\": \"boo\" } ] " ,
       "  { \"foo\": [ \"bar\", \"boo\", \"baz\" ] } ")
     );
-
-  return 1;
 }
-DEFTEST( json_patch_rfc_examples_a6)
+TEST_CASE( "json_patch_rfc_examples_a6" )
 {
   // Moving a Value
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  { \"foo\": { \"bar\": \"baz\", \"waldo\": \"fred\" }, \"qux\": { \"corge\": \"grault\"  } }  ",
       "  [ { \"op\": \"move\", \"from\": \"/foo/waldo\", \"path\": \"/qux/thud\" } ] " ,
@@ -273,90 +257,77 @@ DEFTEST( json_patch_rfc_examples_a6)
     );
 
   // TODO: add an array test
-  return 1;
 }
 
-DEFTEST( json_patch_rfc_examples_a7)
+TEST_CASE( "json_patch_rfc_examples_a7" )
 {
   // Moving an Array Element
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  { \"foo\": [ \"all\", \"grass\", \"cows\", \"eat\" ] }  ",
       "  [ { \"op\": \"move\", \"from\": \"/foo/1\", \"path\": \"/foo/3\" } ]  " ,
       "  { \"foo\": [ \"all\", \"cows\", \"eat\", \"grass\" ] } ")
     );
-
-  return 1;
 }
 
-DEFTEST( json_patch_rfc_examples_a8)
+TEST_CASE( "json_patch_rfc_examples_a8" )
 {
   // Testing a Value: Success
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  { \"baz\": \"qux\", \"foo\": [ \"a\", 2, \"c\" ] } ",
       "  [ { \"op\": \"test\", \"path\": \"/baz\", \"value\": \"qux\" }, { \"op\": \"test\", \"path\": \"/foo/1\", \"value\": 2 } ]  " ,
       "  { \"baz\": \"qux\", \"foo\": [ \"a\", 2, \"c\" ] } ")
     );
-
-  return 1;
 }
 
-DEFTEST( json_patch_rfc_examples_a9)
+TEST_CASE( "json_patch_rfc_examples_a9" )
 {
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test_fail(
       " { \"baz\": \"qux\" }  ",
       " [ { \"op\": \"test\", \"path\": \"/baz\", \"value\": \"bar\" } ] ")
     );
-
-  return 1;
 }
 
-DEFTEST( json_patch_rfc_examples_a10)
+TEST_CASE( "json_patch_rfc_examples_a10" )
 {
   // Adding a Nested Member Object
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  { \"foo\": \"bar\" } ",
       "  [ { \"op\": \"add\", \"path\": \"/child\", \"value\": { \"grandchild\": { } } } ]  " ,
       "  { \"foo\": \"bar\", \"child\": { \"grandchild\": { } } }")
     );
-
-  return 1;
 }
 
 
-DEFTEST( json_patch_rfc_examples_a11)
+TEST_CASE( "json_patch_rfc_examples_a11" )
 {
   // Ignoring Unrecognized Elements
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "   { \"foo\": \"bar\" }  ",
       "   [ { \"op\": \"add\", \"path\": \"/baz\", \"value\": \"qux\", \"xyz\": 123 } ]  " ,
       "   { \"foo\": \"bar\", \"baz\": \"qux\" } ")
     );
-
-  return 1;
 }
 
 
-DEFTEST( json_patch_rfc_examples_a12)
+TEST_CASE( "json_patch_rfc_examples_a12" )
 {
   // Adding to a Nonexistent Target
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test_fail(
       " { \"foo\": \"bar\" }  ",
       " [ { \"op\": \"add\", \"path\": \"/baz/bat\", \"value\": \"qux\" } ] " )
     );
-
-  return 1;
 }
 
 
-// DEFTEST( json_patch_rfc_examples_a13)
+// TEST_CASE( json_patch_rfc_examples_a13)
 // {
-//   ASSERT_TRUE(
+//   REQUIRE(
 //     patch_test(
 //       "   ",
 //       "    " ,
@@ -367,68 +338,68 @@ DEFTEST( json_patch_rfc_examples_a12)
 // }
 
 
-DEFTEST( json_patch_rfc_examples_a14)
+TEST_CASE( "json_patch_rfc_examples_a14" )
 {
   // ~ Escape Ordering
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       "  {  \"/\": 9, \"~1\": 10 }  ",
       "  [  {\"op\": \"test\", \"path\": \"/~01\", \"value\": 10} ]  " ,
       "  {  \"/\": 9, \"~1\": 10 } ")
     );
-
-  return 1;
 }
 
 
-DEFTEST( json_patch_rfc_examples_a15)
+TEST_CASE( "json_patch_rfc_examples_a15" )
 {
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test_fail(
       "  { \"/\": 9, \"~1\": 10  }  ",
       "  [ {\"op\": \"test\", \"path\": \"/~01\", \"value\": \"10\"} ]  ")
     );
 
-  return 1;
 }
 
 
 
-DEFTEST( json_patch_rfc_examples_a16)
+TEST_CASE( "json_patch_rfc_examples_a16" )
 {
   // Adding an Array Value
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       " { \"foo\": [\"bar\"] } ",
       " [ { \"op\": \"add\", \"path\": \"/foo/-\", \"value\": [\"abc\", \"def\"] } ] " ,
       " { \"foo\": [\"bar\", [\"abc\", \"def\"]] } ")
     );
-
-  return 1;
 }
 
 
 
-DEFTEST( json_patch_copy)
+TEST_CASE( "json_patch_copy" )
 {
 
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       " { \"foo\": [\"bar\", \"baz\"] } ",
       " [ { \"op\": \"copy\", \"from\": \"/foo\", \"path\": \"/bar\" } ] " ,
       " { \"foo\": [\"bar\", \"baz\"] ,  \"bar\": [\"bar\", \"baz\"]  } ")
     );
 
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test(
       " { \"foo\": [\"bar\", \"baz\"] } ",
       " [ { \"op\": \"copy\", \"from\": \"/foo/1\", \"path\": \"/bar\" } ] " ,
       " { \"foo\": [\"bar\", \"baz\"] ,  \"bar\": \"baz\" } ")
     );
-  return 1;
 }
 
-int main(int /*argc*/, char * /*argv*/ [])
+int main(int argc, char** argv)
 {
-  return autotest_runall();
+  try {
+    int result = minitest::run(argc, argv);
+    return (result < 0xFF ? result : 0xFF );
+  } catch (std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
 }

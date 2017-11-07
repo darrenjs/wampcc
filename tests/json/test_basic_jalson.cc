@@ -4,22 +4,21 @@
 #include <list>
 
 
-#include "testcase.h"
+#include "mini_test.h"
 
 class MyType
 {
 };
 
 //----------------------------------------------------------------------
-DEFTEST(  basic_json_object )
+TEST_CASE( "basic_json_object" )
 {
   wampcc::json_value temp(1);
-  return 1;
 }
 
 
 //----------------------------------------------------------------------
-DEFTEST( jsonarray_basic_append )
+TEST_CASE( "jsonarray_basic_append" )
 {
   // test array addition, and functions which append
   wampcc::json_array msg;
@@ -34,11 +33,11 @@ DEFTEST( jsonarray_basic_append )
 
   std::string enc  = wampcc::json_encode(msg) ;
   std::cout << enc << "\n";
-  return  ( enc == "[0, 1, \"string\", true, [\"a\"], {\"b\": \"c\"}]");
+  REQUIRE(enc == "[0, 1, \"string\", true, [\"a\"], {\"b\": \"c\"}]");
 }
 
 //----------------------------------------------------------------------
-DEFTEST( convert_type_to_string )
+TEST_CASE( "convert_type_to_string" )
 {
   wampcc::json_value any1("should be string");
   wampcc::json_string str1 = any1.as_string();
@@ -49,21 +48,20 @@ DEFTEST( convert_type_to_string )
   any3.swap(any1);
   wampcc::json_string str3 = any3.as_string();
 
-  return (str1 == str1) and (str1 == str3);
+  REQUIRE( (str1 == str1) and (str1 == str3) );
 }
 
 //----------------------------------------------------------------------
-DEFTEST( size_of )
+TEST_CASE( "size_of" )
 {
   //std::cout << "sizeof(JSONNumber) : " << sizeof(wampcc::JSONNumber) << "\n";
   std::cout << "sizeof(json_array) : " << sizeof(wampcc::json_array) << "\n";
   std::cout << "sizeof(value) : " << sizeof(wampcc::internals::valueimpl) << "\n";
-  return 1;
 }
 
 
 //----------------------------------------------------------------------
-DEFTEST( misc_operations )
+TEST_CASE( "misc_operations" )
 {
   wampcc::json_array ar1;
 
@@ -79,12 +77,12 @@ DEFTEST( misc_operations )
   wampcc::json_value i1 = ar2[1];
   wampcc::json_string s1 = i1.as<wampcc::json_string>();
 
-  return (s1 == "mystring");
+  REQUIRE (s1 == "mystring");
 }
 
 //----------------------------------------------------------------------
 
-DEFTEST( encoding_call_message )
+TEST_CASE( "encoding_call_message" )
 {
   const std::string foreign_sid = "a1";
   const std::string foreign_rpc = "myrpc";
@@ -103,7 +101,7 @@ DEFTEST( encoding_call_message )
   std::string encoding = wampcc::json_encode( any );
   //std::cout << "encoding: " << encoding << "\n";
 
-  return encoding=="[\"call\", {}, \"a1:myrpc\", 100, {}, 50.25]";
+  REQUIRE(encoding=="[\"call\", {}, \"a1:myrpc\", 100, {}, 50.25]");
 }
 
 wampcc::json_value takecopy(const wampcc::json_value& src)
@@ -114,7 +112,7 @@ wampcc::json_value takecopy(const wampcc::json_value& src)
 }
 
 //----------------------------------------------------------------------
-DEFTEST( support_for_various_int_types )
+TEST_CASE( "support_for_various_int_types" )
 {
   wampcc::json_array msg;
 
@@ -143,11 +141,11 @@ DEFTEST( support_for_various_int_types )
   std::string encoding = wampcc::json_encode( any );
   std::cout << "encoding: " << encoding << "\n";
 
-  return encoding=="[0, 1, 2, 3, 5, 6, 7, 0, \"x\"]";
+  REQUIRE( encoding=="[0, 1, 2, 3, 5, 6, 7, 0, \"x\"]");
 }
 
 //----------------------------------------------------------------------
-DEFTEST( test_operator_eq )
+TEST_CASE( "test_operator_eq" )
 {
   wampcc::json_array msg(10);
 
@@ -171,12 +169,12 @@ DEFTEST( test_operator_eq )
 //   msg.append(_longlong);
 //   msg[1] = 10;
 
-  ASSERT_TRUE( msg[0].is_number() );
-  ASSERT_TRUE( msg[2].is_bool() );
-  ASSERT_TRUE( msg[2].is_true() );
-  ASSERT_TRUE( msg[3].is_bool() );
-  ASSERT_TRUE( msg[3].is_false() );
-  ASSERT_TRUE( msg[4].is_string() );
+  REQUIRE( msg[0].is_number() );
+  REQUIRE( msg[2].is_bool() );
+  REQUIRE( msg[2].is_true() );
+  REQUIRE( msg[3].is_bool() );
+  REQUIRE( msg[3].is_false() );
+  REQUIRE( msg[4].is_string() );
 
   wampcc::json_value any = msg;
   std::string encoding = wampcc::json_encode( any );
@@ -185,11 +183,10 @@ DEFTEST( test_operator_eq )
 //  check( );
 
 //   return encoding=="[0, 10, 2, 3, 4]";
-  return true;
 }
 
 
-DEFTEST( map_examples )
+TEST_CASE( "map_examples" )
 {
   wampcc::json_value a = wampcc::json_value::make_array();
 
@@ -206,11 +203,9 @@ DEFTEST( map_examples )
   /*wampcc::json_array& arr2  =*/ wampcc::json_insert<wampcc::json_array>(obj2, "X");
   std::string encoding = wampcc::json_encode( a );
   std::cout << "encoding: " << encoding << "\n";
-
-  return 1;
 }
 
-DEFTEST ( encoding_example_1 )
+TEST_CASE ( "encoding_example_1" )
 {
   const char* src="[\"SUBSCRIBE\", 0, {}, \"T1\"]";
   wampcc::json_value a;
@@ -220,12 +215,10 @@ DEFTEST ( encoding_example_1 )
   wampcc::json_value        reqid = msg.at(1);
   wampcc::json_object       opt = msg.at(2).as<wampcc::json_object>();
   wampcc::json_string topicname = msg.at(3).as<wampcc::json_string>();
-
-  return true;
 }
 
 
-DEFTEST( int_and_uint_and_real )
+TEST_CASE( "int_and_uint_and_real" )
 {
   const char* src="[0, -1, 1, 1.25, \"x\" ]";
   wampcc::json_value a;
@@ -233,25 +226,23 @@ DEFTEST( int_and_uint_and_real )
 
   wampcc::json_array& msg=a.as<wampcc::json_array>();
 
-  ASSERT_TRUE( msg[0].is_uint() );
-  ASSERT_TRUE( msg[0].is_int() );
-  ASSERT_TRUE( msg[1].is_int() );
-  ASSERT_EQ  ( msg[1].is_uint(),false );
-  ASSERT_TRUE( msg[2].is_int() );
-  ASSERT_TRUE( msg[2].is_uint() );
-  ASSERT_TRUE( msg[3].is_number() );
-  ASSERT_TRUE( msg[3].is_real() );
-  ASSERT_TRUE( msg[3].as_real() ==  1.25 );
-  ASSERT_TRUE( !msg[4].is_number() );
-  ASSERT_TRUE( msg[4].is_string() );
-  ASSERT_TRUE( !msg[4].is_object() );
-  ASSERT_TRUE( !msg[4].is_array() );
-
-  return true;
+  REQUIRE( msg[0].is_uint() );
+  REQUIRE( msg[0].is_int() );
+  REQUIRE( msg[1].is_int() );
+  REQUIRE ( msg[1].is_uint() == false );
+  REQUIRE( msg[2].is_int() );
+  REQUIRE( msg[2].is_uint() );
+  REQUIRE( msg[3].is_number() );
+  REQUIRE( msg[3].is_real() );
+  REQUIRE( msg[3].as_real() ==  1.25 );
+  REQUIRE( !msg[4].is_number() );
+  REQUIRE( msg[4].is_string() );
+  REQUIRE( !msg[4].is_object() );
+  REQUIRE( !msg[4].is_array() );
 }
 
 
-DEFTEST( compiler_check )
+TEST_CASE( "compiler_check" )
 {
   /* here we are just checking that various expressions involving construction
    * and assignment which use primitive integer types, actually compile */
@@ -346,12 +337,10 @@ DEFTEST( compiler_check )
     wampcc::json_value value( v );
     value = v;
   }
-
-  return true;
 }
 
 //----------------------------------------------------------------------
-DEFTEST( copy_memleak )
+TEST_CASE( "copy_memleak" )
 {
 
   wampcc::json_value jv;
@@ -364,62 +353,57 @@ DEFTEST( copy_memleak )
   wampcc::json_value jv2 = jv;
 
   std::cout << "encoding: " << wampcc::json_encode_any( jv2 ) << "\n";
-
-  return 1;
 }
 
 //----------------------------------------------------------------------
-DEFTEST( equality )
+TEST_CASE( "equality" )
 {
   wampcc::json_value j1 = wampcc::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
   wampcc::json_value j2 = wampcc::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
   wampcc::json_value j3 = wampcc::json_decode( "{ \"foo\": [10, 20, 30, 40]} " );
 
-  ASSERT_TRUE( j1 == j1 );
-  ASSERT_TRUE( (j1 != j1) == false );
-  ASSERT_TRUE( j1 != j2 );
-  ASSERT_TRUE( (j1 == j2) == false );
-  ASSERT_TRUE( j2 == j3 );
-  ASSERT_TRUE( (j2 != j3) == false );
+  REQUIRE( j1 == j1 );
+  REQUIRE( (j1 != j1) == false );
+  REQUIRE( j1 != j2 );
+  REQUIRE( (j1 == j2) == false );
+  REQUIRE( j2 == j3 );
+  REQUIRE( (j2 != j3) == false );
 
 
   wampcc::json_value j4 = wampcc::json_decode( "{ \"foo\": [1.1, 2.2 ], \"a\": true }" );
   wampcc::json_value j5 = wampcc::json_decode( "{ \"foo\": [1.2, 2.3 ], \"a\": true }" );
   wampcc::json_value j6 = wampcc::json_decode( "{ \"a\":true, \"foo\": [1.1, 2.2 ] }" );
 
-  ASSERT_TRUE( j4 == j4 );
-  ASSERT_TRUE( j4 != j5 );
-  ASSERT_TRUE( (j4 == j5) == false );
-  ASSERT_TRUE( j4 == j6 );
+  REQUIRE( j4 == j4 );
+  REQUIRE( j4 != j5 );
+  REQUIRE( (j4 == j5) == false );
+  REQUIRE( j4 == j6 );
 
   wampcc::json_value j7 = wampcc::json_decode( "{ \"foo\": [-50, -20, -30, -40]} " );
   wampcc::json_value j8 = wampcc::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
   wampcc::json_value j9 = wampcc::json_decode( "{ \"foo\": [-10, -20, -30, -40]} " );
 
-  ASSERT_TRUE( j7 == j7 );
-  ASSERT_TRUE( (j7 != j7) == false );
-  ASSERT_TRUE( j7 != j8 );
-  ASSERT_TRUE( (j7 == j8) == false );
-  ASSERT_TRUE( j8 == j9 );
-  ASSERT_TRUE( (j8 != j9) == false );
+  REQUIRE( j7 == j7 );
+  REQUIRE( (j7 != j7) == false );
+  REQUIRE( j7 != j8 );
+  REQUIRE( (j7 == j8) == false );
+  REQUIRE( j8 == j9 );
+  REQUIRE( (j8 != j9) == false );
 
   wampcc::json_value j10 = wampcc::json_decode( "{ \"foo\": [true, false, true, false ]} " );
   wampcc::json_value j11 = wampcc::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
   wampcc::json_value j12 = wampcc::json_decode( "{ \"foo\": [true, false, true, true  ]} " );
 
-  ASSERT_TRUE( j10 == j10 );
-  ASSERT_TRUE( (j10 != j10) == false );
-  ASSERT_TRUE( j10 != j11 );
-  ASSERT_TRUE( (j10 == j11) == false );
-  ASSERT_TRUE( j11 == j12 );
-  ASSERT_TRUE( (j11 != j12) == false );
-
-
-  return 1;
+  REQUIRE( j10 == j10 );
+  REQUIRE( (j10 != j10) == false );
+  REQUIRE( j10 != j11 );
+  REQUIRE( (j10 == j11) == false );
+  REQUIRE( j11 == j12 );
+  REQUIRE( (j11 != j12) == false );
 }
 
 //----------------------------------------------------------------------
-DEFTEST( getters_api )
+TEST_CASE( "getters_api" )
 {
   const wampcc::json_value j1 = wampcc::json_decode( "{ \"foo\": [50, 20, 30, 40]} " );
 
@@ -427,11 +411,11 @@ DEFTEST( getters_api )
 
 
   const wampcc::json_value * id  = wampcc::json_get_ptr(msg, "id");
-  ASSERT_TRUE( id == NULL);
+  REQUIRE( id == NULL);
   // const wampcc::json_value & id2 = wampcc::get_ref(msg, "id");
 
   const wampcc::json_value & id4 = wampcc::json_get_copy(msg, "id", wampcc::json_value::make_string("hello"));
-  ASSERT_TRUE( id4 == wampcc::json_value::make_string("hello") );
+  REQUIRE( id4 == wampcc::json_value::make_string("hello") );
 
   bool id5_exception_thrown=false;
   try
@@ -442,33 +426,29 @@ DEFTEST( getters_api )
   {
     id5_exception_thrown = true;
   }
-  ASSERT_TRUE(id5_exception_thrown);
+  REQUIRE(id5_exception_thrown);
 
   const wampcc::json_value expected = wampcc::json_value::make_string("xyz");
   std::string challmsg = wampcc::json_get_copy(msg, "challenge", "xyz").as_string();
   std::cout << "challmsg: >" << challmsg << "<\n";
-  ASSERT_TRUE( challmsg == expected.as_string() );
-
-  return 1;
+  REQUIRE( challmsg == expected.as_string() );
 }
 //----------------------------------------------------------------------
-DEFTEST( compare_unint_and_int )
+TEST_CASE( "compare_unint_and_int" )
 {
   // Check that an int(0) is equal to a uint(0), etc
 
   // TODO: add some more tests here
 
-  ASSERT_TRUE(wampcc::json_value::make_int(-1) != wampcc::json_value::make_uint(-1));
-  ASSERT_TRUE(wampcc::json_value::make_int(0) == wampcc::json_value::make_uint(0));
-  ASSERT_TRUE(wampcc::json_value::make_int(1) == wampcc::json_value::make_uint(1));
-  ASSERT_TRUE(wampcc::json_value::make_uint(0) == wampcc::json_value::make_int(0));
-  ASSERT_TRUE(wampcc::json_value::make_uint(1) == wampcc::json_value::make_int(1));
-
-  return 1;
+  REQUIRE(wampcc::json_value::make_int(-1) != wampcc::json_value::make_uint(-1));
+  REQUIRE(wampcc::json_value::make_int(0) == wampcc::json_value::make_uint(0));
+  REQUIRE(wampcc::json_value::make_int(1) == wampcc::json_value::make_uint(1));
+  REQUIRE(wampcc::json_value::make_uint(0) == wampcc::json_value::make_int(0));
+  REQUIRE(wampcc::json_value::make_uint(1) == wampcc::json_value::make_int(1));
 }
 
 //----------------------------------------------------------------------
-// DEFTEST( demo_test )
+// TEST_CASE( demo_test )
 // {
 //   wampcc::json_array msg;
 //   msg.append("hello");
@@ -480,7 +460,14 @@ DEFTEST( compare_unint_and_int )
 // }
 
 //----------------------------------------------------------------------
-int main(int /*argc*/, char * /*argv*/ [])
+
+int main(int argc, char** argv)
 {
-  return autotest_runall();
+  try {
+    int result = minitest::run(argc, argv);
+    return (result < 0xFF ? result : 0xFF );
+  } catch (std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
 }

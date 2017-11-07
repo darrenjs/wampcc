@@ -7,7 +7,7 @@
 
 #include "json_pointer.cc"
 
-#include "testcase.h"
+#include "mini_test.h"
 
 using namespace wampcc;
 
@@ -46,13 +46,13 @@ static bool patch_test(const char* docstr, const char* patchstr)
     std::cout << "before: '" << orig << "'\n"
               << "after : '" << doc << "'\n";
   }
-   return equal;
+  return equal;
 }
 
 
 //----------------------------------------------------------------------
 
-DEFTEST( rollback_due_to_test )
+TEST_CASE( "rollback_due_to_test" )
 {
   const char* doc =  " { \"foo\": [\"bar\", \"baz\"] } ";
 
@@ -65,15 +65,13 @@ DEFTEST( rollback_due_to_test )
 ]                                                                      \
 ";
 
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test( doc, patch )
     );
-
-  return 1;
 }
 //----------------------------------------------------------------------
 
-DEFTEST( rollback_due_to_bad_patch )
+TEST_CASE( "rollback_due_to_bad_patch" )
 {
   const char* doc =  " { \"foo\": [\"bar\", \"baz\"] } ";
 
@@ -86,15 +84,13 @@ DEFTEST( rollback_due_to_bad_patch )
 ]                                                                      \
 ";
 
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test( doc, patch )
     );
-
-  return 1;
 }
 //----------------------------------------------------------------------
 
-DEFTEST( rollback_full_doc )
+TEST_CASE( "rollback_full_doc" )
 {
   const char* doc =  " { \"foo\": [\"bar\", \"baz\"] } ";
 
@@ -106,16 +102,21 @@ DEFTEST( rollback_full_doc )
 ]                                                                      \
 ";
 
-  ASSERT_TRUE(
+  REQUIRE(
     patch_test( doc, patch )
     );
 
-  return 1;
 }
 
 
 
-int main(int /*argc*/, char * /*argv*/ [])
+int main(int argc, char** argv)
 {
-  return autotest_runall();
+  try {
+    int result = minitest::run(argc, argv);
+    return (result < 0xFF ? result : 0xFF );
+  } catch (std::exception& e) {
+    std::cout << e.what() << std::endl;
+    return 1;
+  }
 }

@@ -1,6 +1,7 @@
 
 #include "json_pointer.cc"
-#include "testcase.h"
+
+#include "mini_test.h"
 
 #include <fstream>
 #include <vector>
@@ -172,11 +173,6 @@ int main(int argc, char * argv [])
   load_tests(json_tests, JALSONDIR "/tests.json");
   load_tests(json_tests, JALSONDIR "/extra.json");
 
-  // std::string tests = slurp( JALSONDIR "/tests/tests.json" );
-
-  // json_value doc = jalson::decode(tests.c_str());
-
-  // json_array& json_tests = doc.as_array();
 
   int testid = 0;
   int failed = 0;
