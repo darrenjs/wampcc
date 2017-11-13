@@ -18,14 +18,14 @@ void test_rpc(int port, internal_server& server)
 {
 
   server.router()->callable("default_realm", "hello",
-                            [](wampcc::wamp_router& rtr, 
-                               wampcc::wamp_session& caller, 
+                            [](wampcc::wamp_router& rtr,
+                               wampcc::wamp_session& caller,
                                wampcc::call_info info) {
                               caller.result(info.request_id, {"hello"});
                             });
   server.router()->callable("default_realm", "echo",
-                            [](wampcc::wamp_router& rtr, 
-                               wampcc::wamp_session& caller, 
+                            [](wampcc::wamp_router& rtr,
+                               wampcc::wamp_session& caller,
                                wampcc::call_info info) {
                               caller.result(info.request_id,
                                             info.args.args_list,
@@ -83,7 +83,7 @@ TEST_CASE("test_all_salted")
   internal_server iserver;
   iserver.enable_salting();
   int port = iserver.start(global_port++);
-  
+
   all_tests(port, iserver);
 }
 
@@ -109,6 +109,65 @@ TEST_CASE("test_all_bulk")
     //   all_tests(port, iserver);
   }
 }
+
+TEST_CASE("test_unsubscribe")
+{
+  internal_server iserver;
+  int port = iserver.start(global_port++);
+
+  unique_ptr<kernel> the_kernel(new kernel(/*{}, logger::console()*/));
+  auto session = establish_session(the_kernel, port);
+  perform_realm_logon(session);
+
+  std::promise<t_subscription_id> subscribed;
+  bool subscribed_okay = false;
+
+  session->subscribe("uri", {},
+                     [&](wampcc::wamp_session&, wampcc::subscribed_info info){
+                       subscribed_okay = !info.was_error;
+                       subscribed.set_value(info.subscription_id);
+                     },
+                     [](wampcc::wamp_session&, wampcc::event_info ev){
+                     });
+
+  auto fut = subscribed.get_future();
+  fut.wait();
+  auto subid = fut.get();
+  REQUIRE(subscribed_okay==true);
+
+  // test an unsubscribe that should fail
+  {
+    std::promise<bool> unsubscribed;
+
+    session->unsubscribe(99999,
+                         [&](wampcc::wamp_session&, wampcc::unsubscribed_info info) {
+                           unsubscribed.set_value(!info.was_error);
+                         });
+
+    auto fut2 = unsubscribed.get_future();
+    fut2.wait();
+    bool unsubscribed_okay = fut2.get();
+    REQUIRE(unsubscribed_okay==false);
+  }
+
+  // test an unsubscribe that should succeed
+  {
+    std::promise<bool> unsubscribed;
+
+    session->unsubscribe(subid,
+                         [&](wampcc::wamp_session&, wampcc::unsubscribed_info info) {
+                           unsubscribed.set_value(!info.was_error);
+                         });
+
+    auto fut2 = unsubscribed.get_future();
+    fut2.wait();
+    bool unsubscribed_okay = fut2.get();
+    REQUIRE(unsubscribed_okay==true);
+  }
+
+  session->close().wait();
+}
+
 
 int main(int argc, char** argv)
 {

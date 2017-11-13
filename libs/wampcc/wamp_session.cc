@@ -1439,7 +1439,8 @@ void wamp_session::process_inbound_unsubscribed(json_array & msg)
   // invoke user callback if permitted, and handle exception
   if (orig_req.user_cb && user_cb_allowed())
     try {
-      orig_req.user_cb(*this, {request_id, true, {}, orig_req.user});
+      unsubscribed_info info {request_id, false, {}, orig_req.user};
+      orig_req.user_cb(*this, std::move(info));
     }
     catch(...) {
       log_exception(__logger, "inbound unsubscribed user callback");
@@ -1756,7 +1757,8 @@ void wamp_session::process_inbound_error(json_array & msg)
         // invoke user callback if permitted, and handle exception
         if (orig_request.user_cb && user_cb_allowed())
           try {
-            orig_request.user_cb(*this, {request_id, false, std::move(error_uri), orig_request.user});
+            unsubscribed_info info{request_id, true, std::move(error_uri), orig_request.user};
+            orig_request.user_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound unsubscribed user callback");

@@ -1,6 +1,10 @@
 unreleased
 ==========
 
+## Fixed
+
+- incorrect success code on unsubscribe callback (issue #16)
+
 version 1.5
 ===========
 

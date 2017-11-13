@@ -686,6 +686,12 @@ public:
   /** Modify user data **/
   void * & user() { return m_user; }
 
+  //@{
+  /** Obtain the tcp socket underlying this session */
+  const wampcc::tcp_socket* socket() const { return m_socket.get(); }
+  wampcc::tcp_socket* socket() { return m_socket.get(); }
+  //@}
+  
 private:
 
   void proto_close(); // for tests
