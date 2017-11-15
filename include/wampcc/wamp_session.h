@@ -91,7 +91,7 @@ struct auth_provider
       [](const std::string&){ return "no_auth_required"; },
         [](const std::string&, const std::string&) {
           return auth_plan{mode::open,{}}; },
-          nullptr, nullptr };
+          nullptr, nullptr, nullptr };
   }
 };
 
@@ -691,7 +691,7 @@ public:
   const wampcc::tcp_socket* socket() const { return m_socket.get(); }
   wampcc::tcp_socket* socket() { return m_socket.get(); }
   //@}
-  
+
 private:
 
   void proto_close(); // for tests
