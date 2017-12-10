@@ -5,6 +5,12 @@ unreleased
 
 - incorrect success code on unsubscribe callback (issue #16)
 
+- configure.ac not detecting system libuv/jansson (issue #3, @sashakh)
+
+- makefile in the examples directory had higher priority than autotools
+  generated Makefile, causing break when configure done inside source tree
+  (issue #3, @sashakh)
+
 version 1.5
 ===========
 

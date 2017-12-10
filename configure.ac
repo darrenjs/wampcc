@@ -53,6 +53,9 @@ if test "x$with_libuv" != x; then
    libuvlib="-L$with_libuv/lib -luv"
    libuvinc="-I$with_libuv/include"
    have_libuv=1
+else
+   AC_CHECK_HEADER(uv.h, [have_libuv=1; libuvlib=-luv],
+	AC_MSG_ERROR([You have not configured location of libuv. Try --help.]))
 fi
 
 # put the inc and lib into the makefiles
@@ -62,9 +65,6 @@ AC_SUBST(libuvinc)
 # put variable into config.h
 AC_DEFINE_UNQUOTED([HAVE_LIBUV], [$have_libuv], [Define to 1 if libuv library is present])
 
-if test "x$have_libuv" = "x0" ; then
-    AC_MSG_ERROR([You have not configured location of libuv. Try --help.])
-fi
 
 #========== Checks for header files ==========
 
@@ -116,7 +116,9 @@ if test "x$with_jansson" != x; then
    janssonlib="$with_jansson/lib/libjansson.la"
    janssoninc="-I$with_jansson/include"
    have_jansson=1
-   have_vendor=1
+else
+   AC_CHECK_HEADER(jansson.h, [ have_jansson=1; janssonlib=-ljansson ],
+	AC_MSG_ERROR([You have not configured a JSON implementation. Try --help. Supported vendors: jansson]))
 fi
 
 # put the inc and lib into the makefiles
@@ -125,11 +127,6 @@ AC_SUBST(janssoninc)
 
 # put variable into config.h
 AC_DEFINE_UNQUOTED([HAVE_JANSSON], [$have_jansson], [Define to 1 if Jannson library is present])
-
-
-if test "x$have_vendor" = "x0" ; then
-    AC_MSG_ERROR([You have not configured a JSON implementation. Try --help. Supported vendors: jansson])
-fi
 
 
 ## Tell libwampcc where to find wampcc_json. Normally wampcc_json is under the
