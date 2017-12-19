@@ -2199,7 +2199,8 @@ void wamp_session::transition_to_closed()
   // would be a programming error.
 
   try {
-    m_notify_state_change_fn(*this, false);
+    if (m_notify_state_change_fn)
+      m_notify_state_change_fn(*this, false);
   }
   catch (...) {
     /* ignore */
