@@ -18,6 +18,9 @@
 #include <sys/utsname.h>
 #else
 #include <Windows.h>
+#ifdef WIN32_LEAN_AND_MEAN
+#include <Winsock2.h> /* For gethostname */
+#endif
 #endif
 
 namespace wampcc
