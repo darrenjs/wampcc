@@ -27,7 +27,9 @@ struct user_options
     websocket,
   } session_transport = transport::websocket;
 
-  int serialisers = wampcc::all_serialisers;
+  /* We cannot define a general purpose default serialiser for a wamp client to
+   * use because the concept of a default varies between WAMP transports. */
+  int serialisers = static_cast<int>(wampcc::serialiser_type::none);
 
   wampcc::user_optional<std::string> username;
   wampcc::user_optional<std::string> password;
@@ -52,6 +54,14 @@ struct user_options
   bool use_ssl = false;
 
   std::string request_uri_path = "/";
+
+  /* Get actual client serialiser to use, which depends on what options the user
+   * has provided and the default for the given transport */
+  template<typename T>
+  int get_serialiser() {
+    return (serialisers == static_cast<int>(wampcc::serialiser_type::none))?
+      T::options::default_client_serialiser : serialisers;
+  }
 } uopts;
 
 
@@ -447,7 +457,7 @@ int main_impl(int argc, char** argv)
   switch (uopts.session_transport) {
     case user_options::transport::websocket: {
       wampcc::websocket_protocol::options proto_opts(uopts.request_uri_path);
-      proto_opts.serialisers = uopts.serialisers;
+      proto_opts.serialisers = uopts.get_serialiser<wampcc::websocket_protocol>();
       ws = wampcc::wamp_session::create<wampcc::websocket_protocol>(
         g_kernel.get(),
         std::move(sock),
@@ -458,7 +468,7 @@ int main_impl(int argc, char** argv)
     }
     case user_options::transport::rawsocket: {
       wampcc::rawsocket_protocol::options proto_opts;
-      proto_opts.serialisers = uopts.serialisers;
+      proto_opts.serialisers = uopts.get_serialiser<wampcc::rawsocket_protocol>();
       ws = wampcc::wamp_session::create<wampcc::rawsocket_protocol>(
         g_kernel.get(),
         std::move(sock),

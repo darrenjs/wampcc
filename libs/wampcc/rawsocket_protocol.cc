@@ -78,6 +78,12 @@ void rawsocket_protocol::initiate(t_initiate_cb cb)
   codecs |= (m_options.serialisers & serialiser_type::json)? e_JSON : 0;
   codecs |= (m_options.serialisers & serialiser_type::msgpack)? e_MSGPACK : 0;
 
+  /* During rawsocket client initiation the client cannot advertise more than
+   * one protocol (like websocket is able to do).  So reject attempt if the
+   * protocol is not uniquely specified.*/
+  if (codecs != e_JSON && codecs != e_MSGPACK)
+    throw std::runtime_error("rawsocket client must choose only one serialiser");
+  
   format_handshake( handshake, m_options.inbound_max_msg_size, codecs);
 
   std::pair<const char*, size_t> buf;
@@ -163,7 +169,7 @@ void rawsocket_protocol::io_on_read(char* src, size_t len)
               os << " (" << err_str << ")";
             throw handshake_error(os.str());
           }
-
+          
           create_codec(m_options.serialisers & to_serialiser(serializer));
             if (!m_codec)
               throw handshake_error("failed to negotiate rawsocket message serialiser");

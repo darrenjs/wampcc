@@ -24,6 +24,10 @@ class websocket_protocol : public protocol
 public:
 
   struct options : public protocol::options {
+
+    /** Default serialiser for client initiated connection */
+    static const int default_client_serialiser = all_serialisers;
+
     options(std::string __request_uri = "/")
       : host_header(host_header_mode::automatic),
         request_uri(std::move(__request_uri)) { }

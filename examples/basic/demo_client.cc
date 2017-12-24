@@ -11,18 +11,16 @@
 #include <memory>
 #include <iostream>
 
-using namespace wampcc;
-
 int main(int argc, char** argv)
 {
   try {
     /* Create the wampcc kernel. */
 
-    kernel the_kernel;
+    wampcc::kernel the_kernel;
 
     /* Create the TCP socket and attempt to connect. */
 
-    std::unique_ptr<tcp_socket> socket(new tcp_socket(&the_kernel));
+    std::unique_ptr<wampcc::tcp_socket> socket(new wampcc::tcp_socket(&the_kernel));
     socket->connect("127.0.0.1", 55555).wait_for(std::chrono::seconds(3));
 
     if (!socket->is_connected())
@@ -31,8 +29,8 @@ int main(int argc, char** argv)
     /* With the connected socket, create a wamp session & logon to the realm
      * called 'default_realm'. */
 
-    auto session = wamp_session::create<websocket_protocol>(&the_kernel,
-                                                            std::move(socket));
+    auto session = wampcc::wamp_session::create<wampcc::websocket_protocol>(&the_kernel,
+                                                                            std::move(socket));
 
     session->hello("default_realm").wait_for(std::chrono::seconds(3));
 
@@ -42,11 +40,11 @@ int main(int argc, char** argv)
     /* Subscribe to a topic. */
 
     session->subscribe("random_number", {},
-                       [](wamp_session&, subscribed_info info) {
+                       [](wampcc::wamp_session&, wampcc::subscribed_info info) {
                          std::cout << "subscribed " << (info ? "ok" : "failed")
                                    << std::endl;
                        },
-                       [](wamp_session&, event_info info) {
+                       [](wampcc::wamp_session&, wampcc::event_info info) {
                          for (auto& x : info.args.args_list)
                            std::cout << "got update: " << x << " ";
                          std::cout << std::endl;
@@ -55,7 +53,7 @@ int main(int argc, char** argv)
     /* Register a procedure that can sum an array of numbers. */
 
     session->provide("math.service.add", {},
-                     [](wamp_session&, registered_info info) {
+                     [](wampcc::wamp_session&, wampcc::registered_info info) {
                        if (info)
                          std::cout << "procedure registered with id "
                                    << info.registration_id << std::endl;
@@ -63,7 +61,7 @@ int main(int argc, char** argv)
                          std::cout << "procedure registration failed, error "
                                    << info.error_uri << std::endl;
                      },
-                     [](wamp_session& ws, invocation_info info) {
+                     [](wampcc::wamp_session& ws, wampcc::invocation_info info) {
                        int total = 0;
                        for (auto& item : info.args.args_list)
                          if (item.is_int())
@@ -74,7 +72,7 @@ int main(int argc, char** argv)
     /* Call a remote procedure. */
 
     session->call("math.service.add", {}, {{100, 200}, {}},
-                  [](wamp_session&, result_info result) {
+                  [](wampcc::wamp_session&, wampcc::result_info result) {
       if (result)
         std::cout << "got result: " << result.args.args_list[0] << std::endl;
     });

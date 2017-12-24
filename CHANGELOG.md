@@ -11,6 +11,8 @@ unreleased
   generated Makefile, causing break when configure done inside source tree
   (issue #3, @sashakh)
 
+- rawsocket client wrongly offers multiple serialisers on connect (issue #18)
+
 version 1.5
 ===========
 

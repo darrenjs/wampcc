@@ -75,7 +75,7 @@ public:
       m_salt{"saltxx",32, 1500}
   {
     std::random_device rd;  // used for seed
-    std::mt19937 gen(rd()); 
+    std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(-1000, 1000);
 
     m_salt.iterations += dis(gen);
@@ -277,7 +277,7 @@ std::unique_ptr<tcp_socket> tcp_connect(kernel& k, int port)
 std::shared_ptr<wamp_session> establish_session(
   std::unique_ptr<kernel>& the_kernel, int port,
   int protocols = wampcc::all_protocols,
-  int serialisers = wampcc::all_serialisers)
+  int serialisers = static_cast<int>(serialiser_type::none))
 {
   static int count = 0;
   count++;
@@ -295,11 +295,12 @@ std::shared_ptr<wamp_session> establish_session(
     throw std::runtime_error("tcp connect failed during establish_session()");
 
   websocket_protocol::options ws_opts;
-  ws_opts.serialisers = serialisers;
+  ws_opts.serialisers = (serialisers==static_cast<int>(serialiser_type::none))?
+    websocket_protocol::options::default_client_serialiser : serialisers;
 
   rawsocket_protocol::options rs_opts;
-  rs_opts.serialisers = serialisers;
-
+  rs_opts.serialisers = (serialisers==static_cast<int>(serialiser_type::none))?
+    rawsocket_protocol::options::default_client_serialiser : serialisers;
 
   /* attempt to create a session */
   std::shared_ptr<wamp_session> session;

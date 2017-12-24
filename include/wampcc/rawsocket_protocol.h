@@ -51,6 +51,10 @@ public:
   struct options : public protocol::options
   {
     max_msg_size_flag inbound_max_msg_size;
+
+    /** Default serialiser for client initiated connection */
+    static const int default_client_serialiser = static_cast<int>(serialiser_type::json);
+
     options()
       : protocol::options(),
         inbound_max_msg_size(rawsocket_protocol::default_max_rxmsg_size)
