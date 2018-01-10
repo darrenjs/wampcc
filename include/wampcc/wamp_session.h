@@ -103,6 +103,7 @@ struct server_msg_handler
   std::function<void(wamp_session&, t_request_id, std::string&, json_object&, wamp_args&)> on_call;
   std::function<void(wamp_session&, t_request_id, std::string&, json_object&, wamp_args&)> on_publish;
   std::function<void(wamp_session&, t_request_id, std::string&, json_object&)> on_register;
+  std::function<void(wamp_session&, t_request_id, t_registration_id)> on_unregister;
   std::function<void(wamp_session&, t_request_id, std::string&, json_object&)> on_subscribe;
   std::function<void(wamp_session&, t_request_id, t_subscription_id)> on_unsubscribe;
 
@@ -257,6 +258,22 @@ struct registered_info
   operator bool() const noexcept { return !was_error; }
 };
 typedef std::function<void(wamp_session&, registered_info)> on_registered_fn;
+
+
+/** Callback data associated with the response to an unregister request
+ * (i.e. due to an earlier call to session::unprovide). */
+struct unregistered_info
+{
+  t_request_id request_id;
+  bool was_error;
+  std::string error_uri;
+  void * user;
+
+  /** Returns whether this message indicates the request was successful. */
+  operator bool() const noexcept { return !was_error; }
+};
+typedef std::function<void(wamp_session&, unregistered_info)> on_unregistered_fn;
+
 
 /** Callback data associated with arrival of an INVOCATION wamp message.  The
  * registration_id identifies a previously registered procedure that should
@@ -500,16 +517,23 @@ public:
    * eg, in case of a server session that receives the realm from the peer. */
   const std::string& realm() const;
 
-  /** Allow a callee application to register a procedure with a dealer. A
-   * REGISTER message is sent to the connected dealer to request registration
-   * of the procedure `uri`.  The success or failure of the registration
-   * attempt, and requests for procedure invocation, are delivered via the
-   * callback function arguments. */
+  /** Allow a callee application to register a procedure with a dealer. A WAMP
+   * REGISTER message is sent to the connected dealer to request registration of
+   * the procedure `uri`.  The success or failure of the registration attempt,
+   * and requests for procedure invocation, are delivered via the callback
+   * function arguments. */
   t_request_id provide(const std::string& uri,
                        json_object options,
                        on_registered_fn,
                        on_invocation_fn,
                        void * user = nullptr);
+
+  /** Unregister a procedure. Allow a callee to request the unregister of a
+   * previously registered procedure. The success or failure of the unregister
+   * attempt is delivered via the callback function argument.*/
+  t_request_id unprovide(t_registration_id,
+                         on_unregistered_fn,
+                         void * user = nullptr);
 
   /** Subscribe to a topic. The on_subscribed_fn callback is invoked upon success
    * or failure of the request. Subsequent topic updates which can follow a
@@ -601,6 +625,17 @@ public:
    * corresponding registration request could not be fulfilled. */
   void register_error(t_request_id, std::string error);
   void register_error(t_request_id, std::string error, json_object details);
+  //@}
+
+  /** Reply to an UNREGISTER request with an UNREGISTERED message to indicate
+   * success. */
+  void unregistered(t_request_id);
+
+  //@{
+  /** Reply to an UNREGISTER request with an ERROR message to indicate
+   * failure. */
+  void unregister_error(t_request_id, std::string error);
+  void unregister_error(t_request_id, std::string error, json_object details);
   //@}
 
   //@{
@@ -795,7 +830,10 @@ private:
 
   on_state_fn m_notify_state_change_fn;
 
+  void process_inbound_register(json_array &);
   void process_inbound_registered(json_array &);
+  void process_inbound_unregister(json_array &);
+  void process_inbound_unregistered(json_array &);
   void process_inbound_invocation(json_array &);
   void process_inbound_subscribed(json_array &);
   void process_inbound_unsubscribed(json_array &);
@@ -808,7 +846,6 @@ private:
   void process_inbound_publish(json_array &);
   void process_inbound_subscribe(json_array &);
   void process_inbound_unsubscribe(json_array &);
-  void process_inbound_register(json_array &);
   void process_inbound_goodbye(json_array &);
   void process_inbound_abort(json_array &);
 
@@ -839,6 +876,7 @@ private:
   server_msg_handler m_server_handler;
 
   struct procedure;
+  struct unregister_request;
   struct subscribe_request;
   struct unsubscribe_request;
   struct publish_request;
@@ -846,11 +884,13 @@ private:
   struct wamp_call;
   struct wamp_invocation;
 
+  /* track all of the pending requests made to the peer */
   mutable std::mutex m_pending_lock;
   std::map<t_request_id, subscribe_request>   m_pending_subscribe;
   std::map<t_request_id, unsubscribe_request> m_pending_unsubscribe;
   std::map<t_request_id, publish_request>     m_pending_publish;
   std::map<t_request_id, procedure>           m_pending_register;
+  std::map<t_request_id, unregister_request>  m_pending_unregister;
   std::map<t_request_id, wamp_call>           m_pending_call;
   std::map<t_request_id, wamp_invocation>     m_pending_invocation;
 

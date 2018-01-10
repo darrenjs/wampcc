@@ -70,17 +70,21 @@ MaxEmptyLinesToKeep: 2
 
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 
-# Braces
+# ----- Braces -----
 
 # line breaking
 AlwaysBreakTemplateDeclarations: false
 BreakConstructorInitializersBeforeComma: false
 
+# Custom control of brace style. Needs clang-format 3.8+
+BraceWrapping:
+  BeforeElse: true
+BreakBeforeBraces: Custom
+
 # Argument packing
 
 BinPackParameters: true
-BreakBeforeBraces: Linux
+
 ExperimentalAutoDetectBinPacking: false
 
 ...
-

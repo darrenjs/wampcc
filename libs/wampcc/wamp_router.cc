@@ -291,13 +291,19 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
       this->m_pubsub->unsubscribe(&ws, request_id, sub_id);
     };
 
-    handlers.on_register = [this](wamp_session& ses,
+    handlers.on_register = [this](wamp_session& ws,
                                   t_request_id request_id,
                                   std::string& uri,
                                   json_object& options) -> void {
-      auto registration_id = m_rpcman->handle_inbound_register(&ses, uri);
-      ses.registered(request_id, registration_id);
+      m_rpcman->handle_inbound_register(ws, request_id, uri);
     };
+
+    handlers.on_unregister = [this](wamp_session& ws,
+                                    t_request_id request_id,
+                                    t_registration_id registration_id) -> void {
+      m_rpcman->handle_inbound_unregister(ws, request_id, registration_id);
+    };
+
 
     auto fd = sock->fd_info().second;
 

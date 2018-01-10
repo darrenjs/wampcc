@@ -15,7 +15,8 @@ check_PROGRAMS=test_basic_codecs test_connect_timeout test_tcp_socket_connect	\
 test_evthread_wamp_session_destructor test_early_wamp_session_destructor		\
 test_late_wamp_session_destructor test_tcp_socket_listen						\
 test_tcp_socket_passive_disconnect test_wamp_session_fast_close test_tcp_socket	\
-test_wamp_rpc test_misc test_router_functions test_send_and_close
+test_wamp_rpc test_misc test_router_functions test_send_and_close				\
+test_register_unregister
 
 # for make dist
 EXTRA_DIST=test_common.h mini_test.h auth.py client_bad_logon_empty_realm.py	\
@@ -61,3 +62,5 @@ test_basic_codecs_SOURCES=test_basic_codecs.cc
 test_router_functions_SOURCES=test_router_functions.cc
 
 test_send_and_close_SOURCES=test_send_and_close.cc
+
+test_register_unregister_SOURCES=test_register_unregister.cc

@@ -1,6 +1,10 @@
 unreleased
 ==========
 
+## Added
+
+- support WAMP unregister (issue #21)
+
 ## Fixed
 
 - incorrect success code on unsubscribe callback (issue #16)

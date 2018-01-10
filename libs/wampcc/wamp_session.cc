@@ -49,6 +49,13 @@ namespace wampcc {
     void* user;
   };
 
+  struct wamp_session::unregister_request
+  {
+    on_unregistered_fn user_cb;
+    t_registration_id registration_id;
+    void* user;
+  };
+
   struct wamp_session::subscribe_request
   {
     std::string uri;
@@ -164,6 +171,9 @@ server_msg_handler::server_msg_handler()
       }),
     on_register([](wamp_session& ws, t_request_id id, std::string&, json_object&){
         ws.register_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
+      }),
+   on_unregister ([](wamp_session& ws, t_request_id id, t_registration_id){
+        ws.unregister_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
       }),
     on_subscribe([](wamp_session& ws, t_request_id id, std::string&, json_object&){
         ws.subscribe_error(id, WAMP_ERROR_UNSUPPORTED_REQUEST_TYPE);
@@ -612,6 +622,10 @@ void wamp_session::process_message(json_array& ja,
           process_inbound_register(ja);
           return;
 
+        case msg_type::wamp_msg_unregister :
+          process_inbound_unregister(ja);
+          return;
+
         case msg_type::wamp_msg_error :
           process_inbound_error(ja);
           return;
@@ -644,6 +658,10 @@ void wamp_session::process_message(json_array& ja,
       {
         case msg_type::wamp_msg_registered :
           process_inbound_registered(ja);
+          return;
+
+        case msg_type::wamp_msg_unregistered :
+          process_inbound_unregistered(ja);
           return;
 
         case msg_type::wamp_msg_invocation :
@@ -1194,6 +1212,7 @@ t_request_id wamp_session::provide(const std::string& uri,
   return request_id;
 }
 
+
 void wamp_session::process_inbound_registered(json_array & msg)
 {
   /* EV thread */
@@ -1733,7 +1752,7 @@ void wamp_session::process_inbound_error(json_array & msg)
           }
 
         break;
-      };
+      }
       case msg_type::wamp_msg_unsubscribe :
       {
         /* dont hold any locks when calling the user */
@@ -1765,7 +1784,7 @@ void wamp_session::process_inbound_error(json_array & msg)
           }
 
         break;
-      };
+      }
       case msg_type::wamp_msg_publish:
       {
         /* dont hold any locks when calling the user */
@@ -1822,6 +1841,38 @@ void wamp_session::process_inbound_error(json_array & msg)
             log_exception(__logger, "inbound register on_result callback");
           }
         }
+        break;
+      }
+      case msg_type::wamp_msg_unregister:
+      {
+        /* dont hold any locks when calling the user */
+        unregister_request orig_request;
+        {
+          std::lock_guard<std::mutex> guard(m_pending_lock);
+          auto iter = m_pending_unregister.find(request_id);
+          if (iter != m_pending_unregister.end())
+          {
+            orig_request = std::move(iter->second);
+            m_pending_unregister.erase(iter);
+          }
+          else
+          {
+            LOG_WARN("no pending unregister for error response with request_id "
+                     << request_id);
+            break;
+          }
+        }
+
+        // invoke user callback if permitted, and handle exception
+        if (orig_request.user_cb && user_cb_allowed())
+          try {
+            unregistered_info info{request_id, true, std::move(error_uri), orig_request.user};
+            orig_request.user_cb(*this, std::move(info));
+          }
+          catch(...) {
+            log_exception(__logger, "inbound unregistered user callback");
+          }
+
         break;
       }
       default:
@@ -2576,6 +2627,7 @@ void wamp_session::event(t_subscription_id sub_id, t_publication_id pub_id, json
   send_msg( std::move(msg) );
 }
 
+
 std::string wamp_session::authid() const
 {
   /* Note that returning a reference here would be unsafe, because access to the
@@ -2584,10 +2636,129 @@ std::string wamp_session::authid() const
   return m_authid.second;
 }
 
+
 bool wamp_session::has_authid() const
 {
   std::lock_guard<std::mutex> guard(m_realm_lock);
   return m_authid.first;
+}
+
+
+t_request_id wamp_session::unprovide(t_registration_id registration_id,
+                                     on_unregistered_fn user_cb,
+                                     void * user)
+{
+  json_array msg {msg_type::wamp_msg_unregister, 0, registration_id};
+
+  unregister_request req {std::move(user_cb), registration_id, user};
+
+  t_request_id request_id;
+  {
+    std::lock_guard<std::mutex> guard(m_request_lock);
+
+    request_id = m_next_request_id++;
+    msg[1] = request_id;
+
+    {
+      std::lock_guard<std::mutex> guard(m_pending_lock);
+      m_pending_unregister[request_id] = std::move(req);
+    }
+
+    send_msg(msg);
+  }
+
+  LOG_INFO(m_log_prefix << "sending unregister for registration_id "
+           << registration_id << ", request_id " << request_id);
+  return request_id;
+}
+
+
+void wamp_session::process_inbound_unregistered(json_array & msg)
+{
+  /* EV thread */
+
+  check_size_at_least(msg.size(), 2);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  unregister_request orig_req;
+  {
+    std::lock_guard<std::mutex> guard(m_pending_lock);
+    auto iter = m_pending_unregister.find(request_id);
+
+    if (iter != m_pending_unregister.end()) {
+      orig_req = std::move(iter->second);
+      m_pending_unregister.erase(iter);
+    }
+    else {
+      LOG_WARN("no pending unregister for unregistered response with request_id "
+               << request_id);
+      return;
+    }
+  }
+
+  m_procedures.erase(orig_req.registration_id);
+
+  LOG_INFO("unregistered, registration_id " << orig_req.registration_id
+           << ", request_id " << request_id);
+
+  // invoke user callback if permitted, and handle exception
+  if (orig_req.user_cb && user_cb_allowed())
+    try {
+      unregistered_info info {request_id, false, {}, orig_req.user};
+      orig_req.user_cb(*this, std::move(info));
+    }
+    catch (...) {
+      log_exception(__logger, "inbound unregistered user callback");
+    }
+}
+
+
+void wamp_session::process_inbound_unregister(json_array & msg)
+{
+  /* EV thread */
+
+  check_size_at_least(msg.size(), 3);
+
+  t_request_id request_id = extract_request_id(msg, 1);
+
+  if (!msg[2].is_uint())
+    throw protocol_error("registration id must be uint");
+
+  t_registration_id registration_id = msg[2].as_uint();
+
+  try {
+    m_server_handler.on_unregister(*this, request_id, registration_id);
+  }
+  catch (wamp_error& ex) {
+    reply_with_error(msg_type::wamp_msg_unregister, request_id, ex.args(), ex.error_uri());
+  }
+}
+
+
+void wamp_session::unregister_error(t_request_id id, std::string uri)
+{
+  send_msg({msg_type::wamp_msg_error,
+        msg_type::wamp_msg_unregister,
+        id,
+        json_value::make_object(),
+        std::move(uri)});
+}
+
+
+void wamp_session::unregister_error(t_request_id id, std::string uri, json_object details)
+{
+  send_msg({msg_type::wamp_msg_error,
+        msg_type::wamp_msg_unregister,
+        id,
+        std::move(details),
+        std::move(uri)});
+}
+
+
+void wamp_session::unregistered(t_request_id id)
+{
+  send_msg({msg_type::wamp_msg_unregistered, id});
 }
 
 

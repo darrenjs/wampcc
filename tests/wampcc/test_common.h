@@ -67,7 +67,7 @@ enum test_outcome { e_expected, e_unexpected };
 class internal_server
 {
 public:
-  internal_server(logger log = logger::nolog())
+  internal_server(logger log = logger::nolog()) // alt: debug_logger()
     : m_kernel(new kernel({}, log)),
       m_router(new wamp_router(m_kernel.get(), nullptr)),
       m_port(0),

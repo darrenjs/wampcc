@@ -18,36 +18,28 @@ namespace wampcc {
 
 /* Constructor */
 rpc_man::rpc_man(kernel* k, rpc_added_cb cb)
-  : __logger(k->get_logger()),
-    m_rpc_added_cb(cb),
-    m_next_regid(1)
-{
-}
+  : __logger(k->get_logger()), m_rpc_added_cb(cb), m_next_regid(1) {}
 
+rpc_details rpc_man::get_rpc_details(const std::string& rpcname,
+                                     const std::string& realm) {
+  std::lock_guard<std::mutex> guard(m_rpc_map_lock);
 
-rpc_details rpc_man::get_rpc_details( const std::string& rpcname,
-                                      const std::string& realm )
-{
-  std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+  auto realm_iter = m_realm_registry.find(realm);
 
-  auto realm_iter = m_realm_to_registry.find( realm );
-
-  if (realm_iter == m_realm_to_registry.end())
+  if (realm_iter == m_realm_registry.end())
     return rpc_details(); // realm not found
 
   auto rpc_iter = realm_iter->second.find(rpcname);
   if (rpc_iter == realm_iter->second.end())
     return rpc_details(); // procedure not found
 
-  return rpc_iter->second;
+  return *(rpc_iter->second);
 }
 
 
 uint64_t rpc_man::register_internal_rpc(const std::string& realm,
-                                        const std::string& uri,
-                                        on_call_fn fn,
-                                        void * user)
-{
+                                        const std::string& uri, on_call_fn fn,
+                                        void* user) {
   rpc_details r;
   r.uri = uri;
   r.user_cb = std::move(fn);
@@ -57,89 +49,125 @@ uint64_t rpc_man::register_internal_rpc(const std::string& realm,
   register_rpc(session_handle(), realm, r);
 
   if (m_rpc_added_cb)
-    m_rpc_added_cb( r );
+    m_rpc_added_cb(r);
 
   return r.registration_id;
 }
 
 
-uint64_t rpc_man::handle_inbound_register(wamp_session* session,
-                                          std::string ___uri)
-{
+void rpc_man::handle_inbound_register(wamp_session& ws, t_request_id request_id,
+                                      const std::string& ___uri) {
   /* EV thread */
 
   rpc_details r;
   r.registration_id = 0;
   r.uri = std::move(___uri);
-  r.session = session->handle();
+  r.session = ws.handle();
   r.type = rpc_details::eRemote;
 
-  register_rpc(session->handle(), session->realm(), r);
+  register_rpc(ws.handle(), ws.realm(), r);
 
-  if (m_rpc_added_cb) m_rpc_added_cb( r );
-  return r.registration_id;
+  if (m_rpc_added_cb)
+    m_rpc_added_cb(r);
+
+  ws.registered(request_id, r.registration_id);
 }
 
 
-void rpc_man::register_rpc(session_handle session, std::string realm, rpc_details& r)
-{
-  std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
-  auto realm_iter = m_realm_to_registry.find( realm );
-
-  // add realm if not already present
-  if (realm_iter == m_realm_to_registry.end())
-  {
-    auto p = m_realm_to_registry.insert(std::make_pair(realm, rpc_registry()));
-    realm_iter = std::move(p.first);
-  }
-
+void rpc_man::register_rpc(session_handle session, std::string realm,
+                           rpc_details& r) {
   if (r.uri.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "uri has zero length");
 
   if (!is_strict_uri(r.uri.c_str()))
     throw wamp_error(WAMP_ERROR_INVALID_URI, "uri fails strictness check");
 
-  auto result = realm_iter->second.insert(std::make_pair(r.uri,r));
-  if (!result.second)
-  {
-    LOG_WARN("ignoring duplicate procedure registration for " << realm << ":" << r.uri);
+  std::lock_guard<std::mutex> guard(m_rpc_map_lock);
+
+  map_uri_to_rpc& realm_index = m_realm_registry[realm];
+
+  auto rpc_iter = realm_index.find(r.uri);
+  if (rpc_iter != realm_index.end()) {
+    LOG_WARN("ignoring duplicate procedure registration for " << realm << ":"
+                                                              << r.uri);
     throw wamp_error(WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
   }
 
   r.registration_id = m_next_regid++;
-  result.first->second = r;
+  std::shared_ptr<rpc_details> rpc = std::make_shared<rpc_details>(r);
+  realm_index.insert(std::make_pair(rpc->uri, rpc));
 
-  auto & rpcs_for_session = m_rpcs_for_session[session];
-  rpcs_for_session.push_back( result.first );
+  auto& rpcs_for_session = m_session_to_rpcs[session];
+  rpcs_for_session[rpc->registration_id] = std::move(rpc);
 
-  LOG_INFO( "procedure added, " << r.registration_id << ", "
-            << realm << "::"
-            << r.uri );
+  LOG_INFO("procedure registered, " << r.registration_id << ", " << realm
+                                    << "::" << r.uri);
 }
 
 
-void rpc_man::session_closed(std::shared_ptr<wamp_session>& session)
-{
+void rpc_man::session_closed(std::shared_ptr<wamp_session>& session) {
   /* EV thread */
 
-  std::lock_guard< std::mutex > guard ( m_rpc_map_lock );
+  std::lock_guard<std::mutex> guard(m_rpc_map_lock);
 
-  auto realm_iter = m_realm_to_registry.find( session->realm() );
-  if (realm_iter != m_realm_to_registry.end())
-  {
-    auto session_iter = m_rpcs_for_session.find(session);
-    if (session_iter != m_rpcs_for_session.end())
-      for (auto & rpc_iter : session_iter->second)
-      {
-        LOG_INFO( "procedure removed, " << rpc_iter->second.registration_id << ", "
-                  << session->realm() << "::"
-                  << rpc_iter->first );
-        realm_iter->second.erase( rpc_iter );
+  auto realm_iter = m_realm_registry.find(session->realm());
+  if (realm_iter != m_realm_registry.end()) {
+    map_uri_to_rpc& rpcs_for_realm = realm_iter->second;
+    auto session_iter = m_session_to_rpcs.find(session);
+    if (session_iter != end(m_session_to_rpcs))
+      for (auto& rpc_item : session_iter->second) {
+        LOG_INFO("procedure unregistered, " //
+                 << rpc_item.second->registration_id << ", " << session->realm()
+                 << "::" << rpc_item.second->uri);
+
+        /* remove from realm index */
+        rpcs_for_realm.erase(rpc_item.second->uri);
       }
   }
 
-  m_rpcs_for_session.erase(session);
+  /* remove all rpcs from session index */
+  m_session_to_rpcs.erase(session);
 }
 
+
+/* Handle request to unregister a single procedure */
+void rpc_man::handle_inbound_unregister(wamp_session& session,
+                                        t_request_id request_id,
+                                        t_registration_id registration_id) {
+  /* EV thread */
+
+  std::lock_guard<std::mutex> guard(m_rpc_map_lock);
+
+  auto session_iter = m_session_to_rpcs.find(session.handle());
+  if (session_iter != m_session_to_rpcs.end()) {
+    auto rpc_iter = session_iter->second.find(registration_id);
+    if (rpc_iter != session_iter->second.end()) {
+      LOG_INFO("procedure unregistered, " //
+               << rpc_iter->second->registration_id << ", " << session.realm()
+               << "::" << rpc_iter->second->uri);
+
+      /* remove from realm index */
+      auto realm_iter = m_realm_registry.find(session.realm());
+      if (realm_iter != m_realm_registry.end())
+        realm_iter->second.erase(rpc_iter->second->uri);
+
+      /* remove from session index */
+      session_iter->second.erase(rpc_iter);
+
+      /* reply to client, indicate success */
+      session.unregistered(request_id);
+    } 
+    else {
+      LOG_WARN("unregister failed, registration_id " //
+               << registration_id << " not found");
+      throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
+    }
+  }
+  else {
+    LOG_WARN("unregister failed, session #" //
+             << session.unique_id() << " not found");
+    throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
+  }
+}
 
 } // namespace wampcc
