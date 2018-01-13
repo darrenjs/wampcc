@@ -44,36 +44,7 @@ namespace wampcc {
   struct wamp_session::procedure
   {
     std::string uri;
-    on_registered_fn registered_cb;
     on_invocation_fn invocation_cb;
-    void* user;
-  };
-
-  struct wamp_session::unregister_request
-  {
-    on_unregistered_fn user_cb;
-    t_registration_id registration_id;
-    void* user;
-  };
-
-  struct wamp_session::subscribe_request
-  {
-    std::string uri;
-    on_subscribed_fn request_cb;
-    on_event_fn event_cb;
-    void* user;
-  };
-
-  struct wamp_session::unsubscribe_request
-  {
-    on_unsubscribed_fn user_cb;
-    t_subscription_id subscription_id;
-    void* user;
-  };
-
-  struct wamp_session::publish_request
-  {
-    on_published_fn request_cb;
     void* user;
   };
 
@@ -83,16 +54,52 @@ namespace wampcc {
     void* user;
   };
 
-  struct wamp_session::wamp_call
+  struct wamp_session::register_request
   {
-    std::string rpc;
-    on_result_fn user_cb;
+    std::string uri;
+    on_registered_fn registered_cb;
+    on_invocation_fn invocation_cb;
     void* user;
   };
 
-  struct wamp_session::wamp_invocation
+  struct wamp_session::unregister_request
   {
-    on_yield_fn reply_fn;
+    t_registration_id registration_id;
+    on_unregistered_fn unregistered_cb;
+    void* user;
+  };
+
+  struct wamp_session::subscribe_request
+  {
+    std::string uri;
+    on_subscribed_fn subscribed_cb;
+    on_event_fn event_cb;
+    void* user;
+  };
+
+  struct wamp_session::unsubscribe_request
+  {
+    t_subscription_id subscription_id;
+    on_unsubscribed_fn unsubscribed_cb;
+    void* user;
+  };
+
+  struct wamp_session::publish_request
+  {
+    on_published_fn request_cb;
+    void* user;
+  };
+
+  struct wamp_session::call_request
+  {
+    std::string uri;
+    on_result_fn result_cb;
+    void* user;
+  };
+
+  struct wamp_session::invocation_request
+  {
+    on_yield_fn yield_cb;
     void* user;
   };
 
@@ -1187,7 +1194,7 @@ t_request_id wamp_session::provide(const std::string& uri,
     std::move(options),
     uri };
 
-  procedure p {
+  register_request request {
     uri,
     std::move(registered_cb),
     std::move(invocation_cb),
@@ -1202,7 +1209,7 @@ t_request_id wamp_session::provide(const std::string& uri,
 
     {
       std::lock_guard<std::mutex> guard(m_pending_lock);
-      m_pending_register[request_id] = p;
+      m_pending_register[request_id] = std::move(request);
     }
 
     send_msg( msg );
@@ -1240,7 +1247,12 @@ void wamp_session::process_inbound_registered(json_array & msg)
 
     info.user = iter->second.user;
 
-    m_procedures[registration_id] = std::move(iter->second);
+    procedure p {
+      std::move(iter->second.uri),
+      std::move(iter->second.invocation_cb),
+      iter->second.user};
+
+    m_procedures[registration_id] = std::move(p);
     m_pending_register.erase(iter);
   }
 
@@ -1288,6 +1300,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
     if ( msg.size() > 5 )
       args.args_dict = std::move(msg[5].as_object());
 
+    // TODO: invocation_cb not checked?
     invocation_info info(request_id,
                          registration_id,
                          std::move(details),
@@ -1338,7 +1351,7 @@ t_request_id wamp_session::unsubscribe(t_subscription_id subscription_id,
 {
   json_array msg {msg_type::wamp_msg_unsubscribe, 0, subscription_id};
 
-  unsubscribe_request req {std::move(user_cb), subscription_id, user};
+  unsubscribe_request req {subscription_id, std::move(user_cb), user};
 
   t_request_id request_id;
   {
@@ -1373,14 +1386,14 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
   t_subscription_id subscription_id = msg[2].as_uint();
 
   // reduce locking scope
-  subscribe_request temp;
+  subscribe_request orig_req;
   {
     std::lock_guard<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_subscribe.find( request_id );
 
     if (iter != m_pending_subscribe.end())
     {
-      temp = std::move(iter->second);
+      orig_req = std::move(iter->second);
       m_pending_subscribe.erase(iter);
     }
     else
@@ -1391,7 +1404,7 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
     }
   }
 
-  LOG_INFO("subscribed to topic '"<< temp.uri <<"'"
+  LOG_INFO("subscribed to topic '"<< orig_req.uri <<"'"
            << " with subscription_id " << subscription_id);
 
   auto iter = m_subscriptions.find(subscription_id);
@@ -1402,21 +1415,21 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
      * the same subscription ID and only be published once.  Given this is
      * unusal behaviour we raise a warning.  We also use the request callback in
      * replace of the previous callback. */
-    LOG_WARN("multiple subscriptions made to topic '"<< temp.uri <<"'");
-    iter->second.event_cb  = std::move(temp.event_cb);
-    iter->second.user = temp.user;
+    LOG_WARN("multiple subscriptions made to topic '"<< orig_req.uri <<"'");
+    iter->second.event_cb  = std::move(orig_req.event_cb);
+    iter->second.user = orig_req.user;
   }
   else
   {
-    subscription sub { std::move(temp.event_cb), temp.user };
+    subscription sub { std::move(orig_req.event_cb), orig_req.user };
     m_subscriptions.insert({subscription_id, std::move(sub)});
   }
 
   // invoke user callback if permitted, and handle exception
-  if (temp.request_cb && user_cb_allowed())
+  if (orig_req.subscribed_cb && user_cb_allowed())
     try {
-      subscribed_info info {request_id, subscription_id, false, {}, temp.user};
-      temp.request_cb(*this, std::move(info));
+      subscribed_info info {request_id, subscription_id, false, {}, orig_req.user};
+      orig_req.subscribed_cb(*this, std::move(info));
     }
     catch(...) {
       log_exception(__logger, "inbound subscribed user callback");
@@ -1456,10 +1469,10 @@ void wamp_session::process_inbound_unsubscribed(json_array & msg)
            << ", request_id " << request_id);
 
   // invoke user callback if permitted, and handle exception
-  if (orig_req.user_cb && user_cb_allowed())
+  if (orig_req.unsubscribed_cb && user_cb_allowed())
     try {
       unsubscribed_info info {request_id, false, {}, orig_req.user};
-      orig_req.user_cb(*this, std::move(info));
+      orig_req.unsubscribed_cb(*this, std::move(info));
     }
     catch(...) {
       log_exception(__logger, "inbound unsubscribed user callback");
@@ -1519,6 +1532,7 @@ void wamp_session::process_inbound_event(json_array & msg)
   if (iter !=m_subscriptions.end())
   {
     try {
+      // TODO: is event_cb checked for null?
       if (user_cb_allowed())
       {
         event_info ev { subscription_id,
@@ -1550,7 +1564,7 @@ t_request_id wamp_session::call(const std::string& uri,
 
   json_array msg {msg_type::wamp_msg_call, 0, std::move(options), uri, args.args_list, args.args_dict};
 
-  wamp_call mycall { uri, std::move(user_cb), user };
+  call_request request{ uri, std::move(user_cb), user};
 
   t_request_id request_id;
   {
@@ -1561,7 +1575,7 @@ t_request_id wamp_session::call(const std::string& uri,
 
     {
       std::lock_guard<std::mutex> guard(m_pending_lock);
-      m_pending_call[request_id] = std::move(mycall);
+      m_pending_call[request_id] = std::move(request);
     }
 
     send_msg( msg );
@@ -1584,14 +1598,14 @@ void wamp_session::process_inbound_result(json_array & msg)
       throw protocol_error("details must be json object");
   json_object & options = msg[2].as_object();
 
-  wamp_call orig_call;
+  call_request orig_request;
 
   {
     std::lock_guard<std::mutex> guard(m_pending_lock);
     auto iter = m_pending_call.find( request_id );
     if (iter != m_pending_call.end())
     {
-      orig_call = std::move(iter->second);
+      orig_request = std::move(iter->second);
       m_pending_call.erase(iter);
     }
     else
@@ -1600,11 +1614,11 @@ void wamp_session::process_inbound_result(json_array & msg)
     }
   }
 
-  if (orig_call.user_cb && user_cb_allowed())
+  if (orig_request.result_cb && user_cb_allowed())
   {
     result_info r;
     r.was_error = false;
-    r.user = orig_call.user;
+    r.user = orig_request.user;
     if (msg.size()>3)
       r.args.args_list = std::move(msg[3].as_array());
     if (msg.size()>4)
@@ -1612,7 +1626,7 @@ void wamp_session::process_inbound_result(json_array & msg)
     r.additional = options;
 
     try {
-      orig_call.user_cb(*this, std::move(r));
+      orig_request.result_cb(*this, std::move(r));
     }
     catch(...) {
       log_exception(__logger, "inbound result user callback");
@@ -1638,7 +1652,7 @@ void wamp_session::process_inbound_error(json_array & msg)
     {
       case msg_type::wamp_msg_invocation:
       {
-        wamp_invocation orig_request;
+        invocation_request orig_request;
 
         {
           std::lock_guard<std::mutex> guard(m_pending_lock);
@@ -1656,12 +1670,13 @@ void wamp_session::process_inbound_error(json_array & msg)
         if ( msg.size() > 6 )
           args.args_dict = std::move(msg[6].as_object());
 
+        // TODO: event_cb not checked for null?
         try
         {
           yield_info info(
             request_id, std::move(details), std::move(error_uri),
             std::move(args), orig_request.user);
-          orig_request.reply_fn(*this, std::move(info));
+          orig_request.yield_cb(*this, std::move(info));
         } catch (...) {
           log_exception(__logger, "inbound invocation error user callback");
         }
@@ -1680,7 +1695,7 @@ void wamp_session::process_inbound_error(json_array & msg)
     {
       case msg_type::wamp_msg_call :
       {
-        wamp_call orig_call;
+        call_request orig_request;
         bool found = false;
 
         {
@@ -1689,19 +1704,19 @@ void wamp_session::process_inbound_error(json_array & msg)
           if (iter != m_pending_call.end())
           {
             found = true;
-            orig_call = std::move(iter->second);
+            orig_request = std::move(iter->second);
             m_pending_call.erase(iter);
           }
         }
 
         if (found)
         {
-          if (orig_call.user_cb && user_cb_allowed())
+          if (orig_request.result_cb && user_cb_allowed())
           {
             result_info r;
             r.was_error = true;
             r.error_uri = error_uri;
-            r.user = orig_call.user;
+            r.user = orig_request.user;
             if ( msg.size() > 5 )
               r.args.args_list = std::move(msg[5].as_array());
             if ( msg.size() > 6 )
@@ -1709,7 +1724,7 @@ void wamp_session::process_inbound_error(json_array & msg)
             r.additional = details;
 
             try {
-              orig_call.user_cb(*this, std::move(r));
+              orig_request.result_cb(*this, std::move(r));
             }
             catch(...){ log_exception(__logger, "inbound call error user callback");}
           }
@@ -1742,10 +1757,10 @@ void wamp_session::process_inbound_error(json_array & msg)
         }
 
         // invoke user callback if permitted, and handle exception
-        if (orig_request.request_cb && user_cb_allowed())
+        if (orig_request.subscribed_cb && user_cb_allowed())
           try {
             subscribed_info info {request_id, 0, true, std::move(error_uri), orig_request.user};
-            orig_request.request_cb(*this, std::move(info));
+            orig_request.subscribed_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound subscribed user callback");
@@ -1774,10 +1789,10 @@ void wamp_session::process_inbound_error(json_array & msg)
         }
 
         // invoke user callback if permitted, and handle exception
-        if (orig_request.user_cb && user_cb_allowed())
+        if (orig_request.unsubscribed_cb && user_cb_allowed())
           try {
             unsubscribed_info info{request_id, true, std::move(error_uri), orig_request.user};
-            orig_request.user_cb(*this, std::move(info));
+            orig_request.unsubscribed_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound unsubscribed user callback");
@@ -1816,26 +1831,26 @@ void wamp_session::process_inbound_error(json_array & msg)
         /* attempt to register a procedure has failed, if we can, notify the
          * application of this failure */
 
-        procedure orig;
+        register_request orig_request;
 
         {
           std::lock_guard<std::mutex> guard(m_pending_lock);
           auto iter = m_pending_register.find(request_id);
           if (iter == m_pending_register.end())
             return;
-          orig = std::move(iter->second);
+          orig_request = std::move(iter->second);
           m_pending_register.erase(iter);
         }
 
-        if (orig.registered_cb && user_cb_allowed()) {
+        if (orig_request.registered_cb && user_cb_allowed()) {
           try {
             registered_info info;
             info.request_id = request_id;
             info.registration_id = 0;
             info.was_error = true;
             info.error_uri = error_uri;
-            info.user = orig.user;
-            orig.registered_cb(*this, std::move(info));
+            info.user = orig_request.user;
+            orig_request.registered_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound register on_result callback");
@@ -1864,10 +1879,10 @@ void wamp_session::process_inbound_error(json_array & msg)
         }
 
         // invoke user callback if permitted, and handle exception
-        if (orig_request.user_cb && user_cb_allowed())
+        if (orig_request.unregistered_cb && user_cb_allowed())
           try {
             unregistered_info info{request_id, true, std::move(error_uri), orig_request.user};
-            orig_request.user_cb(*this, std::move(info));
+            orig_request.unregistered_cb(*this, std::move(info));
           }
           catch(...) {
             log_exception(__logger, "inbound unregistered user callback");
@@ -1989,7 +2004,7 @@ t_request_id wamp_session::invocation(t_registration_id registration_id,
       args.args_list, args.args_dict};
 
   t_request_id request_id;
-  wamp_invocation my_invocation {std::move(fn), user};
+  invocation_request request {std::move(fn), user};
 
   {
     std::lock_guard<std::mutex> guard(m_request_lock);
@@ -1999,7 +2014,7 @@ t_request_id wamp_session::invocation(t_registration_id registration_id,
 
     {
       std::lock_guard<std::mutex> guard(m_pending_lock);
-      m_pending_invocation[request_id] = std::move(my_invocation);
+      m_pending_invocation[request_id] = std::move(request);
     }
 
     send_msg( msg );
@@ -2025,15 +2040,19 @@ void wamp_session::process_inbound_yield(json_array & msg)
   if ( msg.size() > 4 )
     args.args_dict = std::move(msg[4].as_object());
 
+
+  // TODO: this method does not appear to be taking the pending lock
+  // TODO: no check for callback allowed
+
   auto iter = m_pending_invocation.find(request_id);
   if (iter != m_pending_invocation.end())
   {
-    if (iter->second.reply_fn)
+    if (iter->second.yield_cb)
     {
       try {
         yield_info info (request_id, std::move(options), std::move(args), iter->second.user);
-        iter->second.reply_fn(*this, std::move(info));
-      } catch (...){}
+        iter->second.yield_cb(*this, std::move(info));
+      } catch (...){} // TODO: sould log error
     }
     m_pending_invocation.erase(iter);
   }
@@ -2650,7 +2669,7 @@ t_request_id wamp_session::unprovide(t_registration_id registration_id,
 {
   json_array msg {msg_type::wamp_msg_unregister, 0, registration_id};
 
-  unregister_request req {std::move(user_cb), registration_id, user};
+  unregister_request request {registration_id, std::move(user_cb), user};
 
   t_request_id request_id;
   {
@@ -2661,7 +2680,7 @@ t_request_id wamp_session::unprovide(t_registration_id registration_id,
 
     {
       std::lock_guard<std::mutex> guard(m_pending_lock);
-      m_pending_unregister[request_id] = std::move(req);
+      m_pending_unregister[request_id] = std::move(request);
     }
 
     send_msg(msg);
@@ -2703,10 +2722,10 @@ void wamp_session::process_inbound_unregistered(json_array & msg)
            << ", request_id " << request_id);
 
   // invoke user callback if permitted, and handle exception
-  if (orig_req.user_cb && user_cb_allowed())
+  if (orig_req.unregistered_cb && user_cb_allowed())
     try {
       unregistered_info info {request_id, false, {}, orig_req.user};
-      orig_req.user_cb(*this, std::move(info));
+      orig_req.unregistered_cb(*this, std::move(info));
     }
     catch (...) {
       log_exception(__logger, "inbound unregistered user callback");

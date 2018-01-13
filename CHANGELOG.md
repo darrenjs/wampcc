@@ -5,6 +5,10 @@ unreleased
 
 - support WAMP unregister (issue #21)
 
+## Changed
+
+- rename of classes and methods involved with pending requests
+
 ## Fixed
 
 - incorrect success code on unsubscribe callback (issue #16)

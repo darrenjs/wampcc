@@ -875,27 +875,28 @@ private:
 
   server_msg_handler m_server_handler;
 
-  struct procedure;
+  struct register_request;
   struct unregister_request;
   struct subscribe_request;
   struct unsubscribe_request;
   struct publish_request;
-  struct subscription;
-  struct wamp_call;
-  struct wamp_invocation;
+  struct call_request;
+  struct invocation_request;
 
-  /* track all of the pending requests made to the peer */
+  /* Track pending requests made by this session. */
   mutable std::mutex m_pending_lock;
   std::map<t_request_id, subscribe_request>   m_pending_subscribe;
   std::map<t_request_id, unsubscribe_request> m_pending_unsubscribe;
   std::map<t_request_id, publish_request>     m_pending_publish;
-  std::map<t_request_id, procedure>           m_pending_register;
+  std::map<t_request_id, register_request>    m_pending_register;
   std::map<t_request_id, unregister_request>  m_pending_unregister;
-  std::map<t_request_id, wamp_call>           m_pending_call;
-  std::map<t_request_id, wamp_invocation>     m_pending_invocation;
+  std::map<t_request_id, call_request>        m_pending_call;
+  std::map<t_request_id, invocation_request>  m_pending_invocation;
 
   // No locking required, since procedure and subscriptions managed only on EV
   // thread
+  struct procedure;
+  struct subscription;
   std::map<t_registration_id, procedure> m_procedures;
   std::map<t_subscription_id, subscription> m_subscriptions;
 
