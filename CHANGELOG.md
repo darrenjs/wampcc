@@ -11,6 +11,8 @@ unreleased
 
 ## Fixed
 
+- user callback functions not checked for null for unsolicited messages
+
 - mutex not used during handle of yield, and callback not checked for null
 
 - incorrect success code on unsubscribe callback (issue #16)
