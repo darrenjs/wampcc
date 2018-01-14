@@ -11,6 +11,8 @@ unreleased
 
 ## Fixed
 
+- mutex not used during handle of yield, and callback not checked for null
+
 - incorrect success code on unsubscribe callback (issue #16)
 
 - configure.ac not detecting system libuv/jansson (issue #3, @sashakh)

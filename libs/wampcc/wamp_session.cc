@@ -1385,7 +1385,6 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
       throw protocol_error("subscription ID must be unsigned int");
   t_subscription_id subscription_id = msg[2].as_uint();
 
-  // reduce locking scope
   subscribe_request orig_req;
   {
     std::lock_guard<std::mutex> guard(m_pending_lock);
@@ -1502,6 +1501,11 @@ void wamp_session::process_inbound_published(json_array & msg)
       request = std::move(iter->second);
       m_pending_publish.erase(iter);
     }
+    else {
+      /* Not an error if no pending request exist, because orig request has
+       * option not to install the pending request */
+      return;
+    }
   }
 
   // invoke user callback if permitted, and handle exception
@@ -1564,7 +1568,7 @@ t_request_id wamp_session::call(const std::string& uri,
 
   json_array msg {msg_type::wamp_msg_call, 0, std::move(options), uri, args.args_list, args.args_dict};
 
-  call_request request{ uri, std::move(user_cb), user};
+  call_request request {uri, std::move(user_cb), user};
 
   t_request_id request_id;
   {
@@ -1611,6 +1615,7 @@ void wamp_session::process_inbound_result(json_array & msg)
     else
     {
       LOG_WARN("ignoring result for unknown call, request_id " << request_id);
+      return;
     }
   }
 
@@ -1653,7 +1658,6 @@ void wamp_session::process_inbound_error(json_array & msg)
       case msg_type::wamp_msg_invocation:
       {
         invocation_request orig_request;
-
         {
           std::lock_guard<std::mutex> guard(m_pending_lock);
           auto iter = m_pending_invocation.find( request_id );
@@ -1662,23 +1666,31 @@ void wamp_session::process_inbound_error(json_array & msg)
             orig_request = std::move(iter->second);
             m_pending_invocation.erase(iter);
           }
+          else
+          {
+            LOG_WARN("no pending invocation for error response with request_id "
+                     << request_id);
+            return;
+          }
         }
 
-        wamp_args args;
-        if ( msg.size() > 5 )
-          args.args_list = std::move(msg[5].as_array());
-        if ( msg.size() > 6 )
-          args.args_dict = std::move(msg[6].as_object());
+        if (orig_request.yield_cb && user_cb_allowed()) {
+          wamp_args args;
+          if ( msg.size() > 5 )
+            args.args_list = std::move(msg[5].as_array());
+          if ( msg.size() > 6 )
+            args.args_dict = std::move(msg[6].as_object());
 
-        // TODO: event_cb not checked for null?
-        try
-        {
-          yield_info info(
-            request_id, std::move(details), std::move(error_uri),
-            std::move(args), orig_request.user);
-          orig_request.yield_cb(*this, std::move(info));
-        } catch (...) {
-          log_exception(__logger, "inbound invocation error user callback");
+          try
+          {
+            yield_info info(
+              request_id, std::move(details), std::move(error_uri),
+              std::move(args), orig_request.user);
+            orig_request.yield_cb(*this, std::move(info));
+          }
+          catch (...) {
+            log_exception(__logger, "inbound invocation error user callback");
+          }
         }
 
         break;
@@ -1895,6 +1907,9 @@ void wamp_session::process_inbound_error(json_array & msg)
         break;
     }
   }
+
+  /* Note, beware adding code after the main if/else because some of the switch
+   * statements use 'return' to directly exit this routine. */
 }
 
 
@@ -2034,29 +2049,39 @@ void wamp_session::process_inbound_yield(json_array & msg)
 
   json_object & options = msg[2].as_object();
 
-  wamp_args args;
-  if ( msg.size() > 3 )
-    args.args_list = std::move(msg[3].as_array());
-  if ( msg.size() > 4 )
-    args.args_dict = std::move(msg[4].as_object());
-
-
-  // TODO: this method does not appear to be taking the pending lock
-  // TODO: no check for callback allowed
-
-  auto iter = m_pending_invocation.find(request_id);
-  if (iter != m_pending_invocation.end())
+  invocation_request orig_request;
   {
-    if (iter->second.yield_cb)
+    std::lock_guard<std::mutex> guard(m_pending_lock);
+    auto iter = m_pending_invocation.find(request_id);
+
+    if (iter != m_pending_invocation.end())
     {
-      try {
-        yield_info info (request_id, std::move(options), std::move(args), iter->second.user);
-        iter->second.yield_cb(*this, std::move(info));
-      } catch (...){} // TODO: sould log error
+      orig_request = std::move(iter->second);
+      m_pending_invocation.erase(iter);
     }
-    m_pending_invocation.erase(iter);
+    else {
+      LOG_WARN("no pending invocation for yield response with request_id "
+               << request_id);
+      return;
+    }
   }
 
+  // invoke user callback if permitted, and handle exception
+  if (orig_request.yield_cb && user_cb_allowed()) {
+    wamp_args args;
+    if ( msg.size() > 3 )
+      args.args_list = std::move(msg[3].as_array());
+    if ( msg.size() > 4 )
+      args.args_dict = std::move(msg[4].as_object());
+
+    try {
+      yield_info info (request_id, std::move(options), std::move(args), orig_request.user);
+      orig_request.yield_cb(*this, std::move(info));
+    }
+    catch(...) {
+      log_exception(__logger, "inbound invocation user callback");
+    }
+  }
 }
 
 
