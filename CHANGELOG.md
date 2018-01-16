@@ -9,6 +9,8 @@ unreleased
 
 - rename of classes and methods involved with pending requests
 
+- refactor wamp msg inbound processing, all use similar approach
+
 ## Fixed
 
 - user callback functions not checked for null for unsolicited messages

@@ -1226,45 +1226,49 @@ void wamp_session::process_inbound_registered(json_array & msg)
 
   check_size_at_least(msg.size(), 3);
 
-  t_request_id request_id  = extract_request_id(msg, 1);
+  t_request_id request_id = extract_request_id(msg, 1);
 
   if (!msg[2].is_uint())
     throw protocol_error("registration ID must be unsigned int");
 
   t_registration_id registration_id = msg[2].as_uint();
 
-  on_registered_fn on_result;
-  registered_info info { request_id, registration_id, false, "", nullptr};
+  register_request orig_request;
   {
     std::lock_guard<std::mutex> guard(m_pending_lock);
 
-    auto iter = m_pending_register.find( request_id );
-    if (iter == m_pending_register.end())
-      return;
-
-    on_result = std::move(iter->second.registered_cb);
-    iter->second.registered_cb = nullptr; /* ensure callback object is invalid*/
-
-    info.user = iter->second.user;
-
-    procedure p {
-      std::move(iter->second.uri),
-      std::move(iter->second.invocation_cb),
-      iter->second.user};
-
-    m_procedures[registration_id] = std::move(p);
-    m_pending_register.erase(iter);
-  }
-
-  if (on_result && user_cb_allowed()) {
-    try {
-      on_result(*this, std::move(info));
+    auto iter = m_pending_register.find(request_id);
+    if (iter != m_pending_register.end()) {
+      orig_request = std::move(iter->second);
+      m_pending_register.erase(iter);
     }
-    catch (...) { /* ignore */ }
+    else {
+      LOG_WARN("no pending register for registered response with request_id "
+               << request_id);
+      return;
+    }
   }
 
-  LOG_INFO(m_log_prefix << "procedure '"<< m_procedures[registration_id].uri <<"' registered"
+  LOG_INFO(m_log_prefix << "registered procedure '"<< orig_request.uri <<"'"
            << " with registration_id " << registration_id);
+
+  // associate the procedure registration with user callback
+  procedure p {
+    std::move(orig_request.uri),
+    std::move(orig_request.invocation_cb),
+    orig_request.user};
+  m_procedures[registration_id] = std::move(p);
+
+  // invoke user callback if permitted, and handle exception
+  if (orig_request.registered_cb && user_cb_allowed()) {
+    try {
+      registered_info info {request_id, registration_id, false, "", orig_request.user};
+      orig_request.registered_cb(*this, std::move(info));
+    }
+    catch (...) {
+      log_exception(__logger, "inbound registered user callback");
+    }
+  }
 }
 
 
@@ -1381,6 +1385,7 @@ void wamp_session::process_inbound_subscribed(json_array & msg)
 
   if (!msg[2].is_uint())
       throw protocol_error("subscription ID must be unsigned int");
+
   t_subscription_id subscription_id = msg[2].as_uint();
 
   subscribe_request orig_req;
