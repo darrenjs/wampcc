@@ -156,17 +156,17 @@ void rpc_man::handle_inbound_unregister(wamp_session& session,
 
       /* reply to client, indicate success */
       session.unregistered(request_id);
-    } 
+    }
     else {
       LOG_WARN("unregister failed, registration_id " //
                << registration_id << " not found");
-      throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
+      throw wamp_error(WAMP_ERROR_NO_SUCH_REGISTRATION);
     }
   }
   else {
     LOG_WARN("unregister failed, session #" //
              << session.unique_id() << " not found");
-    throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
+    throw wamp_error(WAMP_ERROR_NO_SUCH_REGISTRATION);
   }
 }
 

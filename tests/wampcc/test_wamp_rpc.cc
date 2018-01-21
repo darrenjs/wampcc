@@ -65,7 +65,7 @@ void test_call_non_existing_rpc(int port, internal_server& server)
   result_info result = sync_rpc_all(session, "xxNOTFOUNDxx", {},
                                     rpc_result_expect::fail);
 
-  if (result.error_uri != WAMP_ERROR_URI_NO_SUCH_PROCEDURE)
+  if (result.error_uri != WAMP_ERROR_NO_SUCH_PROCEDURE)
     throw runtime_error("actual error_uri doesn't match expected");
 
   session->close().wait();

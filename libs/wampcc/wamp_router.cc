@@ -180,7 +180,7 @@ void wamp_router::handle_inbound_call(
     else
     {
       /* RPC uri lookup failed */
-      throw wamp_error(WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
+      throw wamp_error(WAMP_ERROR_NO_SUCH_PROCEDURE);
     }
   } catch (wampcc::wamp_error& ex) {
     ws->call_error(request_id, ex.what(), ex.args().args_list, ex.args().args_dict);

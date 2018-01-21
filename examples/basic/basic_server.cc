@@ -205,7 +205,7 @@ void server_application::on_call(wampcc::wamp_session& session,
     utc << buf;
     asctime_r(&tmloc, buf);
     buf[strlen(buf)-1] = '\0'; // remove newline
-    loc << buf; 
+    loc << buf;
 #else
     utc << std::put_time(std::gmtime(&t), "%c %Z");
     loc << std::put_time(std::localtime(&t), "%c %Z");
@@ -232,7 +232,7 @@ void server_application::on_call(wampcc::wamp_session& session,
     m_server_sock.close().wait();
   }
   else
-    session.call_error(request_id, WAMP_ERROR_URI_NO_SUCH_PROCEDURE);
+    session.call_error(request_id, WAMP_ERROR_NO_SUCH_PROCEDURE);
 }
 
 

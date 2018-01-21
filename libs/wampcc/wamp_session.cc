@@ -1294,7 +1294,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
     auto iter = m_procedures.find(registration_id);
 
     if (iter == m_procedures.end())
-      throw wamp_error(WAMP_ERROR_URI_NO_SUCH_REGISTRATION);
+      throw wamp_error(WAMP_ERROR_NO_SUCH_REGISTRATION);
 
     if (iter->second.invocation_cb && user_cb_allowed()) {
       wamp_args args;
