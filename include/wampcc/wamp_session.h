@@ -28,6 +28,10 @@ class kernel;
 class pubsub_man;
 struct logger;
 
+
+/** Callback type used to provide a session ID for new sessions. */
+typedef std::function<t_session_id()> session_id_generator_fn;
+
 /** Callback type used to signal wamp session becomes open or closed.*/
 typedef std::function<void(wamp_session&, bool is_open)> on_state_fn;
 
@@ -418,8 +422,9 @@ public:
 
   enum class mode {client, server};
 
-  /** Create a server-mode session (i.e., the socket was accepted from a
-   * remote client). */
+  /** Create a server-mode session (i.e., the socket was accepted from a remote
+   * client). A session_id_generator_fn can optionally be provided to allocate a
+   * unique session ID to the session instance created. */
   static std::shared_ptr<wamp_session> create(kernel*,
                                               std::unique_ptr<tcp_socket>,
                                               on_state_fn,
@@ -427,18 +432,21 @@ public:
                                               server_msg_handler,
                                               auth_provider,
                                               options = options(),
-                                              void * = nullptr);
+                                              void * = nullptr,
+                                              session_id_generator_fn = {});
 
-  /** Create a client-mode session (i.e., the socket was actively connected to
-   * a remote server) using a protocol class as specified via the template
-   * parameter. */
+  /** Create a client-mode session (i.e., the socket was actively connected to a
+   * remote server) using a protocol class as specified via the template
+   * parameter. A session_id_generator_fn can optionally be provided to allocate
+   * a unique session ID to the session instance created */
   template<typename T>
   static std::shared_ptr<wamp_session> create(kernel* k,
                                               std::unique_ptr<tcp_socket> sock,
                                               on_state_fn state_cb = nullptr,
                                               typename T::options protocol_options = {},
                                               wamp_session::options session_opts = {},
-                                              void* user = nullptr)
+                                              void* user = nullptr,
+                                              session_id_generator_fn id_gen_fn = {})
   {
     /* This method has taken ownership of the tcp_socket, so use a guard to
      * ensure proper close and deletion. */
@@ -458,7 +466,7 @@ public:
 
     return wamp_session::create_impl(k, mode::client, sock,
                                      state_cb, factory_fn, server_msg_handler(), auth_provider(),
-                                     session_opts, user);
+                                     session_opts, user, std::move(id_gen_fn));
   }
 
   /** Perform WAMP HELLO for a client-mode instance. Should be invoked
@@ -591,7 +599,6 @@ public:
                           wamp_args args,
                           on_yield_fn,
                           void * user = nullptr);
-
 
   /** Obtain the session's the unique ID. Values begin from 1. */
   t_session_id unique_id() const { return m_sid; }
@@ -739,7 +746,8 @@ private:
                                                    server_msg_handler,
                                                    auth_provider,
                                                    wamp_session::options,
-                                                   void*);
+                                                   void*,
+                                                   session_id_generator_fn);
 
   wamp_session(kernel*,
                mode,
@@ -748,7 +756,8 @@ private:
                server_msg_handler,
                auth_provider,
                wamp_session::options,
-               void* user);
+               void* user,
+               session_id_generator_fn);
 
   wamp_session(const wamp_session&) = delete;
   wamp_session& operator=(const wamp_session&) = delete;

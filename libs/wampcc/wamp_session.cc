@@ -140,10 +140,14 @@ private:
 };
 
 
-static std::atomic<t_session_id> m_next_id(1); // start at 1, so that 0 implies invalid ID
+/*
+  Internal provider of unique session IDs.  Initialisation set to 1, so that
+  a value of zero can be used to imply invalid ID.
+ */
+static std::atomic<t_session_id> global_next_id(1);
 static t_session_id generate_unique_session_id()
 {
-  return m_next_id++;
+  return global_next_id++;
 }
 
 
@@ -209,11 +213,12 @@ wamp_session::wamp_session(kernel* __kernel,
                            server_msg_handler handler,
                            auth_provider auth,
                            wamp_session::options opts,
-                           void* user)
+                           void* user,
+                           session_id_generator_fn id_gen_fn)
   : m_state( state::init ),
     __logger(__kernel->get_logger()),
     m_kernel(__kernel),
-    m_sid(generate_unique_session_id()),
+    m_sid(id_gen_fn? id_gen_fn() : generate_unique_session_id()),
     m_log_prefix(generate_log_prefix(m_sid)),
     m_socket(std::move(h)),
     m_session_mode(conn_mode),
@@ -238,14 +243,16 @@ std::shared_ptr<wamp_session> wamp_session::create(kernel* k,
                                                    server_msg_handler handler,
                                                    auth_provider auth,
                                                    wamp_session::options session_opts,
-                                                   void* user)
+                                                   void* user,
+                                                   session_id_generator_fn id_gen_fn)
 {
   // This method has taken ownership of the tcp_socket, so use a guard to ensure
   // proper close and deletion.
   tcp_socket_guard sock_guard(sock);
 
   return create_impl(k, mode::server, sock,
-                     state_cb, protocol_builder, handler, auth, std::move(session_opts), user);
+                     state_cb, protocol_builder, handler, auth, std::move(session_opts), user,
+                     std::move(id_gen_fn));
 }
 
 
@@ -257,7 +264,8 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
                                                         server_msg_handler handler,
                                                         auth_provider auth,
                                                         wamp_session::options session_opts,
-                                                        void * user)
+                                                        void * user,
+                                                        session_id_generator_fn id_gen_fn)
 {
   // Create the new wamp_session, and also, create the first shared_ptr to the
   // wamp_session.  Creating the shared_ptr is particularly important, since
@@ -265,7 +273,7 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
   // (since it inherits from enable_shared_from_this).
   std::shared_ptr<wamp_session> sp(
     new wamp_session(k, conn_mode, std::move(sock), state_cb, handler, auth,
-                     std::move(session_opts), user)
+                     std::move(session_opts), user, std::move(id_gen_fn))
       );
 
   wamp_session* rawptr = sp.get(); // rawptr, for capture in lambdas
