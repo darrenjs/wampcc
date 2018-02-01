@@ -627,6 +627,13 @@ public:
   /** Return whether an authid is associated with this session. */
   bool has_authid() const;
 
+  /** Return the agent description associated with this session, if one has been
+   * provided (use has_agent() to determine if provided). */
+  std::string agent() const;
+
+  /** Return whether an agent description is associated with this session. */
+  bool has_agent() const;
+
   //@{
   /** Reply to a REGISTER request with an ERROR message to indicate the
    * corresponding registration request could not be fulfilled. */
@@ -831,6 +838,7 @@ private:
 
   std::string m_realm;
   std::pair<bool, std::string> m_authid; // .first ==> tells if present
+  std::pair<bool, std::string> m_agent;  // .first ==> tells if present
   std::string m_challenge;
   mutable std::mutex m_realm_lock;
 

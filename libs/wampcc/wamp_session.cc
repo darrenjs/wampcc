@@ -788,9 +788,13 @@ void wamp_session::handle_HELLO(json_array& ja)
   std::string realm = ja.at(1).as_string();
   const json_object & authopts = ja.at(2).as_object();
 
-  auto iter = authopts.find("authid");
-  const bool found_authid = (iter != authopts.end());
-  std::string authid = found_authid? iter->second.as_string() : "";
+  auto iter_authid = authopts.find("authid");
+  const bool found_authid = (iter_authid != authopts.end());
+  std::string authid = found_authid? iter_authid->second.as_string() : "";
+
+  auto iter_agent = authopts.find("agent");
+  const bool found_agent = (iter_agent != authopts.end());
+  std::string agent = found_agent? iter_agent->second.as_string() : "";
 
   if (realm.empty())
     throw auth_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed");
@@ -807,6 +811,12 @@ void wamp_session::handle_HELLO(json_array& ja)
       m_authid.first = true;
       m_authid.second = authid;
     }
+
+    if (!m_agent.first && found_agent) {
+      m_agent.first = true;
+      m_agent.second = agent;
+    }
+
   }
 
   auth_provider::mode auth_required;
@@ -2696,6 +2706,22 @@ bool wamp_session::has_authid() const
 {
   std::lock_guard<std::mutex> guard(m_realm_lock);
   return m_authid.first;
+}
+
+
+std::string wamp_session::agent() const
+{
+  /* Note that returning a reference here would be unsafe, because access to the
+   * underlying m_agent is protected by a mutex. */
+  std::lock_guard<std::mutex> guard(m_realm_lock);
+  return m_agent.second;
+}
+
+
+bool wamp_session::has_agent() const
+{
+  std::lock_guard<std::mutex> guard(m_realm_lock);
+  return m_agent.first;
 }
 
 
