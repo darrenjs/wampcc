@@ -13,6 +13,8 @@ unreleased
 
 - refactor wamp msg inbound processing, all use similar approach
 
+- enable automatic ECDH selection (from vai-hhn)
+
 ## Fixed
 
 - user callback functions not checked for null for unsolicited messages
