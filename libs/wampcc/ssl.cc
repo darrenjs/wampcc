@@ -66,9 +66,11 @@ ssl_context::ssl_context(logger & l,
   /* Recommended to avoid SSLv2 & SSLv3 */
   SSL_CTX_set_options(m_ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
+#ifdef SSL_CTX_set_ecdh_auto
   /* Enable automatic ECDH selection */
   if(SSL_CTX_set_ecdh_auto(m_ctx, 1) != 1)
       throw_ssl_error("SSL_CTX_set_ecdh_auto");
+#endif
 }
 
 
