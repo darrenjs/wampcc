@@ -165,7 +165,7 @@ void wamp_router::handle_inbound_call(
                 if (info)
                   caller->result(caller_request_id, info.args.args_list, info.args.args_dict);
                 else
-                  caller->call_error(caller_request_id, info.error_uri);
+                  caller->call_error(caller_request_id, info.error_uri, info.args.args_list, info.args.args_dict);
               }
             };
 
