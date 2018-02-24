@@ -10,6 +10,7 @@
 #include "wampcc/utils.h"
 #include "wampcc/platform.h"
 #include "wampcc/wampcc.h"
+#include "wampcc/http_parser.h"
 
 #include <sys/socket.h>
 
@@ -229,6 +230,48 @@ TEST_CASE("test_random_ascii_string")
   REQUIRE(s0 == s1);
   REQUIRE(s0 != s2);
 }
+
+
+void check_header_parse(char* msg)
+{
+  wampcc::http_parser my_parser(wampcc::http_parser::e_http_response);
+
+  my_parser.handle_input(msg, strlen(msg));
+
+  REQUIRE(my_parser.is_complete() == true);
+  REQUIRE(my_parser.is_upgrade() == true);
+  REQUIRE(my_parser.has("upgrade") == true);
+  REQUIRE(my_parser.has("connection") == true);
+  REQUIRE(my_parser.has("sec-websocket-accept") == true);
+  REQUIRE(my_parser.has("sec-websocket-protocol") == true);
+}
+
+
+TEST_CASE("case_insensitive_http_parser")
+{
+  const char * msg_lower =
+R"(HTTP/1.1 101 Switching Protocols
+upgrade: websocket
+connection: upgrade
+sec-websocket-accept: tMu2MbBA5Pff2PcLbIaiKxaHoks=
+sec-websocket-protocol: wamp.2.json
+
+)";
+
+  check_header_parse(const_cast<char*>(msg_lower));
+
+  const char * msg_upper =
+R"(HTTP/1.1 101 Switching Protocols
+UPGRADE: websocket
+CONNECTION: upgrade
+SEC-WEBSOCKET-ACCEPT: tMu2MbBA5Pff2PcLbIaiKxaHoks=
+SEC-WEBSOCKET-PROTOCOL: wamp.2.json
+
+)";
+
+  check_header_parse(const_cast<char*>(msg_upper));
+}
+
 
 TEST_CASE("socket_address")
 {

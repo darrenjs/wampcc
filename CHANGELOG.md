@@ -17,6 +17,8 @@ unreleased
 
 ## Fixed
 
+- http headers checking now case-insensitive  (issue #28)
+
 - user callback functions not checked for null for unsolicited messages
 
 - mutex not used during handle of yield, and callback not checked for null

@@ -173,29 +173,27 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
         rd.advance(consumed);
 
-        if (m_http_parser->good() == false)
+        if (m_http_parser->is_good() == false)
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
-        if (m_http_parser->complete())
+        if (m_http_parser->is_complete())
         {
           if ( m_http_parser->is_upgrade() &&
-               m_http_parser->has("Upgrade") &&
-               header_contains(m_http_parser->get("Upgrade"), "websocket") &&
-               m_http_parser->has("Connection") &&
-               header_contains(m_http_parser->get("Connection"), "Upgrade") &&
-               m_http_parser->has("Sec-WebSocket-Key") &&
-               m_http_parser->has("Sec-WebSocket-Version") )
+               m_http_parser->has("upgrade") &&
+               header_contains(m_http_parser->get("upgrade"), "websocket") &&
+               m_http_parser->has("sec-websocket-key") &&
+               m_http_parser->has("sec-websocket-version") )
           {
-            auto& websock_key = header_field("Sec-WebSocket-Key");
-            auto& websock_ver = header_field("Sec-WebSocket-Version");
+            auto& websock_key = header_field("sec-websocket-key");
+            auto& websock_ver = header_field("sec-websocket-version");
 
             if (websock_ver != RFC6455 /* 13 */)
               throw handshake_error("incorrect websocket version");
 
-            bool sec_websocket_protocol_present = m_http_parser->has("Sec-WebSocket-Protocol");
+            bool sec_websocket_protocol_present = m_http_parser->has("sec-websocket-protocol");
             if (sec_websocket_protocol_present)
             {
-              auto& websock_sub = header_field("Sec-WebSocket-Protocol");
+              auto& websock_sub = header_field("sec-websocket-protocol");
 
               /* determine the protocols common to both client and server */
               int common = m_options.serialisers &
@@ -226,8 +224,8 @@ void websocket_protocol::io_on_read(char* src, size_t len)
             m_socket->write(msg.c_str(), msg.size());
             m_state = state::open;
           }
-          else if (m_http_parser->has("Connection") &&
-                   header_contains(m_http_parser->get("Connection"), "close"))
+          else if (m_http_parser->has("connection") &&
+                   header_contains(m_http_parser->get("connection"), "close"))
           {
             /* Received a http header that requests connection close.  This is
              * straight-forward to obey (just echo the header and close the
@@ -252,22 +250,20 @@ void websocket_protocol::io_on_read(char* src, size_t len)
         LOG_TRACE("fd: " << fd() << ", http_rx: " << std::string(rd.ptr(), consumed));
         rd.advance(consumed);
 
-        if (m_http_parser->good() == false)
+        if (m_http_parser->is_good() == false)
           throw handshake_error("bad http header: " + m_http_parser->error_text());
 
-        if (m_http_parser->complete())
+        if (m_http_parser->is_complete())
         {
           if ( m_http_parser->is_upgrade() &&
-               m_http_parser->has("Upgrade") &&
-               header_contains(m_http_parser->get("Upgrade"), "websocket") &&
-               m_http_parser->has("Connection") &&
-               header_contains(m_http_parser->get("Connection"), "Upgrade") &&
-               m_http_parser->has("Sec-WebSocket-Accept")  &&
+               m_http_parser->has("upgrade") &&
+               header_contains(m_http_parser->get("upgrade"), "websocket") &&
+               m_http_parser->has("sec-websocket-accept")  &&
                m_http_parser->http_status_phrase() == "Switching Protocols" &&
                m_http_parser->http_status_code() == http_parser::status_code_switching_protocols)
           {
-            auto& websock_key = header_field("Sec-WebSocket-Accept");
-            auto& websock_sub = header_field("Sec-WebSocket-Protocol");
+            auto& websock_key = header_field("sec-websocket-accept");
+            auto& websock_sub = header_field("sec-websocket-protocol");
 
             if (websock_key != m_expected_accept_key)
               throw handshake_error("incorrect key for Sec-WebSocket-Accept");

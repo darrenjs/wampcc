@@ -39,24 +39,24 @@ public:
   size_t handle_input(char* const, size_t const);
 
   /** have we completed parsing headers? */
-  bool complete() const { return m_state == eComplete; }
+  bool is_complete() const { return m_state == eComplete; }
 
   /** does header indicate connection upgrade? */
   bool is_upgrade() const;
 
-  /** the http-parser error number (see nodejs|http_parser.h for codes) */
+  /** access the http-parser error code (see nodejs|http_parser.h for codes) */
   unsigned int error() const;
 
   /** return string associated with any error */
   std::string error_text() const;
 
   /** does http-parser error indicate success? */
-  bool good() const;
+  bool is_good() const;
 
-  /** is field present in headers? */
+  /** is field present in headers? field should be lowercase */
   bool has(const char* s) const { return m_headers.find(s) != m_headers.end(); }
 
-  /** return header field, otherwise throw */
+  /** return header field, otherwise throw; field should be lowercase */
   const std::string& get(const std::string& field) const
   {
     auto it = m_headers.find(field);

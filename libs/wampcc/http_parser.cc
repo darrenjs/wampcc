@@ -12,6 +12,7 @@
 #include "http_parser/http_parser.h" /* nodejs http parser, from 3rdparty */
 
 #include <iostream>
+#include <cctype>
 #include <string.h>
 
 
@@ -20,7 +21,7 @@ namespace wampcc
 
 unsigned int http_parser::error() const { return m_parser->http_errno; }
 
-bool http_parser::good() const { return error() == HPE_OK; }
+bool http_parser::is_good() const { return error() == HPE_OK; }
 
 bool http_parser::is_upgrade() const { return m_parser->upgrade != 0; }
 
@@ -85,6 +86,10 @@ http_parser::~http_parser()
 void http_parser::store_current_header_field()
 {
   if (!m_current_field.empty()) {
+    // convert the header to lower case
+    for (auto& item : m_current_field)
+      item = std::tolower(item);
+
     /* It's possible that a HTTP header field might be duplicated, in which case
      * we combine the values together in a comma separated list. */
     auto it = m_headers.find(m_current_field);
