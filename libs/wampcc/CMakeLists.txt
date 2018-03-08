@@ -19,7 +19,8 @@ set(INSTALL_HDRS
   ${PROJECT_SOURCE_DIR}/include/wampcc/error.h
   ${PROJECT_SOURCE_DIR}/include/wampcc/helper.h
   ${PROJECT_SOURCE_DIR}/include/wampcc/wampcc.h
-  ${PROJECT_SOURCE_DIR}/include/wampcc/ssl_socket.h)
+  ${PROJECT_SOURCE_DIR}/include/wampcc/ssl_socket.h
+        )
 
 ##
 ## Static library
