@@ -40,37 +40,47 @@ ssl_context::ssl_context(logger & l,
   ERR_load_BIO_strings();
   ERR_load_crypto_strings();
 
-  m_ctx = SSL_CTX_new(SSLv23_method());
-  if (!m_ctx)
-    throw_ssl_error("SSL_CTX_new failed");
+  if (conf.custom_ctx_creator == nullptr)
+  {
+    // create default SSL context
+    m_ctx = SSL_CTX_new(SSLv23_method());
+    if (!m_ctx)
+      throw_ssl_error("SSL_CTX_new failed");
 
-  if (!m_config.certificate_file.empty() &&
-      !m_config.private_key_file.empty()) {
+    if (!m_config.certificate_file.empty() &&
+        !m_config.private_key_file.empty())
+    {
+      /* Load certificate and private key files, and check consistency  */
+      if (SSL_CTX_use_certificate_file(m_ctx, m_config.certificate_file.c_str(),
+                                       SSL_FILETYPE_PEM) != 1)
+        throw_ssl_error("SSL_CTX_use_certificate_file");
 
-    /* Load certificate and private key files, and check consistency  */
+      /* Indicate the key file to be used */
+      if (SSL_CTX_use_PrivateKey_file(m_ctx, m_config.private_key_file.c_str(),
+                                      SSL_FILETYPE_PEM) != 1)
+        throw_ssl_error("SSL_CTX_use_PrivateKey_file");
 
-    if (SSL_CTX_use_certificate_file(m_ctx, m_config.certificate_file.c_str(),
-                                     SSL_FILETYPE_PEM) != 1)
-      throw_ssl_error("SSL_CTX_use_certificate_file");
+      /* Make sure the key and certificate file match */
+      if (SSL_CTX_check_private_key(m_ctx) != 1)
+        throw_ssl_error("SSL_CTX_check_private_key");
+    }
 
-    /* Indicate the key file to be used */
-    if (SSL_CTX_use_PrivateKey_file(m_ctx, m_config.private_key_file.c_str(),
-                                    SSL_FILETYPE_PEM) != 1)
-      throw_ssl_error("SSL_CTX_use_PrivateKey_file");
-
-    /* Make sure the key and certificate file match */
-    if (SSL_CTX_check_private_key(m_ctx) != 1)
-      throw_ssl_error("SSL_CTX_check_private_key");
-  }
-
-  /* Recommended to avoid SSLv2 & SSLv3 */
-  SSL_CTX_set_options(m_ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+    /* Recommended to avoid SSLv2 & SSLv3 */
+    SSL_CTX_set_options(m_ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 
 #ifdef SSL_CTX_set_ecdh_auto
-  /* Enable automatic ECDH selection */
-  if(SSL_CTX_set_ecdh_auto(m_ctx, 1) != 1)
+    /* Enable automatic ECDH selection */
+    if (SSL_CTX_set_ecdh_auto(m_ctx, 1) != 1)
       throw_ssl_error("SSL_CTX_set_ecdh_auto");
 #endif
+  }
+  else
+  {
+    // use customised context
+    m_ctx = (conf.custom_ctx_creator)(conf);
+    if (m_ctx == nullptr)
+      throw_ssl_error("Failed to create custom ssl context");
+  }
 }
 
 

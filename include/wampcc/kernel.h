@@ -14,6 +14,7 @@
 #include <string>
 #include <mutex>
 #include <functional>
+#include <openssl/ssl.h>
 
 namespace wampcc
 {
@@ -94,7 +95,6 @@ struct logger
   static logger nolog();
 };
 
-
 struct ssl_config
 {
   /* Must be set to true to indicate SSL should be set up. */
@@ -105,9 +105,11 @@ struct ssl_config
   std::string certificate_file;
   std::string private_key_file;
 
-  ssl_config(bool use_ssl_) : enable(use_ssl_) {}
-};
+  /* optional custom SSL context creator */
+  std::function<SSL_CTX *(const struct ssl_config &ssl_config)> custom_ctx_creator;
 
+  ssl_config(bool use_ssl_) : enable(use_ssl_), custom_ctx_creator(nullptr) {}
+};
 
 struct config
 {
