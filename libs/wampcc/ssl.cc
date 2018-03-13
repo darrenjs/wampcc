@@ -31,7 +31,8 @@ ssl_context::ssl_context(logger & l,
                          const ssl_config& conf)
   : __logger(l),
     m_ctx(nullptr),
-    m_config(conf)
+    m_config(conf),
+    m_is_custom_ctx(false)
 {
   /* SSL library initialisation */
   SSL_library_init();
@@ -46,6 +47,8 @@ ssl_context::ssl_context(logger & l,
     m_ctx = SSL_CTX_new(SSLv23_method());
     if (!m_ctx)
       throw_ssl_error("SSL_CTX_new failed");
+
+    m_is_custom_ctx = false;
 
     if (!m_config.certificate_file.empty() &&
         !m_config.private_key_file.empty())
@@ -77,9 +80,11 @@ ssl_context::ssl_context(logger & l,
   else
   {
     // use customised context
-    m_ctx = (conf.custom_ctx_creator)(conf);
+    m_ctx = (SSL_CTX*) conf.custom_ctx_creator(conf);
     if (m_ctx == nullptr)
       throw_ssl_error("Failed to create custom ssl context");
+    else
+      m_is_custom_ctx = true;
   }
 }
 

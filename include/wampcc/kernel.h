@@ -14,7 +14,6 @@
 #include <string>
 #include <mutex>
 #include <functional>
-#include <openssl/ssl.h>
 
 namespace wampcc
 {
@@ -105,10 +104,14 @@ struct ssl_config
   std::string certificate_file;
   std::string private_key_file;
 
-  /* optional custom SSL context creator */
-  std::function<SSL_CTX *(const struct ssl_config &ssl_config)> custom_ctx_creator;
+  /* Optional custom SSL context creator (advanced usage). If this function is
+   * not empty, it will be called and can return a pointer to an SSL_CTX
+   * instance, which is then used internally by the wampcc kernel. Ownership of
+   * any returned SSL_CTX* remains with the caller. The returned void* pointer
+   * will be internally cast to an SSL_CTX* pointer. */
+  std::function< void* (const struct ssl_config &)> custom_ctx_creator;
 
-  ssl_config(bool use_ssl_) : enable(use_ssl_), custom_ctx_creator(nullptr) {}
+  ssl_config(bool use_ssl_) : enable(use_ssl_) {}
 };
 
 struct config

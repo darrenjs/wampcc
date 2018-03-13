@@ -51,8 +51,9 @@ public:
 
 private:
   logger & __logger;
-  SSL_CTX* m_ctx;
+  SSL_CTX* m_ctx; /* can be internal, or custom */
   ssl_config m_config;
+  bool m_is_custom_ctx;
 };
 
 
