@@ -16,6 +16,8 @@
 #include <openssl/pem.h>
 #include <openssl/ssl.h>
 
+#include <string.h>
+
 namespace wampcc
 {
 struct logger;
