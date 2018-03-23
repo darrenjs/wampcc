@@ -31,10 +31,6 @@ int compute_HMACSHA256(const char* key, int keylen, const char* msg, int msglen,
 
   int retval = -1; /* success=0, fail=-1 */
 
-  /* initialise HMAC context */
-  HMAC_CTX ctx;
-  HMAC_CTX_init(&ctx);
-
   unsigned char md[EVP_MAX_MD_SIZE + 1]; // EVP_MAX_MD_SIZE=64
   memset(md, 0, sizeof(md));
   unsigned int mdlen;
@@ -153,9 +149,6 @@ int compute_HMACSHA256(const char* key, int keylen, const char* msg, int msglen,
       *destlen = j + 1;
     }
   }
-
-  /* cleanup HMAC */
-  HMAC_CTX_cleanup(&ctx);
 
   return retval;
 }
