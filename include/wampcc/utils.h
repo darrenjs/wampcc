@@ -39,11 +39,10 @@ private:
 
 struct logger;
 
-enum class HMACSHA256_Mode { HEX, BASE64 };
 
-int compute_HMACSHA256(const char* key, int keylen, const char* msg, int msglen,
-                       char* dest, unsigned int* destlen,
-                       HMACSHA256_Mode output_mode);
+int HMACSHA256_base64(const char* key, int keylen,
+                      const char* msg, int msglen,
+                      char* dest, unsigned int* destlen);
 
 
 /* must be called with an active exception */

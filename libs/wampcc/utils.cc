@@ -21,11 +21,10 @@ namespace wampcc
 
   On success, zero is returned.  On error, -1 is returned.
  */
-int compute_HMACSHA256(const char* key, int keylen, const char* msg, int msglen,
-                       char* dest, unsigned int* destlen,
-                       HMACSHA256_Mode output_mode)
+int HMACSHA256_base64(const char* key, int keylen,
+                      const char* msg, int msglen,
+                      char* dest, unsigned int* destlen)
 {
-  const char* hexalphabet = "0123456789abcdef";
   const char* base64 =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -38,26 +37,8 @@ int compute_HMACSHA256(const char* key, int keylen, const char* msg, int msglen,
   HMAC(EVP_sha256(), key, keylen, (const unsigned char*)msg, msglen, md,
        &mdlen);
 
-  if (output_mode == HMACSHA256_Mode::HEX) {
-    // convert to hex representation in the output buffer
-    if ((mdlen * 2) > *destlen) {
-      // cannot encode
-    } else {
-      unsigned int i, j;
-      for (i = 0, j = 0; i < mdlen; ++i, j += 2) {
-        dest[j] = hexalphabet[(md[i] >> 4) & 0xF];
-        dest[j + 1] = hexalphabet[md[i] & 0xF];
-      }
-      if (*destlen > (mdlen * 2) + 1) {
-        dest[mdlen * 2] = '\0';
-        *destlen = mdlen * 2 + 1;
-      } else {
-        *destlen = mdlen * 2;
-      }
-      retval = 0;
-    }
-  } else if (output_mode == HMACSHA256_Mode::BASE64) {
-    /* Base 64 */
+  {
+    /* encode to base 64 */
     unsigned int i = 0;
     int j = 0;
     const int jmax = *destlen;

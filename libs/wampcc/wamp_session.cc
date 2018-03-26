@@ -960,10 +960,9 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
   char digest[256] = {};
   unsigned int digestlen = sizeof(digest)-1;
 
-  int err = compute_HMACSHA256(key.c_str(), key.size(),
-                               challmsg.c_str(), challmsg.size(),
-                               digest, &digestlen,
-                               HMACSHA256_Mode::BASE64);
+  int err = HMACSHA256_base64(key.c_str(), key.size(),
+                              challmsg.c_str(), challmsg.size(),
+                              digest, &digestlen);
 
   if (err == 0) {
     json_array msg{msg_type::wamp_msg_authenticate, digest, json_object()};
@@ -1006,10 +1005,9 @@ void wamp_session::handle_AUTHENTICATE(json_array& ja)
     unsigned int digestlen = sizeof(digest)-1;
     memset(digest, 0, sizeof(digest));
 
-    int r = compute_HMACSHA256(key.c_str(), key.size(),
-                               orig_challenge.c_str(), orig_challenge.size(),
-                               digest, &digestlen,
-                               HMACSHA256_Mode::BASE64);
+    int r = HMACSHA256_base64(key.c_str(), key.size(),
+                              orig_challenge.c_str(), orig_challenge.size(),
+                              digest, &digestlen);
     for (size_t i = 0; i < key.size(); i++) key[i]='\0';
     if (r == -1)
       throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
