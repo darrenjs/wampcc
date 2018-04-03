@@ -7,8 +7,8 @@ SOURCEDIR=$BASEDIR/src
 BUILDDIR=$BASEDIR/build
 INSTALLDIR=$BASEDIR/install
 
-export LIBUV_HOME=/home/$(whoami)/opt/libuv-1.10.2
-export JANSSON_HOME=/home/$(whoami)/opt/jansson-2.10
+export LIBUV_HOME=/home/$(whoami)/opt/libuv-1.19.2
+export JANSSON_HOME=/home/$(whoami)/opt/jansson-2.11
 
 export CXX=`which g++`
 #export CXX=`which clang++`
