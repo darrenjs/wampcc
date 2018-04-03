@@ -15,7 +15,7 @@ AM_CPPFLAGS = -I$(jalsoninc) $(libuvinc) -I$(top_srcdir)/libs/wampcc  -Wall -g3 
 AM_LDFLAGS=-L../libs/wampcc -lwampcc $(LIBLS) -L$(jalsonlib) -lwampcc_json  $(libuvlib) -lcrypto -lpthread
 
 # for make dist
-EXTRA_DIST=server.key server.crt README.md message_server makefile	\
+EXTRA_DIST=server.key server.crt README.md message_server examples.makefile	\
 json/json_mass_encode_decode.cc CMakeLists.txt
 
 noinst_PROGRAMS=basic_embedded_router basic_publisher basic_subscriber	\
