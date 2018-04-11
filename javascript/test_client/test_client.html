@@ -121,17 +121,15 @@
 
   </head>
 
-  <body>
+    <body>
     <script src="js/crypto-js/hmac-sha256.js"></script>
     <script src="js/crypto-js/enc-base64-min.js"></script>
+    <script src="js/crypto-js/pbkdf2.min.js"></script>
 
     <script  type="text/javascript">
 
-      var wsUri = "ws://127.0.0.1:55555/";
       var output;
       var websocket;
-
-
       var wamp_session;
 
       wamp_session_reset = function()
@@ -242,9 +240,33 @@
             return;
           }
 
-          console.log("challenge is :" + challenge);
+          var key;
+          if ("salt" in wampChallenge[2]) {
 
-          var hash = CryptoJS.HmacSHA256(challenge, secret);
+              var salt = wampChallenge[2]['salt'];
+              var iterations = wampChallenge[2]['iterations'];
+              var keylen = wampChallenge[2]['keylen'];
+
+              // compute the derived key from the naked password and the salt
+              console.log("creating the derived key from salt");
+
+              var key=CryptoJS.PBKDF2(
+                  secret,
+                  salt,
+                  { keySize: 256 / keylen,
+                    hasher: CryptoJS.algo.SHA256,
+                    iterations: iterations }
+		      );
+
+              var key_base64 =CryptoJS.enc.Base64.stringify(key);
+              key = key_base64;
+          }
+          else {
+              // no salting
+              key = secret;
+          }
+
+          var hash = CryptoJS.HmacSHA256(challenge, key);
           var strhash = CryptoJS.enc.Base64.stringify(hash);
 
           wampAuthenticate = [5, strhash, {}];
@@ -309,7 +331,7 @@
 
         var newdiv = document.createElement("DIV");
         newdiv.className = "alert alert-info";
-       
+
         var spanItem = document.createElement("SPAN");
         spanItem.className = "sent";
         senttext = datetimestamp();
@@ -516,4 +538,3 @@
   </body>
 
 </html>
-
