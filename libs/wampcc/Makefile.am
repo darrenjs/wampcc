@@ -58,4 +58,4 @@ libwampcc_la_LIBADD  =  -lpthread -lssl -lcrypto $(libuvlib)
 # - REVISION: revision of current version. Incr. base on internal changes.
 # - AGE: indicates compatibilty with previous version of the shlib.
 #
-libwampcc_la_LDFLAGS =  -version-info 5:0:0
+libwampcc_la_LDFLAGS =  -version-info 6:0:0

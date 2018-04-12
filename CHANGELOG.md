@@ -1,6 +1,11 @@
 unreleased
 ==========
 
+version 1.6
+===========
+
+Released 2018-04-12
+
 ## Added
 
 - support WAMP unregister (issue #21)
@@ -18,6 +23,8 @@ unreleased
 - enable automatic ECDH selection (from vai-hhn)
 
 ## Fixed
+
+- Fix compatibility with OpenSSL 1.1 (Sven Neumann)
 
 - http headers checking now case-insensitive  (issue #28)
 

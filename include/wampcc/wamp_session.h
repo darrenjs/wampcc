@@ -84,7 +84,8 @@ struct auth_provider
                      const std::string& response)> check_cra;
 
   /* Obtain the secret for given user and realm. Required if check_cra is not
-   * provided. */
+   * provided. Note that the user secret can either be a naked password (if
+   * cra_salt is null), or cab be the derived secret (is salting is used). */
   std::function<std::string(const std::string& user,
                             const std::string& realm)> user_secret;
 

@@ -65,4 +65,4 @@ libwampcc_json_la_LIBADD=$(janssonlib)
 # - AGE: indicates compatibilty with previous version of the shlib.
 #
 #libwampcc_json_la_LDFLAGS = -version-info 0:0:0  /home/darrens/opt/jansson-2.7/lib/libjansson.la
-libwampcc_json_la_LDFLAGS = -version-info 5:0:0
+libwampcc_json_la_LDFLAGS = -version-info 6:0:0
