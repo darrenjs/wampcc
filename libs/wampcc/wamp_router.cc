@@ -73,7 +73,7 @@ std::future<uverr> wamp_router::listen(const std::string& node,
 {
   return listen(std::move(auth),
                 {false, wampcc::all_protocols, wampcc::all_serialisers,
-                 node, service, af});
+                    node, service, af, {}});
 }
 
 
@@ -82,7 +82,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth, int p)
   return listen(std::move(auth),
                 {false, wampcc::all_protocols, wampcc::all_serialisers,
                  "", std::to_string(p),
-                 tcp_socket::addr_family::inet4});
+                    tcp_socket::addr_family::inet4,{}});
 }
 
 
@@ -342,7 +342,8 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
   /* Create the actual IO server socket */
 
   std::unique_ptr<tcp_socket> sock(
-    listen_opts.ssl? new ssl_socket(m_kernel) : new tcp_socket(m_kernel));
+    listen_opts.ssl? new ssl_socket(m_kernel, listen_opts.sockopts)
+    : new tcp_socket(m_kernel, listen_opts.sockopts));
 
   tcp_socket* ptr = sock.get();
 

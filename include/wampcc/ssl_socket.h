@@ -28,7 +28,7 @@ public:
   typedef std::function<void(std::unique_ptr<ssl_socket>&, uverr)>
       ssl_on_accept_cb;
 
-  ssl_socket(kernel* k);
+  ssl_socket(kernel* k, tcp_socket::options = {});
   ~ssl_socket();
   ssl_socket(const ssl_socket&) = delete;
   ssl_socket& operator=(const ssl_socket&) = delete;
@@ -53,11 +53,11 @@ public:
                             addr_family = addr_family::unspec);
 
 private:
-  ssl_socket(kernel* k, uv_tcp_t*, socket_state ss);
+  ssl_socket(kernel* k, uv_tcp_t*, socket_state ss, tcp_socket::options);
 
   void handle_read_bytes(ssize_t, const uv_buf_t*) override;
   void service_pending_write() override;
-  ssl_socket* create(kernel*, uv_tcp_t*, tcp_socket::socket_state) override;
+  ssl_socket* create(kernel*, uv_tcp_t*, tcp_socket::socket_state, tcp_socket::options) override;
 
   std::pair<int, size_t> do_encrypt_and_write(char*, size_t);
   sslstatus do_handshake();

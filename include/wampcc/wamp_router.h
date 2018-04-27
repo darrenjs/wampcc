@@ -53,27 +53,31 @@ public:
     int protocols;  /* mask of protocol_type bits */
     int serialisers;  /* maks of serialiser_type bits */
 
-    // socket options
+    // connection details
     std::string node;     // interface addr, or leave blank
     std::string service;  // service or port number
     tcp_socket::addr_family af;
+
+    // socket options
+    tcp_socket::options sockopts;
 
     listen_options()
       : ssl(false),
         protocols(all_protocols),
         serialisers(all_serialisers),
         af(tcp_socket::addr_family::unspec)
-
     {}
 
     listen_options(bool ssl_, int protocols_, int serialisers_, std::string node_,
-                   std::string svc_, tcp_socket::addr_family af_)
+                   std::string svc_, tcp_socket::addr_family af_,
+                   tcp_socket::options sockopts_)
       : ssl(ssl_),
         protocols(protocols_),
         serialisers(serialisers_),
         node(node_),
         service(svc_),
-        af(af_)
+        af(af_),
+        sockopts(sockopts_)
     {}
   };
 

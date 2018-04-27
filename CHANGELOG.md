@@ -1,6 +1,10 @@
 unreleased
 ==========
 
+** Added
+
+- support tcp-no-delay and keepalive socket options (issue #34, @BenKaufmann)
+
 version 1.6
 ===========
 

@@ -33,16 +33,16 @@ static uv_buf_t sub_buf(uv_buf_t& src, size_t pos)
 }
 
 
-ssl_socket::ssl_socket(kernel* k, uv_tcp_t* h, socket_state ss)
-  : tcp_socket(k, h, ss),
+ssl_socket::ssl_socket(kernel* k, uv_tcp_t* h, socket_state ss, tcp_socket::options options)
+  : tcp_socket(k, h, ss, options),
     m_ssl(new ssl_session(k->get_ssl(), connect_mode::passive)),
     m_handshake_state(t_handshake_state::pending)
 {
 }
 
 
-ssl_socket::ssl_socket(kernel* k)
-  : tcp_socket(k),
+ssl_socket::ssl_socket(kernel* k, tcp_socket::options options)
+  : tcp_socket(k, options),
     m_ssl(new ssl_session(k->get_ssl(), connect_mode::active)),
     m_handshake_state(t_handshake_state::pending)
 {
@@ -66,7 +66,7 @@ std::future<uverr> ssl_socket::listen(const std::string& node,
 
   auto accept_fn=[this, user_accept_fn](uverr ec,uv_tcp_t* h) {
     std::unique_ptr<ssl_socket> up(
-      h ? create(m_kernel, h, socket_state::connected) : 0);
+      h ? create(m_kernel, h, socket_state::connected, m_sockopts) : 0);
 
     user_accept_fn(up, ec);
 
@@ -338,9 +338,10 @@ int ssl_socket::ssl_do_read(char* src, size_t len)
 
 /* This is the inherited virtual constructor from tcp_socket, but with a
  * ssl_socket return type (C++ covariant types). */
-ssl_socket* ssl_socket::create(kernel* k, uv_tcp_t* h, tcp_socket::socket_state s)
+ssl_socket* ssl_socket::create(kernel* k, uv_tcp_t* h, tcp_socket::socket_state s,
+                               tcp_socket::options opts)
 {
-  return new ssl_socket(k, h, s);
+  return new ssl_socket(k, h, s, opts);
 }
 
 // namespace wampcc

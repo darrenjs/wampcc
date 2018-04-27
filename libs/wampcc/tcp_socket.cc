@@ -84,9 +84,18 @@ static void iohandle_alloc_buffer(uv_handle_t* /* handle */,
 }
 
 
-tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
+tcp_socket::options::options()
+  : tcp_no_delay_enable(default_tcp_no_delay_enable),
+    keep_alive_enable(default_keep_alive_enable),
+    keep_alive_delay(default_keep_alive_delay) {
+}
+
+
+tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss,
+                       options opts)
   : m_kernel(k),
     __logger(k->get_logger()),
+    m_sockopts(opts),
     m_state(ss),
     m_uv_tcp(h),
     m_io_closed_promise(new std::promise<void>),
@@ -99,12 +108,15 @@ tcp_socket::tcp_socket(kernel* k, uv_tcp_t* h, socket_state ss)
   if (m_uv_tcp) {
     assert(m_uv_tcp->data == nullptr);
     m_uv_tcp->data = new handle_data(this);
+
+    // established-socket is ready, so apply options
+    apply_socket_options(false);
   }
 }
 
 
-tcp_socket::tcp_socket(kernel* k)
-  : tcp_socket(k, nullptr, socket_state::uninitialised)
+tcp_socket::tcp_socket(kernel* k, options opts)
+  : tcp_socket(k, nullptr, socket_state::uninitialised, opts)
 {
 }
 
@@ -706,14 +718,14 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
     /* Invoke the virtual constructor function 'create', so that if this
      * listen(...) method is called for an instance of a derived class, we will
      * create a instance of the derived class. */
-    std::unique_ptr<tcp_socket> up(
-      h? create(m_kernel, h, socket_state::connected):0);
+    std::unique_ptr<tcp_socket> new_sock(
+      h? create(m_kernel, h, socket_state::connected, m_sockopts):0);
 
     /* Catch user function exceptions, to prevent stack unwind and destruction
      * of the open tcp_socket object.  The tcp_socket cannot be closed & deleted
      * on the IO thread. */
     try {
-      user_accept_fn(up, ec);
+      user_accept_fn(new_sock, ec);
     }
     catch (std::exception& e) {
       LOG_ERROR("exception during socket on_accept_cb : " << e.what());
@@ -722,7 +734,7 @@ std::future<uverr> tcp_socket::listen(const std::string& node,
       LOG_ERROR("exception during socket on_accept_cb : unknown");
     }
 
-    return up;
+    return new_sock;
   };
 
   return listen_impl(node, service, af, accept_fn);
@@ -816,6 +828,9 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   } else {
     std::lock_guard<std::mutex> guard(m_state_lock);
     m_state = socket_state::listening;
+
+    // listen-socket is ready, so apply options
+    apply_socket_options(true);
   }
 
   completion->set_value(ec);
@@ -964,7 +979,9 @@ void tcp_socket::do_connect(const std::string& node, const std::string& service,
 
 
 void tcp_socket::connect_completed(
-  uverr ec, std::shared_ptr<std::promise<uverr>> completion, uv_tcp_t* h)
+  uverr ec,
+  std::shared_ptr<std::promise<uverr>> completion,
+  uv_tcp_t* h)
 {
   /* IO thread */
 
@@ -981,6 +998,9 @@ void tcp_socket::connect_completed(
     m_uv_tcp = h;
     auto ptr = (handle_data*) m_uv_tcp->data;
     *ptr = handle_data(this);
+
+    // established-socket is ready, so apply options
+    apply_socket_options(false);
   } else {
     m_state = socket_state::connect_failed;
     uv_close((uv_handle_t*)h, free_socket);
@@ -994,9 +1014,10 @@ void tcp_socket::service_pending_write()
   do_write();
 }
 
-tcp_socket* tcp_socket::create(kernel* k, uv_tcp_t* h, socket_state s)
+tcp_socket* tcp_socket::create(kernel* k, uv_tcp_t* h, socket_state s,
+                               options opts)
 {
-  return new tcp_socket(k, h, s);
+  return new tcp_socket(k, h, s, opts);
 }
 
 const std::string& tcp_socket::node() const
@@ -1094,5 +1115,24 @@ int tcp_socket::get_local_port()
   return 0;
 }
 
+
+void tcp_socket::apply_socket_options(bool is_listen_socket)
+{
+  uverr ec;
+
+  /* it likely only makes sense to apply some socket options to established
+   * connections, rather that listen sockets */
+  if (!is_listen_socket) {
+    ec = uv_tcp_nodelay(m_uv_tcp, m_sockopts.tcp_no_delay_enable);
+    if (ec)
+      LOG_WARN("uv_tcp_nodelay failed, " << ec.message());
+
+    ec = uv_tcp_keepalive(m_uv_tcp,
+                          m_sockopts.keep_alive_enable,
+                          m_sockopts.keep_alive_delay.count());
+    if (ec)
+      LOG_WARN("uv_tcp_keepalive failed, " << ec.message());
+  }
+}
 
 } // namespace wampcc

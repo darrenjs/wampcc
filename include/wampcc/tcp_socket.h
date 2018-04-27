@@ -57,6 +57,7 @@ public:
   std::unique_ptr<tcp_socket>& sock;
 };
 
+
 /**
 Represent a TCP socket in both server and client mode.
 
@@ -68,7 +69,7 @@ The owner of a tcp_socket must take special care during its deletion.  It is
 undefined behaviour to invoke the tcp_socket destructor via the internal wampcc
 IO thread for an instance not in the closed state.
 
-There are three approaches to acheive safe deletion of a tcp_socket:
+There are three approaches to achieve safe deletion of a tcp_socket:
 
 1. Invoke the destructor on a thread other than the wamp IO thread. It is always
    safe to delete a tcp_socket this way, no matter what the current state of the
@@ -79,7 +80,7 @@ There are three approaches to acheive safe deletion of a tcp_socket:
    destructor.  The close of a tcp_socket is initiated by calling close().  Once
    initiated the socket will transition to the closed state asynchronously.  The
    caller can wait for closed to be reached by waiting on the future returned by
-   close() or closed_future(). Such a wait should not be performed on the wampcc
+   close() or closed_future(). Such a wait must not be performed on the wampcc
    IO thread, since it is the IO thread that performs the internal work required
    to advance the state to closed. The method is_closed() tells if the closed
    state has been reached.
@@ -117,12 +118,31 @@ public:
     error(std::string msg) : std::runtime_error(msg) {}
   };
 
+
+  /* Socket options to apply to newly created sockets. This is not an exhaustive
+   * set, instead just covers most common options. */
+  struct options
+  {
+    /* Default values */
+    static constexpr bool default_tcp_no_delay_enable = true;
+    static constexpr bool default_keep_alive_enable = true;
+    static constexpr std::chrono::seconds default_keep_alive_delay = std::chrono::seconds(60);
+
+    /* Individual options */
+    bool tcp_no_delay_enable;
+
+    bool keep_alive_enable;
+    std::chrono::seconds keep_alive_delay;
+
+    options();
+  };
+
   typedef std::function<void(char*, size_t)> io_on_read;
   typedef std::function<void(uverr)> io_on_error;
   typedef std::function<void()> on_close_cb;
   typedef std::function<void(std::unique_ptr<tcp_socket>&,uverr)> on_accept_cb;
 
-  tcp_socket(kernel* k);
+  tcp_socket(kernel* k, options = {});
   virtual ~tcp_socket();
 
   tcp_socket(const tcp_socket&) = delete;
@@ -158,7 +178,7 @@ public:
   void write(std::pair<const char*, size_t>* srcbuf, size_t count);
   void write(const char*, size_t);
 
-  /** Request asynchronous socket close. To detect when close has occured, the
+  /** Request asynchronous socket close. To detect when close has occurred, the
    * caller can wait upon the returned future.  Throws io_loop_closed if IO loop
    * has already been closed. */
   std::shared_future<void> close();
@@ -166,7 +186,7 @@ public:
   /** Request asynchronous socket reset & close.  */
   std::shared_future<void> reset();
 
-  /** Request asynchronous socket close, and recieve notification via the
+  /** Request asynchronous socket close, and receive notification via the
    * specified callback on the IO thread. If the tcp_socket is not currently
    * closed then the provided callback is invoked at the time of socket closure
    * and true is returned.  Otherwise, if the socket is already closed, the
@@ -231,11 +251,11 @@ protected:
     closed
   };
 
-  tcp_socket(kernel* k, uv_tcp_t*, socket_state ss);
+  tcp_socket(kernel* k, uv_tcp_t*, socket_state ss, options);
 
   virtual void handle_read_bytes(ssize_t, const uv_buf_t*);
   virtual void service_pending_write();
-  virtual tcp_socket* create(kernel*, uv_tcp_t*, socket_state);
+  virtual tcp_socket* create(kernel*, uv_tcp_t*, socket_state, options);
 
   typedef std::function<std::unique_ptr<tcp_socket>(uverr ec,  uv_tcp_t* h)> acceptor_fn_t;
   void do_write(std::vector<uv_buf_t>&);
@@ -244,6 +264,8 @@ protected:
 
   kernel* m_kernel;
   logger& __logger;
+
+  options m_sockopts;
 
   /* Store of user requests to write bytes. These are queued until serviced by
    * the IO thread, via service_pending_write(). */
@@ -278,6 +300,8 @@ private:
   void connect_completed(uverr, std::shared_ptr<std::promise<uverr>>,
                          uv_tcp_t*);
   void on_listen_cb(int);
+
+  void apply_socket_options(bool);
 
   uv_tcp_t* m_uv_tcp;
 
