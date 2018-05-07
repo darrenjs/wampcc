@@ -103,6 +103,13 @@ public:
     m_is_valid = true;
   }
 
+  void update_retained(std::unique_ptr<wamp_args> args)
+  {
+    m_retained = std::move(args);
+  }
+
+  const wamp_args* retained() const { return m_retained.get(); }
+
   std::vector< std::weak_ptr<wamp_session> > &  subscribers()  {return m_subscribers;}
   const std::vector< std::weak_ptr<wamp_session> > &  subscribers() const {return m_subscribers;}
 
@@ -112,6 +119,9 @@ private:
 
   // current upto date image of the value
   json_value m_image;
+
+  // current retained value or nullptr if not retained
+  std::unique_ptr<wamp_args> m_retained;
 
   global_scope_id_generator m_id_gen;
 
@@ -197,6 +207,19 @@ t_publication_id pubsub_man::update_topic(const std::string& topic,
     mt->update_image(args.args_list[0].as_array());
     //std::cout << "AFTER : "  << mt->image << "\n";
     //std::cout << "-------\n";
+  }
+
+  auto it = options.find(KEY_RETAINED);
+  if (it != options.end() && it->second.is_true())
+  {
+    if (args.args_list.empty() && args.args_dict.empty())
+    {
+      // Delete retained message
+      mt->update_retained(std::unique_ptr<wamp_args>());
+      return mt->next_publication_id();
+    }
+    options.erase(it);
+    mt->update_retained(std::unique_ptr<wamp_args>(new wamp_args(args)));
   }
 
   /*
@@ -317,6 +340,7 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
   json_array msg({msg_type::wamp_msg_subscribed, request_id,mt->subscription_id()});
   sptr->send_msg(msg);
 
+  auto publication_id = 0;
   /* for stateful topic must send initial snapshot (only if an image exists) */
   if (mt->is_valid() && (options.find(KEY_PATCH) != options.end()))
   {
@@ -339,10 +363,24 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
     snapshot_msg.reserve(5);
     snapshot_msg.push_back( msg_type::wamp_msg_event );
     snapshot_msg.push_back( mt->subscription_id() );
-    snapshot_msg.push_back( 0 ); // publication id
+    snapshot_msg.push_back( publication_id++ );
     snapshot_msg.push_back( std::move(event_options) );
     snapshot_msg.push_back( pub_args.args_list );
     sptr->send_msg(snapshot_msg);
+  }
+
+  if (const auto* args = mt->retained())
+  {
+    json_array retained;
+    retained.reserve(6);
+    retained.push_back( msg_type::wamp_msg_event );
+    retained.push_back( mt->subscription_id() );
+    retained.push_back( publication_id++ );
+    retained.push_back( json_object{{KEY_RETAINED, true}} );
+    retained.push_back(args->args_list);
+    if (!args->args_dict.empty())
+      retained.push_back(args->args_dict);
+    sptr->send_msg(retained);
   }
 
   mt->add(sptr->handle());

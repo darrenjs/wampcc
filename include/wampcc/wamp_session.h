@@ -28,6 +28,8 @@ class kernel;
 class pubsub_man;
 struct logger;
 
+/** Option key for enabling publishing of retained messages. */
+constexpr const char* KEY_RETAINED = "_retained";
 
 /** Callback type used to provide a session ID for new sessions. */
 typedef std::function<t_session_id()> session_id_generator_fn;
