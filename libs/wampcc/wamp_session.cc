@@ -1647,6 +1647,7 @@ void wamp_session::process_inbound_result(json_array & msg)
     result_info info;
     info.was_error = false;
     info.user = orig_request.user;
+    info.request_id = request_id;
     if (msg.size()>3)
       info.args.args_list = std::move(msg[3].as_array());
     if (msg.size()>4)
