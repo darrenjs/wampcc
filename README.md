@@ -258,7 +258,9 @@ example need to be replaced with paths specific to your system. This command
 should be invoked from within the build folder.
 
 ```bash
-cmake --verbose  -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+cmake --verbose \
+-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+-DCMAKE_BUILD_TYPE=Release \
 -DLIBUV_DIR=/opt/libuv-1.10.2 \
 -DJANSSON_DIR=/opt/jansson-2.10 \
 -DCMAKE_INSTALL_PREFIX=/var/tmp/wampcc_install \
