@@ -85,9 +85,9 @@ logger logger::stream(lockable_stream& ostr, int level_mask, bool inc_src)
   my_logger.wants_level =
     [level_mask](logger::Level l) { return (l & level_mask) != 0; };
 
-  my_logger.write = [&ostr, level_mask, inc_src](logger::Level level,
-                                                 const std::string& msg,
-                                                 const char* file, int ln) {
+  my_logger.write = [&ostr, inc_src](logger::Level level,
+                                     const std::string& msg,
+                                     const char* file, int ln) {
     std::ostringstream oss;
     oss << wampcc::local_timestamp() << " "
         << wampcc::thread_id() << " "

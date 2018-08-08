@@ -408,7 +408,7 @@ int main_impl(int argc, char** argv)
         default: return l <= wampcc::logger::eTrace;
       }
     },
-    [verbose](wampcc::logger::Level, const std::string& msg, const char*, int){
+    [](wampcc::logger::Level, const std::string& msg, const char*, int){
       std::cout << msg << std::endl;
     }
   };

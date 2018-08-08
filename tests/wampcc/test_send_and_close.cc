@@ -51,13 +51,13 @@ TEST_CASE("test_send_batch_then_close")
   internal_server server(logger);
   int port = server.start(global_port++);
 
-  constexpr int data_size = 20;
+  constexpr size_t data_size = 20;
   constexpr int delay_ms = 100;
 
   // data to send from sender to receiver; test is to check if all of the data
   // arrives
   std::vector<json_array> data_sent(data_size);
-  for (int i = 0; i<data_size; i++)
+  for (size_t i = 0; i<data_size; i++)
     data_sent[i].push_back( wampcc::json_value::make_uint(i) );
 
   std::mutex data_recv_mutex;
@@ -91,7 +91,7 @@ TEST_CASE("test_send_batch_then_close")
     wampcc::wamp_args args;
     args.args_list.push_back(wampcc::json_value::make_uint(0));
 
-    for (int i = 0; i < data_size; i++) {
+    for (size_t i = 0; i < data_size; i++) {
       args.args_list = data_sent[i];
       session->call(uri_numbers_topic, {}, args, [&](wampcc::wamp_session&,
                                                      wampcc::result_info r) {
