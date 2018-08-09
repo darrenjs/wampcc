@@ -9,5 +9,5 @@ Description: WAMP C++ library
 Version: @WAMPCC_VERSION@
 
 Requires:
-Libs: -L${libdir} -L${sharedlibdir} -luv -lcrypto -lssl -lpthread -lwampcc_json
+Libs: -L${libdir} -L${sharedlibdir} -lwampcc -luv -lcrypto -lssl -lpthread -lwampcc_json
 Cflags: -I${includedir}
