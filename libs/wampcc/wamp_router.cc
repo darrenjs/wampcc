@@ -268,12 +268,17 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
     };
 
     handlers.on_publish =
-    [this](wamp_session& ws, t_request_id request_id, std::string uri, json_object options,
-           wamp_args args) {
+    [this](wamp_session& ws, t_request_id request_id, std::string uri,
+           json_object options, wamp_args args) {
       try {
+        json_value* ptr = json_get_ptr(options, WAMP_ACKNOWLEDGE);
+        bool acknowledge = ptr && ptr->is_true();
+
         auto publication_id = m_pubsub->inbound_publish(
           ws.realm(), uri, std::move(options), std::move(args));
-        ws.published(request_id, publication_id);
+
+        if (acknowledge)
+          ws.published(request_id, publication_id);
       }
       catch (const wamp_error& e) {
         ws.publish_error(request_id, e.error_uri());

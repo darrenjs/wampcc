@@ -1,9 +1,13 @@
 unreleased
 ==========
 
-** Added
+## Added
 
 - support tcp-no-delay and keepalive socket options (issue #34, @BenKaufmann)
+
+## Fixed
+
+- router should not acknowledge publications by default (issue #40)
 
 version 1.6
 ===========
