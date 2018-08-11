@@ -9,6 +9,10 @@ unreleased
 
 - router should not acknowledge publications by default (issue #40)
 
+- link failure when building with clang 6 / debug-mode
+
+- missing libs in pkg-config (#41, @infinity0n3)
+
 version 1.6
 ===========
 

@@ -19,6 +19,7 @@
 namespace wampcc
 {
 
+constexpr std::chrono::seconds tcp_socket::options::default_keep_alive_delay;
 
 tcp_socket_guard::tcp_socket_guard(std::unique_ptr<tcp_socket>& __sock)
   : sock(__sock)
