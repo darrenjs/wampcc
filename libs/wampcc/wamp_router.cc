@@ -264,12 +264,14 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
                               json_object& details,
                               wamp_args& args)
     {
+      ws.authorize(uri, auth_provider::action::call);
       this->handle_inbound_call(&ws, reqid, uri, details, args);
     };
 
     handlers.on_publish =
     [this](wamp_session& ws, t_request_id request_id, std::string uri,
            json_object options, wamp_args args) {
+      ws.authorize(uri, auth_provider::action::publish);
       try {
         json_value* ptr = json_get_ptr(options, WAMP_ACKNOWLEDGE);
         bool acknowledge = ptr && ptr->is_true();
@@ -288,6 +290,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
     handlers.on_subscribe =
         [this](wamp_session& ws, t_request_id request_id, std::string uri,
                json_object& options) {
+      ws.authorize(uri, auth_provider::action::subscribe);
       return this->m_pubsub->subscribe(&ws, request_id, uri, options);
     };
 
@@ -300,6 +303,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
                                   t_request_id request_id,
                                   std::string& uri,
                                   json_object& options) -> void {
+      ws.authorize(uri, auth_provider::action::register1);
       m_rpcman->handle_inbound_register(ws, request_id, uri);
     };
 

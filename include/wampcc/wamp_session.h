@@ -43,9 +43,17 @@ struct auth_provider
   enum class mode
   {
     forbidden,    /* user not permitted */
-      open,         /* user allowed without authentication */
-      authenticate  /* user must authenticate */
-      };
+    open,         /* user allowed without authentication */
+    authenticate  /* user must authenticate */
+  };
+
+  enum class action
+  {
+    publish,      /* publish action */
+    subscribe,    /* subscribe action */
+    register1,    /* register action */
+    call          /* call action */
+  };
 
   /* auth_plan combines auth requirement plus list of supported methods */
   typedef std::tuple<mode, std::set<std::string>> auth_plan;
@@ -58,9 +66,7 @@ struct auth_provider
    * applicable if mode==authenticate). */
 
   // TODO: add a boolean to indicate whether the user_id was provided
-  std::function<
-    auth_plan
-    (const std::string& user, const std::string& realm) > policy;
+  std::function<auth_plan(const std::string& user, const std::string& realm) > policy;
 
   /** For challenge response authentication (CRA), provide optional password
       salting parameters. If available these are added to any challenge sent to
@@ -85,9 +91,21 @@ struct auth_provider
 
   /* Obtain the secret for given user and realm. Required if check_cra is not
    * provided. Note that the user secret can either be a naked password (if
-   * cra_salt is null), or cab be the derived secret (is salting is used). */
+   * cra_salt is null), or can be the derived secret (is salting is used). */
   std::function<std::string(const std::string& user,
                             const std::string& realm)> user_secret;
+
+  /* Obtain the role for given user and realm.
+   * TODO: more description
+   * */
+  std::function<std::string(const std::string& user,
+                            const std::string& realm)> user_role;
+
+  /* Check if the given realm, role, uri triple is allowed */
+  std::function<bool(const std::string& realm,
+                const std::string& authrole,
+                const std::string& uri,
+                action)> authorize;
 
   /* Create an auth_provider object which implements a
    * no-authentication-required policy. */
@@ -522,6 +540,12 @@ public:
   /** Time since last message */
   time_t time_last() const;
 
+
+  /** Authorization check for given uri and action (publish, subscribe, register, call).
+   * If the uri/action combination is not authorized throw and exception 
+   * Used by server-mode session */
+  void authorize(const std::string& uri, auth_provider::action);
+
   /** Return the realm, or empty string if a realm has not yet been provided,
    * eg, in case of a server session that receives the realm from the peer. */
   const std::string& realm() const;
@@ -627,6 +651,9 @@ public:
 
   /** Return whether an authid is associated with this session. */
   bool has_authid() const;
+
+  /** Return the authrole associated with this session. */
+  std::string authrole() const;
 
   /** Return the agent description associated with this session, if one has been
    * provided (use has_agent() to determine if provided). */
@@ -838,10 +865,13 @@ private:
   std::function< std::string() > m_client_secret_fn;
 
   std::string m_realm;
+  mutable std::mutex m_realm_lock;
   std::pair<bool, std::string> m_authid; // .first ==> tells if present
   std::pair<bool, std::string> m_agent;  // .first ==> tells if present
   std::string m_challenge;
-  mutable std::mutex m_realm_lock;
+
+  std::string m_authrole;
+  mutable std::mutex m_authrole_lock;
 
   auth_provider m_auth_proivder;
   bool m_server_requires_auth;
