@@ -51,6 +51,7 @@ namespace wampcc
 // WAMP string constants
 #define WAMP_WAMPCRA "wampcra"
 #define WAMP_ACKNOWLEDGE "acknowledge"
+#define WAMP_ANONYMOUS "anonymous"
 
 // Protocol defined services
 #define WAMP_REFLECTION_TOPIC_LIST "wamp.reflection.topic.list"

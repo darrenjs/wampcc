@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 Darren Smith
+ * Copyright (c) 2018 Daniel Kesler
  *
  * wampcc is free software; you can redistribute it and/or modify
  * it under the terms of the MIT license. See LICENSE for details.
@@ -47,29 +48,34 @@ int main(int, char**)
       [](const std::string& /*user*/, const std::string& /*realm*/) {
         return "secret2"; 
       },
+
+      /* Authorization provider */
+
       // user_role
-      [](const std::string& /*user*/, const std::string& realm) {
-        std::cout << "user_role()\n";
-        if(realm == "private_realm")
-          return "frontend";
-        else
-          return "anonymous";
+      [](const std::string& user, const std::string& realm) {
+        std::string role = "anonymous";
+
+        if(realm == "private_realm") {
+          if(user == "peter")
+            role = "member";
+          else if(user == "tony")
+            role = "admin";
+        }
+
+        std::cout << "(" << user << ", " << realm << ") => " << role << std::endl;
+
+        return role;
       },
       // authorize
       [](const std::string& realm, const std::string& authrole, const std::string& uri, auth_provider::action) {
-        //return false;
-        throw runtime_error("some error");
+        if(uri == "admin.greeting" && authrole == "admin") {
+          return true;
+        } else if (uri == "greeting") {
+          return true;
+        }
         return false;
       }
     };
-
-  /*static auth_provider no_auth_required() {
-    return auth_provider {
-      [](const std::string&){ return "no_auth_required"; },
-        [](const std::string&, const std::string&) {
-          return auth_plan{mode::open,{}}; },
-          nullptr, nullptr, nullptr };
-  }*/
 
     auto fut = router.listen(auth, 55555);
 
@@ -85,7 +91,12 @@ int main(int, char**)
 
     router.callable("private_realm", "greeting",
                     [](wamp_router&, wamp_session& caller, call_info info) {
-      caller.result(info.request_id, {"hello private member ;)"});
+      caller.result(info.request_id, {"hello, private member"});
+    });
+
+    router.callable("private_realm", "admin.greeting",
+                    [](wamp_router&, wamp_session& caller, call_info info) {
+      caller.result(info.request_id, {"hello, admin"});
     });
 
     /* Suspend main thread */

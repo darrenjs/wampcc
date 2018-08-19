@@ -38,7 +38,9 @@ if(BUILD_EXAMPLES)
   Compile_Example(demo_embedded_router basic)
   Compile_Example(basic_server basic)
 # Authentication
-  Compile_Example(authentication_router authentication)
+  Compile_Example(basic_authentication_provider authentication)
+# Authorization
+  Compile_Example(basic_authorization_provider authorization)
 # Message server
   Compile_Example(message_server message_server)
   Compile_Example(message_subscriber message_server)
