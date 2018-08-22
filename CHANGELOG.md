@@ -5,6 +5,8 @@ unreleased
 
 - support tcp-no-delay and keepalive socket options (issue #34, @BenKaufmann)
 
+- router supports wamp authorization (#42, @infinity0n3)
+
 ## Fixed
 
 - router should not acknowledge publications by default (issue #40)
@@ -12,6 +14,8 @@ unreleased
 - link failure when building with clang 6 / debug-mode
 
 - missing libs in pkg-config (#41, @infinity0n3)
+
+- login reject messages had wrong error code (#42, @infinity0n3)
 
 version 1.6
 ===========

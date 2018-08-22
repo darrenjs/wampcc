@@ -2732,9 +2732,18 @@ std::string wamp_session::authrole() const
 void wamp_session::authorize(const std::string& uri, auth_provider::action action)
 {
   if(m_auth_proivder.authorize) {
-    std::lock_guard<std::mutex> guard(m_authrole_lock);
     bool authorized = false;
     try {
+      /* Note, we are holding a lock across use callback here. Typically
+       * considered dangerous (since carries risk of deadlock if callback
+       * function then makes a call to this->authrole()). However in current
+       * implementation we are not passing a wamp_session reference into the
+       * callback, so this risk is reduced.  Also this authorization logic is
+       * invoked on every inbound publish & call etc, so it aids performance to
+       * avoid making a copy. Possibly review if signature of callback changes,
+       * and/or examine if there is way to remove need for the authrole lock
+       * in-general. */
+      std::lock_guard<std::mutex> guard(m_authrole_lock);
       authorized = m_auth_proivder.authorize(m_realm, m_authrole, uri, action);
     } catch(...) {
       throw wamp_error(WAMP_ERROR_AUTHORIZATION_FAILED, "authorization failure");
