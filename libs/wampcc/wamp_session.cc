@@ -817,6 +817,22 @@ void wamp_session::handle_HELLO(json_array& ja)
       m_agent.second = agent;
     }
 
+    std::string authrole = WAMP_ANONYMOUS;
+
+    if (m_auth_proivder.user_role and m_authid.first) {
+      authrole = m_auth_proivder.user_role(m_authid.second, m_realm);
+      if(authrole.empty())
+        throw auth_error(WAMP_ERROR_NO_SUCH_ROLE, "role not configured");
+    }
+
+    {
+      std::lock_guard<std::mutex> guard(m_authrole_lock);
+      if(m_authrole.empty()) {
+        m_authrole = authrole;
+      }
+    }
+
+
   }
 
   auth_provider::mode auth_required;
@@ -832,7 +848,7 @@ void wamp_session::handle_HELLO(json_array& ja)
   else if (auth_required != auth_provider::mode::authenticate)
   {
     if (auth_required == auth_provider::mode::forbidden)
-      throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+      throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                        "auth_provider rejected user for realm");
   }
 
@@ -858,12 +874,12 @@ void wamp_session::handle_HELLO(json_array& ja)
 
   /* Handle case of no supported authentication methods */
   if (intersect.empty())
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+    throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                      "no auth methods available");
 
   /* For now the only supported method is 'wampcra'. */
   if (intersect.find(WAMP_WAMPCRA) == intersect.end())
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+    throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                      "wampcra not available for both client and server");
 
   /* --- Perform wampcra authentication --- */
@@ -883,7 +899,7 @@ void wamp_session::handle_HELLO(json_array& ja)
     if (m_challenge.empty())
       m_challenge = challengestr;
     else
-      throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+      throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                        "challenge already issued");
   }
 
@@ -921,13 +937,13 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
 
   const std::string& authmethod = ja[1].as_string();
   if (authmethod != WAMP_WAMPCRA)
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+    throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                      "unknown AuthMethod (only wampcra supported)");
 
   const json_object & extra = ja[2].as_object();
   std::string challmsg = json_get_copy(extra, "challenge", "").as_string();
   if (challmsg == "")
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+    throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                      "challenge not found in Extra");
 
   /* generate the authentication digest */
@@ -969,7 +985,7 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
     send_msg(msg);
   }
   else
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+    throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                      "failed to compute HMAC SHA256 diget");
 
 }
@@ -1010,7 +1026,7 @@ void wamp_session::handle_AUTHENTICATE(json_array& ja)
                               digest, &digestlen);
     for (size_t i = 0; i < key.size(); i++) key[i]='\0';
     if (r == -1)
-      throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+      throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                        "HMAC SHA256 failed");
 
     cra_ok = (digest == peer_digest);
@@ -1019,7 +1035,7 @@ void wamp_session::handle_AUTHENTICATE(json_array& ja)
   if (cra_ok)
     send_WELCOME();
   else
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+    throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                      "client failed challenge-response-authentication");
 }
 
@@ -2707,6 +2723,28 @@ bool wamp_session::has_authid() const
   return m_authid.first;
 }
 
+std::string wamp_session::authrole() const
+{
+  std::lock_guard<std::mutex> guard(m_authrole_lock);
+  return m_authrole;
+}
+
+void wamp_session::authorize(const std::string& uri, auth_provider::action action)
+{
+  if(m_auth_proivder.authorize) {
+    std::lock_guard<std::mutex> guard(m_authrole_lock);
+    bool authorized = false;
+    try {
+      authorized = m_auth_proivder.authorize(m_realm, m_authrole, uri, action);
+    } catch(...) {
+      throw wamp_error(WAMP_ERROR_AUTHORIZATION_FAILED, "authorization failure");
+    }
+
+    if( !authorized ) {
+      throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "action is not authorized");
+    }
+  }
+}
 
 std::string wamp_session::agent() const
 {

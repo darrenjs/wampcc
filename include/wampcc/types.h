@@ -20,6 +20,7 @@ namespace wampcc
 {
 
 // WAMP defined error messages
+#define WAMP_ERROR_AUTHENTICATION_FAILED "wamp.error.authentication_failed"
 #define WAMP_ERROR_AUTHORIZATION_FAILED "wamp.error.authorization_failed"
 #define WAMP_ERROR_CANCELED "wamp.error.canceled"
 #define WAMP_ERROR_CLOSE_REALM "wamp.error.close_realm"
@@ -50,6 +51,7 @@ namespace wampcc
 // WAMP string constants
 #define WAMP_WAMPCRA "wampcra"
 #define WAMP_ACKNOWLEDGE "acknowledge"
+#define WAMP_ANONYMOUS "anonymous"
 
 // Protocol defined services
 #define WAMP_REFLECTION_TOPIC_LIST "wamp.reflection.topic.list"
