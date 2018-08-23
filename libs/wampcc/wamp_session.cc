@@ -819,7 +819,7 @@ void wamp_session::handle_HELLO(json_array& ja)
 
     std::string authrole = WAMP_ANONYMOUS;
 
-    if (m_auth_proivder.user_role and m_authid.first) {
+    if (m_auth_proivder.user_role && m_authid.first) {
       authrole = m_auth_proivder.user_role(m_authid.second, m_realm);
       if(authrole.empty())
         throw auth_error(WAMP_ERROR_NO_SUCH_ROLE, "role not configured");
