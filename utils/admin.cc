@@ -549,7 +549,7 @@ int main_impl(int argc, char** argv)
   if (!uopts.publish_topic.empty())
   {
     ws->publish(uopts.publish_topic,
-                wampcc::json_object(),
+                { {WAMP_ACKNOWLEDGE, true} },
                 args,
                 [](wampcc::wamp_session&, wampcc::published_info info){
                   if (info) {
