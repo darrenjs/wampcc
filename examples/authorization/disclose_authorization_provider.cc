@@ -62,20 +62,18 @@ int main(int, char**)
             role = "admin";
         }
 
-        std::cout << "(" << user << ", " << realm << ") => " << role << std::endl;
+        // std::cout << "(" << user << ", " << realm << ") => " << role << std::endl;
 
         return role;
       },
       // authorize
       [](const std::string& realm, const std::string& authrole, const std::string& uri, auth_provider::action) {
         auth_provider::authorized authorized;
-        authorized.allow = false;
+        authorized.allow = true;
         authorized.disclose = false;
 
-        if(uri == "admin.greeting" && authrole == "admin") {
-          authorized.allow = true;
-        } else if (uri == "greeting") {
-          authorized.allow = true;
+        if(realm == "private_realm") {
+          authorized.disclose = true;
         }
         
         return authorized;

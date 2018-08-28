@@ -41,6 +41,10 @@ if(BUILD_EXAMPLES)
   Compile_Example(basic_authentication_provider authentication)
 # Authorization
   Compile_Example(basic_authorization_provider authorization)
+# Disclose
+  Compile_Example(disclose_authorization_provider authorization)
+  Compile_Example(disclose_callee authorization)
+  Compile_Example(disclose_caller authorization)
 # Message server
   Compile_Example(message_server message_server)
   Compile_Example(message_subscriber message_server)
