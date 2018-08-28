@@ -29,14 +29,14 @@ int main(int, char**)
     auth_provider auth = {
       // provider_name
       [](const std::string& realm) { 
-        return "example_auth";
+        return "ticket_auth"; 
       },
       // policy
       [](const std::string& user, const std::string& realm) {
         if(realm == "default_realm")
           return auth_provider::auth_plan{ auth_provider::mode::open, {} };
         else if(realm == "private_realm")
-          return auth_provider::auth_plan(auth_provider::mode::authenticate, {"wampcra"});
+          return auth_provider::auth_plan(auth_provider::mode::authenticate, {"ticket"});
         else
           return auth_provider::auth_plan(auth_provider::mode::forbidden, {});
       },
@@ -46,7 +46,7 @@ int main(int, char**)
       nullptr, 
       // user_secret
       [](const std::string& /*user*/, const std::string& /*realm*/) {
-        return "secret2"; 
+        return "secret-ticket"; 
       },
     };
 

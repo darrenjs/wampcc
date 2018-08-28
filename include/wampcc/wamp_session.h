@@ -112,6 +112,12 @@ struct auth_provider
                 const std::string& uri,
                 action)> authorize;
 
+  /* Check user authentication */
+  std::function<bool(const std::string& user,
+                const std::string& realm,
+                const std::string& authmethod,
+                const std::string& signiture)> authenticate;
+
   /* Create an auth_provider object which implements a
    * no-authentication-required policy. */
   static auth_provider no_auth_required() {
@@ -876,10 +882,11 @@ private:
   std::string m_challenge;
 
   std::string m_authrole;
-  mutable std::mutex m_authrole_lock;
 
   auth_provider m_auth_proivder;
   bool m_server_requires_auth;
+
+  std::string m_authmethod;
 
   on_state_fn m_notify_state_change_fn;
 
