@@ -40,6 +40,8 @@ if(BUILD_EXAMPLES)
 # Authentication
   Compile_Example(basic_authentication_provider authentication)
   Compile_Example(ticket_authentication_provider authentication)
+  Compile_Example(ticket_caller authentication)
+  Compile_Example(external_authentication_provider authentication)
 # Authorization
   Compile_Example(basic_authorization_provider authorization)
 # Disclose
