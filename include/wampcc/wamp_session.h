@@ -55,6 +55,17 @@ struct auth_provider
     call          /* call action */
   };
 
+  enum class disclosure {
+    optional,     /* sends caller identity only if requested by caller */
+    always,       /* always disclose caller identity */
+    never         /* never disclose caller identity */
+  };
+
+  struct authorized {
+    bool allow;
+    disclosure disclose;
+  };
+
   /* auth_plan combines auth requirement plus list of supported methods */
   typedef std::tuple<mode, std::set<std::string>> auth_plan;
 
@@ -102,7 +113,7 @@ struct auth_provider
                             const std::string& realm)> user_role;
 
   /* Check if the given realm, role, uri triple is allowed */
-  std::function<bool(const std::string& realm,
+  std::function<authorized(const std::string& realm,
                 const std::string& authrole,
                 const std::string& uri,
                 action)> authorize;
@@ -544,7 +555,7 @@ public:
   /** Authorization check for given uri and action (publish, subscribe, register, call).
    * If the uri/action combination is not authorized throw and exception 
    * Used by server-mode session */
-  void authorize(const std::string& uri, auth_provider::action);
+  auth_provider::authorized authorize(const std::string& uri, auth_provider::action);
 
   /** Return the realm, or empty string if a realm has not yet been provided,
    * eg, in case of a server session that receives the realm from the peer. */

@@ -1105,10 +1105,21 @@ std::future<void> wamp_session::hello(client_credentials cc)
 
   auto initiate_cb = [this, cc]()
     {
+
       json_object roles ({
-          {"publisher",  json_object()},
+          {"publisher",  json_object({
+            {"features", {json_object({
+              {"publisher_identification", true}
+              })
+            }}
+          })},
           {"subscriber", json_object()},
-          {"caller",     json_object()},
+          {"caller",  json_object({
+            {"features", json_object({
+              {"caller_identification", true}
+              })
+            }
+          })},
           {"callee",     json_object()}
         });
 
@@ -2729,10 +2740,12 @@ std::string wamp_session::authrole() const
   return m_authrole;
 }
 
-void wamp_session::authorize(const std::string& uri, auth_provider::action action)
+auth_provider::authorized wamp_session::authorize(const std::string& uri, auth_provider::action action)
 {
+  /* Default behaviour is to authorize every call and not to disclose
+   * caller and publisher idetity */
+  auth_provider::authorized authorized = {true, auth_provider::disclosure::optional};
   if(m_auth_proivder.authorize) {
-    bool authorized = false;
     try {
       /* Note, we are holding a lock across use callback here. Typically
        * considered dangerous (since carries risk of deadlock if callback
@@ -2748,11 +2761,11 @@ void wamp_session::authorize(const std::string& uri, auth_provider::action actio
     } catch(...) {
       throw wamp_error(WAMP_ERROR_AUTHORIZATION_FAILED, "authorization failure");
     }
-
-    if( !authorized ) {
+    /*if( !authorized.allow ) {
       throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "action is not authorized");
-    }
+    }*/
   }
+  return authorized;
 }
 
 std::string wamp_session::agent() const

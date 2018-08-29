@@ -131,6 +131,41 @@ void wamp_router::handle_inbound_call(
   // TODO: use direct lookup here, instead of that call to public function,
   // wheich can then be deprecated
   try {
+    /* Check if this call is authorized */
+    auto authorization = ws->authorize(uri, auth_provider::action::call);
+
+    if( !authorization.allow )
+      throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "call is not authorized");
+
+    json_object details;
+
+    /* The caller want's to disclose it's identiry but the policy is not to */
+    auth_provider::disclosure disclose_me = auth_provider::disclosure::optional;
+    auto iter_disclose_me = options.find("disclose_me");
+    const bool found_disclose_me = (iter_disclose_me != options.end());
+    if(found_disclose_me) {
+      disclose_me = iter_disclose_me->second.as_bool()
+        ? auth_provider::disclosure::always 
+        : auth_provider::disclosure::never;
+    }
+
+    /* Caller wants disclosure but dealer is set to never disclose it */
+    if(disclose_me == auth_provider::disclosure::always 
+      && authorization.disclose == auth_provider::disclosure::never 
+      ) 
+      throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
+
+    if( authorization.disclose == auth_provider::disclosure::always 
+      || disclose_me == auth_provider::disclosure::always
+      ) {
+      /* Populate caller session details */
+      details["caller"] = ws->unique_id();
+      if(ws->has_authid())
+        details["caller_authid"] = ws->authid();
+      details["caller_authrole"] = ws->authrole();
+
+    }
+
     rpc_details rpc = m_rpcman->get_rpc_details(uri, ws->realm());
     if (rpc.registration_id) {
       if (rpc.type == rpc_details::eInternal) {
@@ -139,7 +174,7 @@ void wamp_router::handle_inbound_call(
         if (rpc.user_cb) {
 
           call_info info { request_id,
-              options,
+              options, // TODO: should details be passed instead of options?
               std::move(args),
               rpc.user };
 
@@ -169,7 +204,7 @@ void wamp_router::handle_inbound_call(
               }
             };
 
-          callee->invocation(rpc.registration_id, json_object(), args, fn);
+          callee->invocation(rpc.registration_id, std::move(details), args, fn);
         }
         else
           throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
@@ -264,15 +299,48 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
                               json_object& details,
                               wamp_args& args)
     {
-      ws.authorize(uri, auth_provider::action::call);
       this->handle_inbound_call(&ws, reqid, uri, details, args);
     };
 
     handlers.on_publish =
     [this](wamp_session& ws, t_request_id request_id, std::string uri,
            json_object options, wamp_args args) {
-      ws.authorize(uri, auth_provider::action::publish);
       try {
+        /* Check if this publish is authorized */
+        auto authorization = ws.authorize(uri, auth_provider::action::publish);
+
+        if( !authorization.allow )
+          throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "publish is not authorized");
+
+        json_object details;
+
+        /* The caller want's to disclose it's identiry but the policy is not to */
+        auth_provider::disclosure disclose_me = auth_provider::disclosure::optional;
+        auto iter_disclose_me = options.find("disclose_me");
+        const bool found_disclose_me = (iter_disclose_me != options.end());
+        if(found_disclose_me) {
+          disclose_me = iter_disclose_me->second.as_bool()
+            ? auth_provider::disclosure::always 
+            : auth_provider::disclosure::never;
+        }
+
+        /* Caller wants disclosure but dealer is set to never disclose it */
+        if(disclose_me == auth_provider::disclosure::always 
+          && authorization.disclose == auth_provider::disclosure::never 
+          ) 
+          throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
+
+        if( authorization.disclose == auth_provider::disclosure::always 
+          || disclose_me == auth_provider::disclosure::always
+          ) {
+          /* Populate caller session details */
+          details["publisher"] = ws.unique_id();
+          if(ws.has_authid())
+            details["publisher_authid"] = ws.authid();
+          details["publisher_authrole"] = ws.authrole();
+
+        }
+
         json_value* ptr = json_get_ptr(options, WAMP_ACKNOWLEDGE);
         bool acknowledge = ptr && ptr->is_true();
 
@@ -290,7 +358,12 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
     handlers.on_subscribe =
         [this](wamp_session& ws, t_request_id request_id, std::string uri,
                json_object& options) {
-      ws.authorize(uri, auth_provider::action::subscribe);
+      /* Check if this subscription is authorized */
+      auto authorization = ws.authorize(uri, auth_provider::action::subscribe);
+
+      if( !authorization.allow )
+        throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "subscribe is not authorized");
+
       return this->m_pubsub->subscribe(&ws, request_id, uri, options);
     };
 
@@ -303,7 +376,13 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
                                   t_request_id request_id,
                                   std::string& uri,
                                   json_object& options) -> void {
-      ws.authorize(uri, auth_provider::action::register1);
+
+      /* Check if this registration is authorized */
+      auto authorization = ws.authorize(uri, auth_provider::action::register1);
+
+      if( !authorization.allow )
+        throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "register is not authorized");
+
       m_rpcman->handle_inbound_register(ws, request_id, uri);
     };
 
