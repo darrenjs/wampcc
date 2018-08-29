@@ -29,14 +29,14 @@ int main(int, char**)
     auth_provider auth = {
       // provider_name
       [](const std::string& realm) { 
-        return "example_auth";
+        return "ticket_auth"; 
       },
       // policy
       [](const std::string& user, const std::string& realm) {
         if(realm == "default_realm")
           return auth_provider::auth_plan{ auth_provider::mode::open, {} };
         else if(realm == "private_realm")
-          return auth_provider::auth_plan(auth_provider::mode::authenticate, {"wampcra"});
+          return auth_provider::auth_plan(auth_provider::mode::authenticate, {"ticket"});
         else
           return auth_provider::auth_plan(auth_provider::mode::forbidden, {});
       },
@@ -45,11 +45,25 @@ int main(int, char**)
       // check_cra
       nullptr, 
       // user_secret
-      [](const std::string& /*user*/, const std::string& /*realm*/) {
-        return "secret2"; 
-      },
-      // user_role
       nullptr,
+      // user_role,
+      nullptr,
+      // authorize
+      nullptr,
+      // authenticate
+      [](const std::string& user, const std::string& realm, const std::string& authmethod, const std::string& signiture) {
+        auth_provider::authenticated auth;
+        auth.allow = true;
+        auth.role = WAMP_ANONYMOUS;
+
+        std::cout << "authenticate (user: " << user 
+                  << ", realm: " << realm 
+                  << ", method: " << authmethod 
+                  << ", signiture: " << signiture << std::endl;
+        
+
+        return auth;
+      }
     };
 
     auto fut = router.listen(auth, 55555);
