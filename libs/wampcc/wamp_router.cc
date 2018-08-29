@@ -306,10 +306,10 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
         if( authorization.disclose ) {
           /* Populate publisher session details */
-          details["caller"] = ws.unique_id();
+          details["publisher"] = ws.unique_id();
           if(ws.has_authid())
-            details["caller_authid"] = ws.authid();
-          details["caller_authrole"] = ws.authrole();
+            details["publisher_authid"] = ws.authid();
+          details["publisher_authrole"] = ws.authrole();
 
         } else {
           /* The caller want's to disclose it's identiry but the policy is not to */
