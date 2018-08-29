@@ -55,9 +55,15 @@ struct auth_provider
     call          /* call action */
   };
 
+  enum class disclosure {
+    optional,     /* sends caller identity only if requested by caller */
+    always,       /* always disclose caller identity */
+    never         /* never disclose caller identity */
+  };
+
   struct authorized {
     bool allow;
-    bool disclose;
+    disclosure disclose;
   };
 
   /* auth_plan combines auth requirement plus list of supported methods */

@@ -70,7 +70,7 @@ int main(int, char**)
       [](const std::string& realm, const std::string& authrole, const std::string& uri, auth_provider::action) {
         auth_provider::authorized authorized;
         authorized.allow = false;
-        authorized.disclose = false;
+        authorized.disclose = auth_provider::disclosure::optional;
 
         if(uri == "admin.greeting" && authrole == "admin") {
           authorized.allow = true;

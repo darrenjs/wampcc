@@ -2733,7 +2733,7 @@ auth_provider::authorized wamp_session::authorize(const std::string& uri, auth_p
 {
   /* Default behaviour is to authorize every call and not to disclose
    * caller and publisher idetity */
-  auth_provider::authorized authorized = {true, false};
+  auth_provider::authorized authorized = {true, auth_provider::disclosure::optional};
   if(m_auth_proivder.authorize) {
     try {
       /* Note, we are holding a lock across use callback here. Typically

@@ -139,21 +139,31 @@ void wamp_router::handle_inbound_call(
 
     json_object details;
 
-    if( authorization.disclose ) {
+    /* The caller want's to disclose it's identiry but the policy is not to */
+    auth_provider::disclosure disclose_me = auth_provider::disclosure::optional;
+    auto iter_disclose_me = options.find("disclose_me");
+    const bool found_disclose_me = (iter_disclose_me != options.end());
+    if(found_disclose_me) {
+      disclose_me = iter_disclose_me->second.as_bool()
+        ? auth_provider::disclosure::always 
+        : auth_provider::disclosure::never;
+    }
+
+    /* Caller wants disclosure but dealer is set to never disclose it */
+    if(disclose_me == auth_provider::disclosure::always 
+      && authorization.disclose == auth_provider::disclosure::never 
+      ) 
+      throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
+
+    if( authorization.disclose == auth_provider::disclosure::always 
+      || disclose_me == auth_provider::disclosure::always
+      ) {
       /* Populate caller session details */
       details["caller"] = ws->unique_id();
       if(ws->has_authid())
         details["caller_authid"] = ws->authid();
       details["caller_authrole"] = ws->authrole();
 
-    } else {
-      /* The caller want's to disclose it's identiry but the policy is not to */
-      auto iter_disclose_me = options.find("disclose_me");
-      const bool found_disclose_me = (iter_disclose_me != options.end());
-      bool disclose_me = found_disclose_me? iter_disclose_me->second.as_bool() : false;
-
-      if(disclose_me)
-        throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
     }
 
     rpc_details rpc = m_rpcman->get_rpc_details(uri, ws->realm());
@@ -304,21 +314,31 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
 
         json_object details;
 
-        if( authorization.disclose ) {
-          /* Populate publisher session details */
+        /* The caller want's to disclose it's identiry but the policy is not to */
+        auth_provider::disclosure disclose_me = auth_provider::disclosure::optional;
+        auto iter_disclose_me = options.find("disclose_me");
+        const bool found_disclose_me = (iter_disclose_me != options.end());
+        if(found_disclose_me) {
+          disclose_me = iter_disclose_me->second.as_bool()
+            ? auth_provider::disclosure::always 
+            : auth_provider::disclosure::never;
+        }
+
+        /* Caller wants disclosure but dealer is set to never disclose it */
+        if(disclose_me == auth_provider::disclosure::always 
+          && authorization.disclose == auth_provider::disclosure::never 
+          ) 
+          throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
+
+        if( authorization.disclose == auth_provider::disclosure::always 
+          || disclose_me == auth_provider::disclosure::always
+          ) {
+          /* Populate caller session details */
           details["publisher"] = ws.unique_id();
           if(ws.has_authid())
             details["publisher_authid"] = ws.authid();
           details["publisher_authrole"] = ws.authrole();
 
-        } else {
-          /* The caller want's to disclose it's identiry but the policy is not to */
-          auto iter_disclose_me = options.find("disclose_me");
-          const bool found_disclose_me = (iter_disclose_me != options.end());
-          bool disclose_me = found_disclose_me? iter_disclose_me->second.as_bool() : false;
-
-          if(disclose_me)
-            throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
         }
 
         json_value* ptr = json_get_ptr(options, WAMP_ACKNOWLEDGE);

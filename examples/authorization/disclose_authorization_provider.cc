@@ -70,10 +70,10 @@ int main(int, char**)
       [](const std::string& realm, const std::string& authrole, const std::string& uri, auth_provider::action) {
         auth_provider::authorized authorized;
         authorized.allow = true;
-        authorized.disclose = false;
+        authorized.disclose = auth_provider::disclosure::never;
 
         if(realm == "private_realm") {
-          authorized.disclose = true;
+          authorized.disclose = auth_provider::disclosure::optional;
         }
         
         return authorized;
