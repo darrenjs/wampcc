@@ -52,7 +52,9 @@ int main(int, char**)
       nullptr,
       // authenticate
       [](const std::string& user, const std::string& realm, const std::string& authmethod, const std::string& signiture) {
-        bool auth = true;
+        auth_provider::authenticated auth;
+        auth.allow = true;
+        auth.role = WAMP_ANONYMOUS;
 
         std::cout << "authenticate (user: " << user 
                   << ", realm: " << realm 

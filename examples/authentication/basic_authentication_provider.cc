@@ -48,6 +48,8 @@ int main(int, char**)
       [](const std::string& /*user*/, const std::string& /*realm*/) {
         return "secret2"; 
       },
+      // user_role
+      nullptr,
     };
 
     auto fut = router.listen(auth, 55555);

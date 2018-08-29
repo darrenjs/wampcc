@@ -796,6 +796,8 @@ void wamp_session::handle_HELLO(json_array& ja)
   const bool found_agent = (iter_agent != authopts.end());
   std::string agent = found_agent? iter_agent->second.as_string() : "";
 
+  std::string authrole = WAMP_ANONYMOUS;
+
   if (realm.empty())
     throw auth_error(WAMP_ERROR_NO_SUCH_REALM, "empty realm not allowed");
 
@@ -816,8 +818,6 @@ void wamp_session::handle_HELLO(json_array& ja)
       m_agent.first = true;
       m_agent.second = agent;
     }
-
-    std::string authrole = WAMP_ANONYMOUS;
 
     if (m_auth_proivder.user_role && m_authid.first) {
       authrole = m_auth_proivder.user_role(m_authid.second, m_realm);
@@ -891,7 +891,7 @@ void wamp_session::handle_HELLO(json_array& ja)
     challenge["authprovider"] = m_auth_proivder.provider_name(realm);
     challenge["authid"] = authid;
     challenge["timestamp"] = iso8601_utc_timestamp();
-    challenge["authrole"] = "user";
+    challenge["authrole"] = authrole;
     challenge["authmethod"] = WAMP_WAMPCRA;
     challenge["session"] = std::to_string( unique_id() );
     std::string challengestr = json_encode( challenge );
@@ -1040,8 +1040,12 @@ void wamp_session::handle_AUTHENTICATE(json_array& ja)
 
   if(m_auth_proivder.authenticate) {
     try {
-      check_ok = m_auth_proivder.authenticate(m_authid.second, m_realm, authmethod,
+      auto authenticated = m_auth_proivder.authenticate(m_authid.second, m_realm, authmethod,
                                               peer_digest);
+
+      check_ok = authenticated.allow;
+      std::lock_guard<std::mutex> guard(m_realm_lock);
+      m_authrole = authenticated.role;
     } catch(...) {
       throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                       "error in custom authentication function");

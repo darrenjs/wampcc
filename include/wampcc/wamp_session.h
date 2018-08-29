@@ -56,8 +56,13 @@ struct auth_provider
   };
 
   struct authorized {
-    bool allow;
-    bool disclose;
+    bool allow;       /* whether the action is authorized */
+    bool disclose;    /* whether caller/publisher identity should be disclosed */
+  };
+
+  struct authenticated {
+    bool allow;       /* whether the user is authenticated */
+    std::string role; /* role assigned to the user */
   };
 
   /* auth_plan combines auth requirement plus list of supported methods */
@@ -113,10 +118,16 @@ struct auth_provider
                 action)> authorize;
 
   /* Check user authentication */
-  std::function<bool(const std::string& user,
+  std::function<authenticated(const std::string& user,
                 const std::string& realm,
                 const std::string& authmethod,
                 const std::string& signiture)> authenticate;
+  /* Create the content for CHALLENGE message */
+  /*std::function<json_object(const std::string& realm,
+                            const std::string& user,
+                            const std::string& authmethod,
+                            const std::string& authprovider;
+                            t_session_id session) hello;*/  
 
   /* Create an auth_provider object which implements a
    * no-authentication-required policy. */
