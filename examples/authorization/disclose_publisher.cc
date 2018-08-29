@@ -8,53 +8,59 @@
 #include "wampcc/wampcc.h"
 
 #include <memory>
+#include <random>
 #include <iostream>
 
 using namespace wampcc;
+
+std::tuple<std::string, int> get_addr_port(int argc, char** argv)
+{
+  if (argc != 3)
+    throw std::runtime_error("arguments must be: ADDR PORT");
+  return std::tuple<std::string,int>(argv[1], std::stoi(argv[2]));
+}
 
 int main(int argc, char** argv)
 {
   try
   {
-    if (argc < 3)
-      throw std::runtime_error("arguments must be: ADDR PORT RPC_URI (RPC_URI defaults to 'greeting')");
-    const char* host = argv[1];
-    int port = std::stoi(argv[2]);
-    std::string rpc_uri = (argc > 3)? argv[3]:"greeting.personalized";
+    auto endpoint = get_addr_port(argc, argv);
+
     /* Create the wampcc kernel, which provides event and IO threads. */
 
-    std::unique_ptr<kernel> the_kernel(new kernel({}, wampcc::logger::console()));
+    std::unique_ptr<kernel> the_kernel( new wampcc::kernel({}, wampcc::logger::console() ));
 
     /* Create the TCP socket and attempt to connect. */
 
     std::unique_ptr<tcp_socket> sock(new tcp_socket(the_kernel.get()));
-    auto fut = sock->connect(host, port);
+    auto fut = sock->connect(std::get<0>(endpoint), std::get<1>(endpoint));
 
     if (fut.wait_for(std::chrono::milliseconds(250)) != std::future_status::ready)
       throw std::runtime_error("timeout during connect");
 
-    if (uverr ec = fut.get())
+    if (wampcc::uverr ec = fut.get())
       throw std::runtime_error("connect failed: " + std::to_string(ec.os_value()) + ", " + ec.message());
 
     /* Using the connected socket, now create the wamp session object. */
 
     std::promise<void> ready_to_exit;
+
     std::shared_ptr<wamp_session> session = wamp_session::create<websocket_protocol>(
       the_kernel.get(),
       std::move(sock),
-      [&ready_to_exit](wamp_session&, bool is_open) {
+      [&ready_to_exit](wampcc::wamp_session&, bool is_open){
         if (!is_open)
           try {
             ready_to_exit.set_value();
-          }
-          catch (...) { /* ignore promise already set error */ }
-      }, {});
+          } catch (...) {/* ignore promise already set error */}
+      },
+      {});
 
     /* Logon to a WAMP realm, and wait for session to be deemed open. */
 
     client_credentials credentials;
     credentials.realm="private_realm";
-    credentials.authid="tony";
+    credentials.authid="peter";
     credentials.authmethods = {"wampcra"};
     credentials.secret_fn = []() -> std::string { return "secret2"; };
 
@@ -66,29 +72,20 @@ int main(int argc, char** argv)
     if(!session->is_open())
       throw std::runtime_error("session logon failed");
 
-    /* Session is now open, call a remote procedure. */
+    /* Session is now open, publish to a topic. */
 
-    wamp_args call_args;
-    call_args.args_list = json_array({"hello from disclosed_caller"});
+    std::vector<std::string> coin_sides({"heads", "tails"});
+    std::random_device rd;
+    std::mt19937 engine( rd() );
+    std::uniform_int_distribution<> distr(0, coin_sides.size()-1);
+    auto exit_fut = ready_to_exit.get_future();
 
-    /* Note, disclose_me is not mendatory but will return an exception if
-     * if the router does not allow dislosure */
-    session->call(rpc_uri, { {"disclose_me", true} }, call_args,
-                  [&ready_to_exit](wampcc::wamp_session&, result_info r) {
-                    try {
-                      if(r.was_error) {
-                        std::cout << "error: " << r.error_uri << std::endl;
-                      } else {
-                        std::cout << "result: " << r.args.args_list << std::endl;  
-                      }
-                      
-                      ready_to_exit.set_value();
-                    } catch (...) { /* ignore promise already set error */}
-                  });
+    while ( exit_fut.wait_for(std::chrono::milliseconds(500)) != std::future_status::ready )
+    {
+      wamp_args args({{coin_sides[distr(engine)]}});
+      session->publish("coin_toss", {}, std::move(args)); // publish to topic "coin_toss"
+    }
 
-    /* Wait for RPC completion or until wamp session is closed. */
-
-    ready_to_exit.get_future().wait();
     return 0;
   }
   catch (std::exception& e)
