@@ -1105,10 +1105,21 @@ std::future<void> wamp_session::hello(client_credentials cc)
 
   auto initiate_cb = [this, cc]()
     {
+
       json_object roles ({
-          {"publisher",  json_object()},
+          {"publisher",  json_object({
+            {"features", {json_object({
+              {"publisher_identification", true}
+              })
+            }}
+          })},
           {"subscriber", json_object()},
-          {"caller",     json_object()},
+          {"caller",  json_object({
+            {"features", json_object({
+              {"caller_identification", true}
+              })
+            }
+          })},
           {"callee",     json_object()}
         });
 
