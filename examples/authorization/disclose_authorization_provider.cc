@@ -18,7 +18,7 @@ int main(int, char**)
   try {
     /* Create the wampcc kernel. */
 
-    kernel the_kernel;
+    kernel the_kernel({}, wampcc::logger::console());
 
     /* Create an embedded wamp router. */
 
@@ -70,10 +70,10 @@ int main(int, char**)
       [](const std::string& realm, const std::string& authrole, const std::string& uri, auth_provider::action) {
         auth_provider::authorized authorized;
         authorized.allow = true;
-        authorized.disclose = auth_provider::disclosure::never;
+        authorized.disclose = auth_provider::disclosure::optional;
 
         if(realm == "private_realm") {
-          authorized.disclose = auth_provider::disclosure::optional;
+          authorized.disclose = auth_provider::disclosure::always;
         }
         
         return authorized;

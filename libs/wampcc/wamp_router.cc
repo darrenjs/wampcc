@@ -345,7 +345,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
         bool acknowledge = ptr && ptr->is_true();
 
         auto publication_id = m_pubsub->inbound_publish(
-          ws.realm(), uri, std::move(options), std::move(args));
+          ws.realm(), uri, std::move(details), std::move(args));
 
         if (acknowledge)
           ws.published(request_id, publication_id);
