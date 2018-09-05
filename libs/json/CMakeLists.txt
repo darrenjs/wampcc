@@ -45,7 +45,7 @@ if(BUILD_SHARED_LIBS)
                              PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
                              ${JANSSON_INCLUDE_DIRS} )
 
-  target_link_libraries(wampcc_json_shared jansson)
+  target_link_libraries(wampcc_json_shared ${JANSSON_LIBRARIES})
 
   list(APPEND TO_INSTALL wampcc_json_shared)
 
