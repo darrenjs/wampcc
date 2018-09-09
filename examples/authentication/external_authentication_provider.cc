@@ -55,6 +55,7 @@ int main(int, char**)
         auth_provider::authenticated auth;
         auth.allow = true;
         auth.role = WAMP_ANONYMOUS;
+        auth.authid = user;
 
         std::cout << "authenticate (user: " << user 
                   << ", realm: " << realm 

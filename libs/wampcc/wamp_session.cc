@@ -883,47 +883,51 @@ void wamp_session::handle_HELLO(json_array& ja)
 
   json_object extra;
 
-  if(authmethod == WAMP_WAMPCRA) {
-    /* --- Perform wampcra authentication --- */
+  if(m_auth_proivder.hello) {
+    extra = m_auth_proivder.hello(authid, realm, authmethod, m_auth_proivder.provider_name(realm), unique_id() );
+  } else {
+    if(authmethod == WAMP_WAMPCRA) {
+      /* --- Perform wampcra authentication --- */
 
-    json_object challenge;
-    challenge["nonce"] = random_ascii_string(30);
-    challenge["authprovider"] = m_auth_proivder.provider_name(realm);
-    challenge["authid"] = authid;
-    challenge["timestamp"] = iso8601_utc_timestamp();
-    challenge["authrole"] = authrole;
-    challenge["authmethod"] = WAMP_WAMPCRA;
-    challenge["session"] = std::to_string( unique_id() );
-    std::string challengestr = json_encode( challenge );
+      json_object challenge;
+      challenge["nonce"] = random_ascii_string(30);
+      challenge["authprovider"] = m_auth_proivder.provider_name(realm);
+      challenge["authid"] = authid;
+      challenge["timestamp"] = iso8601_utc_timestamp();
+      challenge["authrole"] = authrole;
+      challenge["authmethod"] = WAMP_WAMPCRA;
+      challenge["session"] = std::to_string( unique_id() );
+      std::string challengestr = json_encode( challenge );
 
-    {
-      std::lock_guard<std::mutex> guard(m_realm_lock);
-      if (m_challenge.empty())
-        m_challenge = challengestr;
-      else
-        throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
-                         "challenge already issued");
-    }
+      {
+        std::lock_guard<std::mutex> guard(m_realm_lock);
+        if (m_challenge.empty())
+          m_challenge = challengestr;
+        else
+          throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
+                           "challenge already issued");
+      }
 
-    extra["challenge"] = std::move(challengestr);
+      extra["challenge"] = std::move(challengestr);
 
-    // attach salting parameters if available
-    if (m_auth_proivder.cra_salt) {
-      auto salt = m_auth_proivder.cra_salt(realm, authid);
-      extra.insert({"salt",salt.salt});
-      extra.insert({"keylen",salt.keylen});
-      extra.insert({"iterations",salt.iterations});
-    }
+      // attach salting parameters if available
+      if (m_auth_proivder.cra_salt) {
+        auto salt = m_auth_proivder.cra_salt(realm, authid);
+        extra.insert({"salt",salt.salt});
+        extra.insert({"keylen",salt.keylen});
+        extra.insert({"iterations",salt.iterations});
+      }
 
-    {
-      std::lock_guard<std::mutex> guard(m_realm_lock);
-    }
+      {
+        std::lock_guard<std::mutex> guard(m_realm_lock);
+      }
 
-  } else if (authmethod == WAMP_TICKET) {
-    /* --- Perform ticket authentication --- */
-  } else
-    throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
-                     "'wampcra' or 'ticket' not available for both client and server");
+    } else if (authmethod == WAMP_TICKET) {
+      /* --- Perform ticket authentication --- */
+    } else
+      throw auth_error(WAMP_ERROR_AUTHORIZATION_FAILED,
+                       "'wampcra' or 'ticket' not available for both client and server");
+  }
 
   {
     std::lock_guard<std::mutex> guard(m_realm_lock);  
@@ -951,68 +955,76 @@ void wamp_session::handle_CHALLENGE(json_array& ja)
     throw protocol_error("Extra must be dict");
 
   const std::string& authmethod = ja[1].as_string();
+  const json_object & extra = ja[2].as_object();
 
   LOG_INFO(m_log_prefix << "challenge '" << authmethod << "'");
 
-  if (authmethod == WAMP_WAMPCRA) {
-
-    const json_object & extra = ja[2].as_object();
-    std::string challmsg = json_get_copy(extra, "challenge", "").as_string();
-    if (challmsg == "")
-      throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
-                       "challenge not found in Extra");
-
-    /* generate the authentication digest */
-
-    std::string key = m_client_secret_fn();
-
-    auto iter_salt = extra.find("salt");
-    if (iter_salt != end(extra)) {
-      int keylen = (int) json_get_ref(extra, "keylen").as_int();
-      int iterations = (int) json_get_ref(extra, "iterations").as_int();
-      const std::string& salt = iter_salt->second.as_string();
-
-      std::vector<unsigned char> derived_key(keylen, {});
-
-      // compute derived key
-      if (PKCS5_PBKDF2_HMAC(key.c_str(),  key.size(),
-                            (const unsigned char *)salt.c_str(), salt.size(),
-                            iterations,
-                            EVP_sha256(), /* sha256 is used by Autobahn */
-                            keylen, derived_key.data()) == 0)
-        throw std::runtime_error("PKCS5_PBKDF2_HMAC failed");
-
-      // derived key to base64
-      char b64[50] = {}; // 256 bits / 6 bits
-      ap_base64encode(b64, (char*)derived_key.data(), derived_key.size());
-
-      key = b64;
-    }
-
-    char digest[256] = {};
-    unsigned int digestlen = sizeof(digest)-1;
-
-    int err = HMACSHA256_base64(key.c_str(), key.size(),
-                                challmsg.c_str(), challmsg.size(),
-                                digest, &digestlen);
-
-    if (err == 0) {
-      json_array msg{msg_type::wamp_msg_authenticate, digest, json_object()};
-      send_msg(msg);
-    }
-    else
-      throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
-                       "failed to compute HMAC SHA256 diget");
-
-  } else if( authmethod == WAMP_TICKET) {
-
-    std::string key = m_client_secret_fn();
-    json_array msg{msg_type::wamp_msg_authenticate, key, json_object()};
+  if(m_client_challenge_fn) {
+    //challenge_fn
+    auto signiture = m_client_challenge_fn(m_authid.second, authmethod, extra);
+    json_array msg{msg_type::wamp_msg_authenticate, signiture, json_object()};
     send_msg(msg);
+  } else {
 
-  } else
-    throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
-                     "unknown AuthMethod (only wampcra supported)");
+    if (authmethod == WAMP_WAMPCRA) {
+
+      std::string challmsg = json_get_copy(extra, "challenge", "").as_string();
+      if (challmsg == "")
+        throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
+                         "challenge not found in Extra");
+
+      /* generate the authentication digest */
+
+      std::string key = m_client_secret_fn();
+
+      auto iter_salt = extra.find("salt");
+      if (iter_salt != end(extra)) {
+        int keylen = (int) json_get_ref(extra, "keylen").as_int();
+        int iterations = (int) json_get_ref(extra, "iterations").as_int();
+        const std::string& salt = iter_salt->second.as_string();
+
+        std::vector<unsigned char> derived_key(keylen, {});
+
+        // compute derived key
+        if (PKCS5_PBKDF2_HMAC(key.c_str(),  key.size(),
+                              (const unsigned char *)salt.c_str(), salt.size(),
+                              iterations,
+                              EVP_sha256(), /* sha256 is used by Autobahn */
+                              keylen, derived_key.data()) == 0)
+          throw std::runtime_error("PKCS5_PBKDF2_HMAC failed");
+
+        // derived key to base64
+        char b64[50] = {}; // 256 bits / 6 bits
+        ap_base64encode(b64, (char*)derived_key.data(), derived_key.size());
+
+        key = b64;
+      }
+
+      char digest[256] = {};
+      unsigned int digestlen = sizeof(digest)-1;
+
+      int err = HMACSHA256_base64(key.c_str(), key.size(),
+                                  challmsg.c_str(), challmsg.size(),
+                                  digest, &digestlen);
+
+      if (err == 0) {
+        json_array msg{msg_type::wamp_msg_authenticate, digest, json_object()};
+        send_msg(msg);
+      }
+      else
+        throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
+                         "failed to compute HMAC SHA256 diget");
+
+    } else if( authmethod == WAMP_TICKET) {
+
+      std::string key = m_client_secret_fn();
+      json_array msg{msg_type::wamp_msg_authenticate, key, json_object()};
+      send_msg(msg);
+
+    } else
+      throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
+                       "unknown AuthMethod (only wampcra supported)");
+  }
 
 }
 
@@ -1046,6 +1058,7 @@ void wamp_session::handle_AUTHENTICATE(json_array& ja)
       check_ok = authenticated.allow;
       std::lock_guard<std::mutex> guard(m_realm_lock);
       m_authrole = authenticated.role;
+      m_authid.second = authenticated.authid;
     } catch(...) {
       throw auth_error(WAMP_ERROR_AUTHENTICATION_FAILED,
                       "error in custom authentication function");
@@ -1157,6 +1170,7 @@ std::future<void> wamp_session::hello(client_credentials cc)
   check_hello(cc.realm, {true, cc.authid});
 
   m_client_secret_fn = std::move( cc.secret_fn );
+  m_client_challenge_fn = std::move( cc.challenge_fn );
 
   auto initiate_cb = [this, cc]()
     {

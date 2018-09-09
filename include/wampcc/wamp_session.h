@@ -67,8 +67,9 @@ struct auth_provider
   };
 
   struct authenticated {
-    bool allow;       /* whether the user is authenticated */
-    std::string role; /* role assigned to the user */
+    bool allow;         /* whether the user is authenticated */
+    std::string role;   /* role assigned to the user */
+    std::string authid; /* role assigned to the user */
   };
 
   /* auth_plan combines auth requirement plus list of supported methods */
@@ -128,12 +129,13 @@ struct auth_provider
                 const std::string& realm,
                 const std::string& authmethod,
                 const std::string& signiture)> authenticate;
+
   /* Create the content for CHALLENGE message */
-  /*std::function<json_object(const std::string& realm,
-                            const std::string& user,
+  std::function<json_object(const std::string& user,
+                            const std::string& realm,
                             const std::string& authmethod,
-                            const std::string& authprovider;
-                            t_session_id session) hello;*/  
+                            const std::string& authprovider,
+                            t_session_id session)> hello;
 
   /* Create an auth_provider object which implements a
    * no-authentication-required policy. */
@@ -167,6 +169,11 @@ struct client_credentials
   std::string authid;
   std::vector< std::string > authmethods;
   std::function< std::string() > secret_fn;
+
+  std::function< std::string(
+      const std::string& user,
+      const std::string& authmethod,
+      const json_object& extra)> challenge_fn;
 
   client_credentials() = default;
   client_credentials(std::string realm_) : realm(std::move(realm_)) {}
@@ -891,6 +898,10 @@ private:
   t_request_id m_next_request_id;
 
   std::function< std::string() > m_client_secret_fn;
+  std::function< std::string(
+      const std::string& user,
+      const std::string& authmethod,
+      const json_object& extra)> m_client_challenge_fn;
 
   std::string m_realm;
   mutable std::mutex m_realm_lock;
