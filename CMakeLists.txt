@@ -61,7 +61,7 @@ endif()
 ## Try to find libssl
 ##
 find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
+
 
 ##
 ## Try to find libuv
@@ -120,6 +120,9 @@ include_directories("${PROJECT_BINARY_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}/3rdparty/websocketpp")
 include_directories("${PROJECT_SOURCE_DIR}/3rdparty")
+
+# add external dependencies after the wampcc includes
+include_directories(${OPENSSL_INCLUDE_DIR})
 
 # include sub directories
 add_subdirectory(libs/json)
