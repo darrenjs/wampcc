@@ -4,15 +4,7 @@ else()
   set(EXTRA_LIBS ${EXTRA_LIBS} wampcc_static wampcc_json_static)
 endif()
 
-if (WIN32)
-  list(APPEND EXTRA_LIBS libuv ssleay32 libeay32)
-  # libuv library dependencies
-  list(APPEND EXTRA_LIBS advapi32 iphlpapi psapi shell32 user32 userenv ws2_32)
-else()
-  list(APPEND EXTRA_LIBS uv crypto ssl pthread)
-endif()
-
-list(APPEND EXTRA_LIBS uv)
+list(APPEND EXTRA_LIBS ${LIBUV_LIBRARIES} ${OPENSSL_LIBRARIES} ${JANSSON_LIBRARIES})
 
 if(BUILD_UTILS)
 
