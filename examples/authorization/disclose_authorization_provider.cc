@@ -18,7 +18,7 @@ int main(int, char**)
   try {
     /* Create the wampcc kernel. */
 
-    kernel the_kernel({}, wampcc::logger::console());
+    kernel the_kernel({}, logger::console());
 
     /* Create an embedded wamp router. */
 
