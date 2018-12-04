@@ -28,8 +28,8 @@ int main(int, char**)
 
     auth_provider auth = {
       // provider_name
-      [](const std::string& realm) { 
-        return "example_auth"; 
+      [](const std::string& realm) {
+        return "example_auth";
       },
       // policy
       [](const std::string& user, const std::string& realm) {
@@ -41,13 +41,15 @@ int main(int, char**)
           return auth_provider::auth_plan(auth_provider::mode::forbidden, {});
       },
       // cra_salt
-      nullptr, 
+      nullptr,
       // check_cra
-      nullptr, 
+      nullptr,
       // user_secret
       [](const std::string& /*user*/, const std::string& /*realm*/) {
-        return "secret2"; 
+        return "secret2";
       },
+      // check_ticket
+      nullptr,
 
       /* Authorization provider */
 
@@ -75,7 +77,7 @@ int main(int, char**)
         if(realm == "private_realm") {
           authorized.disclose = auth_provider::disclosure::always;
         }
-        
+
         return authorized;
       }
     };

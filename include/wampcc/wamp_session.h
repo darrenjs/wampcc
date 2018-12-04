@@ -66,10 +66,11 @@ struct auth_provider
     disclosure disclose;    /* whether caller/publisher identity should be disclosed */
   };
 
+  /* Result of server-side custom authentication */
   struct authenticated {
     bool allow;         /* whether the user is authenticated */
     std::string role;   /* role assigned to the user */
-    std::string authid; /* role assigned to the user */
+    std::string authid; /* authid to assign to the session */
   };
 
   /* auth_plan combines auth requirement plus list of supported methods */
@@ -112,9 +113,15 @@ struct auth_provider
   std::function<std::string(const std::string& user,
                             const std::string& realm)> user_secret;
 
-  /* Obtain the role for given user and realm.
-   * TODO: more description
-   * */
+  /* Check the ticket presented by a client during ticket based
+   * authentication. Return true if ticket is valid and permits access. */
+  std::function<bool(const std::string& user,
+                     const std::string& realm,
+                     const std::string& ticket)> check_ticket;
+
+  /* Obtain the wamp authrole for given user and realm. As per the WAMP
+   * specification, authrole can be used to identify user rols like 'manager'
+   * or 'staff' etc. */
   std::function<std::string(const std::string& user,
                             const std::string& realm)> user_role;
 
@@ -124,13 +131,13 @@ struct auth_provider
                 const std::string& uri,
                 action)> authorize;
 
-  /* Check user authentication */
+  /* Custom authentication -- check user authentication */
   std::function<authenticated(const std::string& user,
                 const std::string& realm,
                 const std::string& authmethod,
                 const std::string& signiture)> authenticate;
 
-  /* Create the content for CHALLENGE message */
+  /* Custom authentication. Create the content for CHALLENGE message. */
   std::function<json_object(const std::string& user,
                             const std::string& realm,
                             const std::string& authmethod,
@@ -168,8 +175,16 @@ struct client_credentials
   std::string realm;
   std::string authid;
   std::vector< std::string > authmethods;
+
+  /* If authmethods includes 'wampcra', this callback must be provided and
+   * shall return the password associated with the authid. */
   std::function< std::string() > secret_fn;
 
+  /* If authmethods includes 'ticket', this callback must be provided and shall
+   * return the ticket the client will present to the server. */
+  std::function< std::string() > ticket_fn;
+
+  /* Custom authentication */
   std::function< std::string(
       const std::string& user,
       const std::string& authmethod,
@@ -577,7 +592,7 @@ public:
 
 
   /** Authorization check for given uri and action (publish, subscribe, register, call).
-   * If the uri/action combination is not authorized throw and exception 
+   * If the uri/action combination is not authorized throw and exception
    * Used by server-mode session */
   auth_provider::authorized authorize(const std::string& uri, auth_provider::action);
 
@@ -898,6 +913,7 @@ private:
   t_request_id m_next_request_id;
 
   std::function< std::string() > m_client_secret_fn;
+  std::function< std::string() > m_client_ticket_fn;
   std::function< std::string(
       const std::string& user,
       const std::string& authmethod,

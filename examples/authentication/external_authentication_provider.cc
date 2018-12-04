@@ -28,8 +28,8 @@ int main(int, char**)
 
     auth_provider auth = {
       // provider_name
-      [](const std::string& realm) { 
-        return "ticket_auth"; 
+      [](const std::string& realm) {
+        return "ticket_auth";
       },
       // policy
       [](const std::string& user, const std::string& realm) {
@@ -41,10 +41,12 @@ int main(int, char**)
           return auth_provider::auth_plan(auth_provider::mode::forbidden, {});
       },
       // cra_salt
-      nullptr, 
+      nullptr,
       // check_cra
-      nullptr, 
+      nullptr,
       // user_secret
+      nullptr,
+      // check_ticket
       nullptr,
       // user_role,
       nullptr,
@@ -57,11 +59,10 @@ int main(int, char**)
         auth.role = WAMP_ANONYMOUS;
         auth.authid = user;
 
-        std::cout << "authenticate (user: " << user 
-                  << ", realm: " << realm 
-                  << ", method: " << authmethod 
+        std::cout << "authenticate (user: " << user
+                  << ", realm: " << realm
+                  << ", method: " << authmethod
                   << ", signiture: " << signiture << std::endl;
-        
 
         return auth;
       }

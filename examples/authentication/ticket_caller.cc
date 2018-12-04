@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     std::string rpc_uri = (argc > 3)? argv[3]:"greeting";
     /* Create the wampcc kernel, which provides event and IO threads. */
 
-    std::unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
+    std::unique_ptr<kernel> the_kernel(new kernel({}, logger::console()));
 
     /* Create the TCP socket and attempt to connect. */
 
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     credentials.realm="private_realm";
     credentials.authid="tony";
     credentials.authmethods = {"ticket"};
-    credentials.secret_fn = []() -> std::string { return "secret-ticket"; };
+    credentials.ticket_fn = []() -> std::string { return "secret-ticket"; };
 
     auto logon_fut = session->hello(credentials);
 
@@ -78,9 +78,9 @@ int main(int argc, char** argv)
                       if(r.was_error) {
                         std::cout << "error: " << r.error_uri << std::endl;
                       } else {
-                        std::cout << "result: " << r.args.args_list << std::endl;  
+                        std::cout << "result: " << r.args.args_list << std::endl;
                       }
-                      
+
                       ready_to_exit.set_value();
                     } catch (...) { /* ignore promise already set error */}
                   });
