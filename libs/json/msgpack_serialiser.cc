@@ -341,7 +341,7 @@ public:
     return true;
   }
 
-  void parse_error(size_t parsed_offset, size_t error_offset)
+  [[ noreturn ]] void parse_error(size_t parsed_offset, size_t error_offset)
   {
 #ifdef WAMPCC_TRACE_MSGPACK
     std::cout << m_indent << __FUNCTION__ << std::endl;
@@ -350,7 +350,7 @@ public:
                         error_offset);
   }
 
-  void insufficient_bytes(size_t parsed_offset, size_t error_offset)
+  [[ noreturn ]] void insufficient_bytes(size_t parsed_offset, size_t error_offset)
   {
 #ifdef WAMPCC_TRACE_MSGPACK
     std::cout << m_indent << __FUNCTION__ << std::endl;
