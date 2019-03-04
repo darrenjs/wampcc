@@ -18,8 +18,13 @@ if(BUILD_STATIC_LIBS)
 
   set_target_properties(wampcc_json_static PROPERTIES OUTPUT_NAME wampcc_json)
   target_include_directories(wampcc_json_static
-                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
-                             ${JANSSON_INCLUDE_DIRS} )
+                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include)
+
+  target_link_libraries(wampcc_json_static
+	PUBLIC
+      ssl
+	  uv
+      Jansson)
 
   list(APPEND TO_INSTALL wampcc_json_static)
 endif()
@@ -42,10 +47,15 @@ if(BUILD_SHARED_LIBS)
   set_property(TARGET wampcc_json_shared PROPERTY SOVERSION 6 )
 
   target_include_directories(wampcc_json_shared
-                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
-                             ${JANSSON_INCLUDE_DIRS} )
+    PRIVATE
+	  ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include)
 
-  target_link_libraries(wampcc_json_shared ${JANSSON_LIBRARIES})
+  target_link_libraries(wampcc_json_shared
+	PUBLIC
+      ssl
+	  uv
+	PRIVATE
+	  jansson)
 
   list(APPEND TO_INSTALL wampcc_json_shared)
 
