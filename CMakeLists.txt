@@ -131,5 +131,7 @@ add_subdirectory(utils)
 add_subdirectory(tests)
 add_subdirectory(examples)
 
-install(FILES ${PROJECT_BINARY_DIR}/wampcc.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}")
-install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}")
+install(FILES ${PROJECT_BINARY_DIR}/wampcc.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}" COMPONENT dev)
+install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}" COMPONENT dev)
+
+include(cmake/MakeDebPackages.cmake)

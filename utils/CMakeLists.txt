@@ -16,6 +16,6 @@ if(BUILD_UTILS)
   ##
   ## Install targets
   ##
-  install (TARGETS admin DESTINATION "${INSTALL_BIN_DIR}")
+  install (TARGETS admin DESTINATION "${INSTALL_BIN_DIR}" COMPONENT util)
 
 endif() # BUILD_UTILS
