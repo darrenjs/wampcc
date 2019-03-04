@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 
-project(wampcc)
-
-# Version number
 set (WAMPCC_VERSION_MAJOR 1)
 set (WAMPCC_VERSION_MINOR 6)
 set (WAMPCC_VERSION "${WAMPCC_VERSION_MAJOR}.${WAMPCC_VERSION_MINOR}")
+project(wampcc VERSION ${WAMPCC_VERSION})
+
+# Version number
 # Include extra cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
