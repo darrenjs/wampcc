@@ -276,17 +276,20 @@ json_array pubsub_man::get_topics(const std::string& realm) const
   /* EV thread */
 
   auto realm_iter = m_topics.find(realm);
-  if (realm_iter == m_topics.end())
-    throw std::runtime_error("realm not found");
 
-  wampcc::json_array topics;
+  wampcc::json_array uris;
 
-  const topic_registry& topic_reg = realm_iter->second;
+  // Note that it's not an error if the realm is not found in the map; that just
+  // means no topics have yet been registered.
 
-  for (auto & item : topic_reg)
-    topics.push_back(item.first);
+  if (realm_iter != m_topics.end()) {
+    const topic_registry& reg = realm_iter->second;
+    uris.reserve(reg.size());
+    for (auto & item : reg)
+      uris.push_back(item.first);
+  }
 
-  return topics;
+  return uris;
 }
 
 /* Add a subscription to a managed topic.  Need to sync the addition of the
