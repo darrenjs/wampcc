@@ -145,17 +145,17 @@ void wamp_router::handle_inbound_call(
     const bool found_disclose_me = (iter_disclose_me != options.end());
     if(found_disclose_me) {
       disclose_me = iter_disclose_me->second.as_bool()
-        ? auth_provider::disclosure::always 
+        ? auth_provider::disclosure::always
         : auth_provider::disclosure::never;
     }
 
     /* Caller wants disclosure but dealer is set to never disclose it */
-    if(disclose_me == auth_provider::disclosure::always 
-      && authorization.disclose == auth_provider::disclosure::never 
-      ) 
+    if(disclose_me == auth_provider::disclosure::always
+      && authorization.disclose == auth_provider::disclosure::never
+      )
       throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
 
-    if( authorization.disclose == auth_provider::disclosure::always 
+    if( authorization.disclose == auth_provider::disclosure::always
       || disclose_me == auth_provider::disclosure::always
       ) {
       /* Populate caller session details */
@@ -210,8 +210,12 @@ void wamp_router::handle_inbound_call(
           throw wamp_error(WAMP_ERROR_NO_ELIGIBLE_CALLEE);
       }
     }
-    else if (uri == WAMP_REFLECTION_TOPIC_LIST)
+    else if (uri == WAMP_REFLECTION_PROCEDURE_LIST) {
+      ws->result(request_id, m_rpcman->get_procedures(ws->realm()));
+    }
+    else if (uri == WAMP_REFLECTION_TOPIC_LIST) {
       ws->result(request_id, m_pubsub->get_topics(ws->realm()));
+    }
     else
     {
       /* RPC uri lookup failed */
@@ -320,17 +324,17 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
         const bool found_disclose_me = (iter_disclose_me != options.end());
         if(found_disclose_me) {
           disclose_me = iter_disclose_me->second.as_bool()
-            ? auth_provider::disclosure::always 
+            ? auth_provider::disclosure::always
             : auth_provider::disclosure::never;
         }
 
         /* Caller wants disclosure but dealer is set to never disclose it */
-        if(disclose_me == auth_provider::disclosure::always 
-          && authorization.disclose == auth_provider::disclosure::never 
-          ) 
+        if(disclose_me == auth_provider::disclosure::always
+          && authorization.disclose == auth_provider::disclosure::never
+          )
           throw wamp_error(WAMP_ERROR_DISCLOSE_ME_NOT_ALLOWED, "request for identity disclosure denied");
 
-        if( authorization.disclose == auth_provider::disclosure::always 
+        if( authorization.disclose == auth_provider::disclosure::always
           || disclose_me == auth_provider::disclosure::always
           ) {
           /* Populate caller session details */

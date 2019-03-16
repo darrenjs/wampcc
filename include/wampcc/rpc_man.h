@@ -47,6 +47,7 @@ public:
   rpc_man(kernel*, rpc_added_cb);
 
   void handle_inbound_register(wamp_session&, t_request_id, const std::string&);
+
   void handle_inbound_unregister(wamp_session&, t_request_id,
                                  t_registration_id);
 
@@ -59,6 +60,8 @@ public:
 
   void session_closed(std::shared_ptr<wamp_session>&);
 
+  json_array get_procedures(const std::string& realm) const;
+
 private:
   rpc_man(const rpc_man&) = delete;
   rpc_man& operator=(const rpc_man&) = delete;
@@ -68,7 +71,7 @@ private:
   logger& __logger; /* name chosen for log macros */
   rpc_added_cb m_rpc_added_cb;
 
-  std::mutex m_rpc_map_lock;
+  mutable std::mutex m_rpc_map_lock;
 
   uint64_t m_next_regid;
 

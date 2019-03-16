@@ -170,4 +170,27 @@ void rpc_man::handle_inbound_unregister(wamp_session& session,
   }
 }
 
+
+json_array rpc_man::get_procedures(const std::string& realm) const
+{
+  std::lock_guard<std::mutex> guard(m_rpc_map_lock);
+
+  auto realm_iter = m_realm_registry.find(realm);
+
+  wampcc::json_array uris;
+
+  // Note that it's not an error if the realm is not found in the map; that just
+  // means no procedures have yet been registered.
+
+  if (realm_iter != m_realm_registry.end()) {
+    const map_uri_to_rpc & reg = realm_iter->second;
+    uris.reserve(reg.size());
+    for (auto & item : reg)
+      uris.push_back(item.first);
+  }
+
+  return uris;
+}
+
+
 } // namespace wampcc
