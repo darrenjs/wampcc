@@ -1283,7 +1283,7 @@ time_t wamp_session::time_created() const
 }
 
 
-const std::string& wamp_session::realm() const
+std::string wamp_session::realm() const
 {
   // need this lock, because realm might be updated from IO thread during logon
   std::lock_guard<std::mutex> guard(m_realm_lock);

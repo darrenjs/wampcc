@@ -598,7 +598,7 @@ public:
 
   /** Return the realm, or empty string if a realm has not yet been provided,
    * eg, in case of a server session that receives the realm from the peer. */
-  const std::string& realm() const;
+  std::string realm() const;
 
   /** Allow a callee application to register a procedure with a dealer. A WAMP
    * REGISTER message is sent to the connected dealer to request registration of
