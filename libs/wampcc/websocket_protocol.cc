@@ -61,7 +61,8 @@ websocket_protocol::websocket_protocol(kernel* k,
                                   http_parser::e_http_request : http_parser::e_http_response)),
     m_options(std::move(opts)),
     m_websock_impl(new websocketpp_impl(mode)),
-    m_last_pong(std::chrono::steady_clock::now())
+    m_last_pong(std::chrono::steady_clock::now()),
+    m_missed_pings(0)
 {
   // register to receive heartbeat callbacks
   if (m_options.ping_interval.count() > 0)
@@ -399,8 +400,19 @@ void websocket_protocol::send_close(uint16_t code, const std::string& reason)
 void websocket_protocol::on_timer()
 {
   /* EV thread */
-  if (m_state == state::open)
-    send_ping();
+  if (m_state == state::open) {
+    if (m_missed_pings.load() >= m_options.max_missed_pings) {
+      send_close(websocketpp::close::status::protocol_error, "");
+      m_state = state::closed;
+      m_callbacks.protocol_closed(std::chrono::milliseconds(0));
+    }
+    else {
+      /* assume our next ping will be missed; the count will be reset on arrival
+       * of data from peer */
+      ++m_missed_pings;
+      send_ping();
+    }
+  }
 }
 
 
@@ -443,6 +455,9 @@ void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
   if (m_websock_impl->processor()->get_error())
     throw std::runtime_error("websocket parser fatal error");
 
+  // treat arrival of any data as reseting the missed pings counter
+  m_missed_pings.store(0);
+
   if (m_websock_impl->processor()->ready())
   {
     // shared_ptr<message_buffer::message<...> >
@@ -476,14 +491,14 @@ void websocket_protocol::process_frame_bytes(buffer::read_pointer& rd)
           return;
         }
       } else if (op == websocketpp::frame::opcode::PONG) {
-        /* Track loss of ping, after ping expected? */
+        // no-op
       } else if (op == websocketpp::frame::opcode::CLOSE) {
         if (m_state == state::closing) {
           // sent & received close-frame, so protocol closed
           m_state = state::closed;
           m_callbacks.protocol_closed(std::chrono::milliseconds(0));
         }
-        if (m_state == state::open) {
+        else if (m_state == state::open) {
           // received & sending close-frame, so protocol closed
           send_close(websocketpp::close::status::normal, "");
           m_state = state::closed;

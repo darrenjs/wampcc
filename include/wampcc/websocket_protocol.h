@@ -11,6 +11,7 @@
 #include "wampcc/protocol.h"
 
 #include <random>
+#include <atomic>
 
 namespace wampcc
 {
@@ -104,6 +105,8 @@ private:
   std::unique_ptr<websocketpp_impl> m_websock_impl;
 
   std::chrono::time_point<std::chrono::steady_clock> m_last_pong;
+
+  std::atomic<int> m_missed_pings;
 };
 
 

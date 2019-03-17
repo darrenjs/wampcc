@@ -298,19 +298,19 @@ std::shared_ptr<wamp_session> wamp_session::create_impl(kernel* k,
   };
 
   auto request_timer_cb = [rawptr](std::chrono::milliseconds interval) {
-    /* If protocol has requested a timer, register a reoccurring event to make
-     * of the protocol's on_timer function. Called during construction of
+    /* If protocol has requested a timer, register a reoccurring event to call
+     * the protocol's on_timer function. Called during construction of
      * protocol. */
     if (interval.count() > 0)
     {
       std::weak_ptr<wamp_session> wp = rawptr->handle();
       auto fn = [wp,interval]() -> std::chrono::milliseconds {
-        if (auto sp = wp.lock())
-        {
+        if (auto sp = wp.lock()) {
           sp->m_proto->on_timer();
           return interval;
         }
-        return std::chrono::milliseconds(); /* cancel timer */
+        else
+          return std::chrono::milliseconds(); /* cancel timer */
       };
       rawptr->m_kernel->get_event_loop()->dispatch(interval, std::move(fn));
     }

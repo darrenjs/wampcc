@@ -13,6 +13,7 @@
 #include <vector>
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
 
 namespace wampcc {
 
@@ -138,6 +139,8 @@ namespace protocol_constants {
   static const int default_ping_interval_ms = 30000;
 
   static const int default_pong_min_interval_ms = 1000;
+
+  static const int default_max_missed_pings = 2;
 }
 
 /* Base class for encoding & decoding of bytes on the wire. */
@@ -154,11 +157,21 @@ public:
     /* minimum allowed interval between replies to ping */
     std::chrono::milliseconds pong_min_interval;
 
+    /* Maximum number of missed pings.  A connection that reaches this mumber of
+     * missed pings will be dropped.  A missed ping is one that is not answered
+     * by a pong, nor by any other received data. It is expected that a peer
+     * will reply to a ping with a pong message, or, will send application data
+     * or other control frame instead of a pong. */
+    int max_missed_pings;
+
     options()
       : serialisers(wampcc::all_serialisers),
         ping_interval(protocol_constants::default_ping_interval_ms),
-        pong_min_interval(protocol_constants::default_pong_min_interval_ms)
+        pong_min_interval(protocol_constants::default_pong_min_interval_ms),
+        max_missed_pings(protocol_constants::default_max_missed_pings)
     {
+      if (ping_interval.count() == 0 && max_missed_pings != 0)
+        throw std::runtime_error("cannot have non-zero max_missed_pings with zero ping_interval");
     }
   };
 
