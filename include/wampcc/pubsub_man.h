@@ -29,8 +29,9 @@ public:
   pubsub_man(kernel*);
   ~pubsub_man();
 
-  t_publication_id inbound_publish(std::string realm, std::string uri,
-                                   json_object options, wamp_args);
+  /* Publish to a topic */
+  t_publication_id publish(std::string realm, std::string uri,
+                           json_object options, wamp_args);
 
   uint64_t subscribe(wamp_session* ptr, t_request_id, std::string uri,
                      json_object& options);
@@ -53,6 +54,8 @@ private:
                                 json_object options, wamp_args args);
 
   logger& __logger; /* name chosen for log macros */
+
+  mutable std::mutex m_lock;
 
   typedef std::map<std::string, std::unique_ptr<managed_topic>> topic_registry;
   typedef std::map<std::string, topic_registry> realm_to_topicreg;

@@ -25,19 +25,15 @@ static bool session_equals(const session_handle& p1, const session_handle& p2)
 }
 
 /*
-Thread safety for pubsub.
+Thread safety.
 
-Currently the public methods:
+There is a global lock on the pubsub_man instance, m_lock.
 
-  - inbound_publish
-
-  - subscribe
-
-... are both called on the event loop thead, so presently no need for any
-synchronization around the managed topics.  Additionally for the addition of a
-new subscriber, the synchronization of the initially snapshot followed by
-updates is also acheived through the single threaded approach.
+This is needed because of possible interaction between the WAMPCC EV thread
+(which conveys actions from remote subscribers and publishers), and from any
+user thread that calls the public publish() method.
 */
+
 class managed_topic
 {
 public:
@@ -125,6 +121,7 @@ private:
   bool m_is_valid;
 };
 
+
 /* Constructor */
 pubsub_man::pubsub_man(kernel* k)
   : __logger(k->get_logger()),
@@ -132,11 +129,13 @@ pubsub_man::pubsub_man(kernel* k)
 {
 }
 
+
 pubsub_man::~pubsub_man()
 {
   // destructor needed here so that unique_ptr can see the definition of
   // managed_topic
 }
+
 
 managed_topic* pubsub_man::find_topic(const std::string& topic,
                                       const std::string& realm,
@@ -178,8 +177,6 @@ t_publication_id pubsub_man::update_topic(const std::string& topic,
                                           json_object options,
                                           wamp_args args)
 {
-  /* EVENT thread */
-
   managed_topic* mt = find_topic(topic, realm, true);
 
   if (!mt)
@@ -249,12 +246,12 @@ t_publication_id pubsub_man::update_topic(const std::string& topic,
 
 /* Handle arrival of the a PUBLISH event, targeted at a topic. This will write
  * to a managed topic. */
-t_publication_id pubsub_man::inbound_publish(std::string realm,
-                                             std::string topic,
-                                             json_object options,
-                                             wamp_args args)
+t_publication_id pubsub_man::publish(std::string realm,
+                                     std::string topic,
+                                     json_object options,
+                                     wamp_args args)
 {
-  /* EV thread */
+  /* ANY thread */
 
   if (realm.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "realm has zero length");
@@ -268,12 +265,16 @@ t_publication_id pubsub_man::inbound_publish(std::string realm,
   if (is_strict_uri(topic.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
 
+  std::lock_guard<std::mutex> guard(m_lock);
   return update_topic(topic, realm, std::move(options), args);
 }
 
+
 json_array pubsub_man::get_topics(const std::string& realm) const
 {
-  /* EV thread */
+  /* ANY thread */
+
+  std::lock_guard<std::mutex> guard(m_lock);
 
   auto realm_iter = m_topics.find(realm);
 
@@ -292,6 +293,7 @@ json_array pubsub_man::get_topics(const std::string& realm) const
   return uris;
 }
 
+
 /* Add a subscription to a managed topic.  Need to sync the addition of the
   subscriber, with the series of images and updates it sees. This is done via
   single threaded access to this class.
@@ -301,13 +303,15 @@ uint64_t pubsub_man::subscribe(wamp_session* sptr,
                                std::string topic,
                                json_object & options)
 {
-  /* EV thread */
+  /* ANY thread */
 
   if (topic.empty())
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic has zero length");
 
   if (is_strict_uri(topic.c_str()) == false)
     throw wamp_error(WAMP_ERROR_INVALID_URI, "topic fails strictness check");
+
+  std::lock_guard<std::mutex> guard(m_lock);
 
   // find or create a topic
   managed_topic* mt = find_topic(topic, sptr->realm(), true);
@@ -358,7 +362,9 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
                              t_request_id request_id,
                              t_subscription_id sub_id)
 {
-  /* EV thread */
+  /* ANY thread */
+
+  std::lock_guard<std::mutex> guard(m_lock);
 
   auto it = m_subscription_registry.find(sub_id);
 

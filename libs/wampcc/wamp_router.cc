@@ -105,7 +105,7 @@ void wamp_router::publish(const std::string& realm, const std::string& topic,
   // TODO: how to use bind here, to pass options in as a move operation?
   m_kernel->get_event_loop()->dispatch([wp, topic, realm, args, options]() {
     if (auto sp = wp.lock())
-      sp->m_pubsub->inbound_publish(realm, topic, options, args);
+      sp->m_pubsub->publish(realm, topic, options, args);
   });
 }
 
@@ -348,7 +348,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
         json_value* ptr = json_get_ptr(options, WAMP_ACKNOWLEDGE);
         bool acknowledge = ptr && ptr->is_true();
 
-        auto publication_id = m_pubsub->inbound_publish(
+        auto publication_id = m_pubsub->publish(
           ws.realm(), uri, std::move(details), std::move(args));
 
         if (acknowledge)
