@@ -55,7 +55,7 @@ if(BUILD_SHARED_LIBS)
       ssl
 	  uv
 	PRIVATE
-	  jansson)
+	  Jansson)
 
   list(APPEND TO_INSTALL wampcc_json_shared)
 
