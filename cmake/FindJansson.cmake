@@ -31,8 +31,8 @@ find_package_handle_standard_args(Jansson REQUIRED_VARS
                                   VERSION_VAR JANSSON_VERSION)
 
 if(JANSSON_FOUND)
-  add_library(Jansson UNKNOWN IMPORTED)
-  set_target_properties(Jansson PROPERTIES
+  add_library(jansson UNKNOWN IMPORTED)
+  set_target_properties(jansson PROPERTIES
 	IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
 	IMPORTED_LOCATION "${JANSSON_LIBRARY}"
 	INTERFACE_INCLUDE_DIRECTORIES "${JANSSON_INCLUDE_DIR}"

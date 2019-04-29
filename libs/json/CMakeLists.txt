@@ -24,7 +24,7 @@ if(BUILD_STATIC_LIBS)
 	PUBLIC
       ssl
 	  uv
-      Jansson)
+      jansson)
 
   list(APPEND TO_INSTALL wampcc_json_static)
 endif()
@@ -55,7 +55,7 @@ if(BUILD_SHARED_LIBS)
       ssl
 	  uv
 	PRIVATE
-	  Jansson)
+	  jansson)
 
   list(APPEND TO_INSTALL wampcc_json_shared)
 
