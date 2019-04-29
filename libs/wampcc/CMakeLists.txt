@@ -47,7 +47,7 @@ if(BUILD_STATIC_LIBS)
   	target_link_libraries(wampcc_static
 	  PUBLIC
 	    uv
-	    ssl
+	    OpenSSL::SSL
 		wampcc_json_static)
 
   add_dependencies(wampcc_static wampcc_json_static)
@@ -83,7 +83,7 @@ if(BUILD_SHARED_LIBS)
 	target_link_libraries(wampcc_shared
 	  PUBLIC
 	    uv
-	    ssl
+	    OpenSSL::SSL
 		wampcc_json_shared)
   add_dependencies(wampcc_shared wampcc_json_shared)
 
