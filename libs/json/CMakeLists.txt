@@ -18,8 +18,14 @@ if(BUILD_STATIC_LIBS)
 
   set_target_properties(wampcc_json_static PROPERTIES OUTPUT_NAME wampcc_json)
   target_include_directories(wampcc_json_static
-                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
-                             ${JANSSON_INCLUDE_DIRS} )
+                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include)
+
+  target_link_libraries(wampcc_json_static
+	PUBLIC
+      OpenSSL::SSL	  
+      jansson
+	PRIVATE
+	  uv)
 
   list(APPEND TO_INSTALL wampcc_json_static)
 endif()
@@ -42,10 +48,15 @@ if(BUILD_SHARED_LIBS)
   set_property(TARGET wampcc_json_shared PROPERTY SOVERSION 6 )
 
   target_include_directories(wampcc_json_shared
-                             PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include
-                             ${JANSSON_INCLUDE_DIRS} )
+    PRIVATE
+	  ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include)
 
-  target_link_libraries(wampcc_json_shared ${JANSSON_LIBRARIES})
+  target_link_libraries(wampcc_json_shared
+	PUBLIC
+      OpenSSL::SSL
+	  uv
+	PRIVATE
+	  jansson)
 
   list(APPEND TO_INSTALL wampcc_json_shared)
 
@@ -55,10 +66,12 @@ endif()
 ## Install targets
 ##
 install(TARGETS ${TO_INSTALL}
-    RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
-    BUNDLE  DESTINATION "${INSTALL_BIN_DIR}"
-    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
-    LIBRARY DESTINATION "${INSTALL_LIB_DIR}")
+    RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
+    BUNDLE  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
+    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+    LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib)
 
 install(FILES ${INSTALL_HDRS}
-    DESTINATION "${INSTALL_INC_DIR}/wampcc")
+  DESTINATION "${INSTALL_INC_DIR}/wampcc"
+  COMPONENT dev)
+

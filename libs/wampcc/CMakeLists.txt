@@ -37,10 +37,19 @@ if(BUILD_STATIC_LIBS)
 
   set_target_properties(wampcc_static PROPERTIES OUTPUT_NAME wampcc)
 
-  target_include_directories(wampcc_static PRIVATE
-                             ${LIBUV_INCLUDE_DIRS} )
+  target_include_directories(wampcc_static
+    PUBLIC
+      $<INSTALL_INTERFACE:include>
+      $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+	PRIVATE
+	  ${LIBUV_INCLUDE_DIRS} )
 
-  target_link_libraries(wampcc_static wampcc_json_static)
+  	target_link_libraries(wampcc_static
+	  PUBLIC
+	    uv
+	    OpenSSL::SSL
+		wampcc_json_static)
+
   add_dependencies(wampcc_static wampcc_json_static)
 
   list(APPEND TO_INSTALL wampcc_static)
@@ -66,9 +75,16 @@ if(BUILD_SHARED_LIBS)
   set_property(TARGET wampcc_shared PROPERTY VERSION "6.0.0")
   set_property(TARGET wampcc_shared PROPERTY SOVERSION 6 )
 
-  target_include_directories(wampcc_shared PRIVATE
-                             ${LIBUV_INCLUDE_DIRS} )
-  target_link_libraries(wampcc_shared wampcc_json_shared)
+  target_include_directories(wampcc_shared
+    PRIVATE
+      $<INSTALL_INTERFACE:include>
+      $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
+
+	target_link_libraries(wampcc_shared
+	  PUBLIC
+	    uv
+	    OpenSSL::SSL
+		wampcc_json_shared)
   add_dependencies(wampcc_shared wampcc_json_shared)
 
   list(APPEND TO_INSTALL wampcc_shared)
@@ -78,10 +94,11 @@ endif()
 ## Install targets
 ##
 install(TARGETS ${TO_INSTALL}
-    RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
-    BUNDLE  DESTINATION "${INSTALL_BIN_DIR}"
-    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}"
-    LIBRARY DESTINATION "${INSTALL_LIB_DIR}")
+    RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
+    BUNDLE  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
+    ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
+    LIBRARY DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib)
 
 install(FILES ${INSTALL_HDRS}
-    DESTINATION "${INSTALL_INC_DIR}/wampcc")
+  DESTINATION "${INSTALL_INC_DIR}/wampcc"
+  COMPONENT dev)

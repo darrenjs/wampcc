@@ -1,13 +1,13 @@
-cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
 
-project(wampcc)
-
-# Version number
 set (WAMPCC_VERSION_MAJOR 1)
 set (WAMPCC_VERSION_MINOR 6)
 set (WAMPCC_VERSION "${WAMPCC_VERSION_MAJOR}.${WAMPCC_VERSION_MINOR}")
+project(wampcc VERSION ${WAMPCC_VERSION})
+
+# Version number
 # Include extra cmake modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 
 ##
@@ -32,10 +32,14 @@ option (BUILD_TESTS       "Build test apps"      OFF)
 set(LIBUV_DIR   "" CACHE STRING "libuv installation directory")
 set(JANSSON_DIR "" CACHE STRING "Jansson installation directory")
 
-set(INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Installation directory for executables")
-set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH  "Installation directory for libraries")
-set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
-set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
+include(GNUInstallDirs)
+set(INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}" CACHE PATH "Installation directory for executables")
+set(INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}" CACHE PATH  "Installation directory for libraries")
+set(INSTALL_INC_DIR "${CMAKE_INSTALL_INCLUDEDIR}" CACHE PATH "Installation directory for headers")
+set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
+
+# Allow settin of RPATH for install
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 ##
 ## Platform checks, and generate config.h
@@ -131,5 +135,7 @@ add_subdirectory(utils)
 add_subdirectory(tests)
 add_subdirectory(examples)
 
-install(FILES ${PROJECT_BINARY_DIR}/wampcc.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}")
-install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}")
+install(FILES ${PROJECT_BINARY_DIR}/wampcc.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}" COMPONENT dev)
+install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}" COMPONENT dev)
+
+include(cmake/MakeDebPackages.cmake)
