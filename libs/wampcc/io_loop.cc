@@ -55,8 +55,6 @@ io_loop::io_loop(kernel& k, std::function<void()> io_started_cb)
     m_async(new uv_async_t()),
     m_pending_requests_state(state::open)
 {
-  version_check_libuv(UV_VERSION_MAJOR, UV_VERSION_MINOR);
-
   uv_loop_init(m_uv_loop);
   m_uv_loop->data = this;
 
@@ -238,26 +236,21 @@ void io_loop::push_fn(std::function<void()> fn)
 }
 
 
-void version_check_libuv(int compile_major, int compile_minor)
+
+
+void libuv_version_wampcc_compiletime(int& major, int &minor)
 {
   // version that wampcc library was built with
-  int library_major = UV_VERSION_MAJOR;
-  int library_minor = UV_VERSION_MINOR;
+  major = UV_VERSION_MAJOR;
+  minor = UV_VERSION_MINOR;
+}
 
+
+void libuv_version_runtime(int& major, int &minor)
+{
   // version we are linked to at runtime
-  int runtime_major = (uv_version() & 0xFF0000) >> 16;
-  int runtime_minor = (uv_version() & 0x00FF00) >> 8;
-
-  // check all versions are consistent
-  if (compile_major != library_major || compile_major != runtime_major ||
-      compile_minor != library_minor || compile_minor != runtime_minor) {
-    std::ostringstream oss;
-    oss << "libuv version mismatch; "
-        << "user-compile-time: " << compile_major << "." << compile_minor
-        << ", library-compile-time: " << library_major << "." << library_minor
-        << ", link-time: " << runtime_major << "." << runtime_minor;
-    throw std::runtime_error(oss.str());
-  }
+  major = (uv_version() & 0xFF0000) >> 16;
+  minor = (uv_version() & 0x00FF00) >> 8;
 }
 
 

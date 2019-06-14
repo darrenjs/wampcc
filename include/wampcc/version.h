@@ -16,4 +16,19 @@
 #define WAMPCC_MINOR_VERSION 6
 #define WAMPCC_MICRO_VERSION 0
 
+namespace wampcc {
+
+/* Below are functions to inspect the versions of libuv used at wampcc
+ * compile-time and application run-time. These can be used if an application
+ * wants to check whether the same version was used for both compile and link.
+ */
+
+/* Obtain the version numbers of the libuv library used when compiling wampcc */
+void libuv_version_wampcc_compiletime(int& major, int &minor);
+
+/* Obtain the version numbers of the libuv library found at runtime */
+void libuv_version_runtime(int& major, int &minor);
+
+}
+
 #endif

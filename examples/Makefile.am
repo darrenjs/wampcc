@@ -21,7 +21,7 @@ json/json_mass_encode_decode.cc CMakeLists.txt
 noinst_PROGRAMS=basic_embedded_router basic_publisher basic_subscriber	\
 basic_caller basic_callee router wampcc_tester ssl_client ssl_server	\
 basic_callee_ssl basic_json basic_server basic_async_callee demo_client	\
-demo_embedded_router demo_embedded_router_ssl
+demo_embedded_router demo_embedded_router_ssl check_libuv_versions
 
 basic_server_SOURCES=basic/basic_server.cc
 basic_embedded_router_SOURCES=basic/basic_embedded_router.cc
@@ -39,3 +39,4 @@ basic_async_callee_SOURCES=basic/basic_async_callee.cc
 demo_client_SOURCES=basic/demo_client.cc
 demo_embedded_router_SOURCES=basic/demo_embedded_router.cc
 demo_embedded_router_ssl_SOURCES=basic/demo_embedded_router_ssl.cc
+check_libuv_versions_SOURCES=basic/check_libuv_versions.cc

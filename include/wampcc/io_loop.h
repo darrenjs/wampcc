@@ -28,10 +28,6 @@ class tcp_socket;
 struct io_request;
 struct logger;
 
-/** Can be called by user to wampcc library to check the compile-time version of
- * libuv is the same as when wampcc was compiled. */
-void version_check_libuv(int uv_major, int uv_minor);
-
 class handle_data
 {
 public:

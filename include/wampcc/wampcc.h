@@ -30,5 +30,6 @@
 #include "wampcc/wamp_router.h"
 #include "wampcc/wamp_session.h"
 #include "wampcc/websocket_protocol.h"
+#include "wampcc/version.h"
 
 #endif
