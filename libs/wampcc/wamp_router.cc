@@ -22,13 +22,16 @@
 namespace wampcc
 {
 
-wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb)
+wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb_reg, on_rpc_unregistered cb_unreg)
   : m_kernel(__svc),
     __logger(__svc->get_logger()),
     m_rpcman(new rpc_man(
-        __svc, [this](const rpc_details& r) { this->rpc_registered_cb(r); })),
+        __svc,
+        [this](const rpc_details& r) { this->rpc_registered_cb(r); },
+        [this](const rpc_details& r) { this->rpc_unregistered_cb(r); })),
     m_pubsub(new pubsub_man(__svc)),
-    m_on_rpc_registered(cb){};
+    m_on_rpc_registered(cb_reg),
+    m_on_rpc_unregistered(cb_unreg){};
 
 
 wamp_router::~wamp_router()
@@ -115,6 +118,13 @@ void wamp_router::rpc_registered_cb(const rpc_details& r)
   std::lock_guard<std::recursive_mutex> guard(m_lock);
   if (m_on_rpc_registered)
     m_on_rpc_registered(r.uri, r.options);
+}
+
+void wamp_router::rpc_unregistered_cb(const rpc_details& r)
+{
+  std::lock_guard<std::recursive_mutex> guard(m_lock);
+  if (m_on_rpc_registered)
+    m_on_rpc_unregistered(r.uri);
 }
 
 

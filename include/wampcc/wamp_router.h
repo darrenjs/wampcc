@@ -28,6 +28,7 @@ struct rpc_details;
 /* Callback type invoked when a wamp_router has been provided with a new RPC. */
 
 typedef std::function<void(std::string, json_object)> on_rpc_registered;
+typedef std::function<void(std::string)> on_rpc_unregistered;
 
 /** Aggregate representing the details of a CALL request that has arrived at the
  * router and is to be handled via callback of user code. */
@@ -81,8 +82,8 @@ public:
     {}
   };
 
-  wamp_router(kernel* __svc, on_rpc_registered = nullptr);
   ~wamp_router();
+  wamp_router(kernel* __svc, on_rpc_registered = nullptr, on_rpc_unregistered = nullptr);
 
   /** Request asynchronous close */
   //  std::future<void> close();
@@ -118,6 +119,7 @@ private:
                            json_object&,wamp_args&);
 
   void handle_session_state_change(wamp_session&, bool);
+  void rpc_unregistered_cb(const rpc_details&);
 
   void check_has_closed();
 
@@ -138,6 +140,7 @@ private:
   std::promise<void> m_promise_on_close;
 
   on_rpc_registered m_on_rpc_registered;
+  on_rpc_unregistered m_on_rpc_unregistered;
 
   std::mutex m_server_sockets_lock;
   std::vector<std::unique_ptr<tcp_socket>> m_server_sockets;

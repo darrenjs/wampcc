@@ -41,11 +41,12 @@ struct rpc_details
 };
 
 typedef std::function<void(const rpc_details&)> rpc_added_cb;
+typedef std::function<void(const rpc_details&)> rpc_removed_cb;
 
 class rpc_man
 {
 public:
-  rpc_man(kernel*, rpc_added_cb);
+  rpc_man(kernel*, rpc_added_cb, rpc_removed_cb);
 
   void handle_inbound_register(wamp_session&, t_request_id, const std::string&, const json_object& options);
 
@@ -71,6 +72,7 @@ private:
 
   logger& __logger; /* name chosen for log macros */
   rpc_added_cb m_rpc_added_cb;
+  rpc_removed_cb m_rpc_removed_cb;
 
   mutable std::mutex m_rpc_map_lock;
 
