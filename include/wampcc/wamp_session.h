@@ -63,6 +63,7 @@ struct auth_provider
 
   struct authorized {
     bool allow;       /* whether the action is authorized */
+    std::string reason; /* reason if authorisation denied */
     disclosure disclose;    /* whether caller/publisher identity should be disclosed */
   };
 

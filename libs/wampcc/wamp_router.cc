@@ -146,7 +146,7 @@ void wamp_router::handle_inbound_call(
     auto authorization = ws->authorize(uri, auth_provider::action::call);
 
     if( !authorization.allow )
-      throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "call is not authorized");
+      throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, authorization.reason.c_str() );
 
     json_object details;
 
