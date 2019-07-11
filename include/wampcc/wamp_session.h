@@ -126,7 +126,8 @@ struct auth_provider
                             const std::string& realm)> user_role;
 
   /* Check if the given realm, role, uri triple is allowed */
-  std::function<authorized(const std::string& realm,
+  std::function<authorized(const wampcc::t_session_id& session_id,
+                const std::string& realm,
                 const std::string& authrole,
                 const std::string& uri,
                 action)> authorize;

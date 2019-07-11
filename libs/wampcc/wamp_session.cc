@@ -2829,7 +2829,7 @@ auth_provider::authorized wamp_session::authorize(const std::string& uri, auth_p
         realm = m_realm;
         authrole = m_authrole;
       }
-      authorized = m_auth_proivder.authorize(realm, authrole, uri, action);
+      authorized = m_auth_proivder.authorize(this->unique_id(), realm, authrole, uri,  action);
     } catch(...) {
       throw wamp_error(WAMP_ERROR_AUTHORIZATION_FAILED, "authorization failure");
     }
