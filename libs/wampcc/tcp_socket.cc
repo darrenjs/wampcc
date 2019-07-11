@@ -208,7 +208,7 @@ bool tcp_socket::is_closed() const
 
 std::future<uverr> tcp_socket::connect(std::string addr, int port)
 {
-  return connect(addr, std::to_string(port), addr_family::inet4, true);
+  return connect(addr, std::to_string(port), addr_family::unspec, true);
 }
 
 
@@ -759,15 +759,19 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
 
+  unsigned int tcp_bind_flags = 0;
   switch (af) {
     case addr_family::unspec:
-      hints.ai_family = AF_UNSPEC;
+      // Listed to both IPv6 and IPv4
+      hints.ai_family = AF_INET6;
       break;
     case addr_family::inet4:
       hints.ai_family = AF_INET;
       break;
     case addr_family::inet6:
       hints.ai_family = AF_INET6;
+      /* This is needed, otherwise UV listens to both IPv6 and IPv4 */
+      tcp_bind_flags |= UV_TCP_IPV6ONLY;
       break;
   }
 
@@ -801,7 +805,7 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
       continue;
     }
 
-    if (uv_tcp_bind(h, ai->ai_addr, 0 /* flags */) == 0)
+    if (uv_tcp_bind(h, ai->ai_addr, tcp_bind_flags) == 0)
       break; /* success */
 
     uv_close((uv_handle_t*)h, free_socket);
@@ -894,6 +898,7 @@ void tcp_socket::do_connect(const std::string& node, const std::string& service,
 
   switch (af) {
     case addr_family::unspec:
+      // This connects to either IPv4 and IPv6
       hints.ai_family = AF_UNSPEC;
       break;
     case addr_family::inet4:
