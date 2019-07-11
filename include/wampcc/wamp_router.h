@@ -25,10 +25,18 @@ class rpc_man;
 class wamp_router;
 struct rpc_details;
 
-/* Callback type invoked when a wamp_router has been provided with a new RPC. */
+/** Callback type invoked when a wamp_router has been provided with a new RPC. **/
+typedef std::function<void(const rpc_details&)> on_rpc_registered;
 
-typedef std::function<void(std::string, json_object)> on_rpc_registered;
-typedef std::function<void(std::string)> on_rpc_unregistered;
+/** Callback type invoked when an RPC is being unregistered from a wamp_router. **/
+typedef std::function<void(const rpc_details&)> on_rpc_unregistered;
+
+/** Callback type invoked when the state of a session is changed in a wamp_router.
+ *
+ *  @todo Is passing wamp_session& to outside safe? Possiblity of deadlock if the outside
+ *  function calls wamp_session::uniqueid or authid.
+**/
+typedef std::function<void(wamp_session&, bool)> on_session_state_change;
 
 /** Aggregate representing the details of a CALL request that has arrived at the
  * router and is to be handled via callback of user code. */
@@ -97,8 +105,8 @@ public:
     {}
   };
 
+  wamp_router(kernel* __svc, on_rpc_registered = nullptr, on_rpc_unregistered = nullptr, on_session_state_change=nullptr);
   ~wamp_router();
-  wamp_router(kernel* __svc, on_rpc_registered = nullptr, on_rpc_unregistered = nullptr);
 
   /** Request asynchronous close */
   //  std::future<void> close();
@@ -156,6 +164,7 @@ private:
 
   on_rpc_registered m_on_rpc_registered;
   on_rpc_unregistered m_on_rpc_unregistered;
+  on_session_state_change m_on_session_state_change;
 
   std::mutex m_server_sockets_lock;
   std::vector<std::unique_ptr<tcp_socket>> m_server_sockets;

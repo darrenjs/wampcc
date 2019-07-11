@@ -22,7 +22,7 @@
 namespace wampcc
 {
 
-wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb_reg, on_rpc_unregistered cb_unreg)
+wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb_reg, on_rpc_unregistered cb_unreg, on_session_state_change cb_state_change)
   : m_kernel(__svc),
     __logger(__svc->get_logger()),
     m_rpcman(new rpc_man(
@@ -31,7 +31,8 @@ wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb_reg, on_rpc_unregis
         [this](const rpc_details& r) { this->rpc_unregistered_cb(r); })),
     m_pubsub(new pubsub_man(__svc)),
     m_on_rpc_registered(cb_reg),
-    m_on_rpc_unregistered(cb_unreg){};
+    m_on_rpc_unregistered(cb_unreg),
+    m_on_session_state_change(cb_state_change){};
 
 
 wamp_router::~wamp_router()
@@ -117,14 +118,14 @@ void wamp_router::rpc_registered_cb(const rpc_details& r)
 {
   std::lock_guard<std::recursive_mutex> guard(m_lock);
   if (m_on_rpc_registered)
-    m_on_rpc_registered(r.uri, r.options);
+    m_on_rpc_registered(r);
 }
 
 void wamp_router::rpc_unregistered_cb(const rpc_details& r)
 {
   std::lock_guard<std::recursive_mutex> guard(m_lock);
   if (m_on_rpc_registered)
-    m_on_rpc_unregistered(r.uri);
+    m_on_rpc_unregistered(r);
 }
 
 
@@ -253,6 +254,9 @@ void wamp_router::handle_session_state_change(wamp_session& session,
     std::lock_guard<std::mutex> guard(m_sessions_lock);
     m_sessions.erase(session.unique_id());
   }
+
+  if (m_on_session_state_change)
+      m_on_session_state_change(session, is_open);
 }
 
 // std::future<void> wamp_router::close()
