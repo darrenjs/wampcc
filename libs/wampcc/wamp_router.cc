@@ -233,7 +233,7 @@ void wamp_router::handle_inbound_call(
       throw wamp_error(WAMP_ERROR_NO_SUCH_PROCEDURE);
     }
   } catch (wampcc::wamp_error& ex) {
-    ws->call_error(request_id, ex.what(), ex.args().args_list, ex.args().args_dict);
+    ws->call_error(request_id, ex.error_uri(), ex.details(), ex.args().args_list, ex.args().args_dict);
   } catch (std::exception& ex) {
     ws->call_error(request_id, ex.what());
   } catch (...) {
@@ -369,7 +369,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
           ws.published(request_id, publication_id);
       }
       catch (const wamp_error& e) {
-        ws.publish_error(request_id, e.error_uri());
+        ws.publish_error(request_id, e.error_uri(), e.details());
       }
     };
 

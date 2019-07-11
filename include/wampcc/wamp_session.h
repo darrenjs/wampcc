@@ -392,10 +392,10 @@ public:
   {  }
 
   wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
-    : std::runtime_error(what),
+    : std::runtime_error( std::string(error_uri).append(": ").append(what) ),
       m_uri(error_uri),
       m_args(wa)
-  {  }
+  {  m_details[WAMP_ERROR_REASON_KEY] = what; }
 
   wamp_error(const char* error_uri, wamp_args wa = wamp_args())
     : std::runtime_error(error_uri),
@@ -405,12 +405,13 @@ public:
 
   wamp_args& args() { return m_args; }
   const wamp_args& args() const { return m_args; }
-
+  const json_object& details() const {return m_details;}
   const std::string & error_uri() const { return m_uri; }
 
 private:
   std::string m_uri;
   wamp_args m_args;
+  json_object m_details;
 };
 
 
@@ -956,6 +957,7 @@ private:
 
   void reply_with_error(msg_type request_type,
                         t_request_id request_id,
+                        json_object details,
                         wamp_args args,
                         std::string error_uri);
 
