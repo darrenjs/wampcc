@@ -45,6 +45,7 @@ uint64_t rpc_man::register_internal_rpc(const std::string& realm,
   r.user_cb = std::move(fn);
   r.user = user;
   r.type = rpc_details::eInternal;
+  r.realm = realm;
 
   register_rpc(session_handle(), realm, r);
 
