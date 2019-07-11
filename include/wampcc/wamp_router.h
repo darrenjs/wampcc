@@ -26,8 +26,8 @@ class wamp_router;
 struct rpc_details;
 
 /* Callback type invoked when a wamp_router has been provided with a new RPC. */
-typedef std::function<void(std::string)> on_rpc_registered;
 
+typedef std::function<void(std::string, json_object)> on_rpc_registered;
 
 /** Aggregate representing the details of a CALL request that has arrived at the
  * router and is to be handled via callback of user code. */

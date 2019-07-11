@@ -114,7 +114,7 @@ void wamp_router::rpc_registered_cb(const rpc_details& r)
 {
   std::lock_guard<std::recursive_mutex> guard(m_lock);
   if (m_on_rpc_registered)
-    m_on_rpc_registered(r.uri);
+    m_on_rpc_registered(r.uri, r.options);
 }
 
 
@@ -387,7 +387,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
       if( !authorization.allow )
         throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "register is not authorized");
 
-      m_rpcman->handle_inbound_register(ws, request_id, uri);
+      m_rpcman->handle_inbound_register(ws, request_id, uri, options);
     };
 
     handlers.on_unregister = [this](wamp_session& ws,

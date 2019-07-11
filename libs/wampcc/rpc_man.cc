@@ -56,12 +56,13 @@ uint64_t rpc_man::register_internal_rpc(const std::string& realm,
 
 
 void rpc_man::handle_inbound_register(wamp_session& ws, t_request_id request_id,
-                                      const std::string& ___uri) {
+                                      const std::string& ___uri,  const json_object& options) {
   /* EV thread */
 
   rpc_details r;
   r.registration_id = 0;
   r.uri = std::move(___uri);
+  r.options = std::move(options);
   r.session = ws.handle();
   r.type = rpc_details::eRemote;
 

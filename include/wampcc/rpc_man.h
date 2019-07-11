@@ -34,6 +34,7 @@ struct rpc_details
   uint64_t registration_id; // 0 implies invalid
   std::string uri;
   session_handle session;
+  json_object options;
   on_call_fn user_cb; // applies only for eInternal
   void* user;         // applies only for eInternal
   rpc_details() : registration_id(0), user(nullptr) {}
@@ -46,7 +47,7 @@ class rpc_man
 public:
   rpc_man(kernel*, rpc_added_cb);
 
-  void handle_inbound_register(wamp_session&, t_request_id, const std::string&);
+  void handle_inbound_register(wamp_session&, t_request_id, const std::string&, const json_object& options);
 
   void handle_inbound_unregister(wamp_session&, t_request_id,
                                  t_registration_id);
