@@ -387,13 +387,13 @@ class wamp_error : public std::runtime_error
 {
 public:
   wamp_error(const std::string& error_uri, wamp_args wa = wamp_args())
-    : std::runtime_error(error_uri),
-      m_uri(error_uri),
-      m_args(wa)
-  {  }
+      :wamp_error(error_uri.c_str(), wa) {}
+
+  wamp_error(const std::string& error_uri, const std::string& what, wamp_args wa = wamp_args())
+      :wamp_error(error_uri.c_str(), what.c_str(), wa) {}
 
   wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
-    : std::runtime_error( std::string(error_uri).append(": ").append(what) ),
+    : std::runtime_error(std::string(error_uri).append(": ").append(what) ),
       m_uri(error_uri),
       m_args(wa)
   {  m_details[WAMP_ERROR_REASON_KEY] = what; }
