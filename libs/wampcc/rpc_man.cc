@@ -63,6 +63,7 @@ void rpc_man::handle_inbound_register(wamp_session& ws, t_request_id request_id,
   r.registration_id = 0;
   r.uri = std::move(___uri);
   r.options = std::move(options);
+  r.realm = ws.realm();
   r.session = ws.handle();
   r.type = rpc_details::eRemote;
 

@@ -33,6 +33,7 @@ struct rpc_details
 
   uint64_t registration_id; // 0 implies invalid
   std::string uri;
+  std::string realm;
   session_handle session;
   json_object options;
   on_call_fn user_cb; // applies only for eInternal
