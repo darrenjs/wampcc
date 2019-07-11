@@ -43,6 +43,21 @@ struct call_info
 typedef std::function<void(wamp_router&,
                            wamp_session&,
                            call_info)> on_call_fn;
+struct rpc_details
+{
+  enum { eInternal, eRemote } type;
+
+  uint64_t registration_id; // 0 implies invalid
+  std::string uri;
+  std::string realm;
+  session_handle session;
+  json_object options;
+  on_call_fn user_cb; // applies only for eInternal
+  void* user;         // applies only for eInternal
+  rpc_details() : registration_id(0), user(nullptr) {}
+};
+
+
 
 class wamp_router : public std::enable_shared_from_this<wamp_router>
 {

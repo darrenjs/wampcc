@@ -27,20 +27,6 @@ class event_loop;
 struct logger;
 class kernel;
 
-struct rpc_details
-{
-  enum { eInternal, eRemote } type;
-
-  uint64_t registration_id; // 0 implies invalid
-  std::string uri;
-  std::string realm;
-  session_handle session;
-  json_object options;
-  on_call_fn user_cb; // applies only for eInternal
-  void* user;         // applies only for eInternal
-  rpc_details() : registration_id(0), user(nullptr) {}
-};
-
 typedef std::function<void(const rpc_details&)> rpc_added_cb;
 typedef std::function<void(const rpc_details&)> rpc_removed_cb;
 
