@@ -292,7 +292,12 @@ The dependecies are build in Release and `wampcc` in Debug. You may change
 these by modifying the `-DCMAKE_BUILD_TYPE` CMake argument.
 
 It's assumed that you are using Visual Studio and have NMake installed 
-(which comes with Visual Studio).
+(which comes with Visual Studio). Visual Studio also optionally comes with 
+CMake (this is called 'CMake Tools for Visual Studio'). However, 
+this tends to be out-dated and it is recommened that you use the latest version
+of CMake. If you do have CMake Tools for Visual Studio installed, then you should
+run the latest version of CMake by invoking `C:\Program Files\CMake\bin\cmake.exe`
+instead of plain `cmake` in the commands below.
 
 ### Setting up Windows build tools
 
