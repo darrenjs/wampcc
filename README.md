@@ -281,3 +281,83 @@ make:
 ```bash
 make
 ```
+
+## Setting up - Windows
+
+The following steps assume that you wish to install `wampcc` and the
+required dependencies in `C:\build`. You may modify this by 
+replacing `C:\build` with the path of your choice.
+
+The dependecies are build in Release and `wampcc` in Debug. You may change 
+these by modifying the `-DCMAKE_BUILD_TYPE` CMake argument.
+
+It's assumed that you are using Visual Studio and have NMake installed 
+(which comes with Visual Studio).
+
+### Setting up Windows build tools
+
+This step compiles and sets up the dependencies. 
+
+1. Download and install CMake.
+2. Download and install OpenSSL, including the
+   headers. [Here](https://slproweb.com/products/Win32OpenSSL.html) is a
+   good source of compiled binaries.
+3. Download and unzip `jansson` and `libuv` source files.
+4. Run the correct Visual Studio developer command prompt for the architecture 
+   (e.g. x86/x64) that you are compiling for. The architecture must match that 
+   of the OpenSSL libraries that you just installed.
+   
+   For example, if you installed the 64-bit version of OpenSSL and are
+   using Visual Studio 2017, then you must use 'x64 Native Tools Command
+   Prompt for VS2017'. This should be available from the Visual Studio folder 
+   in the Start menu.
+5. Go inside the `jansson` source folder, and run:
+
+   ```
+   mkdir build
+   cd build
+   cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=C:\build\jansson ..
+   nmake
+   nmake install
+   ```
+   
+7. Go inside the `libuv` source folder, and run:
+
+   ```
+   mkdir build
+   cd build
+   cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+   nmake
+   mkdir C:\build\libuv
+   mkdir C:\build\libuv\lib
+   copy uv.dll C:\build\libuv\lib
+   copy uv.lib C:\build\libuv\lib
+   mkdir C:\build\libuv\include
+   xcopy /E ..\include C:\build\libuv\include
+   ```
+   
+   Note that `libuv` does not provide an `install` target, hence why we had to
+   manually copy the files over.
+
+### Setting up wampcc
+
+1. Download a copy of wampcc
+2. Run Visual Studio command line tools as described in the previous section
+3. Run
+
+   ```
+   mkdir build
+   cd build
+   cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=C:\build\wampcc -DJANSSON_DIR=C:\build\jansson -DLIBUV_DIR=c:\build\libuv  -DOPENSSL_ROOT_DIR="C:\Program Files\OpenSSL-Win64" ..
+   nmake
+   ```
+   
+   If the paths to `libuv`, `jansson` or OpenSSL are different then you will 
+   need to change the appropriate parameters in the command above.
+   
+4. If you wish to install `wampcc`, you can do so:
+
+   ```
+   nmake install
+   ```
+  
