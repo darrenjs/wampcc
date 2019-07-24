@@ -88,6 +88,10 @@ ssl_context::ssl_context(logger & l,
   }
 }
 
+ssl_context::~ssl_context() {
+    if (m_ctx)
+      SSL_CTX_free(m_ctx);
+}
 
 void ssl_context::log_ssl_error_queue()
 {
