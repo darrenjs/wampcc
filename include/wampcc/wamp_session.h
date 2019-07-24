@@ -576,6 +576,11 @@ public:
    * publishing to topics. */
   bool is_open() const;
 
+  /** Determine if the session was WELCOMEd. This returns true if
+   * WELCOME message was sent to the client. Indicates thay the client
+   * has fully joined. */
+  bool is_welcome() const;
+
   /** Determine if this session is in the closed state.  The closed state
    * implies the underlying network transport has closed, the logical-session
    * has ended, and that this instance will make no further callbacks into
@@ -1011,6 +1016,9 @@ private:
   std::unique_ptr<protocol> m_proto;
 
   std::promise< void > m_promise_on_open;
+
+  /* Track if session has been WELCOMEd. */
+  bool m_is_welcome = false;
 
   options m_options;
 

@@ -255,8 +255,24 @@ void wamp_router::handle_session_state_change(wamp_session& session,
     m_sessions.erase(session.unique_id());
   }
 
-  if (m_on_session_state_change)
-      m_on_session_state_change(session, is_open);
+  /* Only do callback if the session has been fully setup.
+   *
+   * When a client connects, the handle_session_state_change gets called
+   * only after WELCOME (i.e after the connection is successfully
+   * setup).  However, the handle_session_state_change can be called at
+   * any time during disconnection, even if the client has not
+   * authenticated yes.
+   *
+   * This results in a situation when the handler will be called on
+   * disconnection but not on connection (for example if the client
+   * could not authenticate and so the session was closed before the
+   * WELCOME message was sent.
+   *
+   * This fixes it by ensuring that the user call back is only called if
+   * the session has been fully setup.
+   */
+  if (session.is_welcome() && m_on_session_state_change)
+            m_on_session_state_change(session, is_open);
 }
 
 // std::future<void> wamp_router::close()

@@ -1118,6 +1118,11 @@ void wamp_session::send_WELCOME()
 
   send_msg( msg );
 
+  {
+      std::lock_guard<std::mutex> guard(m_state_lock);
+      m_is_welcome = true;
+  }
+
   if (is_open())
     notify_session_open();
 }
@@ -1141,6 +1146,12 @@ bool wamp_session::is_open() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == state::open;
+}
+
+bool wamp_session::is_welcome() const
+{
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    return m_is_welcome;
 }
 
 bool wamp_session::is_closed() const
