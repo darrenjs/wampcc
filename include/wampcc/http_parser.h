@@ -11,6 +11,7 @@
 #include <map>
 #include <string>
 #include <memory>
+#include <stdexcept>
 
 // types brought in from nodejs http-parser project
 struct http_parser;
