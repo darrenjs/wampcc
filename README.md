@@ -185,7 +185,7 @@ Building on Linux presumes that some essential programs are available, including
 - make
 - wget
 - libtool
-- libssh headers & libraries
+- libssl headers & libraries
 
 *wampcc* was developed on *xubuntu* and on this system these tools can be installed using the command:
 
