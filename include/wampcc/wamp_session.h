@@ -381,22 +381,26 @@ struct invocation_info
 typedef std::function<void(wamp_session&,
                            invocation_info)> on_invocation_fn;
 
-
-/* TODO: refactor */
+/* Represent a WAMP protocol error that is associated with an error URI.  Can
+   optionally contain an error reason, to provide context to the error.  The URI
+   component of this error shall be communicated to the peer.  The reason, if
+   present, can be communicated within an error details JSON object.
+*/
 class wamp_error : public std::runtime_error
 {
 public:
   wamp_error(const std::string& error_uri, wamp_args wa = wamp_args())
-      :wamp_error(error_uri.c_str(), wa) {}
+    : wamp_error(error_uri.c_str(), wa) {}
 
   wamp_error(const std::string& error_uri, const std::string& what, wamp_args wa = wamp_args())
-      :wamp_error(error_uri.c_str(), what.c_str(), wa) {}
+    : wamp_error(error_uri.c_str(), what.c_str(), wa) {}
 
   wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
     : std::runtime_error(std::string(error_uri).append(": ").append(what) ),
       m_uri(error_uri),
+      m_reason(what),
       m_args(wa)
-  {  m_details[WAMP_ERROR_REASON_KEY] = what; }
+  {  }
 
   wamp_error(const char* error_uri, wamp_args wa = wamp_args())
     : std::runtime_error(error_uri),
@@ -406,13 +410,17 @@ public:
 
   wamp_args& args() { return m_args; }
   const wamp_args& args() const { return m_args; }
-  const json_object& details() const {return m_details;}
+  const std::string & reason() const {return m_reason;}
   const std::string & error_uri() const { return m_uri; }
+
+  json_object details() const {
+    return json_object { {WAMP_ERROR_REASON_KEY, m_reason} };
+  }
 
 private:
   std::string m_uri;
+  std::string m_reason;
   wamp_args m_args;
-  json_object m_details;
 };
 
 
