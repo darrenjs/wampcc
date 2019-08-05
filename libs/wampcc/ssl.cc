@@ -89,7 +89,7 @@ ssl_context::ssl_context(logger & l,
 }
 
 ssl_context::~ssl_context() {
-    if (m_ctx)
+    if (m_ctx && !m_is_custom_ctx)
       SSL_CTX_free(m_ctx);
 }
 
