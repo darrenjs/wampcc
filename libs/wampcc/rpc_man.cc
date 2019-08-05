@@ -17,8 +17,8 @@
 namespace wampcc {
 
 /* Constructor */
-rpc_man::rpc_man(kernel* k, rpc_added_cb cb)
-  : __logger(k->get_logger()), m_rpc_added_cb(cb), m_next_regid(1) {}
+rpc_man::rpc_man(kernel* k, rpc_added_cb added_cb, rpc_removed_cb removed_cb)
+  : __logger(k->get_logger()), m_rpc_added_cb(added_cb), m_rpc_removed_cb(removed_cb), m_next_regid(1) {}
 
 rpc_details rpc_man::get_rpc_details(const std::string& rpcname,
                                      const std::string& realm) {
@@ -45,6 +45,7 @@ uint64_t rpc_man::register_internal_rpc(const std::string& realm,
   r.user_cb = std::move(fn);
   r.user = user;
   r.type = rpc_details::eInternal;
+  r.realm = realm;
 
   register_rpc(session_handle(), realm, r);
 
@@ -56,12 +57,14 @@ uint64_t rpc_man::register_internal_rpc(const std::string& realm,
 
 
 void rpc_man::handle_inbound_register(wamp_session& ws, t_request_id request_id,
-                                      const std::string& ___uri) {
+                                      const std::string& ___uri,  const json_object& options) {
   /* EV thread */
 
   rpc_details r;
   r.registration_id = 0;
   r.uri = std::move(___uri);
+  r.options = std::move(options);
+  r.realm = ws.realm();
   r.session = ws.handle();
   r.type = rpc_details::eRemote;
 
@@ -120,6 +123,10 @@ void rpc_man::session_closed(std::shared_ptr<wamp_session>& session) {
                  << rpc_item.second->registration_id << ", " << session->realm()
                  << "::" << rpc_item.second->uri);
 
+        /* Perform user-defined call-back, if present. */
+        if (m_rpc_removed_cb)
+            m_rpc_removed_cb(*(rpc_item.second));
+
         /* remove from realm index */
         rpcs_for_realm.erase(rpc_item.second->uri);
       }
@@ -145,6 +152,10 @@ void rpc_man::handle_inbound_unregister(wamp_session& session,
       LOG_INFO("procedure unregistered, " //
                << rpc_iter->second->registration_id << ", " << session.realm()
                << "::" << rpc_iter->second->uri);
+
+      /* Perform user-defined call-back, if present. */
+      if (m_rpc_removed_cb)
+          m_rpc_removed_cb(*(rpc_iter->second));
 
       /* remove from realm index */
       auto realm_iter = m_realm_registry.find(session.realm());

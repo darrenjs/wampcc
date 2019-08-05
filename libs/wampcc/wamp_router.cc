@@ -22,13 +22,17 @@
 namespace wampcc
 {
 
-wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb)
+wamp_router::wamp_router(kernel* __svc, on_rpc_registered cb_reg, on_rpc_unregistered cb_unreg, on_session_state_change cb_state_change)
   : m_kernel(__svc),
     __logger(__svc->get_logger()),
     m_rpcman(new rpc_man(
-        __svc, [this](const rpc_details& r) { this->rpc_registered_cb(r); })),
+        __svc,
+        [this](const rpc_details& r) { this->rpc_registered_cb(r); },
+        [this](const rpc_details& r) { this->rpc_unregistered_cb(r); })),
     m_pubsub(new pubsub_man(__svc)),
-    m_on_rpc_registered(cb){};
+    m_on_rpc_registered(cb_reg),
+    m_on_rpc_unregistered(cb_unreg),
+    m_on_session_state_change(cb_state_change){};
 
 
 wamp_router::~wamp_router()
@@ -114,7 +118,14 @@ void wamp_router::rpc_registered_cb(const rpc_details& r)
 {
   std::lock_guard<std::recursive_mutex> guard(m_lock);
   if (m_on_rpc_registered)
-    m_on_rpc_registered(r.uri);
+    m_on_rpc_registered(r);
+}
+
+void wamp_router::rpc_unregistered_cb(const rpc_details& r)
+{
+  std::lock_guard<std::recursive_mutex> guard(m_lock);
+  if (m_on_rpc_registered)
+    m_on_rpc_unregistered(r);
 }
 
 
@@ -135,7 +146,7 @@ void wamp_router::handle_inbound_call(
     auto authorization = ws->authorize(uri, auth_provider::action::call);
 
     if( !authorization.allow )
-      throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "call is not authorized");
+      throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, authorization.reason.c_str() );
 
     json_object details;
 
@@ -222,7 +233,7 @@ void wamp_router::handle_inbound_call(
       throw wamp_error(WAMP_ERROR_NO_SUCH_PROCEDURE);
     }
   } catch (wampcc::wamp_error& ex) {
-    ws->call_error(request_id, ex.what(), ex.args().args_list, ex.args().args_dict);
+    ws->call_error(request_id, ex.error_uri(), ex.details(), ex.args().args_list, ex.args().args_dict);
   } catch (std::exception& ex) {
     ws->call_error(request_id, ex.what());
   } catch (...) {
@@ -243,6 +254,25 @@ void wamp_router::handle_session_state_change(wamp_session& session,
     std::lock_guard<std::mutex> guard(m_sessions_lock);
     m_sessions.erase(session.unique_id());
   }
+
+  /* Only do callback if the session has been fully setup.
+   *
+   * When a client connects, the handle_session_state_change gets called
+   * only after WELCOME (i.e after the connection is successfully
+   * setup).  However, the handle_session_state_change can be called at
+   * any time during disconnection, even if the client has not
+   * authenticated yes.
+   *
+   * This results in a situation when the handler will be called on
+   * disconnection but not on connection (for example if the client
+   * could not authenticate and so the session was closed before the
+   * WELCOME message was sent.
+   *
+   * This fixes it by ensuring that the user call back is only called if
+   * the session has been fully setup.
+   */
+  if (session.is_welcome() && m_on_session_state_change)
+            m_on_session_state_change(session, is_open);
 }
 
 // std::future<void> wamp_router::close()
@@ -355,7 +385,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
           ws.published(request_id, publication_id);
       }
       catch (const wamp_error& e) {
-        ws.publish_error(request_id, e.error_uri());
+        ws.publish_error(request_id, e.error_uri(), e.details());
       }
     };
 
@@ -387,7 +417,7 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
       if( !authorization.allow )
         throw wamp_error(WAMP_ERROR_NOT_AUTHORIZED, "register is not authorized");
 
-      m_rpcman->handle_inbound_register(ws, request_id, uri);
+      m_rpcman->handle_inbound_register(ws, request_id, uri, options);
     };
 
     handlers.on_unregister = [this](wamp_session& ws,

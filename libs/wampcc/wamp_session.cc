@@ -1118,6 +1118,11 @@ void wamp_session::send_WELCOME()
 
   send_msg( msg );
 
+  {
+      std::lock_guard<std::mutex> guard(m_state_lock);
+      m_is_welcome = true;
+  }
+
   if (is_open())
     notify_session_open();
 }
@@ -1141,6 +1146,12 @@ bool wamp_session::is_open() const
 {
   std::lock_guard<std::mutex> guard(m_state_lock);
   return m_state == state::open;
+}
+
+bool wamp_session::is_welcome() const
+{
+    std::lock_guard<std::mutex> guard(m_state_lock);
+    return m_is_welcome;
 }
 
 bool wamp_session::is_closed() const
@@ -1423,7 +1434,7 @@ void wamp_session::process_inbound_invocation(json_array & msg)
   }
   catch (wampcc::wamp_error& ex)
   {
-    reply_with_error(msg_type::wamp_msg_invocation, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_invocation, request_id, ex.details(), ex.args(), ex.error_uri());
   }
 }
 
@@ -2114,7 +2125,7 @@ void wamp_session::process_inbound_call(json_array & msg)
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(msg_type::wamp_msg_call, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_call, request_id, ex.details(), ex.args(), ex.error_uri());
   }
 }
 
@@ -2223,7 +2234,7 @@ void wamp_session::process_inbound_publish(json_array & msg)
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(msg_type::wamp_msg_publish, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_publish, request_id, ex.details(), ex.args(), ex.error_uri());
   }
 }
 
@@ -2250,7 +2261,7 @@ void wamp_session::process_inbound_subscribe(json_array & msg)
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(msg_type::wamp_msg_subscribe, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_subscribe, request_id, ex.details(), ex.args(), ex.error_uri());
   }
 }
 
@@ -2273,7 +2284,7 @@ void wamp_session::process_inbound_unsubscribe(json_array & msg)
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(msg_type::wamp_msg_unsubscribe, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_unsubscribe, request_id, ex.details(), ex.args(), ex.error_uri());
   }
 }
 
@@ -2301,17 +2312,18 @@ void wamp_session::process_inbound_register(json_array & msg)
   }
   catch(wamp_error& ex)
   {
-    reply_with_error(msg_type::wamp_msg_register, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_register, request_id, ex.details(), ex.args(), ex.error_uri());
   }
 }
 
 void wamp_session::reply_with_error(
   msg_type request_type,
   t_request_id request_id,
+  json_object details,
   wamp_args args,
   std::string error_uri)
 {
-  json_array msg {msg_type::wamp_msg_error, request_type, request_id, json_object(),
+  json_array msg {msg_type::wamp_msg_error, request_type, request_id, details,
       error_uri, args.args_list, args.args_dict};
   send_msg(msg);
 }
@@ -2810,7 +2822,7 @@ auth_provider::authorized wamp_session::authorize(const std::string& uri, auth_p
 {
   /* Default behaviour is to authorize every call and not to disclose
    * caller and publisher idetity */
-  auth_provider::authorized authorized = {true, auth_provider::disclosure::optional};
+  auth_provider::authorized authorized = {true, "", auth_provider::disclosure::optional};
   if(m_auth_proivder.authorize) {
     try {
       /* Note, we are holding a lock across user callback here. Typically
@@ -2829,7 +2841,9 @@ auth_provider::authorized wamp_session::authorize(const std::string& uri, auth_p
         realm = m_realm;
         authrole = m_authrole;
       }
-      authorized = m_auth_proivder.authorize(realm, authrole, uri, action);
+      authorized = m_auth_proivder.authorize(this->unique_id(), realm, authrole, uri,  action);
+    } catch(const wampcc::wamp_error&) {
+          throw;
     } catch(...) {
       throw wamp_error(WAMP_ERROR_AUTHORIZATION_FAILED, "authorization failure");
     }
@@ -2940,7 +2954,7 @@ void wamp_session::process_inbound_unregister(json_array & msg)
     m_server_handler.on_unregister(*this, request_id, registration_id);
   }
   catch (wamp_error& ex) {
-    reply_with_error(msg_type::wamp_msg_unregister, request_id, ex.args(), ex.error_uri());
+    reply_with_error(msg_type::wamp_msg_unregister, request_id, ex.details(), ex.args(), ex.error_uri());
   }
 }
 

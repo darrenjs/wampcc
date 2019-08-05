@@ -69,7 +69,7 @@ int main(int, char**)
         return role;
       },
       // authorize
-      [](const std::string& realm, const std::string& authrole, const std::string& uri, auth_provider::action) {
+      [](const wampcc::t_session_id& id, const std::string& realm, const std::string& authrole, const std::string& uri, auth_provider::action) {
         auth_provider::authorized authorized;
         authorized.allow = false;
         authorized.disclose = auth_provider::disclosure::optional;

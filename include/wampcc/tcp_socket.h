@@ -105,9 +105,13 @@ class tcp_socket
 {
 public:
   enum class addr_family {
+    /** listen on both IPv6/IPv4, and
+     * connect to either IPv6 or IPv4  **/
     unspec,
+    /** IPv4 only **/
     inet4,
-    inet6,
+    /** IPv6 only **/
+    inet6
   };
 
   /** Type thrown by tcp_socket when actions are attempted when the socket is

@@ -25,9 +25,18 @@ class rpc_man;
 class wamp_router;
 struct rpc_details;
 
-/* Callback type invoked when a wamp_router has been provided with a new RPC. */
-typedef std::function<void(std::string)> on_rpc_registered;
+/** Callback type invoked when a wamp_router has been provided with a new RPC. **/
+typedef std::function<void(const rpc_details&)> on_rpc_registered;
 
+/** Callback type invoked when an RPC is being unregistered from a wamp_router. **/
+typedef std::function<void(const rpc_details&)> on_rpc_unregistered;
+
+/** Callback type invoked when the state of a session is changed in a wamp_router.
+ *
+ *  @todo Is passing wamp_session& to outside safe? Possiblity of deadlock if the outside
+ *  function calls wamp_session::uniqueid or authid.
+**/
+typedef std::function<void(wamp_session&, bool)> on_session_state_change;
 
 /** Aggregate representing the details of a CALL request that has arrived at the
  * router and is to be handled via callback of user code. */
@@ -42,6 +51,21 @@ struct call_info
 typedef std::function<void(wamp_router&,
                            wamp_session&,
                            call_info)> on_call_fn;
+struct rpc_details
+{
+  enum { eInternal, eRemote } type;
+
+  uint64_t registration_id; // 0 implies invalid
+  std::string uri;
+  std::string realm;
+  session_handle session;
+  json_object options;
+  on_call_fn user_cb; // applies only for eInternal
+  void* user;         // applies only for eInternal
+  rpc_details() : registration_id(0), user(nullptr) {}
+};
+
+
 
 class wamp_router : public std::enable_shared_from_this<wamp_router>
 {
@@ -81,7 +105,7 @@ public:
     {}
   };
 
-  wamp_router(kernel* __svc, on_rpc_registered = nullptr);
+  wamp_router(kernel* __svc, on_rpc_registered = nullptr, on_rpc_unregistered = nullptr, on_session_state_change=nullptr);
   ~wamp_router();
 
   /** Request asynchronous close */
@@ -118,6 +142,7 @@ private:
                            json_object&,wamp_args&);
 
   void handle_session_state_change(wamp_session&, bool);
+  void rpc_unregistered_cb(const rpc_details&);
 
   void check_has_closed();
 
@@ -138,6 +163,8 @@ private:
   std::promise<void> m_promise_on_close;
 
   on_rpc_registered m_on_rpc_registered;
+  on_rpc_unregistered m_on_rpc_unregistered;
+  on_session_state_change m_on_session_state_change;
 
   std::mutex m_server_sockets_lock;
   std::vector<std::unique_ptr<tcp_socket>> m_server_sockets;

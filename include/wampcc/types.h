@@ -42,6 +42,8 @@ namespace wampcc
 #define WAMP_ERROR_PROCEDURE_ALREADY_EXISTS "wamp.error.procedure_already_exists"
 #define WAMP_ERROR_SYSTEM_SHUTDOWN "wamp.error.system_shutdown"
 
+#define WAMP_ERROR_REASON_KEY "_reason"
+
 // protocol extensions
 #define WAMP_RUNTIME_ERROR "wamp.error.runtime_error"
 #define WAMP_ERROR_BAD_PROTOCOL "wamp.error.bad_protocol"

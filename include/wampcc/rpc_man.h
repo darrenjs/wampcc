@@ -27,26 +27,15 @@ class event_loop;
 struct logger;
 class kernel;
 
-struct rpc_details
-{
-  enum { eInternal, eRemote } type;
-
-  uint64_t registration_id; // 0 implies invalid
-  std::string uri;
-  session_handle session;
-  on_call_fn user_cb; // applies only for eInternal
-  void* user;         // applies only for eInternal
-  rpc_details() : registration_id(0), user(nullptr) {}
-};
-
 typedef std::function<void(const rpc_details&)> rpc_added_cb;
+typedef std::function<void(const rpc_details&)> rpc_removed_cb;
 
 class rpc_man
 {
 public:
-  rpc_man(kernel*, rpc_added_cb);
+  rpc_man(kernel*, rpc_added_cb, rpc_removed_cb);
 
-  void handle_inbound_register(wamp_session&, t_request_id, const std::string&);
+  void handle_inbound_register(wamp_session&, t_request_id, const std::string&, const json_object& options);
 
   void handle_inbound_unregister(wamp_session&, t_request_id,
                                  t_registration_id);
@@ -70,6 +59,7 @@ private:
 
   logger& __logger; /* name chosen for log macros */
   rpc_added_cb m_rpc_added_cb;
+  rpc_removed_cb m_rpc_removed_cb;
 
   mutable std::mutex m_rpc_map_lock;
 
