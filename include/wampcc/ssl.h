@@ -27,6 +27,7 @@ class ssl_context
 {
 public:
   ssl_context(logger &, const ssl_config& conf);
+  ~ssl_context();
 
   /* log all entries in the SSL error queue */
   void log_ssl_error_queue();
