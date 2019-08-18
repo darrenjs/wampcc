@@ -389,30 +389,35 @@ typedef std::function<void(wamp_session&,
 class wamp_error : public std::runtime_error
 {
 public:
-  wamp_error(const std::string& error_uri, wamp_args wa = wamp_args())
-    : wamp_error(error_uri.c_str(), wa) {}
 
-  wamp_error(const std::string& error_uri, const std::string& what, wamp_args wa = wamp_args())
-    : wamp_error(error_uri.c_str(), what.c_str(), wa) {}
-
-  wamp_error(const char* error_uri, const char* what, wamp_args wa = wamp_args())
-    : std::runtime_error(std::string(error_uri).append(": ").append(what) ),
-      m_uri(error_uri),
-      m_reason(what),
-      m_args(wa)
-  {  }
-
-  wamp_error(const char* error_uri, wamp_args wa = wamp_args())
+  /* Construct an instance using a WAMP protocol error URI */
+  wamp_error(std::string error_uri, wamp_args wa = {})
     : std::runtime_error(error_uri),
-      m_uri(error_uri),
-      m_args(wa)
+      m_uri(std::move(error_uri)),
+      m_args(std::move(wa))
   {  }
+
+  /* Construct an instance using a WAMP protocol error URI together with
+   * additional reason message */
+  wamp_error(std::string error_uri, std::string reason, wamp_args wa = {})
+    : std::runtime_error(std::string(error_uri).append(": ").append(reason)),
+      m_uri(std::move(error_uri)),
+      m_reason(std::move(reason)),
+      m_args(std::move(wa))
+  {
+    /* Note, an advantage of building the 'what' string during this constructor
+     * is that following successful construction, the object then behaves like a
+     * regular type.  If we were to defer the building of the what string to an
+     * overridden 'what' method, we would have synchronisation concerns. */
+  }
 
   wamp_args& args() { return m_args; }
   const wamp_args& args() const { return m_args; }
   const std::string & reason() const {return m_reason;}
   const std::string & error_uri() const { return m_uri; }
 
+  /* Obtain a json_object containing the error reason that is suitable for use
+   * with WAMP ERROR message */
   json_object details() const {
     return json_object { {WAMP_ERROR_REASON_KEY, m_reason} };
   }
