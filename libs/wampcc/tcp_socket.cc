@@ -543,6 +543,11 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
       return;
     };
   }
+  else
+  {
+    for (size_t i = 0; i < bufs.size(); i++)
+      delete[] bufs[i].base;
+  }
 }
 
 void tcp_socket::do_write()
