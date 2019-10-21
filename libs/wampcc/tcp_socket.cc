@@ -507,6 +507,11 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
   /* IO thread */
   assert(m_kernel->get_io()->this_thread_is_io() == true);
 
+  scope_guard buf_guard([&bufs]() {
+    for (auto& i : bufs)
+      delete[] i.base;
+  });
+
   size_t bytes_to_send = 0;
   for (size_t i = 0; i < bufs.size(); i++)
     bytes_to_send += bufs[i].len;
@@ -534,7 +539,9 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
       the_tcp_socket->on_write_cb(req, status);
     });
 
-    if (r) {
+    if (r == 0)
+      buf_guard.dismiss(); /* bufs will be deleted in uv callback */
+    else {
       LOG_WARN("uv_write failed, errno " << std::abs(r) << " ("
                                          << uv_strerror(r)
                                          << "); closing connection");
@@ -542,11 +549,6 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
       close_once_on_io();
       return;
     };
-  }
-  else
-  {
-    for (size_t i = 0; i < bufs.size(); i++)
-      delete[] bufs[i].base;
   }
 }
 
