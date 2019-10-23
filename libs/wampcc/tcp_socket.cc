@@ -538,10 +538,9 @@ void tcp_socket::do_write(std::vector<uv_buf_t>& bufs)
       tcp_socket* the_tcp_socket = (tcp_socket*)req->data;
       the_tcp_socket->on_write_cb(req, status);
     });
+    buf_guard.dismiss();
 
-    if (r == 0)
-      buf_guard.dismiss(); /* bufs will be deleted in uv callback */
-    else {
+    if( r ) {
       LOG_WARN("uv_write failed, errno " << std::abs(r) << " ("
                                          << uv_strerror(r)
                                          << "); closing connection");
@@ -601,10 +600,9 @@ void tcp_socket::do_write()
       tcp_socket* the_tcp_socket = (tcp_socket*)req->data;
       the_tcp_socket->on_write_cb(req, status);
     });
+    buf_guard.dismiss();
 
-    if (r == 0)
-      buf_guard.dismiss(); /* bufs will be deleted in uv callback */
-    else {
+    if( r ) {
       LOG_WARN("uv_write failed, errno " << std::abs(r) << " ("
                                          << uv_strerror(r)
                                          << "); closing connection");
