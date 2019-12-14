@@ -32,9 +32,24 @@ void test_rpc(int port, internal_server& server)
                                             info.args.args_dict);
                             });
 
+  json_object error_details{{"message", "error details"}};
+  server.router()->callable("default_realm", "router.rpc.error",
+                            [&error_details](wampcc::wamp_router& rtr,
+                               wampcc::wamp_session& caller,
+                               wampcc::call_info info) {
+                              caller.call_error(info.request_id, WAMP_ERROR_INVALID_ARGUMENT, error_details);
+                            });
+
+
+
   unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
   auto session = establish_session(the_kernel, port);
   perform_realm_logon(session);
+
+  session->provide("session.rpc.error", {}, nullptr, [error_details](wamp_session& ws,
+                                                  invocation_info info){
+    ws.invocation_error(info.request_id, WAMP_ERROR_INVALID_ARGUMENT, error_details);
+  });
 
   wamp_args call_args;
   call_args.args_list = json_array({"hello from basic_caller"}, {});
@@ -52,6 +67,18 @@ void test_rpc(int port, internal_server& server)
 
   if (result.args.args_list != json_array({"hello"}))
     throw runtime_error("call result-list does not match expected");
+
+  const char* calls[] = {"router.rpc.error", "session.rpc.error", nullptr};
+  for (const char** rpc = calls; *rpc; ++rpc)
+  {
+    result = sync_rpc_all(session, *rpc, {}, rpc_result_expect::fail);
+    if (!result.was_error)
+      throw runtime_error(std::string(*rpc) + ": call was-error does not match expected");
+    if (result.error_uri != WAMP_ERROR_INVALID_ARGUMENT)
+      throw runtime_error(std::string(*rpc) + ": call error-uri does not match expected");
+    if (result.additional != error_details)
+      throw runtime_error(std::string(*rpc) + ": call error-details do not match expected");
+  }
 
   session->close().wait();
 }
