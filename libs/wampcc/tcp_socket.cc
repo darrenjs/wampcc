@@ -767,8 +767,7 @@ void tcp_socket::do_listen(const std::string& node, const std::string& service,
   unsigned int tcp_bind_flags = 0;
   switch (af) {
     case addr_family::unspec:
-      // Listed to both IPv6 and IPv4
-      hints.ai_family = AF_INET6;
+      hints.ai_family = AF_UNSPEC;
       break;
     case addr_family::inet4:
       hints.ai_family = AF_INET;

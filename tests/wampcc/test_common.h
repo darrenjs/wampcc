@@ -142,6 +142,9 @@ public:
         wampcc::uverr err = fut_listen_err.get();
         if (err == 0)
           return m_port = port;
+        else {
+          std::cout << "listen failed: " <<  err.message() << std::endl;
+        }
       }
     }
 
@@ -192,6 +195,9 @@ public:
         wampcc::uverr err = fut_listen_err.get();
         if (err == 0)
           return m_port = port;
+        else {
+          std::cout << "listen failed: " <<  err.message() << std::endl;
+        }
       }
     }
 
