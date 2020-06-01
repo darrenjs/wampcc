@@ -27,7 +27,7 @@ namespace wampcc
   struct time_val
   {
 #ifndef _WIN32
-    typedef long type_type;
+    typedef time_t type_type;
 #else
     typedef __time64_t type_type;
 #endif
