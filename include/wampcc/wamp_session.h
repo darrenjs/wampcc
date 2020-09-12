@@ -507,6 +507,8 @@ public:
 
   enum class mode {client, server};
 
+  const t_session_id WAMP_SESSION_ID_UNSET {0};
+
   /** Create a server-mode session (i.e., the socket was accepted from a remote
    * client). A session_id_generator_fn can optionally be provided to allocate a
    * unique session ID to the session instance created. */
@@ -522,16 +524,14 @@ public:
 
   /** Create a client-mode session (i.e., the socket was actively connected to a
    * remote server) using a protocol class as specified via the template
-   * parameter. A session_id_generator_fn can optionally be provided to allocate
-   * a unique session ID to the session instance created */
+   * parameter. */
   template<typename T>
   static std::shared_ptr<wamp_session> create(kernel* k,
                                               std::unique_ptr<tcp_socket> sock,
                                               on_state_fn state_cb = nullptr,
                                               typename T::options protocol_options = {},
                                               wamp_session::options session_opts = {},
-                                              void* user = nullptr,
-                                              session_id_generator_fn id_gen_fn = {})
+                                              void* user = nullptr)
   {
     /* This method has taken ownership of the tcp_socket, so use a guard to
      * ensure proper close and deletion. */
@@ -551,7 +551,7 @@ public:
 
     return wamp_session::create_impl(k, mode::client, sock,
                                      state_cb, factory_fn, server_msg_handler(), auth_provider(),
-                                     session_opts, user, std::move(id_gen_fn));
+                                     session_opts, user, {});
   }
 
   /** Perform WAMP HELLO for a client-mode instance. Should be invoked
@@ -696,7 +696,9 @@ public:
                           on_yield_fn,
                           void * user = nullptr);
 
-  /** Obtain the session's the unique ID. Values begin from 1. */
+  /** Obtain the session's the unique ID. Valid values begin from 1, a value
+   * of 0 (as set by WAMP_SESSION_ID_UNSET) for a client session means
+   * that the the client has not been WELCOMEd yet. */
   t_session_id unique_id() const { return m_sid; }
 
   /** Return the session mode, which indicates whether this session was
@@ -911,6 +913,7 @@ private:
   void handle_CHALLENGE(json_array& ja);
   void handle_AUTHENTICATE(json_array& ja);
   void send_WELCOME();
+  void handle_WELCOME(json_array& ja);
 
   void notify_session_open();
   static const char* to_string(wamp_session::state);
