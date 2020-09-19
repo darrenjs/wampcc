@@ -668,8 +668,8 @@ void wamp_session::process_message(json_array& ja,
       }
       else if (message_type == msg_type::wamp_msg_welcome)
       {
-        change_state(state::sent_auth, state::sent_hello, state::open);
         handle_WELCOME(ja);
+        change_state(state::sent_auth, state::sent_hello, state::open);        
         if (is_open())
           notify_session_open();
         return;
@@ -1143,7 +1143,7 @@ void wamp_session::handle_WELCOME(json_array& ja)
   check_size_at_least(ja.size(), 3);
 
   if (!ja[1].is_uint())
-    throw protocol_error("Session ID must be unsigned integer");
+    throw protocol_error("router provided session ID must be unsigned integer");
   const t_session_id sid = ja[1].as_uint();
 
   if (sid == WAMP_SESSION_ID_UNSET)
@@ -1151,7 +1151,7 @@ void wamp_session::handle_WELCOME(json_array& ja)
 
   m_sid = sid;
   m_log_prefix = generate_log_prefix(m_sid);
-  LOG_INFO(m_log_prefix << "Router assigned session ID: '" << m_sid << "'");
+  LOG_INFO(m_log_prefix << "session ID assigned by router WELCOME");
 
   /* TODO router announces its supported Roles and Features in the 'extra'
    * dictionary: this would be the place to extract it... */
