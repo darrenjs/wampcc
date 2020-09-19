@@ -218,8 +218,6 @@ wamp_session::wamp_session(kernel* __kernel,
   : m_state( state::init ),
     __logger(__kernel->get_logger()),
     m_kernel(__kernel),
-    m_sid(id_gen_fn? id_gen_fn() : generate_unique_session_id()),
-    m_log_prefix(generate_log_prefix(m_sid)),
     m_socket(std::move(h)),
     m_session_mode(conn_mode),
     m_shfut_has_closed(m_has_closed.get_future()),
@@ -233,6 +231,13 @@ wamp_session::wamp_session(kernel* __kernel,
     m_options(std::move(opts)),
     m_user(user)
 {
+    if (conn_mode == wamp_session::mode::server)
+        m_sid = id_gen_fn ? id_gen_fn() : generate_unique_session_id();
+    else
+        m_sid = WAMP_SESSION_ID_UNSET;
+
+    m_log_prefix = generate_log_prefix(m_sid);
+
 }
 
 
@@ -663,7 +668,8 @@ void wamp_session::process_message(json_array& ja,
       }
       else if (message_type == msg_type::wamp_msg_welcome)
       {
-        change_state(state::sent_auth, state::sent_hello, state::open);
+        handle_WELCOME(ja);
+        change_state(state::sent_auth, state::sent_hello, state::open);        
         if (is_open())
           notify_session_open();
         return;
@@ -1127,6 +1133,29 @@ void wamp_session::send_WELCOME()
     notify_session_open();
 }
 
+void wamp_session::handle_WELCOME(json_array& ja)
+{
+  /* EV thread */
+
+  if (session_mode() == mode::server)
+    throw protocol_error("received WELCOME message in the server session");
+
+  check_size_at_least(ja.size(), 3);
+
+  if (!ja[1].is_uint())
+    throw protocol_error("router provided session ID must be unsigned integer");
+  const t_session_id sid = ja[1].as_uint();
+
+  if (sid == WAMP_SESSION_ID_UNSET)
+    throw protocol_error("router assigned session ID is invalid");
+
+  m_sid = sid;
+  m_log_prefix = generate_log_prefix(m_sid);
+  LOG_INFO(m_log_prefix << "session ID assigned by router WELCOME");
+
+  /* TODO router announces its supported Roles and Features in the 'extra'
+   * dictionary: this would be the place to extract it... */
+}
 
 /* Notify any callback of state change to open. This is deliberately performed
  * on the event thread, to prevent IO thread going into user code.
