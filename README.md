@@ -1,6 +1,6 @@
 # **wampcc**
 
-**wampcc** is C++ library that implements the [Web Application Messaging Protocol (WAMP)](http://wamp-proto.org/) protocol.
+**wampcc** is C++ library that implements the [Web Application Messaging Protocol (WAMP)](http://wamp-proto.org/).
 
 *wampcc* provides the WAMP basic profile for client roles and also a lightweight implementation of a WAMP router / dealer.
 
