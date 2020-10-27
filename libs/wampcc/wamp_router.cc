@@ -14,6 +14,7 @@
 #include "wampcc/io_loop.h"
 #include "wampcc/ssl_socket.h"
 #include "wampcc/tcp_socket.h"
+#include "wampcc/socket_address.h"
 #include "wampcc/log_macros.h"
 #include "wampcc/protocol.h"
 
@@ -492,6 +493,20 @@ std::future<uverr> wamp_router::listen(auth_provider auth,
       listen_opts.af);
 
   return fut;
+}
+
+std::vector<socket_address> wamp_router::get_listen_addresses() const
+{
+  std::vector<socket_address> ret;
+  {
+    std::lock_guard<std::mutex> guard(m_server_sockets_lock);
+    for (const auto& s : m_server_sockets)
+    {
+      if (s->is_listening())
+        ret.emplace_back(s->get_local_address());
+    }
+  }
+  return ret;
 }
 
 } // namespace
