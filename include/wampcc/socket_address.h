@@ -46,6 +46,9 @@ public:
   /** String representation of the address. */
   std::string to_string() const;
 
+  /** Return the local port. */
+  int port() const;
+
   void swap(socket_address&);
 
 private:

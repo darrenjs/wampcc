@@ -136,6 +136,10 @@ public:
                 on_call_fn,
                 void * user = nullptr);
 
+
+  /** Return list of addresses the router is currently listening on. */
+  std::vector<socket_address> get_listen_addresses() const;
+
 private:
   void rpc_registered_cb(const rpc_details&);
   void handle_inbound_call(wamp_session*,t_request_id,std::string&,
@@ -166,7 +170,7 @@ private:
   on_rpc_unregistered m_on_rpc_unregistered;
   on_session_state_change m_on_session_state_change;
 
-  std::mutex m_server_sockets_lock;
+  mutable std::mutex m_server_sockets_lock;
   std::vector<std::unique_ptr<tcp_socket>> m_server_sockets;
 };
 

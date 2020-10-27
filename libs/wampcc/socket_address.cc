@@ -102,5 +102,24 @@ std::string socket_address::to_string() const
   return text;
 }
 
+int socket_address::port() const
+{
+  ::sockaddr_storage* ss = m_impl.get();
+  if (ss == nullptr)
+    return 0;
+
+  if (ss->ss_family == AF_INET) {
+    auto* addrin = (::sockaddr_in *) ss;
+    return ntohs(addrin->sin_port);
+  }
+
+  if (ss->ss_family == AF_INET6) {
+    auto* addrin6 = (::sockaddr_in6 *) ss;
+    return ntohs(addrin6->sin6_port);
+  }
+
+  return 0;
+}
+
 
 } // namespace wampcc
