@@ -7,8 +7,6 @@
 
 #include "wampcc/event_loop.h"
 
-#include "wampcc/rpc_man.h"
-#include "wampcc/pubsub_man.h"
 #include "wampcc/log_macros.h"
 #include "wampcc/utils.h"
 

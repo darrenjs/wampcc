@@ -9,7 +9,6 @@
 
 #include "wampcc/tcp_socket.h"
 #include "wampcc/protocol.h"
-#include "wampcc/rpc_man.h"
 #include "wampcc/event_loop.h"
 #include "wampcc/log_macros.h"
 #include "wampcc/utils.h"
@@ -669,7 +668,7 @@ void wamp_session::process_message(json_array& ja,
       else if (message_type == msg_type::wamp_msg_welcome)
       {
         handle_WELCOME(ja);
-        change_state(state::sent_auth, state::sent_hello, state::open);        
+        change_state(state::sent_auth, state::sent_hello, state::open);
         if (is_open())
           notify_session_open();
         return;
