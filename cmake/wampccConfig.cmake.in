@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
+# Same syntax as find_package
+find_dependency(OpenSSL REQUIRED)
+find_dependency(Jansson REQUIRED)
+find_dependency(Libuv REQUIRED)
+
+list(REMOVE_ITEM CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
+
+# Add the targets file
+include("${CMAKE_CURRENT_LIST_DIR}/wampccTargets.cmake")
+
+

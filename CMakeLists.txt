@@ -37,6 +37,7 @@ set(INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}" CACHE PATH "Installation directory
 set(INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}" CACHE PATH  "Installation directory for libraries")
 set(INSTALL_INC_DIR "${CMAKE_INSTALL_INCLUDEDIR}" CACHE PATH "Installation directory for headers")
 set(INSTALL_PKGCONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
+set(INSTALL_CMAKE_DIR "${INSTALL_LIB_DIR}/cmake/wampcc" CACHE PATH "Installation directory for CMake config files")
 
 # Allow settin of RPATH for install
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -137,5 +138,33 @@ add_subdirectory(examples)
 
 install(FILES ${PROJECT_BINARY_DIR}/wampcc.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}" COMPONENT dev)
 install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}" COMPONENT dev)
+
+#
+# Export CMake config
+#
+
+# Here we create a CMake config and export targets, and them to the
+# install target. This allows users that are using CMake to easily use
+# wampcc by doing `find_package(wampcc)` in their CMake project.  They
+# can the refer to the wampcc targets by depdending on the
+# 'wampcc::wampcc_shared' or 'wampcc::wampcc_static'.
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(wampccConfigVersion.cmake
+    VERSION ${PACKAGE_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+configure_package_config_file(cmake/wampccConfig.cmake.in wampccConfig.cmake INSTALL_DESTINATION ${INSTALL_CMAKE_DIR})
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/wampccConfig.cmake"
+              "${CMAKE_CURRENT_BINARY_DIR}/wampccConfigVersion.cmake"
+              "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindJansson.cmake"
+              "${CMAKE_CURRENT_SOURCE_DIR}/cmake/FindLibuv.cmake"
+        DESTINATION ${INSTALL_CMAKE_DIR})
+
+get_property(EXPORT_TARGETS GLOBAL PROPERTY WAMPCC_INSTALL_TARGETS)
+install(EXPORT wampccExportTargets
+        FILE wampccTargets.cmake
+        NAMESPACE wampcc::
+        DESTINATION ${INSTALL_CMAKE_DIR})
 
 include(cmake/MakeDebPackages.cmake)

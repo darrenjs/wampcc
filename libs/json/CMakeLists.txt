@@ -66,6 +66,7 @@ endif()
 ## Install targets
 ##
 install(TARGETS ${TO_INSTALL}
+    EXPORT wampccExportTargets
     RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
     BUNDLE  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
     ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
@@ -75,3 +76,6 @@ install(FILES ${INSTALL_HDRS}
   DESTINATION "${INSTALL_INC_DIR}/wampcc"
   COMPONENT dev)
 
+foreach(t ${TO_INSTALL})
+  add_library(wampcc::${t} ALIAS ${t})
+endforeach()
