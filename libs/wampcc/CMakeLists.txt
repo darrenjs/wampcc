@@ -77,7 +77,7 @@ if(BUILD_SHARED_LIBS)
   set_property(TARGET wampcc_shared PROPERTY SOVERSION 6 )
 
   target_include_directories(wampcc_shared
-    PRIVATE
+    PUBLIC
       $<INSTALL_INTERFACE:include>
       $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
@@ -96,6 +96,7 @@ endif()
 ## Install targets
 ##
 install(TARGETS ${TO_INSTALL}
+    EXPORT wampccExportTargets
     RUNTIME DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
     BUNDLE  DESTINATION "${INSTALL_BIN_DIR}" COMPONENT lib
     ARCHIVE DESTINATION "${INSTALL_LIB_DIR}" COMPONENT lib
@@ -104,3 +105,7 @@ install(TARGETS ${TO_INSTALL}
 install(FILES ${INSTALL_HDRS}
   DESTINATION "${INSTALL_INC_DIR}/wampcc"
   COMPONENT dev)
+
+foreach(t ${TO_INSTALL})
+  add_library(wampcc::${t} ALIAS ${t})
+endforeach()
