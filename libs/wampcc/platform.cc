@@ -23,18 +23,25 @@
 #endif
 #endif
 
+#ifdef __APPLE__
+#include <pthread.h> /* For pthread_threadid_np() */
+#endif
+
 namespace wampcc
 {
 
-int thread_id()
-{
-#ifndef _WIN32
-  /* On Linux the thread-id returned via syscall is more useful than that C++
-   * get_id(), since it will correspond to the values reported by top and other
+int thread_id() {
+  /* It's more useful to return the kernel thread ID than the C++ get_id(),
+   * since it will correspond to the values reported by top and other
    * tools. */
-  return syscall(SYS_gettid);
-#else
+#ifdef __APPLE__
+  uint64_t tid;
+  pthread_threadid_np(NULL, &tid);
+  return tid;
+#elif _WIN32
   return GetCurrentThreadId();
+#else
+  return syscall(SYS_gettid);
 #endif
 }
 
