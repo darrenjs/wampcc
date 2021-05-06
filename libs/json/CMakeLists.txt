@@ -25,7 +25,7 @@ if(BUILD_STATIC_LIBS)
       OpenSSL::SSL	  
       jansson
 	PRIVATE
-	  uv)
+	  LibUV::LibUV)
 
   list(APPEND TO_INSTALL wampcc_json_static)
 endif()
@@ -54,7 +54,7 @@ if(BUILD_SHARED_LIBS)
   target_link_libraries(wampcc_json_shared
 	PUBLIC
       OpenSSL::SSL
-	  uv
+	  LibUV::LibUV
 	PRIVATE
 	  jansson)
 

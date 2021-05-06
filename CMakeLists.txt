@@ -29,6 +29,7 @@ option (BUILD_STATIC_LIBS "Use static libraries" ON)
 option (BUILD_EXAMPLES    "Build example apps"   ON)
 option (BUILD_UTILS       "Build utility apps"   ${DEFAULT_BUILD_UTILS})
 option (BUILD_TESTS       "Build test apps"      OFF)
+
 set(LIBUV_DIR   "" CACHE STRING "libuv installation directory")
 set(JANSSON_DIR "" CACHE STRING "Jansson installation directory")
 
@@ -70,7 +71,7 @@ find_package(OpenSSL REQUIRED)
 ##
 ## Try to find libuv
 ##
-find_package(Libuv REQUIRED)
+find_package(LibUV REQUIRED)
 set(HAVE_LIBUV ON)
 
 ##
