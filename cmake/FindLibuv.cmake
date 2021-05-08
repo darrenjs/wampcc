@@ -56,13 +56,13 @@ They may be set by end users to point at libuv components.
 # See the License for more information.
 
 # Modified by S. Ghannadzadeh to:
-# - prefer static version of libuv if USE_STATIC_LIBS is set
+# - prefer static version of libuv if building static libraries
 # - use LIBUV_DIR as well as LibUV_DIR for hints
 
-if (USE_STATIC_LIBS)
-  find_library(LibUV_LIBRARY NAMES uv_a uv libuv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
-else()
+if (BUILD_SHARED_LIBS)
   find_library(LibUV_LIBRARY NAMES uv uv_a libuv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
+else()
+  find_library(LibUV_LIBRARY NAMES uv_a uv libuv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
 endif()
 mark_as_advanced(LibUV_LIBRARY)
 
