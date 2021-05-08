@@ -60,9 +60,9 @@ They may be set by end users to point at libuv components.
 # - use LIBUV_DIR as well as LibUV_DIR for hints
 
 if (USE_STATIC_LIBS)
-  find_library(LibUV_LIBRARY NAMES uv_a uv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
+  find_library(LibUV_LIBRARY NAMES uv_a uv libuv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
 else()
-  find_library(LibUV_LIBRARY NAMES uv uv_a HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
+  find_library(LibUV_LIBRARY NAMES uv uv_a libuv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
 endif()
 mark_as_advanced(LibUV_LIBRARY)
 
