@@ -162,13 +162,15 @@ configure_package_config_file(cmake/wampccConfig.cmake.in wampccConfig.cmake INS
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/wampccConfig.cmake"
               "${CMAKE_CURRENT_BINARY_DIR}/wampccConfigVersion.cmake"
-        DESTINATION ${INSTALL_CMAKE_DIR})
+        DESTINATION ${INSTALL_CMAKE_DIR}
+        COMPONENT dev)
 
 get_property(EXPORT_TARGETS GLOBAL PROPERTY WAMPCC_INSTALL_TARGETS)
 install(EXPORT wampccExportTargets
         FILE wampccTargets.cmake
         NAMESPACE wampcc::
-        DESTINATION ${INSTALL_CMAKE_DIR})
+        DESTINATION ${INSTALL_CMAKE_DIR}
+        COMPONENT dev)
 
 if (USE_STATIC_RUNTIME AND MSVC)
   foreach(t ${TO_INSTALL})
