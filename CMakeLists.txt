@@ -30,6 +30,10 @@ option (BUILD_EXAMPLES    "Build example apps"   ON)
 option (BUILD_UTILS       "Build utility apps"   ${DEFAULT_BUILD_UTILS})
 option (BUILD_TESTS       "Build test apps"      OFF)
 
+if (MSVC)
+  option (USE_STATIC_RUNTIME "Build using statuc runtime" OFF)
+endif()
+
 set(LIBUV_DIR   "" CACHE STRING "libuv installation directory")
 set(JANSSON_DIR "" CACHE STRING "Jansson installation directory")
 
@@ -165,5 +169,15 @@ install(EXPORT wampccExportTargets
         FILE wampccTargets.cmake
         NAMESPACE wampcc::
         DESTINATION ${INSTALL_CMAKE_DIR})
+
+if (USE_STATIC_RUNTIME AND MSVC)
+  foreach(t ${TO_INSTALL})
+    # Link against MSVC statically if enabled
+    # The MSVC_RUNTIME_LIBRARY option does work properly (even when the
+    # CMP0091 option is set), so let's do this manually
+    set_property(TARGET ${t} PROPERTY MSVC_RUNTIME_LIBRARY "")
+    target_compile_options(${t} PRIVATE "/MT$<$<CONFIG:Debug>:d>")
+  endforeach()
+endif()
 
 include(cmake/MakeDebPackages.cmake)
