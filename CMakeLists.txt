@@ -34,7 +34,7 @@ if (MSVC)
   option (USE_STATIC_RUNTIME "Build using statuc runtime" OFF)
 endif()
 
-set(LIBUV_DIR   "" CACHE STRING "libuv installation directory")
+set(LibUV_DIR   "" CACHE STRING "libuv installation directory")
 set(JANSSON_DIR "" CACHE STRING "Jansson installation directory")
 
 include(GNUInstallDirs)
@@ -87,8 +87,8 @@ set(HAVE_JANSSON ON)
 
 message(STATUS "OpenSSL_INCLUDE_DIR:      " ${OPENSSL_INCLUDE_DIR})
 message(STATUS "OpenSSL_LIBRARIES:        " ${OPENSSL_LIBRARIES})
-message(STATUS "LIBUV_INCLUDE_DIRS:       " ${LIBUV_INCLUDE_DIRS})
-message(STATUS "LIBUV_LIBRARIES:          " ${LIBUV_LIBRARIES})
+message(STATUS "LibUV_INCLUDE_DIRS:       " ${LibUV_INCLUDE_DIRS})
+message(STATUS "LibUV_LIBRARIES:          " ${LibUV_LIBRARIES})
 message(STATUS "JANSSON_INCLUDE_DIR:      " ${JANSSON_INCLUDE_DIR})
 message(STATUS "JANSSON_LIBRARY:          " ${JANSSON_LIBRARY})
 message(STATUS "JANSSON_VERSION:          " ${JANSSON_VERSION})
@@ -145,6 +145,20 @@ install(FILES ${PROJECT_BINARY_DIR}/wampcc.pc DESTINATION "${INSTALL_PKGCONFIG_D
 install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCONFIG_DIR}" COMPONENT dev)
 
 #
+# Compile statically against MSVC runtime if option is enabled
+#
+
+if (USE_STATIC_RUNTIME AND MSVC)
+  foreach(t ${TO_INSTALL})
+    # Link against MSVC statically if enabled
+    # The MSVC_RUNTIME_LIBRARY option does work properly (even when the
+    # CMP0091 option is set), so let's do this manually
+    set_property(TARGET ${t} PROPERTY MSVC_RUNTIME_LIBRARY "")
+    target_compile_options(${t} PRIVATE "/MT$<$<CONFIG:Debug>:d>")
+  endforeach()
+endif()
+
+#
 # Export CMake config
 #
 
@@ -171,15 +185,5 @@ install(EXPORT wampccExportTargets
         NAMESPACE wampcc::
         DESTINATION ${INSTALL_CMAKE_DIR}
         COMPONENT dev)
-
-if (USE_STATIC_RUNTIME AND MSVC)
-  foreach(t ${TO_INSTALL})
-    # Link against MSVC statically if enabled
-    # The MSVC_RUNTIME_LIBRARY option does work properly (even when the
-    # CMP0091 option is set), so let's do this manually
-    set_property(TARGET ${t} PROPERTY MSVC_RUNTIME_LIBRARY "")
-    target_compile_options(${t} PRIVATE "/MT$<$<CONFIG:Debug>:d>")
-  endforeach()
-endif()
 
 include(cmake/MakeDebPackages.cmake)
