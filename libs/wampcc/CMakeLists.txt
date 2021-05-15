@@ -45,9 +45,10 @@ if(BUILD_STATIC_LIBS)
 	  ${LIBUV_INCLUDE_DIRS} )
 
   	target_link_libraries(wampcc_static
-	  PUBLIC
+      PRIVATE
 	    LibUV::LibUV
 	    OpenSSL::SSL
+	  PUBLIC
 		wampcc_json_static)
 
   add_dependencies(wampcc_static wampcc_json_static)
@@ -81,9 +82,10 @@ if(BUILD_SHARED_LIBS)
       $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
 	target_link_libraries(wampcc_shared
-	  PUBLIC
+      PRIVATE
 	    LibUV::LibUV
 	    OpenSSL::SSL
+	  PUBLIC
 		wampcc_json_shared)
   add_dependencies(wampcc_shared wampcc_json_shared)
 
