@@ -21,10 +21,9 @@ if(BUILD_STATIC_LIBS)
                              PRIVATE ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include)
 
   target_link_libraries(wampcc_json_static
-	PUBLIC
-      OpenSSL::SSL	  
-      jansson
 	PRIVATE
+      jansson
+      OpenSSL::SSL
 	  LibUV::LibUV)
 
   list(APPEND TO_INSTALL wampcc_json_static)
@@ -52,11 +51,10 @@ if(BUILD_SHARED_LIBS)
 	  ${PROJECT_SOURCE_DIR}/3rdparty/msgpack-c/include)
 
   target_link_libraries(wampcc_json_shared
-	PUBLIC
-      OpenSSL::SSL
-	  LibUV::LibUV
 	PRIVATE
-	  jansson)
+      jansson
+      OpenSSL::SSL
+	  LibUV::LibUV)
 
   list(APPEND TO_INSTALL wampcc_json_shared)
 
