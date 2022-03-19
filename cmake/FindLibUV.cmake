@@ -1,3 +1,6 @@
+# Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
+# file Copyright.txt or https://cmake.org/licensing for details.
+
 #[=======================================================================[.rst:
 FindLibUV
 ---------
@@ -44,25 +47,19 @@ The cache variables should not be used by project code.
 They may be set by end users to point at libuv components.
 #]=======================================================================]
 
-#=============================================================================
-# Copyright 2014-2016 Kitware, Inc.
-# Modifed by S. Ghannadzadeh 2021
-
-# Distributed under the OSI-approved BSD License (the "License");
-# see accompanying file Copyright.txt for details.
-#
-# This software is distributed WITHOUT ANY WARRANTY; without even the
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the License for more information.
-
+#-----------------------------------------------------------------------------
 # Modified by S. Ghannadzadeh to:
 # - prefer static version of libuv if building static libraries
 # - use LIBUV_DIR as well as LibUV_DIR for hints
 
 if (BUILD_SHARED_LIBS)
-  find_library(LibUV_LIBRARY NAMES uv uv_a libuv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
+  find_library(LibUV_LIBRARY
+    NAMES uv uv_a libuv
+    HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
 else()
-  find_library(LibUV_LIBRARY NAMES uv_a uv libuv HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
+  find_library(LibUV_LIBRARY
+    NAMES uv_a uv libuv
+    HINTS ${LibUV_DIR} ${LibUV_DIR}/lib ${LIBUV_DIR} ${LIBUV_DIR}/lib)
 endif()
 mark_as_advanced(LibUV_LIBRARY)
 
@@ -83,6 +80,8 @@ endif()
 # Extract version number if possible.
 set(_LibUV_H_REGEX "#[ \t]*define[ \t]+UV_VERSION_(MAJOR|MINOR|PATCH)[ \t]+[0-9]+")
 if(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv-version.h")
+  file(STRINGS "${LibUV_INCLUDE_DIR}/uv-version.h" _LibUV_H REGEX "${_LibUV_H_REGEX}")
+elseif(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv/version.h")
   file(STRINGS "${LibUV_INCLUDE_DIR}/uv/version.h" _LibUV_H REGEX "${_LibUV_H_REGEX}")
 elseif(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv.h")
   file(STRINGS "${LibUV_INCLUDE_DIR}/uv.h" _LibUV_H REGEX "${_LibUV_H_REGEX}")
@@ -119,13 +118,12 @@ unset(_LibUV_H_REGEX)
 unset(_LibUV_H)
 
 #-----------------------------------------------------------------------------
-include(FindPackageHandleStandardArgs)
-
-find_package_handle_standard_args(LibUV
+find_package(PackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(LibUV
+  FOUND_VAR LibUV_FOUND
   REQUIRED_VARS LibUV_LIBRARY LibUV_INCLUDE_DIR
   VERSION_VAR LibUV_VERSION
-    FAIL_MESSAGE
-    "Could NOT find LibUV, try to set the path to LibUV root folder in LibUV_DIR")
+  )
 set(LIBUV_FOUND ${LibUV_FOUND})
 
 #-----------------------------------------------------------------------------
@@ -137,7 +135,7 @@ if(LibUV_FOUND)
     add_library(LibUV::LibUV UNKNOWN IMPORTED)
     set_target_properties(LibUV::LibUV PROPERTIES
       IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-      IMPORTED_LOCATION "${LibUV_LIBRARIES}"
+      IMPORTED_LOCATION "${LibUV_LIBRARY}"
       INTERFACE_INCLUDE_DIRECTORIES "${LibUV_INCLUDE_DIRS}"
       INTERFACE_LINK_LIBRARIES "${LibUV_LIBRARIES_WIN}")
   endif()
