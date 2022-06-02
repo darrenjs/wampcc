@@ -31,10 +31,6 @@ if(BUILD_STATIC_LIBS)
       ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
       ${LIB_3RDPTY_APACH_SRC_FILES})
 
-  # Use C++11 standard
-  set_property(TARGET wampcc_static PROPERTY CXX_STANDARD 11)
-  set_property(TARGET wampcc_static PROPERTY CXX_STANDARD_REQUIRED ON)
-
   set_target_properties(wampcc_static PROPERTIES OUTPUT_NAME wampcc)
 
   target_include_directories(wampcc_static
@@ -64,10 +60,6 @@ if(BUILD_SHARED_LIBS)
       ${LIB_WAMPCC_SRC_FILES}
       ${LIB_3RDPTY_HTTPPARSER_SRC_FILES}
       ${LIB_3RDPTY_APACH_SRC_FILES})
-
-  # Use C++11 standard
-  set_property(TARGET wampcc_shared PROPERTY CXX_STANDARD 11)
-  set_property(TARGET wampcc_shared PROPERTY CXX_STANDARD_REQUIRED ON)
 
   # Set library output name
   set_target_properties(wampcc_shared PROPERTIES OUTPUT_NAME wampcc)

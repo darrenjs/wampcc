@@ -7,8 +7,6 @@ endif()
 # Helper macro for example compilation
 macro(Compile_Example example source_path)
   add_executable(${example} "${PROJECT_SOURCE_DIR}/examples/${source_path}/${example}.cc")
-  set_property(TARGET ${example} PROPERTY CXX_STANDARD 11)
-  set_property(TARGET ${example} PROPERTY CXX_STANDARD_REQUIRED ON)
   target_link_libraries (${example}	PRIVATE ${EXTRA_LIBS})
 
   if (WIN32)
