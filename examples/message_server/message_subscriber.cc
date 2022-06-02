@@ -7,13 +7,9 @@
 
 #include "wampcc/kernel.h"
 #include "wampcc/data_model.h"
-#include "wampcc/tcp_socket.h"
-#include "wampcc/wamp_session.h"
 #include "wampcc/rawsocket_protocol.h"
 
-#include <memory>
-#include <iostream>
-
+#include <thread>
 
 void on_string_change(const wampcc::string_subscription& sub)
 {
