@@ -88,6 +88,16 @@ set(HAVE_LIBUV ON)
 find_package(Jansson REQUIRED)
 set(HAVE_JANSSON ON)
 
+##
+## Find Threads on Linux systems, for compiling EXAMPLES or UTILS
+##
+
+if(CMAKE_HOST_UNIX)
+  if (BUILD_EXAMPLES OR BUILD_UTILS)
+    find_package(Threads REQUIRED)
+  endif()
+endif()
+
 message(STATUS "OpenSSL_INCLUDE_DIR:      " ${OPENSSL_INCLUDE_DIR})
 message(STATUS "OpenSSL_LIBRARIES:        " ${OPENSSL_LIBRARIES})
 message(STATUS "LibUV_INCLUDE_DIRS:       " ${LibUV_INCLUDE_DIRS})
