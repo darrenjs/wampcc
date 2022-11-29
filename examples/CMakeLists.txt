@@ -4,6 +4,12 @@ else()
   set(EXTRA_LIBS wampcc_static wampcc_json_static)
 endif()
 
+# Needed because std::condition_variable::wait_for() on libstdc++
+# uses pthreads.
+if(CMAKE_HOST_UNIX)
+  set(EXTRA_LIBS ${EXTRA_LIBS} Threads::Threads)
+endif()
+
 # Helper macro for example compilation
 macro(Compile_Example example source_path)
   add_executable(${example} "${PROJECT_SOURCE_DIR}/examples/${source_path}/${example}.cc")
