@@ -192,6 +192,12 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/wampccConfig.cmake"
         DESTINATION ${INSTALL_CMAKE_DIR}
         COMPONENT dev)
 
+# Export any custom "Find<PackageName>.cmake" files
+FILE(GLOB CUSTOM_MODULE_FIND_FILES "${CMAKE_CURRENT_LIST_DIR}/cmake/Find*.cmake")
+install(FILES ${CUSTOM_MODULE_FIND_FILES}
+        DESTINATION ${INSTALL_CMAKE_DIR}/find_modules
+        COMPONENT dev)
+
 get_property(EXPORT_TARGETS GLOBAL PROPERTY WAMPCC_INSTALL_TARGETS)
 install(EXPORT wampccExportTargets
         FILE wampccTargets.cmake
