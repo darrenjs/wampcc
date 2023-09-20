@@ -32,6 +32,7 @@ if(BUILD_EXAMPLES)
   Compile_Example(basic_callee_ssl basic)
   Compile_Example(demo_embedded_router_ssl basic)
   Compile_Example(demo_embedded_router basic)
+  Compile_Example(demo_client basic)
   Compile_Example(basic_server basic)
 # Authentication
   Compile_Example(basic_authentication_provider authentication)
