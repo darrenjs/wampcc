@@ -2,7 +2,24 @@
 
 include(CMakeFindDependencyMacro)
 
+# Some dependenciess (UV and Jansson) don't usually come with a CMake
+# find module, so distribute ours.
+
+# Set module path
+set(wampcc_original_module_path "${CMAKE_MODULE_PATH}")
+list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_LIST_DIR}/find_modules")
+
+# Import modules
+find_dependency(OpenSSL REQUIRED)
+find_dependency(LibUV REQUIRED)
+find_dependency(Jansson REQUIRED)
+if(CMAKE_HOST_UNIX)
+  find_dependency(Threads REQUIRED)
+endif()
+
+# Restore old path
+set(CMAKE_MODULE_PATH "${wampcc_original_module_path}")
+unset(wampcc_original_module_path)
+
 # Add the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/wampccTargets.cmake")
-
-
