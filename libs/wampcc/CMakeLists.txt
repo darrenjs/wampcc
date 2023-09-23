@@ -44,6 +44,7 @@ if(BUILD_STATIC_LIBS)
       PRIVATE
 	    LibUV::LibUV
 	    OpenSSL::SSL
+        Threads::Threads
 	  PUBLIC
 		wampcc_json_static)
 
@@ -77,6 +78,7 @@ if(BUILD_SHARED_LIBS)
       PRIVATE
 	    LibUV::LibUV
 	    OpenSSL::SSL
+        Threads::Threads
 	  PUBLIC
 		wampcc_json_shared)
   add_dependencies(wampcc_shared wampcc_json_shared)

@@ -93,9 +93,7 @@ set(HAVE_JANSSON ON)
 ##
 
 if(CMAKE_HOST_UNIX)
-  if (BUILD_EXAMPLES OR BUILD_UTILS)
-    find_package(Threads REQUIRED)
-  endif()
+  find_package(Threads REQUIRED)
 endif()
 
 message(STATUS "OpenSSL_INCLUDE_DIR:      " ${OPENSSL_INCLUDE_DIR})
