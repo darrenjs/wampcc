@@ -1,9 +1,12 @@
-cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.15.0 FATAL_ERROR)
 
 set (WAMPCC_VERSION_MAJOR 1)
 set (WAMPCC_VERSION_MINOR 6)
 set (WAMPCC_VERSION "${WAMPCC_VERSION_MAJOR}.${WAMPCC_VERSION_MINOR}")
 project(wampcc VERSION ${WAMPCC_VERSION})
+
+# Allows for setting MSVC static runtime
+cmake_policy(SET CMP0091 NEW)
 
 # Version number
 # Include extra cmake modules
@@ -161,11 +164,7 @@ install(FILES ${PROJECT_BINARY_DIR}/wampcc_json.pc DESTINATION "${INSTALL_PKGCON
 
 if (USE_STATIC_RUNTIME AND MSVC)
   foreach(t ${TO_INSTALL})
-    # Link against MSVC statically if enabled
-    # The MSVC_RUNTIME_LIBRARY option does work properly (even when the
-    # CMP0091 option is set), so let's do this manually
-    set_property(TARGET ${t} PROPERTY MSVC_RUNTIME_LIBRARY "")
-    target_compile_options(${t} PRIVATE "/MT$<$<CONFIG:Debug>:d>")
+    set_property(TARGET ${t} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   endforeach()
 endif()
 
