@@ -91,14 +91,18 @@ std::future<uverr> wamp_router::listen(auth_provider auth, int p)
 }
 
 
-void wamp_router::callable(const std::string& realm,
+t_registration_id wamp_router::callable(const std::string& realm,
                            const std::string& uri,
                            on_call_fn fn,
                            void * user)
 {
-  m_rpcman->register_internal_rpc(realm, uri, std::move(fn), user);
+  return m_rpcman->register_internal_rpc(realm, uri, std::move(fn), user);
 }
 
+void wamp_router::unregister_callable(const std::string& realm,
+                                      t_registration_id id) {
+  m_rpcman->unregister_internal_rpc(realm, id);
+}
 
 void wamp_router::publish(const std::string& realm, const std::string& topic,
                           const json_object& options, wamp_args args)

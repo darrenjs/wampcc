@@ -55,6 +55,10 @@ uint64_t rpc_man::register_internal_rpc(const std::string& realm,
   return r.registration_id;
 }
 
+void rpc_man::unregister_internal_rpc(const std::string& realm, t_request_id id) {
+  unregister_rpc(session_handle(), realm, 0, id);
+}
+
 
 void rpc_man::handle_inbound_register(wamp_session& ws, t_request_id request_id,
                                       const std::string& ___uri,  const json_object& options) {
@@ -107,6 +111,45 @@ void rpc_man::register_rpc(session_handle session, std::string realm,
                                     << "::" << r.uri);
 }
 
+void rpc_man::unregister_rpc(session_handle session, std::string realm, t_session_id session_id,
+                             t_registration_id registration_id) {
+  std::lock_guard<std::mutex> guard(m_rpc_map_lock);
+
+  auto session_iter = m_session_to_rpcs.find(session);
+  if (session_iter != m_session_to_rpcs.end()) {
+    auto rpc_iter = session_iter->second.find(registration_id);
+    if (rpc_iter != session_iter->second.end()) {
+      if (rpc_iter->second->registration_id) {
+        LOG_INFO("procedure unregistered, " //
+                 << rpc_iter->second->registration_id << ", " << realm
+                 << "::" << rpc_iter->second->uri);
+
+        /* Perform user-defined call-back, if present. */
+        if (m_rpc_removed_cb)
+          m_rpc_removed_cb(*(rpc_iter->second));
+
+        /* remove from realm index */
+        auto realm_iter = m_realm_registry.find(realm);
+        if (realm_iter != m_realm_registry.end())
+          realm_iter->second.erase(rpc_iter->second->uri);
+      }
+
+      /* remove from session index */
+      session_iter->second.erase(rpc_iter);
+    }
+    else {
+      LOG_WARN("unregister failed, registration_id " //
+               << registration_id << " not found");
+      throw wamp_error(WAMP_ERROR_NO_SUCH_REGISTRATION);
+    }
+  }
+  else {
+    LOG_WARN("unregister failed, session #" //
+             << session_id << " not found");
+    throw wamp_error(WAMP_ERROR_NO_SUCH_REGISTRATION);
+  }
+}
+
 
 void rpc_man::session_closed(std::shared_ptr<wamp_session>& session) {
   /* EV thread */
@@ -142,43 +185,9 @@ void rpc_man::handle_inbound_unregister(wamp_session& session,
                                         t_request_id request_id,
                                         t_registration_id registration_id) {
   /* EV thread */
-
-  std::lock_guard<std::mutex> guard(m_rpc_map_lock);
-
-  auto session_iter = m_session_to_rpcs.find(session.handle());
-  if (session_iter != m_session_to_rpcs.end()) {
-    auto rpc_iter = session_iter->second.find(registration_id);
-    if (rpc_iter != session_iter->second.end()) {
-      LOG_INFO("procedure unregistered, " //
-               << rpc_iter->second->registration_id << ", " << session.realm()
-               << "::" << rpc_iter->second->uri);
-
-      /* Perform user-defined call-back, if present. */
-      if (m_rpc_removed_cb)
-          m_rpc_removed_cb(*(rpc_iter->second));
-
-      /* remove from realm index */
-      auto realm_iter = m_realm_registry.find(session.realm());
-      if (realm_iter != m_realm_registry.end())
-        realm_iter->second.erase(rpc_iter->second->uri);
-
-      /* remove from session index */
-      session_iter->second.erase(rpc_iter);
-
-      /* reply to client, indicate success */
-      session.unregistered(request_id);
-    }
-    else {
-      LOG_WARN("unregister failed, registration_id " //
-               << registration_id << " not found");
-      throw wamp_error(WAMP_ERROR_NO_SUCH_REGISTRATION);
-    }
-  }
-  else {
-    LOG_WARN("unregister failed, session #" //
-             << session.unique_id() << " not found");
-    throw wamp_error(WAMP_ERROR_NO_SUCH_REGISTRATION);
-  }
+  unregister_rpc(session.handle(), session.realm(), session.unique_id(), registration_id);
+  /* reply to client, indicate success */
+  session.unregistered(request_id);
 }
 
 

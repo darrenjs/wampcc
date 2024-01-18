@@ -44,6 +44,8 @@ public:
                                  const std::string& uri, on_call_fn,
                                  void* user);
 
+  void unregister_internal_rpc(const std::string& realm, t_request_id);
+
   rpc_details get_rpc_details(const std::string& rpcname,
                               const std::string& realm);
 
@@ -56,6 +58,8 @@ private:
   rpc_man& operator=(const rpc_man&) = delete;
 
   void register_rpc(session_handle, std::string realm, rpc_details& r);
+  void unregister_rpc(session_handle, std::string realm, t_session_id,
+                      t_registration_id);
 
   logger& __logger; /* name chosen for log macros */
   rpc_added_cb m_rpc_added_cb;
