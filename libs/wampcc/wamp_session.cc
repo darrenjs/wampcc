@@ -781,8 +781,14 @@ void wamp_session::send_msg(const json_array& jv)
   }
 
   update_state_for_outbound(jv);
-
-  m_proto->send_msg(jv);
+  try
+  {
+    m_proto->send_msg(jv);
+  }
+  catch (...)
+  {
+    handle_exception();
+  }
 }
 
 
