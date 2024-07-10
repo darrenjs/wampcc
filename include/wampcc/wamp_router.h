@@ -131,11 +131,13 @@ public:
   /** Associate a callback function with a procedure uri.  The callback is
    * called when a CALL request is received for the procedure.  The callback
    * should reply to the caller with a RESULT or ERROR message. */
-  void callable(const std::string& realm,
+  t_registration_id callable(const std::string& realm,
                 const std::string& uri,
                 on_call_fn,
                 void * user = nullptr);
 
+  /** Unregister a callable previously added. */
+  void unregister_callable(const std::string& realm, t_registration_id id);
 
   /** Return list of addresses the router is currently listening on. */
   std::vector<socket_address> get_listen_addresses() const;

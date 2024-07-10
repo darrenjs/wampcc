@@ -178,6 +178,75 @@ TEST_CASE("test_unregister")
   }
 }
 
+TEST_CASE("test_unregister_router") {
+  const std::string uri = "my_rpc";
+  const std::string realm = "default_realm";
+  internal_server iserver(logger::nolog());
+  int port = iserver.start(global_port++);
+
+  unique_ptr<kernel> the_kernel(new kernel({}, logger::nolog()));
+  auto session = establish_session(the_kernel, port);
+  perform_realm_logon(session);
+
+  auto registration_id = iserver.router()->callable(realm, uri,
+      [](wampcc::wamp_router& rtr, wampcc::wamp_session& caller, wampcc::call_info info) {
+          caller.result(info.request_id, {"hello"});
+      }, nullptr);
+
+  std::promise<result_info> promised_result_info;
+
+  session->call(uri, {}, {},
+      [&promised_result_info](wamp_session&, result_info info) {
+        promised_result_info.set_value(std::move(info));
+      },
+      nullptr);
+
+  auto future_result_info = promised_result_info.get_future();
+
+  REQUIRE(future_result_info.wait_for(std::chrono::seconds(3)) ==
+          std::future_status::ready);
+
+  REQUIRE(future_result_info.get().was_error == false);
+
+  // check that second registration fails
+  std::string error_uri;
+  try {
+    iserver.router()->callable(realm, uri,
+        [](wampcc::wamp_router&, wampcc::wamp_session&, wampcc::call_info) {},
+        nullptr);
+  }
+  catch (const wampcc::wamp_error& error) {
+    error_uri = error.error_uri();
+  }
+  REQUIRE(error_uri == WAMP_ERROR_PROCEDURE_ALREADY_EXISTS);
+
+  // check that incorrect unregister fails
+  try {
+    iserver.router()->unregister_callable(realm, registration_id + 1);
+  }
+  catch (const wampcc::wamp_error& error) {
+    error_uri = error.error_uri();
+  }
+  REQUIRE(error_uri == WAMP_ERROR_NO_SUCH_REGISTRATION);
+
+  // unregister
+  iserver.router()->unregister_callable(realm, registration_id);
+
+  // check that the procedure can no longer be called
+  promised_result_info = {};
+  session->call(uri, {}, {},
+      [&promised_result_info](wamp_session&, result_info info) {
+        promised_result_info.set_value(std::move(info));
+      },
+      nullptr);
+
+  future_result_info = promised_result_info.get_future();
+
+  REQUIRE(future_result_info.wait_for(std::chrono::seconds(3)) ==
+          std::future_status::ready);
+
+  REQUIRE(future_result_info.get().was_error == true);
+}
 
 int main(int argc, char** argv)
 {
