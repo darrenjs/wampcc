@@ -42,7 +42,7 @@ if(BUILD_STATIC_LIBS)
 
   	target_link_libraries(wampcc_static
       PRIVATE
-	    LibUV::LibUV
+	    uv
 	    OpenSSL::SSL
         Threads::Threads
 	  PUBLIC
@@ -76,7 +76,7 @@ if(BUILD_SHARED_LIBS)
 
 	target_link_libraries(wampcc_shared
       PRIVATE
-	    LibUV::LibUV
+	    uv
 	    OpenSSL::SSL
         Threads::Threads
 	  PUBLIC

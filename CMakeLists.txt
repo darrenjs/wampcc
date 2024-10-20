@@ -40,8 +40,8 @@ if (MSVC)
   option (USE_STATIC_RUNTIME "Build using statuc runtime" OFF)
 endif()
 
-set(LibUV_DIR   "" CACHE STRING "libuv installation directory")
-set(JANSSON_DIR "" CACHE STRING "Jansson installation directory")
+set(libuv_DIR   "" CACHE STRING "libuv installation directory")
+set(JANSSON_DIR "" CACHE STRING "jansson installation directory")
 
 include(GNUInstallDirs)
 set(INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}" CACHE PATH "Installation directory for executables")
@@ -82,13 +82,13 @@ find_package(OpenSSL REQUIRED)
 ##
 ## Try to find libuv
 ##
-find_package(LibUV REQUIRED)
+find_package(libuv REQUIRED)
 set(HAVE_LIBUV ON)
 
 ##
-## Try to find jansson
+## Try to find jansson::jansson
 ##
-find_package(Jansson REQUIRED)
+find_package(jansson REQUIRED)
 set(HAVE_JANSSON ON)
 
 ##
@@ -101,8 +101,8 @@ endif()
 
 message(STATUS "OpenSSL_INCLUDE_DIR:      " ${OPENSSL_INCLUDE_DIR})
 message(STATUS "OpenSSL_LIBRARIES:        " ${OPENSSL_LIBRARIES})
-message(STATUS "LibUV_INCLUDE_DIRS:       " ${LibUV_INCLUDE_DIRS})
-message(STATUS "LibUV_LIBRARIES:          " ${LibUV_LIBRARIES})
+message(STATUS "libuv_INCLUDE_DIRS:       " ${libuv_INCLUDE_DIRS})
+message(STATUS "libuv_LIBRARIES:          " ${libuv_LIBRARIES})
 message(STATUS "JANSSON_INCLUDE_DIR:      " ${JANSSON_INCLUDE_DIR})
 message(STATUS "JANSSON_LIBRARY:          " ${JANSSON_LIBRARY})
 message(STATUS "JANSSON_VERSION:          " ${JANSSON_VERSION})
