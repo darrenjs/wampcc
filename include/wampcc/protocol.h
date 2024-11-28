@@ -11,6 +11,7 @@
 #include "wampcc/types.h"
 
 #include <vector>
+#include <chrono>
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
