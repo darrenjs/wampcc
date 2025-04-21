@@ -374,7 +374,7 @@ result_info sync_rpc_all(std::shared_ptr<wamp_session>&session,
 
   std::promise<result_info> result_prom;
   std::future<result_info> result_fut = result_prom.get_future();
-  session->call(rpc_name, {}, call_args,
+  t_request_id request_id = session->call(rpc_name, {}, call_args,
                 [&result_prom](wamp_session&, result_info r) {
                   result_prom.set_value(r);
                 });
@@ -391,6 +391,9 @@ result_info sync_rpc_all(std::shared_ptr<wamp_session>&session,
 
   if (expect==rpc_result_expect::fail && result.was_error==false)
     throw std::runtime_error("expected call to fail");
+
+  if (result.request_id != request_id)
+    throw std::runtime_error("result.request_id different from session->call() return");
 
   return result;
 }

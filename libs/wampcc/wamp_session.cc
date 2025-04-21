@@ -1884,6 +1884,7 @@ void wamp_session::process_inbound_error(json_array & msg)
         {
           result_info info;
           info.was_error = true;
+          info.request_id = request_id;
           info.error_uri = error_uri;
           info.user = orig_request.user;
           if ( msg.size() > 5 )
