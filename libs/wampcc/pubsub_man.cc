@@ -231,7 +231,7 @@ t_publication_id pubsub_man::update_topic(const std::string& topic,
   if (num_active != mt->subscribers().size())
   {
     std::vector< std::weak_ptr<wamp_session> > temp;
-    temp.resize(num_active);
+    temp.reserve(num_active);
     for (auto item : mt->subscribers())
     {
       if (!item.expired())
