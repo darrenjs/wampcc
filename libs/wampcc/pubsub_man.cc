@@ -396,26 +396,17 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
 }
 
 
-void pubsub_man::session_closed(session_handle /*sh*/)
+void pubsub_man::session_closed(session_handle sh)
 {
   /* EV loop */
 
-  // // design of this can be improved, ie, we should track what topics a session
-  // // has subscribed too, rather than searching every topic.
-  // for (auto & realm_iter : m_topics)
-  //   for (auto & item : realm_iter.second)
-  //   {
+  // design of this can be improved, ie, we should track what topics a session
+  // has subscribed too, rather than searching every topic.
+  std::lock_guard<std::mutex> guard(m_lock);
 
-  //     for (auto it = item.second->m_subscribers.begin();
-  //          it != item.second->m_subscribers.end(); it++)
-  //     {
-  //       if (compare_session( *it, sh))
-  //       {
-  //         item.second->m_subscribers.erase( it );
-  //         break;
-  //       }
-  //     }
-  //   }
+  for (auto & realm_iter : m_topics)
+    for (auto & topic_iter : realm_iter.second)
+      topic_iter.second->remove(sh);
 }
 
 } // namespace wampcc
