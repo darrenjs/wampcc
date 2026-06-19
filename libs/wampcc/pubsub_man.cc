@@ -221,7 +221,21 @@ t_publication_id pubsub_man::update_topic(const std::string& topic,
   {
     if (auto sp = item.lock())
     {
-      sp->send_msg(msg);
+      try {
+        sp->send_msg(msg);
+      } catch (std::exception& e) {
+        // There is a race condition when a subscriber session is closing:
+        // the underlying TCP session can be closed in the  IO thread (e.g.
+        // tcp_socket::do_write() calls close_once_on_io() when
+        // socket_max_pending_write_bytes is exceeded), but wamp_session is
+        // still state::open.
+        //
+        // In this case send_msg(..) can throw. Swallow so one bad subscriber
+        // does not abort the broadcast and propagate the error back to the
+        // publisher.
+        LOG_WARN("event to session #" << sp->unique_id()
+                 << " failed: " << e.what());
+      }
       num_active++;
     }
   }
@@ -231,7 +245,7 @@ t_publication_id pubsub_man::update_topic(const std::string& topic,
   if (num_active != mt->subscribers().size())
   {
     std::vector< std::weak_ptr<wamp_session> > temp;
-    temp.resize(num_active);
+    temp.reserve(num_active);
     for (auto item : mt->subscribers())
     {
       if (!item.expired())
@@ -382,26 +396,17 @@ void pubsub_man::unsubscribe(wamp_session* sptr,
 }
 
 
-void pubsub_man::session_closed(session_handle /*sh*/)
+void pubsub_man::session_closed(session_handle sh)
 {
   /* EV loop */
 
-  // // design of this can be improved, ie, we should track what topics a session
-  // // has subscribed too, rather than searching every topic.
-  // for (auto & realm_iter : m_topics)
-  //   for (auto & item : realm_iter.second)
-  //   {
+  // design of this can be improved, ie, we should track what topics a session
+  // has subscribed too, rather than searching every topic.
+  std::lock_guard<std::mutex> guard(m_lock);
 
-  //     for (auto it = item.second->m_subscribers.begin();
-  //          it != item.second->m_subscribers.end(); it++)
-  //     {
-  //       if (compare_session( *it, sh))
-  //       {
-  //         item.second->m_subscribers.erase( it );
-  //         break;
-  //       }
-  //     }
-  //   }
+  for (auto & realm_iter : m_topics)
+    for (auto & topic_iter : realm_iter.second)
+      topic_iter.second->remove(sh);
 }
 
 } // namespace wampcc
