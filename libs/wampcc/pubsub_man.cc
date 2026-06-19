@@ -221,7 +221,21 @@ t_publication_id pubsub_man::update_topic(const std::string& topic,
   {
     if (auto sp = item.lock())
     {
-      sp->send_msg(msg);
+      try {
+        sp->send_msg(msg);
+      } catch (std::exception& e) {
+        // There is a race condition when a subscriber session is closing:
+        // the underlying TCP session can be closed in the  IO thread (e.g.
+        // tcp_socket::do_write() calls close_once_on_io() when
+        // socket_max_pending_write_bytes is exceeded), but wamp_session is
+        // still state::open.
+        //
+        // In this case send_msg(..) can throw. Swallow so one bad subscriber
+        // does not abort the broadcast and propagate the error back to the
+        // publisher.
+        LOG_WARN("event to session #" << sp->unique_id()
+                 << " failed: " << e.what());
+      }
       num_active++;
     }
   }
